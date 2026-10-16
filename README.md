@@ -16,8 +16,8 @@ is a feasibility test of on-device routing; see "Roadmap" below.
   rail in one query. This is the feature everything else is built around.
 - Live arrivals at a stop, nearby stops, line search, a map, favorites.
 - Hebrew and right-to-left as first-class, not an afterthought.
-- Work offline: the whole timetable is on the phone, so planning a trip never
-  needs the network.
+- Work offline, if routing ends up on the device: then the whole timetable
+  is on the phone and planning a trip never needs the network.
 - Crowd reports, one tap each: the bus arrived, it never came, it was full,
   the air conditioning was broken, it skipped my stop. Reports are anonymous,
   show once more than one rider agrees, and fade after about fifteen minutes.
@@ -25,15 +25,18 @@ is a feasibility test of on-device routing; see "Roadmap" below.
 
 ## How it is different
 
-- **Routing on the device.** Wayli compiles the national GTFS timetable into
-  a compact file and runs the RAPTOR algorithm inside the app. No trip
-  request ever leaves your phone.
+- **As little infrastructure as possible.** Timetables are static files on a
+  CDN, rebuilt every night by a GitHub Action. A tiny worker exists only
+  where it cannot be avoided: relaying real-time data, collecting crowd
+  reports, sending push alerts. Nothing that costs money or needs
+  babysitting gets in without a reason.
+- **Routing on the device, if it holds up.** The option being tested first:
+  compile the national GTFS timetable into a compact file and run the RAPTOR
+  algorithm inside the app, so trip planning needs no server, works offline,
+  and no trip request leaves your phone. If a phone cannot do it fast
+  enough, routing moves to the cheapest setup that works.
 - **Privacy is the product.** Wayli does not sell location data and does not
   run tracking ads.
-- **Nearly no servers.** Timetables are static files on a CDN, rebuilt every
-  night by a GitHub Action. A tiny worker exists only where it cannot be
-  avoided: relaying real-time data, collecting crowd reports, sending push
-  alerts.
 - **Open source, AGPL.** Anyone can audit it, run it or fork it, and a hosted
   fork has to stay open too.
 
@@ -49,14 +52,16 @@ SIRI real-time (via a small relay) or Hasadna Open Bus --> live arrivals
 Crowd reports --> worker + small database --> other riders nearby
 ```
 
-The design, including the open questions, is in `docs/architecture.md`.
+That is the on-device variant, the one being tested first. The design,
+including the open questions and the fallbacks, is in `docs/architecture.md`.
 Decisions and their dates are in `docs/decisions.md`.
 
 ## Roadmap
 
 1. **Feasibility test.** Compile the Israel GTFS feed to a compact format and
    plan Haifa to Be'er Sheva with three transfers in the browser, in under
-   one second on a phone. This decides whether on-device routing is viable.
+   one second on a phone. This decides whether routing stays on the device
+   or moves to the cheapest server setup that works.
 2. Nightly pipeline: fetch GTFS, compile, publish.
 3. The app: planner, stops, lines, map, favorites, Hebrew/RTL, offline.
 4. Real-time arrivals (SIRI access from the Ministry of Transport, or

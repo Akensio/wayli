@@ -28,3 +28,7 @@ so they are not re-litigated.
   agreement is set up.
 - 2026-10-16 Repository created (github.com/Akensio/wayli) and scaffolded:
   README, CLAUDE.md, docs/. No code yet; next is the feasibility test.
+- 2026-10-16 Clarified: on-device routing is a hypothesis under test, not a
+  decision. The real principle is minimal infrastructure: nothing that costs
+  money or manual configuration time without a reason. The feasibility test
+  decides where routing runs; fallbacks are listed in `architecture.md`.

@@ -3,13 +3,20 @@
 Current design as of 2026-10-16, rewritten in place when it changes. Dated
 decisions are in `decisions.md`. Nothing here is built yet.
 
+Guiding constraint: as little infrastructure as possible. Anything that
+costs money or manual configuration time has to earn its place. Where
+routing runs is not decided; the on-device design below is the leading
+option because it needs the least infrastructure, and the feasibility test
+at the end decides. The fallbacks if it fails are listed after the test.
+
 ## Shape
 
 Three parts, in order of how much they matter:
 
 1. **The app**: an installable web app (PWA) first, native wrappers later
-   only if needed. Holds the compiled timetable, runs the trip planner, shows
-   stops, lines, map, favorites, live arrivals and crowd reports.
+   only if needed. Shows stops, lines, map, favorites, live arrivals and
+   crowd reports; in the on-device design it also holds the compiled
+   timetable and runs the trip planner.
 2. **The pipeline**: a nightly GitHub Action that downloads the Ministry of
    Transport GTFS feed, compiles it to a compact timetable, and publishes the
    result as static files (GitHub Pages or Cloudflare Pages).
@@ -18,7 +25,7 @@ Three parts, in order of how much they matter:
    relaying real-time data (SIRI credentials cannot ship in a public app),
    collecting and serving crowd reports, and sending push alerts.
 
-## Trip planning on the device
+## Trip planning on the device (leading option, under test)
 
 - Algorithm: RAPTOR (round-based public transit routing) over the timetable
   of the day. It works directly on trips and stops, needs no graph
@@ -108,3 +115,18 @@ anything else.
 4. Pass criterion: a correct plan in under one second on the phone, with a
    timetable small enough to download over mobile data without complaint.
    Record the numbers in `decisions.md` either way.
+
+## If on-device routing fails the test
+
+Options, none chosen, cheapest first:
+
+- Hybrid: keep the compact timetable on the device for the common case (a
+  region, nearby trips) and send only the hard queries to a small routing
+  endpoint.
+- The same RAPTOR code on a serverless free tier (Cloudflare Workers), with
+  the compact timetable loaded from the CDN, if the timetable fits the
+  free-tier limits. Costs nothing until it is popular, no machines to
+  maintain.
+- A hosted open-source router (OpenTripPlanner, MOTIS) on a small VPS: the
+  most capable and the most expensive in money and configuration time, so
+  last.
