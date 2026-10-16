@@ -41,6 +41,19 @@ STATION_MIN = 120       # s, floor for a platform-to-platform transfer inside on
 TRANSFER_SLACK = 90     # s, minimum between alighting and boarding at the same stop (applied by the router)
 WALK_CHAIN_MAX = 600    # s, longest chain of footpaths the router may string together
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
+INTERCITY_KM = 15.0     # a bus line whose ends are in different cities this far apart counts as intercity (luggage compartment)
+
+
+def route_cities(long_name):
+    """'origin-city<->destination-city-1#' -> (city, city); the MOT feed's route_long_name convention."""
+    parts = long_name.split("<->")
+    if len(parts) != 2:
+        return None
+    out = []
+    for part in parts:
+        part = re.sub(r"-\d+[#א-ת]*$", "", part.strip())
+        out.append(part.rsplit("-", 1)[-1].strip())
+    return tuple(out)
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
@@ -235,6 +248,7 @@ def main():
     pat_trips_off = np.zeros(P + 1, np.int32)
     trip_times_off = np.zeros(P + 1, np.int32)
     pat_route = np.zeros(P, np.int32)
+    pat_intercity = np.zeros(P, np.uint8)
     pat_stops = []
     trip_start = []
     trip_ids = []
@@ -247,6 +261,12 @@ def main():
         pat_trips_off[p] = len(trip_start)
         trip_times_off[p] = n_events
         pat_route[p] = route_index[route_id]
+        short, long_, ag, rtype = routes_raw[route_id]
+        if rtype == 3:
+            cities = route_cities(long_)
+            a, b = seq[0], seq[-1]
+            far = haversine(stop_list[a][2], stop_list[a][3], stop_list[b][2], stop_list[b][3]) >= INTERCITY_KM * 1000
+            pat_intercity[p] = 1 if (cities and cities[0] != cities[1] and far) else 0
         pat_stops.extend(seq)
         for pos, s in enumerate(seq):
             stop_pats[s].append((p, pos))
@@ -362,13 +382,14 @@ def main():
         while len(body) % 4:
             body.append(0)
         sections.append({"name": name, "dtype": dtype, "offset": len(body), "length": int(a.size)})
-        body.extend(a.astype("<" + np.dtype(dtype).str[1:]).tobytes())
+        body.extend((a.astype("<" + np.dtype(dtype).str[1:]) if a.dtype.itemsize > 1 else a).tobytes())
 
     add("patStopsOff", pat_stops_off, "int32")
     add("patStops", pat_stops, "int32")
     add("patTripsOff", pat_trips_off, "int32")
     add("tripTimesOff", trip_times_off, "int32")
     add("patRoute", pat_route, "int32")
+    add("patIntercity", pat_intercity, "uint8")
     add("tripStart", trip_start, "int32")
     add("depDelta", dep_delta, "uint16")
     add("dwell", dwell, "uint16")
@@ -388,7 +409,8 @@ def main():
         "feed": feed_info,
         "built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "counts": {"stops": S, "patterns": P, "trips": T, "events": n_events, "footpaths": n_tr,
-                   "routes": len(route_list), "stations": len(parent_index)},
+                   "routes": len(route_list), "stations": len(parent_index),
+                   "intercity_patterns": int(pat_intercity.sum())},
         "walk": {"radius_m": WALK_RADIUS, "speed_mps": WALK_SPEED, "min_s": MIN_WALK, "buffer_s": WALK_BUFFER,
                  "station_min_s": STATION_MIN, "transfer_slack_s": TRANSFER_SLACK, "chain_max_s": WALK_CHAIN_MAX},
         "sections": sections,

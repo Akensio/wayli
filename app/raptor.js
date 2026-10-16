@@ -7,7 +7,7 @@
 // times, so a station with many platforms, or a location with several stops
 // nearby, is one query.
 
-const TYPES = { int32: Int32Array, uint16: Uint16Array, float32: Float32Array };
+const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
 const INF = 0x7fffffff;
 
 /** Parse the decompressed timetable container into typed arrays. */
@@ -54,8 +54,27 @@ function expandTimes(tt) {
   tt.patType = patType;
 }
 
-/** Route types a bike may ride along on. Gadi, 2026-10-16: trains always; buses no; light rail unknown yet. */
-export const BIKE_ON_BOARD_TYPES = [2];
+/**
+ * Bikes on board, Israel (sources in docs/architecture.md):
+ *  - folding bikes: any bus, light rail and train, at any hour;
+ *  - other bikes: trains outside the weekday peaks (Sun-Thu 06:00-09:00, 15:00-19:00),
+ *    intercity buses in the luggage compartment (space permitting); not city buses or light rail.
+ */
+export const BIKE_RULES = {
+  trainPeak: [[6 * 3600, 9 * 3600], [15 * 3600, 19 * 3600]],
+  peakDays: [0, 1, 2, 3, 4],  // JS getDay(): Sunday..Thursday
+};
+export function bikeAllowed(tt, p, depTime, folding, weekday = true) {
+  if (folding) return true;
+  const type = tt.patType[p];
+  if (type === 2) {
+    if (!weekday) return true;
+    for (const [a, b] of BIKE_RULES.trainPeak) if (depTime >= a && depTime < b) return false;
+    return true;
+  }
+  if (type === 3) return tt.patIntercity ? tt.patIntercity[p] === 1 : false;
+  return false;
+}
 
 // ---------------------------------------------------------------- search
 
@@ -151,10 +170,13 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
   origins = asPlaces(tt, origins); dests = asPlaces(tt, dests);
   const maxTransfers = opts.maxTransfers ?? 3;
   const slack = opts.slack ?? tt.slack;
-  // optional restriction to vehicle types (GTFS route_type), e.g. trains only when the bike rides along
+  // optional restriction to vehicle types (GTFS route_type), and the bike-on-board rules
   let allowed = null;
   if (opts.routeTypes) { allowed = new Uint8Array(8); for (const t of opts.routeTypes) allowed[t] = 1; }
   const patType = tt.patType;
+  const bike = opts.bikeOnBoard ? { folding: !!opts.folding, weekday: opts.weekday ?? true } : null;
+  const patOk = (p) => (!allowed || allowed[patType[p]]) && (!bike || bike.folding || patType[p] === 2 || (patType[p] === 3 && tt.patIntercity && tt.patIntercity[p] === 1));
+  const tripOk = (p, d) => !bike || bikeAllowed(tt, p, d, bike.folding, bike.weekday);
   const chainMax = opts.maxWalkChain ?? Math.min(tt.chainMax, 600);
   const S = tt.stops.length, K = maxTransfers + 1;
   const { patStopsOff, patStops, patTripsOff, tripTimesOff, stopPatsOff, stopPats,
@@ -221,7 +243,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
   for (const [q, w] of reach) {
     for (let i = stopPatsOff[q]; i < stopPatsOff[q + 1]; i++) {
       const p = stopPats[2 * i], pos = stopPats[2 * i + 1];
-      if (allowed && !allowed[patType[p]]) continue;
+      if (!patOk(p)) continue;
       const ns = patStopsOff[p + 1] - patStopsOff[p];
       if (pos === ns - 1) continue;
       const tFirst = patTripsOff[p], tEnd = patTripsOff[p + 1], base = tripTimesOff[p];
@@ -317,7 +339,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
       for (const s of markedList) {
         for (let i = stopPatsOff[s]; i < stopPatsOff[s + 1]; i++) {
           const p = stopPats[2 * i], pos = stopPats[2 * i + 1];
-          if (allowed && !allowed[patType[p]]) continue;
+          if (!patOk(p)) continue;
           const cur = Q.get(p);
           if (cur === undefined || pos < cur) Q.set(p, pos);
         }
@@ -348,6 +370,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
           if (t < 0 || ready <= dep[base + (t - tFirst) * ns + pos]) {
             let lo = 0, hi = nTrips;
             while (lo < hi) { const mid = (lo + hi) >> 1; if (dep[base + mid * ns + pos] < ready) lo = mid + 1; else hi = mid; }
+            if (bike) while (lo < nTrips && !tripOk(p, dep[base + lo * ns + pos])) lo++;  // skip departures the bike may not board
             if (lo < nTrips && (t < 0 || tFirst + lo < t)) { t = tFirst + lo; boardPos = pos; }
           }
         }
