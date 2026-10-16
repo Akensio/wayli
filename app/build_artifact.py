@@ -28,8 +28,9 @@ head = head.replace("<title>", '<meta name="claude:viewport-fit-sides" content="
 
 router = re.sub(r"^export ", "", (here / "raptor.js").read_text(encoding="utf-8"), flags=re.M)
 streets = re.sub(r"^export ", "", (here / "streets.js").read_text(encoding="utf-8"), flags=re.M)
-body = body.replace("import { parseTimetable, searchStops, plan, profile, fmtTime, routeLabel } from './raptor.js';", router, 1)
-body = body.replace("import { parseStreets, accessStops, route } from './streets.js';", streets, 1)
+body, n1 = re.subn(r"import \{[^}]*\} from '\./raptor\.js';", lambda m: router, body, count=1)
+body, n2 = re.subn(r"import \{[^}]*\} from '\./streets\.js';", lambda m: streets, body, count=1)
+assert n1 == 1 and n2 == 1, "import lines not found"
 assert "from './raptor.js'" not in body and "from './streets.js'" not in body
 body = body.replace("'__FROM__'", repr(args.from_q)).replace("'__TO__'", repr(args.to_q))
 body = body.replace("'__TT__' === '__' + 'TT__' ? 'timetable.bin.gz' : '__TT__'", "'timetable.b64.txt'")
