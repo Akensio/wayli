@@ -78,6 +78,7 @@
 
   <div class="card" id="load">
     <div id="loadStatus">Loading the timetable…</div>
+    <div class="muted" id="loadStreets"></div>
     <div class="bar" id="bar"><div></div></div>
     <div id="loadStats"></div>
     <div class="error" id="loadError" hidden></div>
@@ -168,7 +169,7 @@ async function fetchBytes(url, label) {
     const { done, value } = await reader.read();
     if (done) break;
     chunks.push(value); got += value.length;
-    $('loadStatus').textContent = `Loading the ${label}: ${(got / 1e6).toFixed(1)}${total ? ' of ' + (total / 1e6).toFixed(1) : ''} MB…`;
+    $(label === 'timetable' ? 'loadStatus' : 'loadStreets').textContent = `Loading the ${label}: ${(got / 1e6).toFixed(1)}${total ? ' of ' + (total / 1e6).toFixed(1) : ''} MB…`;
     setBar(total ? got / total : null);
   }
   const out = new Uint8Array(got);
@@ -211,7 +212,7 @@ async function fetchContainer(url, label) {
   let u8 = await fetchBytes(url, label);
   const bytes = u8.length;
   const tFetch = performance.now() - t0;
-  $('loadStatus').textContent = `Unpacking the ${label}…`;
+  $(label === 'timetable' ? 'loadStatus' : 'loadStreets').textContent = `Unpacking the ${label}…`;
   if (url.endsWith('.txt')) u8 = base64ToBytes(u8);
   let buf = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
   if (u8[0] === 0x1f && u8[1] === 0x8b) buf = await gunzip(u8);
@@ -239,7 +240,7 @@ function loadStreets() {
     const t1 = performance.now();
     st = parseStreets(b.buf);
     stat('streets', `${(b.bytes / 1e6).toFixed(1)} MB in ${(b.tFetch / 1000).toFixed(1)} s, unzip ${Math.round(b.tUnzip)} ms, parse ${Math.round(performance.now() - t1)} ms, ${st.M.toLocaleString()} nodes`);
-    $('loadStatus').innerHTML += ' Street network loaded: points and bikes work.';
+    $('loadStreets').textContent = 'Street network loaded: points and bikes work.';
     return st;
   })();
   stLoading.catch((e) => { stLoading = null; showError('Street network', e); });
@@ -347,8 +348,9 @@ function render(q, r, bikeOnly, ms, times) {
   $('ms').textContent = `${shown.toFixed(0)} ms`;
   $('ms').className = 'big ' + (shown < 1000 ? 'ok' : 'warn');
   const bikeNote = q.bike === 'along' ? (q.folding ? ' · folding bike on board' : ' · bike on board: trains off-peak, intercity buses') : q.bike === 'park' ? ' · bike parked at the first stop' : '';
+  if (st && q.from.point && q.to.point && q.bike !== 'none' && !bikeOnly) bikeOnly = { none: true };
   $('verdict').textContent = `${q.from.label} → ${q.to.label} · window ${q.win / 60} min${bikeNote} · ${r.candidates} departures tried, ${r.runs} runs, ${r.journeys.length} journeys` + (times ? ` · min ${Math.min(...times).toFixed(0)} ms, max ${Math.max(...times).toFixed(0)} ms` : '');
-  $('bikeOnly').innerHTML = bikeOnly ? `<div class="journey"><h3><span class="bike">Bike all the way</span> · ${Math.round(bikeOnly.seconds / 60)} min · ${(bikeOnly.metres / 1000).toFixed(1)} km</h3></div>` : '';
+  $('bikeOnly').innerHTML = bikeOnly ? (bikeOnly.none ? '<div class="journey muted">Bike all the way: no route within 3 hours.</div>' : `<div class="journey"><h3><span class="bike">Bike all the way</span> · ${Math.round(bikeOnly.seconds / 60)} min · ${(bikeOnly.metres / 1000).toFixed(1)} km</h3></div>`) : '';
   const box = $('journeys');
   box.innerHTML = '';
   if (!r.journeys.length) { box.innerHTML = `<p class="muted">No journey found with up to 3 transfers${q.bike === 'along' && !q.folding ? ' that lets the bike on board' : ''}.</p>`; return; }

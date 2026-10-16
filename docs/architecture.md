@@ -77,7 +77,8 @@ are a required mode. Built the same day:
   reach; those become the origins or destinations. A bike-only route is
   computed alongside when a bike is involved. Three bicycle choices: none,
   ride to the stop and park it (bike access, walking egress), take it along
-  (bike at both ends, trains only).
+  (bike at both ends, only vehicles and hours that allow it), plus a
+  folding-bike switch.
 
 Measured in headless Chromium, 60-minute window, up to 3 transfers:
 
@@ -91,10 +92,19 @@ Measured in headless Chromium, 60-minute window, up to 3 transfers:
 
 Known gaps, in rough order of importance:
 
-- Bike on transit: the feed has no `bikes_allowed`. Rule from Gadi
-  (2026-10-16): trains always, so "take it along" restricts the journey to
-  trains (`routeTypes` option of `profile()`); buses never; light rail still
-  unknown. Bike-share is not modelled.
+- Bike on transit: the feed has no `bikes_allowed`, so the rules are coded
+  in `raptor.js` (`BIKE_RULES`, `bikeAllowed`) from public sources, checked
+  2026-10-16: folding bikes ride on any bus, light rail and train at any
+  hour; other bikes ride on trains outside the weekday peaks (Sun-Thu
+  06:00-09:00 and 15:00-19:00, Israel Railways notice, 2019) and in the
+  luggage compartment of intercity buses (Ministry of Transport directive,
+  space permitting), not on city buses or light rail. "Intercity" is a
+  heuristic in `compile.py`: the route's two end cities differ and its ends
+  are at least 15 km apart (1,776 of 6,464 patterns). Sources: Israel
+  Railways via Moovit (updates.moovit.com/bicycles-train-jan19-en), Globes
+  2019-10, Walla Finance 1629067, Kol Zchut "העלאת אופניים לאוטובוס".
+  Peak rules are checked at boarding time; holidays and Fridays are not
+  modelled yet. Bike-share is not modelled.
 - No elevation: cycling times in Haifa and Jerusalem are optimistic (Bat
   Galim up to the Technion shows as 12 minutes).
 - The window query should run in a Web Worker with the first answer shown

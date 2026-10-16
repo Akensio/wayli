@@ -60,3 +60,8 @@ so they are not re-litigated.
   unknown until he says. Implemented as a vehicle-type filter in the
   planner; the test page offers no bike / ride to the stop and park it /
   take it along.
+- 2026-10-16 Checked the bike rules online (Gadi asked): trains bar
+  non-folding bikes on weekday peaks, intercity buses take them in the
+  luggage compartment, city buses and light rail take folding bikes only.
+  Coded as such, with "intercity" as a heuristic from route names and
+  length. Supersedes the "trains only, always" line above.
