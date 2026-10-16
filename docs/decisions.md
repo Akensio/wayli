@@ -46,3 +46,5 @@ so they are not re-litigated.
   riders: bike as first/last mile, bike between transit legs, bike on
   trains where allowed. Both need a street network in the pipeline; see
   `architecture.md`.
+- 2026-10-16 Gadi: Claude builds on its own judgment, well past an MVP,
+  reporting at milestones; he sets direction. Recorded in CLAUDE.md.

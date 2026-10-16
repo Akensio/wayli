@@ -40,6 +40,12 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    the conversation, or in `docs/architecture.md` if it is a lasting design
    choice), then build it. Prefer the simplest thing that meets the
    non-negotiables.
+8. Standing instruction from Gadi (2026-10-16): use your own judgment and
+   build something good, well past an MVP, without waiting for his input at
+   each step. He sets direction and priorities (accuracy over speed,
+   bicycles, minimal infrastructure, privacy); within those, decide, build,
+   measure, document, and report at milestones. Ask only when a choice would
+   be expensive to reverse.
 
 ## Where things are
 
