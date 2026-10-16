@@ -32,3 +32,10 @@ so they are not re-litigated.
   decision. The real principle is minimal infrastructure: nothing that costs
   money or manual configuration time without a reason. The feasibility test
   decides where routing runs; fallbacks are listed in `architecture.md`.
+- 2026-10-16 Feasibility test, desktop part: passed. One weekday of the
+  national feed (123k trips, 4.5M stop times) compiles in 35 s to a 2.8 MB
+  gzip, 26 MB in memory. RAPTOR with up to 3 transfers answers Haifa to
+  Be'er Sheva in 23 to 38 ms in headless Chromium and 10 to 30 ms in Node for
+  other cross-country queries; results checked against the raw feed. Phone
+  timing still pending. Footpath radius set to 400 m (250 m could not get
+  from the HaMifratz platforms to the train).

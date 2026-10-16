@@ -7,8 +7,10 @@ instead of Moovit or Bus Nearby.
 The name sounds like וואי לי. The project is free software under the
 GNU AGPL-3.0 (see `LICENSE`).
 
-**Status (October 2026): just started.** Nothing runs yet. The first milestone
-is a feasibility test of on-device routing; see "Roadmap" below.
+**Status (October 2026): feasibility test in progress.** One weekday of the
+national timetable compiles to a 2.8 MB file, and a trip planner over it
+answers Haifa to Be'er Sheva in about 30 ms in a desktop browser. Phone
+timing is next. Nothing user-facing exists yet; see "Roadmap" below.
 
 ## What it will do
 
@@ -61,12 +63,24 @@ Decisions and their dates are in `docs/decisions.md`.
 1. **Feasibility test.** Compile the Israel GTFS feed to a compact format and
    plan Haifa to Be'er Sheva with three transfers in the browser, in under
    one second on a phone. This decides whether routing stays on the device
-   or moves to the cheapest server setup that works.
+   or moves to the cheapest server setup that works. Desktop part passed
+   on 2026-10-16 (details in `docs/architecture.md`); phone part pending.
 2. Nightly pipeline: fetch GTFS, compile, publish.
 3. The app: planner, stops, lines, map, favorites, Hebrew/RTL, offline.
 4. Real-time arrivals (SIRI access from the Ministry of Transport, or
    Hasadna's Open Bus data).
 5. Crowd reports and the reliability statistics.
+
+## Run the test yourself
+
+```
+curl -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
+python3 -I pipeline/compile.py data/gtfs.zip --date 20261019      # Python 3 + numpy, ~35 s
+node app/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
+```
+
+`app/feasibility.html` is the same router as a page: serve the `app/` folder
+with `data/timetable.bin.gz` next to it and open it in a browser.
 
 ## Data sources
 

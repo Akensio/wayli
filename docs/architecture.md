@@ -38,28 +38,35 @@ Three parts, in order of how much they matter:
   with the timetable.
 - Why on the device: offline use, privacy (no request leaves the phone),
   near-zero hosting, no routing server to scale.
-- Open question: size. The Israel feed is large: about 179 MB zipped as of
-  2026-10-16 (`stop_times.txt` is the
-  bulk). The compact format has to bring a day's timetable, or the whole
-  validity window, down to something a phone will download and keep. The
-  feasibility test measures this.
+- Size, measured 2026-10-16: the feed is 179 MB zipped, 1.2 GB unzipped
+  (`stop_times.txt` is 944 MB, 17.8M rows, for a 31-day window). One weekday
+  compiles to 26 MB raw, 2.8 MB gzipped. The repeating schedules compress
+  extremely well, so a day on the phone is cheaper than a photo. A whole
+  validity window is a later question; one day at a time is the plan.
 
-## Compact timetable (sketch)
+## Compact timetable (format 1, built by `pipeline/compile.py`)
 
-The pipeline turns GTFS text into typed arrays the app can load directly:
+One file per service day, gzipped: a u32 header length, a JSON header, then
+little-endian typed arrays the app views in place:
 
-- stops: id, names as the feed has them, lat/lon, parent station.
-- route patterns RAPTOR-style: for each distinct stop sequence, its trips
-  sorted by departure time, each trip a row of arrival/departure times in
-  seconds since midnight.
-- calendar: which patterns run on which service day, so the app can load one
-  day at a time.
-- transfers: stop pairs with walking times.
-- a search index over stop and line names.
+- header: feed dates, counts, the section table, routes (line number, long
+  name, operator, type) and stops (id, name, code).
+- route patterns RAPTOR-style: `patStopsOff`/`patStops` (stop sequence per
+  pattern), `patTripsOff` (trip range per pattern), `tripTimesOff`.
+  In the Israel feed every `route_id` is one direction of one line, so a
+  pattern is a route; trips that would overtake are split into sub-patterns.
+- times: per trip an absolute `tripStart`, then per stop the departure delta
+  from the previous stop (u16) and the dwell (u16). The app expands these to
+  absolute arrival/departure `Int32Array`s on load (about 80 ms). Dwell is
+  all zeros in this feed and deltas repeat across trips, which is why gzip
+  gets 26 MB down to 2.8 MB.
+- `stopPats`: for each stop, the (pattern, position) pairs it appears in.
+- footpaths: `trOff`/`trTo`/`trTime`, generated between stops within 400 m
+  at 1.2 m/s with a 60 s floor (the feed has no `transfers.txt`).
+- `stopLat`/`stopLon` as f32, for a map later.
 
-The exact encoding (one binary blob or several files, compression, delta
-times) is for the feasibility test to settle. Version the format from the
-first build so the app can refuse a timetable it does not understand.
+Not yet in the format: stop name translations, headsigns per trip, a real
+search index (the test page does a substring match over names), fares.
 
 ## Pipeline
 
@@ -105,16 +112,47 @@ dollars a month once the app is popular. No routing servers at any scale.
 ## The feasibility test (first milestone)
 
 Goal: show that on-device routing for Israel is viable before building
-anything else.
+anything else. Pass criterion: a correct plan in under one second on a
+phone, with a timetable small enough to download over mobile data.
 
-1. Download the current Ministry of Transport GTFS feed.
-2. Compile it to a compact timetable for one service day; record output size
-   and compile time.
-3. Run RAPTOR in a browser (desktop first, then a mid-range Android phone)
-   for Haifa to Be'er Sheva allowing three transfers.
-4. Pass criterion: a correct plan in under one second on the phone, with a
-   timetable small enough to download over mobile data without complaint.
-   Record the numbers in `decisions.md` either way.
+Done 2026-10-16 (feed of 2026-10-15, service day Monday 2026-10-19), on a
+4-core cloud container, desktop part:
+
+| Step | Result |
+|---|---|
+| Compile one day (`pipeline/compile.py`, Python + numpy) | 35 s; 123,036 trips, 4,462,084 stop times, 30,654 stops, 6,464 patterns, 306,426 footpaths |
+| Timetable size | 2.8 MB gzipped, 26 MB decompressed, plus 36 MB of expanded time arrays in memory |
+| Load in headless Chromium | page usable 0.3 to 1.2 s after open: unzip 80 to 540 ms, parse 50 to 290 ms |
+| Haifa HaMifratz to Be'er Sheva, 08:00, up to 3 transfers | 23 to 38 ms median in Chromium, 38 to 77 ms for the first (cold) run |
+| Other queries in Node 22 (warm median) | Jerusalem to Tel Aviv 10 ms, Givatayim to Haifa 19 ms, Eilat to Nahariya 28 ms |
+| Correctness | the planned train (trip `1_521131`) matches the raw `stop_times.txt` and its calendar row exactly |
+
+Verdict so far: on-device routing is comfortably viable on desktop, with two
+orders of magnitude to spare against the 1 s goal. Phone timing is pending:
+`app/feasibility.html` is published as a private Claude artifact for that.
+
+Things the test surfaced, for later:
+
+- Footpaths within 250 m could not connect the HaMifratz bus platforms to
+  the train station; 400 m fixes that case. Big stations probably want
+  explicit station-to-station transfers rather than a bigger radius.
+- RAPTOR's Pareto set happily adds a transfer to save one minute (a two-stop
+  bus hop at the end of a trip). Ranking or a transfer penalty is needed
+  before showing results to people.
+- Stop search is a substring match; "אילת" finds streets named Eilat before
+  the city. A proper index with city names is needed.
+- Rail routes have no line number; the page shows "Train".
+- The artifact host serves text but not binaries, so the published test page
+  ships the timetable as base64 (3.7 MB instead of 2.8 MB).
+
+Reproduce:
+
+```
+curl -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
+python3 -I pipeline/compile.py data/gtfs.zip --date 20261019
+node app/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
+node app/browser_bench.mjs "מרכזית המפרץ" "מרכזית באר שבע" 08:00   # needs Playwright + Chromium
+```
 
 ## If on-device routing fails the test
 

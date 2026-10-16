@@ -49,16 +49,18 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `docs/architecture.md` | The design: pipeline, compact timetable, on-device routing, real-time, crowd reports, server pieces, the feasibility test. |
 | `docs/decisions.md` | Dated log of decisions, including rejected options. |
 | `LICENSE` | GNU AGPL-3.0. |
+| `pipeline/compile.py` | GTFS zip to one service day's compact timetable (format in `docs/architecture.md`). |
+| `app/raptor.js` | Timetable loader and RAPTOR planner; runs in the browser and in Node. |
+| `app/feasibility.html` | The routing test page. `app/bench.mjs` times it in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` turns it into a page publishable as a Claude artifact. |
+| `data/` | Gitignored: the downloaded feed, compiled timetables, built artifact pages. |
 
-Planned, not yet created: `pipeline/` (GTFS to compact timetable, runs in
-GitHub Actions), `app/` (the installable web app), `worker/` (Cloudflare
-Worker for the real-time relay, reports and push). Create them when the work
-starts, not before.
+Planned, not yet created: `worker/` (Cloudflare Worker for the real-time
+relay, reports and push), the nightly GitHub Action around `pipeline/`, and
+the real app (the test page is not it). Create them when the work starts.
 
 ## Current state
 
-Repo scaffolded 2026-10-16. No code yet. The next step is the feasibility
-test described in `docs/architecture.md`: compile the Israel GTFS feed to a
-compact format and plan Haifa to Be'er Sheva with three transfers in the
-browser, in under one second on a phone. Everything after that, including
-where routing runs, depends on the result.
+2026-10-16: the feasibility test passed on desktop (numbers in
+`docs/architecture.md`); the phone measurement is pending, on the test page
+published as a private Claude artifact (link in Gadi's task system). Where
+routing runs is decided only after that. Nothing user-facing exists yet.
