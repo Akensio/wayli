@@ -133,6 +133,12 @@ def main():
             feed_info = {k: v for k, v in r.items() if k in ("feed_publisher_name", "feed_start_date", "feed_end_date", "feed_version")}
             break
 
+    if not feed_info and "calendar.txt" in names:
+        starts, ends = [], []
+        for r in rows(zf, "calendar.txt"):
+            starts.append(r["start_date"]); ends.append(r["end_date"])
+        if starts:
+            feed_info = {"feed_start_date": min(starts), "feed_end_date": max(ends), "feed_version": f"calendar {min(starts)}-{max(ends)}"}
     log(f"service day {args.date}")
     active = active_services(zf, args.date)
     log(f"{len(active)} active service ids")

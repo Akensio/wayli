@@ -59,19 +59,21 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/streets.py`, `pipeline/streetgraph.py` | OpenStreetMap extract to the compact street graph; reader and stop-to-stop walking times for the compiler. |
 | `app/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
 | `app/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
-| `app/feasibility.html` | The routing test page. `app/bench.mjs` times it in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` turns it into a page publishable as a Claude artifact. |
-| `data/` | Gitignored: the downloaded feed and OSM extract, compiled files, built artifact pages. |
+| `app/index.html`, `app/app.js`, `app/worker.js`, `app/sw.js`, `app/styles.css` | The app: shell, UI, data worker, service worker, styles. Hebrew/RTL first, English toggle, no framework, no build step. |
+| `app/feasibility.html` | The routing test page (older harness). `app/bench.mjs` times the router in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` builds the artifact variant. |
+| `pipeline/build_site.py` | Assembles `site/`: app files, per-day timetables, street graph, `data/manifest.json`. |
+| `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |
+| `data/`, `site/` | Gitignored: downloads, compiled files, the built site. |
 
 Planned, not yet created: `worker/` (Cloudflare Worker for the real-time
-relay, reports and push), the nightly GitHub Action around `pipeline/`, and
-the real app (the test page is not it). Create them when the work starts.
+relay, reports and push). Create it when the work starts.
 
 ## Current state
 
-2026-10-16: the feasibility test passed on desktop and the routing core
-grew real transfers, window queries and bikes the same day (numbers in
-`docs/architecture.md`); the phone measurement is pending, on the test page
-published as a private Claude artifact (link in Gadi's task system). Where
-routing runs is decided only after that. Nothing user-facing exists yet;
-the next big pieces are bike-on-transit rules, the nightly pipeline, and the
-app itself.
+2026-10-16: routing core (real transfers, window queries, bikes with the
+on-board rules) and the app v0.1 are built and tested under phone emulation;
+the nightly build-and-deploy workflow is written. Waiting on Gadi: enable
+GitHub Pages (Source: GitHub Actions) and get the branch onto `main`. After
+that, the app's behaviour on real phones decides whether routing stays on
+the device. Next: real-time arrivals (Hasadna's API if it allows browser
+calls, else a tiny relay), line pages, translations, crowd reports.

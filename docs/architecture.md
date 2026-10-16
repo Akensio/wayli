@@ -113,6 +113,38 @@ Known gaps, in rough order of importance:
 - The 10-minute cap on stop-to-stop walks and the 15/20-minute caps on
   access are guesses to revisit with real use.
 
+## The app (v0.1, `app/`)
+
+An installable web app, Hebrew and right-to-left first with an English
+toggle, no framework and no build step. Files: `index.html` (shell),
+`app.js` (UI), `worker.js` (a Web Worker that holds the data and answers
+every query, so the UI never blocks), `raptor.js` and `streets.js` (the
+router and street graph, shared with the test harness), `sw.js` (service
+worker: the shell and every downloaded data file are cached, so the app
+works offline once loaded), `styles.css`, `manifest.webmanifest`, icons.
+Leaflet from cdnjs draws the map with OpenStreetMap tiles.
+
+Screens: plan (search with station grouping, "my location", day picker,
+time, bicycle choice, results with line chips, journey detail with map and
+legs, star to save), nearby (stops around the device with the lines serving
+them, tap for the next departures, "from here"/"to here"), favorites (saved
+trips and stops, this device only), about.
+
+Data: `data/manifest.json` lists one timetable file per service day
+(`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
+being planned) and the street graph (10.7 MB, loaded after the first answer;
+until it is in, points use straight-line access with a detour factor).
+
+Deployment: `pipeline/build_site.py` assembles `site/`; the GitHub Actions
+workflow in `.github/workflows/build.yml` runs nightly (and on push to
+`main`): downloads the feed, rebuilds the street graph weekly, compiles the
+next 7 days, and deploys `site/` to GitHub Pages. The repo's Pages source
+must be set to "GitHub Actions" once. No server, no cost.
+
+Not in v0.1: real-time, crowd reports, elevation, trips that cross midnight,
+stop name translations, Arabic, line pages, the bike-on-board rules for
+light rail.
+
 ## Compact timetable (format 2, built by `pipeline/compile.py`)
 
 One file per service day, gzipped: a u32 header length, a JSON header, then

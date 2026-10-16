@@ -65,3 +65,8 @@ so they are not re-litigated.
   luggage compartment, city buses and light rail take folding bikes only.
   Coded as such, with "intercity" as a heuristic from route names and
   length. Supersedes the "trains only, always" line above.
+- 2026-10-16 Gadi: the test page on his phone never loaded its data (the
+  artifact host), and he wants a full product to test. Built the app v0.1
+  (`app/`), deployed by a nightly GitHub Action to GitHub Pages: one
+  timetable file per day, the street graph loaded lazily, a service worker
+  for offline. Testing through Claude artifacts is abandoned.

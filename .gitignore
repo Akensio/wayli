@@ -9,6 +9,7 @@ __pycache__/
 
 # downloaded feeds and compiled timetables (large; the pipeline regenerates them)
 data/
+site/
 *.zip
 
 # local env and editors

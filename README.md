@@ -7,12 +7,12 @@ instead of Moovit or Bus Nearby.
 The name sounds like וואי לי. The project is free software under the
 GNU AGPL-3.0 (see `LICENSE`).
 
-**Status (October 2026): routing core working, phone timing pending.** One
-weekday of the national timetable compiles to a 3.2 MB file and the street
-network of the whole country to 10.7 MB. In a desktop browser the planner
-answers a full hour of departures from Haifa to Be'er Sheva, or from a
-point in Givatayim by bike to Jerusalem, in about a third of a second.
-Nothing user-facing exists yet; see "Roadmap" below.
+**Status (October 2026): first usable app.** One weekday of the national
+timetable compiles to a 3 MB file and the street network of the whole
+country to 10.7 MB. The app in `app/` plans trips (with bikes), shows
+nearby stops and departures, draws the journey on a map, saves favorites
+and works offline. It deploys to GitHub Pages by a nightly GitHub Action.
+No real-time and no crowd reports yet; see "Roadmap" below.
 
 ## What it will do
 
@@ -72,8 +72,10 @@ Decisions and their dates are in `docs/decisions.md`.
    Same day: real walking transfers from OpenStreetMap, station transfers,
    departure-window answers, bike and walk first/last mile, bike-only
    routes.
-2. Nightly pipeline: fetch GTFS and OpenStreetMap, compile, publish.
-3. The app: planner, stops, lines, map, favorites, Hebrew/RTL, offline.
+2. Nightly pipeline: fetch GTFS and OpenStreetMap, compile, publish. Done
+   as a GitHub Actions workflow (`.github/workflows/build.yml`).
+3. The app: planner, stops, map, favorites, Hebrew/RTL, offline. First
+   version done (`app/`); line pages and translations still to come.
 4. Real-time arrivals (SIRI access from the Ministry of Transport, or
    Hasadna's Open Bus data).
 5. Crowd reports and the reliability statistics.
@@ -93,6 +95,18 @@ node app/bench.mjs data/timetable.bin.gz "32.0720,34.8100:bike" "ת. מרכזי�
 `app/feasibility.html` is the same router as a page: `node app/browser_bench.mjs`
 runs it in headless Chromium, or serve `app/` with the two `data/*.bin.gz`
 files next to it and open it in a browser.
+
+## Run the app
+
+```
+python3 -I pipeline/compile.py data/gtfs.zip --date 20261019 --streets data/streets.bin.gz --out data/timetable-20261019.bin.gz
+python3 pipeline/build_site.py --out site        # app + data + data/manifest.json
+python3 -m http.server --directory site 8080     # then open http://localhost:8080/
+```
+
+Deployment is the GitHub Actions workflow: it builds the data for the next
+7 days every night and publishes `site/` to GitHub Pages (the repository's
+Pages source has to be "GitHub Actions").
 
 ## Data sources
 
