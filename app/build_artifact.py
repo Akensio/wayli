@@ -26,11 +26,14 @@ head = re.sub(r'\s*<meta charset="utf-8">', "", head)
 head = re.sub(r'\s*<meta name="viewport"[^>]*>', "", head)
 head = head.replace("<title>", '<meta name="claude:viewport-fit-sides" content="cover">\n<title>', 1)
 
-router = (here / "raptor.js").read_text(encoding="utf-8")
-router = re.sub(r"^export ", "", router, flags=re.M)
-body = body.replace("import { parseTimetable, searchStops, plan, fmtTime } from './raptor.js';", router, 1)
+router = re.sub(r"^export ", "", (here / "raptor.js").read_text(encoding="utf-8"), flags=re.M)
+streets = re.sub(r"^export ", "", (here / "streets.js").read_text(encoding="utf-8"), flags=re.M)
+body = body.replace("import { parseTimetable, searchStops, plan, profile, fmtTime, routeLabel } from './raptor.js';", router, 1)
+body = body.replace("import { parseStreets, accessStops, route } from './streets.js';", streets, 1)
+assert "from './raptor.js'" not in body and "from './streets.js'" not in body
 body = body.replace("'__FROM__'", repr(args.from_q)).replace("'__TO__'", repr(args.to_q))
-body = body.replace("'__DATA__' === '__' + 'DATA__' ? 'timetable.bin.gz' : '__DATA__'", "'timetable.b64.txt'")
+body = body.replace("'__TT__' === '__' + 'TT__' ? 'timetable.bin.gz' : '__TT__'", "'timetable.b64.txt'")
+body = body.replace("'__ST__' === '__' + 'ST__' ? 'streets.bin.gz' : '__ST__'", "'streets.b64.txt'")
 
 out = pathlib.Path(args.out)
 out.parent.mkdir(parents=True, exist_ok=True)
@@ -39,7 +42,11 @@ print(f"wrote {out} ({out.stat().st_size/1e3:.0f} kB)")
 
 # the artifact host serves text but not binaries: ship the timetable as base64
 import base64
-gz = here.parent / "data" / "timetable.bin.gz"
-b64 = out.parent / "timetable.b64.txt"
-b64.write_bytes(base64.b64encode(gz.read_bytes()))
-print(f"wrote {b64} ({b64.stat().st_size/1e6:.1f} MB)")
+for name in ("timetable", "streets"):
+    gz = here.parent / "data" / f"{name}.bin.gz"
+    if not gz.exists():
+        print(f"missing {gz}, skipped")
+        continue
+    b64 = out.parent / f"{name}.b64.txt"
+    b64.write_bytes(base64.b64encode(gz.read_bytes()))
+    print(f"wrote {b64} ({b64.stat().st_size/1e6:.1f} MB)")

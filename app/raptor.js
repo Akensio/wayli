@@ -1,18 +1,29 @@
 // Wayli: compact timetable loader + RAPTOR trip planner.
 // Plain ES module, runs in the browser and in Node (see bench.mjs).
+//
+// plan()    one departure time, earliest arrival per number of transfers.
+// profile() a departure window (range RAPTOR): every journey worth showing.
+// Both take sets of origin and destination stops with access/egress walking
+// times, so a station with many platforms, or a location with several stops
+// nearby, is one query.
 
 const TYPES = { int32: Int32Array, uint16: Uint16Array, float32: Float32Array };
+const INF = 0x7fffffff;
 
 /** Parse the decompressed timetable container into typed arrays. */
 export function parseTimetable(ab) {
   const headerLen = new DataView(ab).getUint32(0, true);
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
   const base = 4 + headerLen;
-  const tt = { header, counts: header.counts, routes: header.routes, stops: header.stops };
-  for (const s of header.sections) {
-    tt[s.name] = new TYPES[s.dtype](ab, base + s.offset, s.length);
-  }
+  const tt = { header, counts: header.counts, routes: header.routes, stops: header.stops,
+               stations: header.stations || [] };
+  for (const s of header.sections) tt[s.name] = new TYPES[s.dtype](ab, base + s.offset, s.length);
+  const w = header.walk || {};
+  tt.slack = w.transfer_slack_s ?? 90;
+  tt.chainMax = w.chain_max_s ?? 900;
+  if (!tt.stopParent) tt.stopParent = new Int32Array(tt.stops.length).fill(-1);
   expandTimes(tt);
+  buildSearchIndex(tt);
   return tt;
 }
 
@@ -22,10 +33,12 @@ function expandTimes(tt) {
   const dep = new Int32Array(n), arr = new Int32Array(n);
   const { patStopsOff, patTripsOff, tripTimesOff, tripStart, depDelta, dwell } = tt;
   const P = patStopsOff.length - 1;
+  const tripPat = new Int32Array(tripStart.length);
   for (let p = 0; p < P; p++) {
     const ns = patStopsOff[p + 1] - patStopsOff[p];
     let idx = tripTimesOff[p];
     for (let t = patTripsOff[p]; t < patTripsOff[p + 1]; t++) {
+      tripPat[t] = p;
       let cur = tripStart[t];
       for (let i = 0; i < ns; i++, idx++) {
         cur += depDelta[idx];
@@ -34,139 +47,211 @@ function expandTimes(tt) {
       }
     }
   }
-  tt.dep = dep;
-  tt.arr = arr;
-  // trip -> pattern, for journey reconstruction
-  const tripPat = new Int32Array(tripStart.length);
-  for (let p = 0; p < P; p++) for (let t = patTripsOff[p]; t < patTripsOff[p + 1]; t++) tripPat[t] = p;
-  tt.tripPat = tripPat;
+  tt.dep = dep; tt.arr = arr; tt.tripPat = tripPat;
 }
 
-/** Stops whose name contains the query (case-insensitive). Returns indices. */
-export function searchStops(tt, query, limit = 20) {
-  const q = query.toLowerCase();
-  const out = [];
-  for (let i = 0; i < tt.stops.length && out.length < limit; i++) {
-    if (tt.stops[i][1].toLowerCase().includes(q) || tt.stops[i][2] === query) out.push(i);
+// ---------------------------------------------------------------- search
+
+const PUNCT = /[.'"״׳`/()\-,:]+/g;
+function norm(s) { return s.toLowerCase().replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
+
+function buildSearchIndex(tt) {
+  const S = tt.stops.length;
+  tt.stopName = new Array(S);
+  tt.stopCity = new Array(S);
+  for (let i = 0; i < S; i++) {
+    tt.stopName[i] = norm(tt.stops[i][1]);
+    tt.stopCity[i] = norm(tt.stops[i][3] || '');
   }
-  return out;
+  // station groups: parent index -> member stops
+  tt.stationStops = new Map();
+  for (let i = 0; i < S; i++) {
+    const p = tt.stopParent[i];
+    if (p >= 0) {
+      if (!tt.stationStops.has(p)) tt.stationStops.set(p, []);
+      tt.stationStops.get(p).push(i);
+    }
+  }
 }
-
-const INF = 0x7fffffff;
 
 /**
- * RAPTOR: earliest arrival at `dest` from `origin` leaving at or after `depTime`
- * (seconds since midnight), one journey per number of transfers that improves.
+ * Search stops by name and city. Returns groups: a station with all its
+ * platforms is one result, a plain stop is a group of one.
+ * [{ name, city, stops: [idx...], lat, lon, score }]
  */
-export function plan(tt, origin, dest, depTime, maxTransfers = 3) {
-  const t0 = now();
+export function searchStops(tt, query, limit = 12) {
+  const tokens = norm(query).split(' ').filter(Boolean);
+  if (!tokens.length) return [];
   const S = tt.stops.length;
-  const K = maxTransfers + 1;
+  const groups = new Map();
+  for (let i = 0; i < S; i++) {
+    const name = tt.stopName[i], city = tt.stopCity[i];
+    let score = 0, ok = true;
+    for (const tok of tokens) {
+      if (name.startsWith(tok)) score += 3;
+      else if (name.includes(' ' + tok)) score += 2.5;
+      else if (name.includes(tok)) score += 2;
+      else if (city.startsWith(tok) || city.includes(' ' + tok)) score += 1;
+      else if (city.includes(tok)) score += 0.5;
+      else { ok = false; break; }
+    }
+    if (!ok) continue;
+    score -= name.length / 200;
+    const p = tt.stopParent[i];
+    if (p >= 0) score += 1;
+    const key = p >= 0 ? 'p' + p : 's' + i;
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, name: p >= 0 ? (tt.stations[p] && tt.stations[p][1]) || tt.stops[i][1] : tt.stops[i][1],
+            city: tt.stops[i][3] || '', stops: [], score: -Infinity, lat: 0, lon: 0, code: tt.stops[i][2] };
+      groups.set(key, g);
+    }
+    g.stops.push(i);
+    if (score > g.score) g.score = score;
+  }
+  const out = Array.from(groups.values());
+  for (const g of out) {
+    // a station with a partial name match: include all its platforms, not only the matching ones
+    const p = tt.stopParent[g.stops[0]];
+    if (p >= 0) g.stops = tt.stationStops.get(p).slice();
+    let la = 0, lo = 0;
+    for (const s of g.stops) { la += tt.stopLat[s]; lo += tt.stopLon[s]; }
+    g.lat = la / g.stops.length; g.lon = lo / g.stops.length;
+  }
+  out.sort((a, b) => b.score - a.score || a.name.length - b.name.length);
+  return out.slice(0, limit);
+}
+
+// ---------------------------------------------------------------- routing
+
+function now() { return (typeof performance !== 'undefined' ? performance.now() : Date.now()); }
+
+/** Normalise an origin/destination argument: a stop index, a search group, or [{stop, walk}]. */
+function asPlaces(tt, x) {
+  if (typeof x === 'number') return [{ stop: x, walk: 0 }];
+  if (Array.isArray(x)) return x.map((e) => (typeof e === 'number' ? { stop: e, walk: 0 } : e));
+  if (x && x.stops) return x.stops.map((s) => ({ stop: s, walk: 0 }));
+  throw new Error('bad place');
+}
+
+/**
+ * Range RAPTOR over [fromTime, toTime] (seconds since midnight).
+ * origins / dests: stop index, search group, or [{stop, walk}] with access/egress seconds.
+ * Returns { journeys, runs, candidates, ms }.
+ */
+export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
+  const t0 = now();
+  origins = asPlaces(tt, origins); dests = asPlaces(tt, dests);
+  const maxTransfers = opts.maxTransfers ?? 3;
+  const slack = opts.slack ?? tt.slack;
+  const chainMax = opts.maxWalkChain ?? Math.min(tt.chainMax, 600);
+  const S = tt.stops.length, K = maxTransfers + 1;
   const { patStopsOff, patStops, patTripsOff, tripTimesOff, stopPatsOff, stopPats,
           trOff, trTo, trTime, dep, arr } = tt;
 
-  // tau[k][s]: best arrival at s using at most k trips. Labels explain how.
-  const tau = [];
-  const lblType = [], lblTrip = [], lblBoardPos = [], lblAlightPos = [], lblFrom = [];
+  const tau = [], lblType = [], lblTrip = [], lblBoardPos = [], lblAlightPos = [], lblFrom = [], lblWalk = [], lblRide = [];
   for (let k = 0; k <= K; k++) {
     tau.push(new Int32Array(S).fill(INF));
-    lblType.push(new Int8Array(S));        // 0 none, 1 ride, 2 walk
-    lblTrip.push(new Int32Array(S));
-    lblBoardPos.push(new Int32Array(S));
-    lblAlightPos.push(new Int32Array(S));
-    lblFrom.push(new Int32Array(S));
+    lblType.push(new Int8Array(S)); lblRide.push(new Int8Array(S));
+    lblTrip.push(new Int32Array(S)); lblBoardPos.push(new Int32Array(S)); lblAlightPos.push(new Int32Array(S));
+    lblFrom.push(new Int32Array(S)); lblWalk.push(new Int32Array(S));
   }
   const best = new Int32Array(S).fill(INF);
-  let marked = new Uint8Array(S);
+  const bestK = new Int8Array(S).fill(127);   // round that achieved best[]; a tie with fewer rounds still counts
+  const destWalk = new Int32Array(S).fill(-1);
+  for (const d of dests) if (destWalk[d.stop] < 0 || d.walk < destWalk[d.stop]) destWalk[d.stop] = d.walk;
+  let bestDest = INF;
+  const marked = new Uint8Array(S);
   let markedList = [];
 
-  const relaxWalks = (k, fromList) => {
-    for (const p of fromList) {
-      const tp = tau[k][p];
+  const better = (k, s, t) => t < best[s] || (t === best[s] && k < bestK[s]);
+  const improve = (k, s, t) => {
+    tau[k][s] = t; best[s] = t; bestK[s] = k;
+    if (destWalk[s] >= 0 && t + destWalk[s] < bestDest) bestDest = t + destWalk[s];
+    if (!marked[s]) { marked[s] = 1; markedList.push(s); }
+  };
+
+  // chained footpaths from the stops in `queue`, bounded by chainMax per chain
+  const relaxWalks = (k, queue) => {
+    for (let qi = 0; qi < queue.length; qi++) {
+      const p = queue[qi];
+      const tp = tau[k][p], wp = lblWalk[k][p];
       for (let i = trOff[p]; i < trOff[p + 1]; i++) {
+        const w = wp + trTime[i];
+        if (w > chainMax) continue;
         const q = trTo[i], tq = tp + trTime[i];
-        if (tq < tau[k][q] && tq < best[q]) {
-          tau[k][q] = tq; best[q] = tq;
-          lblType[k][q] = 2; lblFrom[k][q] = p;
-          if (!marked[q]) { marked[q] = 1; markedList.push(q); }
+        if (tq < tau[k][q] && better(k, q, tq) && tq <= bestDest) {
+          improve(k, q, tq);
+          lblType[k][q] = 2; lblFrom[k][q] = p; lblWalk[k][q] = w; lblRide[k][q] = 0;
+          queue.push(q);
         }
       }
     }
   };
 
-  tau[0][origin] = depTime; best[origin] = depTime;
-  marked[origin] = 1; markedList.push(origin);
-  relaxWalks(0, [origin]);
-
-  let rounds = 0;
-  for (let k = 1; k <= K; k++) {
-    rounds = k;
-    tau[k].set(tau[k - 1]);
-    // routes to scan: pattern -> earliest marked position
-    const Q = new Map();
-    for (const s of markedList) {
-      for (let i = stopPatsOff[s]; i < stopPatsOff[s + 1]; i++) {
-        const p = stopPats[2 * i], pos = stopPats[2 * i + 1];
-        const cur = Q.get(p);
-        if (cur === undefined || pos < cur) Q.set(p, pos);
-      }
-    }
-    marked = new Uint8Array(S); markedList = [];
-    const improved = [];
-    for (const [p, startPos] of Q) {
-      const ns = patStopsOff[p + 1] - patStopsOff[p];
-      const sBase = patStopsOff[p];
-      const tFirst = patTripsOff[p], tEnd = patTripsOff[p + 1];
-      const nTrips = tEnd - tFirst;
-      if (nTrips === 0) continue;
-      const base = tripTimesOff[p];
-      let t = -1, boardPos = -1;
-      for (let pos = startPos; pos < ns; pos++) {
-        const stop = patStops[sBase + pos];
-        if (t >= 0) {
-          const a = arr[base + (t - tFirst) * ns + pos];
-          if (a < best[stop] && a < best[dest]) {
-            tau[k][stop] = a; best[stop] = a;
-            lblType[k][stop] = 1; lblTrip[k][stop] = t;
-            lblBoardPos[k][stop] = boardPos; lblAlightPos[k][stop] = pos;
-            if (!marked[stop]) { marked[stop] = 1; markedList.push(stop); improved.push(stop); }
-          }
-        }
-        // can we catch an earlier trip here?
-        const ready = tau[k - 1][stop];
-        if (ready === INF) continue;
-        if (t < 0 || ready <= dep[base + (t - tFirst) * ns + pos]) {
-          // earliest trip departing this stop at or after `ready` (binary search over trips)
-          let lo = 0, hi = nTrips;
-          while (lo < hi) {
-            const mid = (lo + hi) >> 1;
-            if (dep[base + mid * ns + pos] < ready) lo = mid + 1; else hi = mid;
-          }
-          if (lo < nTrips && (t < 0 || tFirst + lo < t)) { t = tFirst + lo; boardPos = pos; }
-        }
-      }
-    }
-    if (improved.length === 0) break;
-    relaxWalks(k, improved);
+  // candidate departure times: trips leaving any stop reachable from an origin, inside the window.
+  // One merged reach map over all origins (access time + walk chain), each stop enumerated once.
+  const cands = new Set();
+  const reach = new Map();
+  const queue = [];
+  for (const o of origins) {
+    if (!reach.has(o.stop) || reach.get(o.stop) > o.walk) { reach.set(o.stop, o.walk); queue.push(o.stop); }
   }
+  const chainFrom = new Map(origins.map((o) => [o.stop, 0]));  // walking done since the access leg
+  for (let qi = 0; qi < queue.length; qi++) {
+    const p = queue[qi], tp = reach.get(p), cp = chainFrom.get(p) ?? 0;
+    for (let i = trOff[p]; i < trOff[p + 1]; i++) {
+      const c = cp + trTime[i];
+      if (c > chainMax) continue;
+      const q = trTo[i], tq = tp + trTime[i];
+      if (!reach.has(q) || reach.get(q) > tq) { reach.set(q, tq); chainFrom.set(q, c); queue.push(q); }
+    }
+  }
+  for (const [q, w] of reach) {
+    for (let i = stopPatsOff[q]; i < stopPatsOff[q + 1]; i++) {
+      const p = stopPats[2 * i], pos = stopPats[2 * i + 1];
+      const ns = patStopsOff[p + 1] - patStopsOff[p];
+      if (pos === ns - 1) continue;
+      const tFirst = patTripsOff[p], tEnd = patTripsOff[p + 1], base = tripTimesOff[p];
+      // trips are sorted by time: binary search the first one in the window, stop at the end of it
+      let lo = 0, hi = tEnd - tFirst;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (dep[base + mid * ns + pos] - w < fromTime) lo = mid + 1; else hi = mid; }
+      for (let t = tFirst + lo; t < tEnd; t++) {
+        const d = dep[base + (t - tFirst) * ns + pos] - w;
+        if (d > toTime) break;
+        cands.add(Math.floor(d / 60) * 60);
+      }
+    }
+  }
+  if (fromTime === toTime || cands.size === 0) cands.add(fromTime);
+  const departures = Array.from(cands).sort((a, b) => b - a);
 
-  // journeys: one per round that improved the destination
   const journeys = [];
-  let prevBest = INF;
-  for (let k = 0; k <= K; k++) {
-    if (tau[k][dest] >= prevBest) continue;
-    prevBest = tau[k][dest];
+  const seen = new Set();
+  const destArr = (k) => {
+    let m = INF;
+    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < m) m = v + d.walk; }
+    return m;
+  };
+  const extract = (k) => {
+    // which destination stop gives the round-k arrival
+    let bestD = null, bestT = INF;
+    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < bestT) { bestT = v + d.walk; bestD = d; } }
+    if (!bestD) return;
     const legs = [];
-    let s = dest, kk = k;
-    while (kk >= 0) {
+    let s = bestD.stop, kk = k, guard = 0;
+    while (kk >= 0 && guard++ < 1000) {
       const type = lblType[kk][s];
       if (type === 0) { kk--; continue; }
+      if (type === 3) {
+        const o = origins[lblFrom[kk][s]];
+        legs.push({ type: 'access', from: -1, to: s, seconds: o.walk, depart: tau[0][s] - o.walk, arrive: tau[0][s], origin: lblFrom[kk][s] });
+        break;
+      }
       if (type === 2) {
         const from = lblFrom[kk][s];
-        legs.push({ type: 'walk', from, to: s, seconds: tau[kk][s] - tau[kk][from],
-                    depart: tau[kk][from], arrive: tau[kk][s] });
+        legs.push({ type: 'walk', from, to: s, seconds: tau[kk][s] - tau[kk][from], depart: tau[kk][from], arrive: tau[kk][s] });
         s = from;
-        if (s === origin && kk === 0) break;
         continue;
       }
       const t = lblTrip[kk][s], p = tt.tripPat[t];
@@ -174,35 +259,142 @@ export function plan(tt, origin, dest, depTime, maxTransfers = 3) {
       const base = tripTimesOff[p] + (t - patTripsOff[p]) * ns;
       const bp = lblBoardPos[kk][s], ap = lblAlightPos[kk][s];
       const from = patStops[patStopsOff[p] + bp];
-      legs.push({ type: 'ride', trip: t, route: patRouteOf(tt, p), from, to: s,
+      legs.push({ type: 'ride', trip: t, pattern: p, route: tt.routes[tt.patRoute[p]], from, to: s,
                   depart: dep[base + bp], arrive: arr[base + ap], stops: ap - bp,
                   via: Array.from(patStops.subarray(patStopsOff[p] + bp, patStopsOff[p] + ap + 1)) });
       s = from; kk--;
     }
     legs.reverse();
-    journeys.push({ transfers: k - 1 < 0 ? 0 : k - 1, arrive: tau[k][dest], depart: depTime, legs });
+    // leave as late as the first vehicle allows: shift the walks before it
+    const firstRide = legs.findIndex((l) => l.type === 'ride');
+    if (firstRide > 0) {
+      let t = legs[firstRide].depart;
+      for (let i = firstRide - 1; i >= 0; i--) { legs[i].arrive = t; t -= legs[i].seconds; legs[i].depart = t; }
+    }
+    if (bestD.walk > 0) legs.push({ type: 'egress', from: bestD.stop, to: -1, seconds: bestD.walk, depart: tau[k][bestD.stop], arrive: bestT });
+    const sig = legs.map((l) => l.type === 'ride' ? `r${l.trip}:${l.from}-${l.to}` : `${l.type[0]}${l.from}-${l.to}`).join('|');
+    if (seen.has(sig)) return;
+    seen.add(sig);
+    const rides = legs.filter((l) => l.type === 'ride');
+    let walk = 0;
+    for (const l of legs) if (l.type !== 'ride') walk += l.seconds;
+    journeys.push({ depart: legs[0].depart, arrive: bestT, transfers: Math.max(0, rides.length - 1), walkSeconds: walk, legs });
+  };
+
+  let runs = 0;
+  for (const depTime of departures) {
+    runs++;
+    const before = [];
+    for (let k = 0; k <= K; k++) before.push(destArr(k));
+    for (let i = 0; i < markedList.length; i++) marked[markedList[i]] = 0;
+    markedList = [];
+    for (let oi = 0; oi < origins.length; oi++) {
+      const o = origins[oi], t = depTime + o.walk;
+      if (t < tau[0][o.stop] || (t === tau[0][o.stop] && lblType[0][o.stop] !== 3)) {
+        improve(0, o.stop, t);
+        lblType[0][o.stop] = 3; lblFrom[0][o.stop] = oi; lblWalk[0][o.stop] = 0; lblRide[0][o.stop] = 0;
+      }
+    }
+    relaxWalks(0, markedList.slice());
+
+    for (let k = 1; k <= K && markedList.length; k++) {
+      // inherit: tau[k] = min(tau[k], tau[k-1])
+      const tk = tau[k], tp = tau[k - 1], rk = lblRide[k], rp = lblRide[k - 1], lk = lblType[k];
+      for (let s = 0; s < S; s++) if (tp[s] < tk[s]) { tk[s] = tp[s]; lk[s] = 0; rk[s] = rp[s]; }
+      const Q = new Map();
+      for (const s of markedList) {
+        for (let i = stopPatsOff[s]; i < stopPatsOff[s + 1]; i++) {
+          const p = stopPats[2 * i], pos = stopPats[2 * i + 1];
+          const cur = Q.get(p);
+          if (cur === undefined || pos < cur) Q.set(p, pos);
+        }
+      }
+      for (let i = 0; i < markedList.length; i++) marked[markedList[i]] = 0;
+      markedList = [];
+      const improved = [];
+      for (const [p, startPos] of Q) {
+        const ns = patStopsOff[p + 1] - patStopsOff[p], sBase = patStopsOff[p];
+        const tFirst = patTripsOff[p], nTrips = patTripsOff[p + 1] - tFirst;
+        if (nTrips === 0) continue;
+        const base = tripTimesOff[p];
+        let t = -1, boardPos = -1;
+        for (let pos = startPos; pos < ns; pos++) {
+          const stop = patStops[sBase + pos];
+          if (t >= 0) {
+            const a = arr[base + (t - tFirst) * ns + pos];
+            if (better(k, stop, a) && a <= bestDest) {
+              improve(k, stop, a);
+              lblType[k][stop] = 1; lblTrip[k][stop] = t; lblBoardPos[k][stop] = boardPos; lblAlightPos[k][stop] = pos;
+              lblWalk[k][stop] = 0; lblRide[k][stop] = 1;
+              improved.push(stop);
+            }
+          }
+          let ready = tau[k - 1][stop];
+          if (ready === INF) continue;
+          if (lblRide[k - 1][stop]) ready += slack;
+          if (t < 0 || ready <= dep[base + (t - tFirst) * ns + pos]) {
+            let lo = 0, hi = nTrips;
+            while (lo < hi) { const mid = (lo + hi) >> 1; if (dep[base + mid * ns + pos] < ready) lo = mid + 1; else hi = mid; }
+            if (lo < nTrips && (t < 0 || tFirst + lo < t)) { t = tFirst + lo; boardPos = pos; }
+          }
+        }
+      }
+      if (!improved.length) break;
+      relaxWalks(k, improved);
+    }
+    for (let k = 1; k <= K; k++) if (destArr(k) < before[k]) extract(k);
   }
-  return { journeys, rounds, ms: now() - t0 };
+  return { journeys: opts.raw ? journeys : rank(journeys), runs, candidates: departures.length, ms: now() - t0 };
 }
 
-function patRouteOf(tt, p) { return tt.routes[tt.patRoute[p]]; }
+/** One departure time: earliest arrival per number of transfers. */
+export function plan(tt, origins, dests, depTime, maxTransfersOrOpts = 3) {
+  const opts = typeof maxTransfersOrOpts === 'number' ? { maxTransfers: maxTransfersOrOpts } : maxTransfersOrOpts;
+  const r = profile(tt, origins, dests, depTime, depTime, opts);
+  return { journeys: r.journeys, rounds: r.journeys.length ? Math.max(...r.journeys.map((j) => j.transfers + 1)) : 0, ms: r.ms };
+}
 
-function now() {
-  return (typeof performance !== 'undefined' ? performance.now() : Date.now());
+export const TRANSFER_PENALTY = 300;  // s: an extra transfer has to save at least this much
+export const WALK_WEIGHT = 0.5;       // a minute walking costs this many minutes of riding, on top of its time
+
+export function cost(j) { return (j.arrive - j.depart) + TRANSFER_PENALTY * j.transfers + WALK_WEIGHT * j.walkSeconds; }
+
+/**
+ * Keep the journeys worth showing: Pareto by (later departure, earlier arrival,
+ * fewer transfers), then drop ones whose extra transfers buy too little.
+ */
+export function rank(journeys) {
+  const out = [];
+  for (const j of journeys) {
+    let dominated = false;
+    for (const o of journeys) {
+      if (o === j) continue;
+      const pareto = o.depart >= j.depart && o.arrive <= j.arrive && o.transfers <= j.transfers &&
+        (o.depart > j.depart || o.arrive < j.arrive || o.transfers < j.transfers || cost(o) < cost(j));
+      const penalty = o.depart >= j.depart - 60 && o.transfers < j.transfers &&
+        o.arrive <= j.arrive + TRANSFER_PENALTY * (j.transfers - o.transfers);
+      if (pareto || penalty) { dominated = true; break; }
+    }
+    if (!dominated) out.push(j);
+  }
+  out.sort((a, b) => a.depart - b.depart || a.arrive - b.arrive);
+  return out;
 }
 
 export function fmtTime(sec) {
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  const h = Math.floor(sec / 3600) % 24, m = Math.floor((sec % 3600) / 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+export function routeLabel(route) { return route[0] || (route[3] === 2 ? 'train' : route[1]); }
+
 /** Human-readable journey, for logs and the test page. */
 export function describe(tt, j) {
-  const name = (s) => tt.stops[s][1];
-  const lines = [`${fmtTime(j.depart)} -> ${fmtTime(j.arrive)}, ${j.transfers} transfers`];
+  const name = (s) => (s < 0 ? 'start/end' : tt.stops[s][1]);
+  const lines = [`${fmtTime(j.depart)} -> ${fmtTime(j.arrive)}, ${Math.round((j.arrive - j.depart) / 60)} min, ${j.transfers} transfers, ${Math.round(j.walkSeconds / 60)} min walking`];
   for (const l of j.legs) {
-    if (l.type === 'walk') lines.push(`  walk ${Math.round(l.seconds / 60)} min: ${name(l.from)} -> ${name(l.to)}`);
-    else lines.push(`  ${fmtTime(l.depart)} line ${l.route[0] || (l.route[3] === 2 ? "train" : l.route[1])} (${l.route[2]}) ${name(l.from)} -> ${name(l.to)} ${fmtTime(l.arrive)}, ${l.stops} stops`);
+    if (l.type === 'ride') lines.push(`  ${fmtTime(l.depart)} ${routeLabel(l.route)} (${l.route[2]}) ${name(l.from)} -> ${name(l.to)} ${fmtTime(l.arrive)}, ${l.stops} stops`);
+    else if (l.seconds > 0) lines.push(`  ${l.type} ${Math.round(l.seconds / 60)} min: ${name(l.from)} -> ${name(l.to)}`);
   }
   return lines.join('\n');
 }

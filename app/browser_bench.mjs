@@ -10,7 +10,9 @@ const root = path.join(here, '..');
 const files = {
   '/': ['app/feasibility.html', 'text/html; charset=utf-8'],
   '/raptor.js': ['app/raptor.js', 'text/javascript'],
+  '/streets.js': ['app/streets.js', 'text/javascript'],
   '/timetable.bin.gz': ['data/timetable.bin.gz', 'application/octet-stream'],
+  '/streets.bin.gz': ['data/streets.bin.gz', 'application/octet-stream'],
 };
 const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
@@ -36,15 +38,16 @@ await page.goto(`http://127.0.0.1:${port}/?from=${encodeURIComponent(fromQ)}&to=
 await page.waitForSelector('#run:not([disabled])', { timeout: 120000 });
 console.log(`page ready in ${Date.now() - t0} ms`);
 console.log('load:', (await page.textContent('#loadStats')).replace(/\s+/g, ' ').trim());
-console.log('from:', await page.inputValue('#from'), (await page.textContent('#from option:checked')).trim());
-console.log('to:  ', await page.inputValue('#to'), (await page.textContent('#to option:checked')).trim());
+await page.waitForFunction(() => document.querySelector('#loadStats').textContent.includes('streets'), null, { timeout: 120000 });
+console.log('load:', (await page.textContent('#loadStats')).replace(/\s+/g, ' ').trim());
 await page.click('#run');
 await page.waitForSelector('#result:not([hidden])');
 console.log('single run:', await page.textContent('#ms'), '|', await page.textContent('#verdict'));
 await page.click('#bench');
 await page.waitForTimeout(100);
-console.log('10 runs:   ', await page.textContent('#ms'), '|', await page.textContent('#verdict'));
-console.log((await page.textContent('#journeys')).replace(/\s+/g, ' ').trim().slice(0, 600));
+console.log('5 runs:    ', await page.textContent('#ms'), '|', await page.textContent('#verdict'));
+console.log((await page.textContent('#bikeOnly')).replace(/\s+/g, ' ').trim());
+console.log((await page.textContent('#journeys')).replace(/\s+/g, ' ').trim().slice(0, 900));
 console.log('ua:', await page.textContent('#ua'));
 await browser.close();
 server.close();
