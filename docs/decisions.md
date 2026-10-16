@@ -48,3 +48,10 @@ so they are not re-litigated.
   `architecture.md`.
 - 2026-10-16 Gadi: Claude builds on its own judgment, well past an MVP,
   reporting at milestones; he sets direction. Recorded in CLAUDE.md.
+- 2026-10-16 Built the transfer-accuracy pass and the street network: real
+  walking transfers from OpenStreetMap (404k, 10 min cap), station
+  transfers, 90 s boarding slack, range-RAPTOR window queries with ranking,
+  multi-origin from points on foot or by bike, bike-only routes. A one-hour
+  window answers in about 330 ms in desktop Chromium; the street graph is
+  10.7 MB. Bike-on-transit rules remain to be collected. Details in
+  `architecture.md`.

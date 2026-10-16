@@ -16,10 +16,11 @@ Three parts, in order of how much they matter:
 1. **The app**: an installable web app (PWA) first, native wrappers later
    only if needed. Shows stops, lines, map, favorites, live arrivals and
    crowd reports; in the on-device design it also holds the compiled
-   timetable and runs the trip planner.
+   timetable and the street graph and runs the trip planner.
 2. **The pipeline**: a nightly GitHub Action that downloads the Ministry of
-   Transport GTFS feed, compiles it to a compact timetable, and publishes the
-   result as static files (GitHub Pages or Cloudflare Pages).
+   Transport GTFS feed and (less often) the OpenStreetMap extract, compiles
+   them to a compact timetable and street graph, and publishes the result
+   as static files (GitHub Pages or Cloudflare Pages).
 3. **The worker**: the smallest possible server (Cloudflare Workers + D1,
    free tier at first) for the three things that cannot run on the phone:
    relaying real-time data (SIRI credentials cannot ship in a public app),
@@ -44,32 +45,62 @@ Three parts, in order of how much they matter:
   extremely well, so a day on the phone is cheaper than a photo. A whole
   validity window is a later question; one day at a time is the plan.
 
-## Transfers, accuracy and bicycles (next after the phone test)
+## Transfers, accuracy and bicycles
 
-Priority set 2026-10-16: speed has headroom, accuracy does not. The current
-router misses transfer opportunities for known reasons, and bicycles are a
-required mode. The plan, in order:
+Priority set 2026-10-16: speed has headroom, accuracy does not, and bicycles
+are a required mode. Built the same day:
 
-1. **Transfer accuracy with the data we have.** Explicit transfers between
-   the platforms of one station (the feed has `parent_station`); a minimum
-   transfer buffer (seconds between alighting and boarding, larger across
-   platforms); Range RAPTOR over a departure window so an answer shows
-   several departures, not only the earliest arrival; a transfer penalty and
-   restricted Pareto sets so a two-stop hop that saves one minute is not
-   shown. No new data needed.
-2. **A street network in the pipeline.** Compile the OpenStreetMap extract
-   of Israel into a compact walking and cycling graph. Use it offline, in
-   the nightly build, to precompute ULTRA-style shortcut transfers between
-   stops (real walking or cycling routes, no radius), so the device still
-   gets a small transfer table. Use it on the device for the first and last
-   mile on foot or by bike. This is the part that tests "on device" for
-   real: the street graph is bigger than the timetable, and if it does not
-   fit a phone the first/last mile is the one piece that may need a server.
-3. **Bicycle rules.** Bike legs use the cycling graph. Bike on transit needs
-   per-operator rules (the feed has no `bikes_allowed` column): Israel
-   Railways rules by line and hour, light rail, buses. Bike-share systems
-   later, as another access mode.
+- **Street network** (`pipeline/streets.py`): the OpenStreetMap extract of
+  Israel and Palestine compiled into a walking and cycling graph of
+  intersections: 853k nodes, 2.3M directed edges, 10.7 MB gzipped (23 MB in
+  memory), built in under 3 minutes. Edges carry length, walk/bike
+  permission per direction (one-way streets apply to bikes, not to walkers)
+  and a kind that sets the speed (road, cycleway, footway, path, steps,
+  service). No elevation yet, so Haifa and Jerusalem hills are flat for now.
+- **Real walking transfers** (`compile.py --streets`): every stop snaps to
+  the nearest walkable node within 250 m (30,569 of 30,654 do), and a
+  bounded search from each stop gives the walking time to every stop within
+  10 minutes on actual streets: 404k footpaths, replacing the straight-line
+  guesses. Inside a station every platform reaches every other (the feed's
+  `parent_station`, 220 stations, 4.6k pairs). Every footpath carries a 30 s
+  margin; boarding at the stop you arrived at needs 90 s.
+- **Profile search** (`raptor.js` `profile()`): range RAPTOR over a departure
+  window, so an answer is every journey worth taking in the next hour, not
+  one. Origins and destinations are sets (all platforms of a station, or
+  every stop reachable from a point) with access and egress times. Ties on
+  arrival that save a transfer are kept, which the textbook pruning loses.
+  Ranking: Pareto by departure, arrival and transfers, then an extra
+  transfer has to save at least 5 minutes. The departure shown is the latest
+  that still makes the first vehicle.
+- **First and last mile** (`app/streets.js`): Dijkstra on the street graph
+  from a point, on foot (15 min) or by bike (20 min), to every stop it can
+  reach; those become the origins or destinations. A bike-only route is
+  computed alongside when either end is by bike.
 
+Measured in headless Chromium, 60-minute window, up to 3 transfers:
+
+| Query | Median | Notes |
+|---|---|---|
+| HaMifratz (Haifa) to Be'er Sheva central, 08:00 | 339 ms | 3 journeys, 23 destination platforms; cold run 516 ms |
+| Point in Givatayim by bike to Jerusalem central, 07:30 | 314 ms | 912 stops within 20 min by bike; bike 11 min to Savidor then bus 480 |
+| Single departure instead of a window | 50 to 65 ms (Node) | |
+| Bike reach, 20 min, from Givatayim | 44 ms | walk reach 15 min: 2 ms |
+| Bike route Givatayim to Savidor | 5 ms | 2.5 km, 13 min; on foot 2.4 km, 33 min |
+
+Known gaps, in rough order of importance:
+
+- Bike on transit: the feed has no `bikes_allowed`, so "bike at both ends"
+  currently means the bike rides along, which is only true on trains outside
+  peak hours and with bike-share. Operator rules still have to be collected
+  and enforced per leg.
+- No elevation: cycling times in Haifa and Jerusalem are optimistic.
+- The window query should run in a Web Worker with the first answer shown
+  at once; a phone will take about 1 s for a full hour.
+- The street graph could be about half its size with varint-coded edges.
+- The 10-minute cap on stop-to-stop walks and the 15/20-minute caps on
+  access are guesses to revisit with real use.
+
+## Compact timetable (format 2, built by `pipeline/compile.py`)
 
 One file per service day, gzipped: a u32 header length, a JSON header, then
 little-endian typed arrays the app views in place:
@@ -86,12 +117,17 @@ little-endian typed arrays the app views in place:
   all zeros in this feed and deltas repeat across trips, which is why gzip
   gets 26 MB down to 2.8 MB.
 - `stopPats`: for each stop, the (pattern, position) pairs it appears in.
-- footpaths: `trOff`/`trTo`/`trTime`, generated between stops within 400 m
-  at 1.2 m/s with a 60 s floor (the feed has no `transfers.txt`).
-- `stopLat`/`stopLon` as f32, for a map later.
+- footpaths: `trOff`/`trTo`/`trTime`: street-graph walking times within 10
+  minutes (straight-line within 400 m when built without `--streets`), plus
+  platform-to-platform inside stations. The feed has no `transfers.txt`.
+- `stopLat`/`stopLon` as f32, `stopParent` (station index), `stopNode` (the
+  stop's node in the street graph, for the first and last mile).
+- header extras: stations, each stop's city (from `stop_desc`), the walk and
+  slack parameters the router reads.
 
-Not yet in the format: stop name translations, headsigns per trip, a real
-search index (the test page does a substring match over names), fares.
+Not yet in the format: stop name translations, headsigns per trip, fares.
+Search is done in the app over names and cities (`searchStops`), grouping a
+station's platforms into one result.
 
 ## Pipeline
 

@@ -55,10 +55,12 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `docs/architecture.md` | The design: pipeline, compact timetable, on-device routing, real-time, crowd reports, server pieces, the feasibility test. |
 | `docs/decisions.md` | Dated log of decisions, including rejected options. |
 | `LICENSE` | GNU AGPL-3.0. |
-| `pipeline/compile.py` | GTFS zip to one service day's compact timetable (format in `docs/architecture.md`). |
-| `app/raptor.js` | Timetable loader and RAPTOR planner; runs in the browser and in Node. |
+| `pipeline/compile.py` | GTFS zip to one service day's compact timetable (format in `docs/architecture.md`); with `--streets`, real walking transfers. |
+| `pipeline/streets.py`, `pipeline/streetgraph.py` | OpenStreetMap extract to the compact street graph; reader and stop-to-stop walking times for the compiler. |
+| `app/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
+| `app/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
 | `app/feasibility.html` | The routing test page. `app/bench.mjs` times it in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` turns it into a page publishable as a Claude artifact. |
-| `data/` | Gitignored: the downloaded feed, compiled timetables, built artifact pages. |
+| `data/` | Gitignored: the downloaded feed and OSM extract, compiled files, built artifact pages. |
 
 Planned, not yet created: `worker/` (Cloudflare Worker for the real-time
 relay, reports and push), the nightly GitHub Action around `pipeline/`, and
@@ -66,7 +68,10 @@ the real app (the test page is not it). Create them when the work starts.
 
 ## Current state
 
-2026-10-16: the feasibility test passed on desktop (numbers in
+2026-10-16: the feasibility test passed on desktop and the routing core
+grew real transfers, window queries and bikes the same day (numbers in
 `docs/architecture.md`); the phone measurement is pending, on the test page
 published as a private Claude artifact (link in Gadi's task system). Where
-routing runs is decided only after that. Nothing user-facing exists yet.
+routing runs is decided only after that. Nothing user-facing exists yet;
+the next big pieces are bike-on-transit rules, the nightly pipeline, and the
+app itself.

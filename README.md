@@ -7,10 +7,12 @@ instead of Moovit or Bus Nearby.
 The name sounds like וואי לי. The project is free software under the
 GNU AGPL-3.0 (see `LICENSE`).
 
-**Status (October 2026): feasibility test in progress.** One weekday of the
-national timetable compiles to a 2.8 MB file, and a trip planner over it
-answers Haifa to Be'er Sheva in about 30 ms in a desktop browser. Phone
-timing is next. Nothing user-facing exists yet; see "Roadmap" below.
+**Status (October 2026): routing core working, phone timing pending.** One
+weekday of the national timetable compiles to a 3.2 MB file and the street
+network of the whole country to 10.7 MB. In a desktop browser the planner
+answers a full hour of departures from Haifa to Be'er Sheva, or from a
+point in Givatayim by bike to Jerusalem, in about a third of a second.
+Nothing user-facing exists yet; see "Roadmap" below.
 
 ## What it will do
 
@@ -67,7 +69,10 @@ Decisions and their dates are in `docs/decisions.md`.
    one second on a phone. This decides whether routing stays on the device
    or moves to the cheapest server setup that works. Desktop part passed
    on 2026-10-16 (details in `docs/architecture.md`); phone part pending.
-2. Nightly pipeline: fetch GTFS, compile, publish.
+   Same day: real walking transfers from OpenStreetMap, station transfers,
+   departure-window answers, bike and walk first/last mile, bike-only
+   routes.
+2. Nightly pipeline: fetch GTFS and OpenStreetMap, compile, publish.
 3. The app: planner, stops, lines, map, favorites, Hebrew/RTL, offline.
 4. Real-time arrivals (SIRI access from the Ministry of Transport, or
    Hasadna's Open Bus data).
@@ -76,18 +81,25 @@ Decisions and their dates are in `docs/decisions.md`.
 ## Run the test yourself
 
 ```
+pip install numpy osmium
 curl -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
-python3 -I pipeline/compile.py data/gtfs.zip --date 20261019      # Python 3 + numpy, ~35 s
-node app/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
+curl -o data/osm/israel-and-palestine-latest.osm.pbf https://download.openstreetmap.fr/extracts/asia/israel_and_palestine-latest.osm.pbf
+python3 -I pipeline/streets.py data/osm/israel-and-palestine-latest.osm.pbf   # ~3 min -> data/streets.bin.gz
+python3 -I pipeline/compile.py data/gtfs.zip --date 20261019 --streets data/streets.bin.gz   # ~80 s -> data/timetable.bin.gz
+node app/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00 60
+node app/bench.mjs data/timetable.bin.gz "32.0720,34.8100:bike" "ת. מרכזית ירושלים" 07:30 60
 ```
 
-`app/feasibility.html` is the same router as a page: serve the `app/` folder
-with `data/timetable.bin.gz` next to it and open it in a browser.
+`app/feasibility.html` is the same router as a page: `node app/browser_bench.mjs`
+runs it in headless Chromium, or serve `app/` with the two `data/*.bin.gz`
+files next to it and open it in a browser.
 
 ## Data sources
 
 - Timetable: the Israel Ministry of Transport GTFS feed, published daily at
   gtfs.mot.gov.il.
+- Streets: OpenStreetMap, the Israel and Palestine extract (Geofabrik or the
+  openstreetmap.fr mirror), ODbL.
 - Real-time: the Ministry's SIRI feed (needs registration), and Hasadna's
   Open Bus project (open-bus-stride-api.hasadna.org.il), which records the
   same feed and publishes it openly.
