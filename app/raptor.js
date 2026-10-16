@@ -48,7 +48,14 @@ function expandTimes(tt) {
     }
   }
   tt.dep = dep; tt.arr = arr; tt.tripPat = tripPat;
+  // GTFS route_type per pattern (0 light rail, 2 rail, 3 bus), for "bike on board" filtering
+  const patType = new Int8Array(P);
+  for (let p = 0; p < P; p++) patType[p] = tt.routes[tt.patRoute[p]][3];
+  tt.patType = patType;
 }
+
+/** Route types a bike may ride along on. Gadi, 2026-10-16: trains always; buses no; light rail unknown yet. */
+export const BIKE_ON_BOARD_TYPES = [2];
 
 // ---------------------------------------------------------------- search
 
@@ -144,6 +151,10 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
   origins = asPlaces(tt, origins); dests = asPlaces(tt, dests);
   const maxTransfers = opts.maxTransfers ?? 3;
   const slack = opts.slack ?? tt.slack;
+  // optional restriction to vehicle types (GTFS route_type), e.g. trains only when the bike rides along
+  let allowed = null;
+  if (opts.routeTypes) { allowed = new Uint8Array(8); for (const t of opts.routeTypes) allowed[t] = 1; }
+  const patType = tt.patType;
   const chainMax = opts.maxWalkChain ?? Math.min(tt.chainMax, 600);
   const S = tt.stops.length, K = maxTransfers + 1;
   const { patStopsOff, patStops, patTripsOff, tripTimesOff, stopPatsOff, stopPats,
@@ -210,6 +221,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
   for (const [q, w] of reach) {
     for (let i = stopPatsOff[q]; i < stopPatsOff[q + 1]; i++) {
       const p = stopPats[2 * i], pos = stopPats[2 * i + 1];
+      if (allowed && !allowed[patType[p]]) continue;
       const ns = patStopsOff[p + 1] - patStopsOff[p];
       if (pos === ns - 1) continue;
       const tFirst = patTripsOff[p], tEnd = patTripsOff[p + 1], base = tripTimesOff[p];
@@ -305,6 +317,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
       for (const s of markedList) {
         for (let i = stopPatsOff[s]; i < stopPatsOff[s + 1]; i++) {
           const p = stopPats[2 * i], pos = stopPats[2 * i + 1];
+          if (allowed && !allowed[patType[p]]) continue;
           const cur = Q.get(p);
           if (cur === undefined || pos < cur) Q.set(p, pos);
         }

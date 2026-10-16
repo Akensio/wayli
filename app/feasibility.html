@@ -80,8 +80,8 @@
     <div class="muted">Examples</div>
     <div class="row" id="examples">
       <button type="button" class="ghost" data-from="מרכזית המפרץ" data-to="מרכזית באר שבע" data-at="08:00">Haifa → Be'er Sheva</button>
-      <button type="button" class="ghost" data-from="32.0720,34.8100" data-from-mode="bike" data-to="ת. מרכזית המפרץ" data-at="09:00">Givatayim by bike → Haifa</button>
-      <button type="button" class="ghost" data-from="32.0720,34.8100" data-from-mode="bike" data-to="ת. מרכזית ירושלים" data-at="07:30">Givatayim by bike → Jerusalem</button>
+      <button type="button" class="ghost" data-from="32.0720,34.8100" data-bike="park" data-to="ת. מרכזית ירושלים" data-at="07:30">Givatayim by bike → Jerusalem</button>
+      <button type="button" class="ghost" data-from="32.0720,34.8100" data-bike="along" data-to="32.8170,34.9890" data-at="09:00">Givatayim → Haifa Technion, bike on the train</button>
       <button type="button" class="ghost" data-from="ת. רכבת תל אביב סבידור" data-to="ת. מרכזית אילת" data-at="06:00">Tel Aviv → Eilat</button>
     </div>
     <div class="row">
@@ -89,17 +89,16 @@
         <label for="fromQ">From</label>
         <input type="text" id="fromQ" placeholder="stop, station or lat,lon" autocomplete="off" disabled>
         <select id="from" disabled></select>
-        <div class="seg" id="fromMode"><button type="button" data-mode="walk" aria-pressed="true">Walk</button><button type="button" data-mode="bike" aria-pressed="false">Bike</button></div>
-        <div class="hint">Access mode from a point</div>
       </div>
       <div>
         <label for="toQ">To</label>
         <input type="text" id="toQ" placeholder="stop, station or lat,lon" autocomplete="off" disabled>
         <select id="to" disabled></select>
-        <div class="seg" id="toMode"><button type="button" data-mode="walk" aria-pressed="true">Walk</button><button type="button" data-mode="bike" aria-pressed="false">Bike</button></div>
-        <div class="hint">Egress mode to a point</div>
       </div>
     </div>
+    <label>Bicycle</label>
+    <div class="seg" id="bikeMode"><button type="button" data-mode="none" aria-pressed="true">No bike</button><button type="button" data-mode="park" aria-pressed="false">Ride to the stop, park it</button><button type="button" data-mode="along" aria-pressed="false">Take it along (trains only)</button></div>
+    <div class="hint">From a point: up to 20 min by bike, 15 on foot. "Take it along" keeps the bike for the last mile and uses trains only.</div>
     <div class="row">
       <div><label for="at">Leave at</label><input type="time" id="at" value="08:00" disabled></div>
       <div><label for="win">Window (minutes)</label><input type="number" id="win" value="60" min="0" max="240" step="15" disabled></div>
@@ -123,7 +122,7 @@
 </div>
 
 <script type="module">
-import { parseTimetable, searchStops, plan, profile, fmtTime, routeLabel } from './raptor.js';
+import { parseTimetable, searchStops, plan, profile, fmtTime, routeLabel, BIKE_ON_BOARD_TYPES } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 
 const $ = (id) => document.getElementById(id);
@@ -213,12 +212,8 @@ function wireSearch(inputId, selId) {
 }
 wireSearch('fromQ', 'from');
 wireSearch('toQ', 'to');
-for (const segId of ['fromMode', 'toMode']) {
-  for (const b of $(segId).querySelectorAll('button')) b.addEventListener('click', () => {
-    for (const o of $(segId).querySelectorAll('button')) o.setAttribute('aria-pressed', String(o === b));
-  });
-}
-const modeOf = (segId) => $(segId).querySelector('[aria-pressed="true"]').dataset.mode;
+for (const b of $('bikeMode').querySelectorAll('button')) b.addEventListener('click', () => setMode('bikeMode', b.dataset.mode));
+const bikeChoice = () => $('bikeMode').querySelector('[aria-pressed="true"]').dataset.mode;
 
 function fillPreset() {
   for (const [q, inputId, selId] of [[PRESET.from, 'fromQ', 'from'], [PRESET.to, 'toQ', 'to']]) {
@@ -230,10 +225,9 @@ function fillPreset() {
 }
 
 /** Resolve one side of the query into {places:[{stop,walk,mode}], point?, label} */
-function resolve(inputId, selId, segId, what) {
+function resolve(inputId, selId, mode, what) {
   const text = $(inputId).value.trim();
   const pt = parsePoint(text);
-  const mode = modeOf(segId);
   if (pt) {
     if (!st) throw new Error('Street network not loaded, so points cannot be used yet. Pick a stop instead.');
     const places = accessStops(st, tt.stopNode, pt.lat, pt.lon, mode, MAX_ACCESS[mode]);
@@ -251,8 +245,10 @@ function query(quiet) {
   try {
     const [h, m] = $('at').value.split(':').map(Number);
     if (Number.isNaN(h)) throw new Error('Pick a departure time.');
-    return { from: resolve('fromQ', 'from', 'fromMode', 'origin'), to: resolve('toQ', 'to', 'toMode', 'destination'),
-             at: h * 3600 + m * 60, win: Math.max(0, Number($('win').value) || 0) * 60 };
+    const bike = bikeChoice();
+    return { from: resolve('fromQ', 'from', bike === 'none' ? 'walk' : 'bike', 'origin'),
+             to: resolve('toQ', 'to', bike === 'along' ? 'bike' : 'walk', 'destination'),
+             bike, at: h * 3600 + m * 60, win: Math.max(0, Number($('win').value) || 0) * 60 };
   } catch (e) {
     if (!quiet) { $('formError').textContent = e.message; $('formError').hidden = false; }
     return null;
@@ -261,9 +257,10 @@ function query(quiet) {
 
 function runQuery(q, times) {
   const t0 = performance.now();
-  const r = profile(tt, q.from.places, q.to.places, q.at, q.at + q.win, { maxTransfers: 3 });
+  const r = profile(tt, q.from.places, q.to.places, q.at, q.at + q.win,
+                    { maxTransfers: 3, routeTypes: q.bike === 'along' ? BIKE_ON_BOARD_TYPES : null });
   let bikeOnly = null;
-  if (st && q.from.point && q.to.point && (q.from.mode === 'bike' || q.to.mode === 'bike')) {
+  if (st && q.from.point && q.to.point && q.bike !== 'none') {
     bikeOnly = route(st, q.from.point.lat, q.from.point.lon, q.to.point.lat, q.to.point.lon, 'bike', 3 * 3600);
   }
   const ms = performance.now() - t0;
@@ -277,11 +274,12 @@ function render(q, r, bikeOnly, ms, times) {
   $('took').textContent = times ? 'Planning took (median of 5)' : 'Planning took';
   $('ms').textContent = `${shown.toFixed(0)} ms`;
   $('ms').className = 'big ' + (shown < 1000 ? 'ok' : 'warn');
-  $('verdict').textContent = `${q.from.label} → ${q.to.label} · window ${q.win / 60} min · ${r.candidates} departures tried, ${r.runs} runs, ${r.journeys.length} journeys` + (times ? ` · min ${Math.min(...times).toFixed(0)} ms, max ${Math.max(...times).toFixed(0)} ms` : '');
+  const bikeNote = q.bike === 'along' ? ' · bike on board, trains only' : q.bike === 'park' ? ' · bike parked at the first stop' : '';
+  $('verdict').textContent = `${q.from.label} → ${q.to.label} · window ${q.win / 60} min${bikeNote} · ${r.candidates} departures tried, ${r.runs} runs, ${r.journeys.length} journeys` + (times ? ` · min ${Math.min(...times).toFixed(0)} ms, max ${Math.max(...times).toFixed(0)} ms` : '');
   $('bikeOnly').innerHTML = bikeOnly ? `<div class="journey"><h3><span class="bike">Bike all the way</span> · ${Math.round(bikeOnly.seconds / 60)} min · ${(bikeOnly.metres / 1000).toFixed(1)} km</h3></div>` : '';
   const box = $('journeys');
   box.innerHTML = '';
-  if (!r.journeys.length) { box.innerHTML = '<p class="muted">No journey found with up to 3 transfers.</p>'; return; }
+  if (!r.journeys.length) { box.innerHTML = `<p class="muted">No journey found with up to 3 transfers${q.bike === 'along' ? ' using trains only' : ''}.</p>`; return; }
   for (const j of r.journeys) {
     const d = document.createElement('div');
     d.className = 'journey';
@@ -313,7 +311,7 @@ function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<'
 $('run').addEventListener('click', () => { const q = query(false); if (q) runQuery(q); });
 for (const b of $('examples').querySelectorAll('button')) b.addEventListener('click', () => {
   if (!tt) return;
-  setMode('fromMode', b.dataset.fromMode || 'walk'); setMode('toMode', b.dataset.toMode || 'walk');
+  setMode('bikeMode', b.dataset.bike || 'none');
   $('at').value = b.dataset.at || '08:00';
   for (const [q, inputId, selId] of [[b.dataset.from, 'fromQ', 'from'], [b.dataset.to, 'toQ', 'to']]) {
     $(inputId).value = q;

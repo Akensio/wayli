@@ -55,3 +55,8 @@ so they are not re-litigated.
   window answers in about 330 ms in desktop Chromium; the street graph is
   10.7 MB. Bike-on-transit rules remain to be collected. Details in
   `architecture.md`.
+- 2026-10-16 Gadi: bikes on trains are always possible. So "take the bike
+  along" means trains only (GTFS route_type 2); buses never; light rail
+  unknown until he says. Implemented as a vehicle-type filter in the
+  planner; the test page offers no bike / ride to the stop and park it /
+  take it along.

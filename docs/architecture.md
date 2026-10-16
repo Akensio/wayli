@@ -75,7 +75,9 @@ are a required mode. Built the same day:
 - **First and last mile** (`app/streets.js`): Dijkstra on the street graph
   from a point, on foot (15 min) or by bike (20 min), to every stop it can
   reach; those become the origins or destinations. A bike-only route is
-  computed alongside when either end is by bike.
+  computed alongside when a bike is involved. Three bicycle choices: none,
+  ride to the stop and park it (bike access, walking egress), take it along
+  (bike at both ends, trains only).
 
 Measured in headless Chromium, 60-minute window, up to 3 transfers:
 
@@ -89,11 +91,12 @@ Measured in headless Chromium, 60-minute window, up to 3 transfers:
 
 Known gaps, in rough order of importance:
 
-- Bike on transit: the feed has no `bikes_allowed`, so "bike at both ends"
-  currently means the bike rides along, which is only true on trains outside
-  peak hours and with bike-share. Operator rules still have to be collected
-  and enforced per leg.
-- No elevation: cycling times in Haifa and Jerusalem are optimistic.
+- Bike on transit: the feed has no `bikes_allowed`. Rule from Gadi
+  (2026-10-16): trains always, so "take it along" restricts the journey to
+  trains (`routeTypes` option of `profile()`); buses never; light rail still
+  unknown. Bike-share is not modelled.
+- No elevation: cycling times in Haifa and Jerusalem are optimistic (Bat
+  Galim up to the Technion shows as 12 minutes).
 - The window query should run in a Web Worker with the first answer shown
   at once; a phone will take about 1 s for a full hour.
 - The street graph could be about half its size with varint-coded edges.
