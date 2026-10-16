@@ -39,3 +39,10 @@ so they are not re-litigated.
   other cross-country queries; results checked against the raw feed. Phone
   timing still pending. Footpath radius set to 400 m (250 m could not get
   from the HaMifratz platforms to the train).
+- 2026-10-16 Priorities after the test: speed is a solved problem, accuracy
+  is not. The router must not miss good transfer opportunities (realistic
+  walking between stops and stations, sensible transfer buffers, more than
+  one departure per answer). Bicycle is a required mode, important for some
+  riders: bike as first/last mile, bike between transit legs, bike on
+  trains where allowed. Both need a street network in the pipeline; see
+  `architecture.md`.

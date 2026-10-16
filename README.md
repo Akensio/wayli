@@ -18,6 +18,8 @@ timing is next. Nothing user-facing exists yet; see "Roadmap" below.
   rail in one query. This is the feature everything else is built around.
 - Live arrivals at a stop, nearby stops, line search, a map, favorites.
 - Hebrew and right-to-left as first-class, not an afterthought.
+- Bicycles as a real mode: ride to the station, ride between legs, take the
+  bike on the train where allowed.
 - Work offline, if routing ends up on the device: then the whole timetable
   is on the phone and planning a trip never needs the network.
 - Crowd reports, one tap each: the bus arrived, it never came, it was full,

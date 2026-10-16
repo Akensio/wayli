@@ -44,7 +44,32 @@ Three parts, in order of how much they matter:
   extremely well, so a day on the phone is cheaper than a photo. A whole
   validity window is a later question; one day at a time is the plan.
 
-## Compact timetable (format 1, built by `pipeline/compile.py`)
+## Transfers, accuracy and bicycles (next after the phone test)
+
+Priority set 2026-10-16: speed has headroom, accuracy does not. The current
+router misses transfer opportunities for known reasons, and bicycles are a
+required mode. The plan, in order:
+
+1. **Transfer accuracy with the data we have.** Explicit transfers between
+   the platforms of one station (the feed has `parent_station`); a minimum
+   transfer buffer (seconds between alighting and boarding, larger across
+   platforms); Range RAPTOR over a departure window so an answer shows
+   several departures, not only the earliest arrival; a transfer penalty and
+   restricted Pareto sets so a two-stop hop that saves one minute is not
+   shown. No new data needed.
+2. **A street network in the pipeline.** Compile the OpenStreetMap extract
+   of Israel into a compact walking and cycling graph. Use it offline, in
+   the nightly build, to precompute ULTRA-style shortcut transfers between
+   stops (real walking or cycling routes, no radius), so the device still
+   gets a small transfer table. Use it on the device for the first and last
+   mile on foot or by bike. This is the part that tests "on device" for
+   real: the street graph is bigger than the timetable, and if it does not
+   fit a phone the first/last mile is the one piece that may need a server.
+3. **Bicycle rules.** Bike legs use the cycling graph. Bike on transit needs
+   per-operator rules (the feed has no `bikes_allowed` column): Israel
+   Railways rules by line and hour, light rail, buses. Bike-share systems
+   later, as another access mode.
+
 
 One file per service day, gzipped: a u32 header length, a JSON header, then
 little-endian typed arrays the app views in place:
