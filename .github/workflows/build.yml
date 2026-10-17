@@ -1,0 +1,65 @@
+# Nightly data build and GitHub Pages deploy. Enables Pages (source: GitHub Actions) by itself on the first run.
+name: Build and deploy
+on:
+  schedule:
+    - cron: "30 2 * * *"   # 02:30 UTC, after the Ministry's nightly feed update
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Turn on GitHub Pages for this repository if it is not on yet
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy osmium
+      - name: Cache the OpenStreetMap extract and street graph (rebuilt weekly)
+        id: osm
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/osm/israel-and-palestine-latest.osm.pbf
+            data/streets.bin.gz
+          key: osm-${{ github.run_id }}
+          restore-keys: osm-
+      - name: Street graph
+        run: |
+          mkdir -p data/osm
+          if [ ! -f data/streets.bin.gz ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ]; then
+            curl -sSL -o data/osm/israel-and-palestine-latest.osm.pbf https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf \
+              || curl -sSL -o data/osm/israel-and-palestine-latest.osm.pbf https://download.openstreetmap.fr/extracts/asia/israel_and_palestine-latest.osm.pbf
+            python3 -I pipeline/streets.py data/osm/israel-and-palestine-latest.osm.pbf --out data/streets.bin.gz
+          fi
+      - name: Timetable, the next 7 days
+        run: |
+          curl -sSL -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
+          for i in 0 1 2 3 4 5 6; do
+            d=$(TZ=Asia/Jerusalem date -d "+$i day" +%Y%m%d)
+            python3 -I pipeline/compile.py data/gtfs.zip --date "$d" --streets data/streets.bin.gz --out "data/timetable-$d.bin.gz"
+          done
+      - run: python3 pipeline/build_site.py --out site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

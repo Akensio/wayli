@@ -1,0 +1,20 @@
+# dependencies and builds
+node_modules/
+dist/
+build/
+target/
+__pycache__/
+*.pyc
+.venv/
+
+# downloaded feeds and compiled timetables (large; the pipeline regenerates them)
+data/
+site/
+*.zip
+
+# local env and editors
+.env
+.env.*
+.DS_Store
+.vscode/
+.idea/
