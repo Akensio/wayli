@@ -105,8 +105,8 @@ python3 -m http.server --directory site 8080     # then open http://localhost:80
 ```
 
 Deployment is the GitHub Actions workflow: it builds the data for the next
-7 days every night and publishes `site/` to GitHub Pages (the repository's
-Pages source has to be "GitHub Actions").
+7 days every night and publishes `site/` to GitHub Pages, enabling Pages on
+the first run.
 
 ## Data sources
 

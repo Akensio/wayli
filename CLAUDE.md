@@ -72,8 +72,8 @@ relay, reports and push). Create it when the work starts.
 
 2026-10-16: routing core (real transfers, window queries, bikes with the
 on-board rules) and the app v0.1 are built and tested under phone emulation;
-the nightly build-and-deploy workflow is written. Waiting on Gadi: enable
-GitHub Pages (Source: GitHub Actions) and get the branch onto `main`. After
+the nightly build-and-deploy workflow is written and enables Pages itself.
+Waiting on Gadi: get the branch onto `main` (merge, or allow a push). After
 that, the app's behaviour on real phones decides whether routing stays on
 the device. Next: real-time arrivals (Hasadna's API if it allows browser
 calls, else a tiny relay), line pages, translations, crowd reports.

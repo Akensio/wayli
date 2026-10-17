@@ -138,8 +138,8 @@ until it is in, points use straight-line access with a detour factor).
 Deployment: `pipeline/build_site.py` assembles `site/`; the GitHub Actions
 workflow in `.github/workflows/build.yml` runs nightly (and on push to
 `main`): downloads the feed, rebuilds the street graph weekly, compiles the
-next 7 days, and deploys `site/` to GitHub Pages. The repo's Pages source
-must be set to "GitHub Actions" once. No server, no cost.
+next 7 days, and deploys `site/` to GitHub Pages, turning Pages on by itself the first
+time (`actions/configure-pages` with `enablement: true`). No server, no cost.
 
 Not in v0.1: real-time, crowd reports, elevation, trips that cross midnight,
 stop name translations, Arabic, line pages, the bike-on-board rules for
