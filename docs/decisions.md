@@ -82,3 +82,6 @@ so they are not re-litigated.
   vector tiles (free, keyless, crisp, dark mode). The location and map
   buttons became labelled chips under each field. The app now reloads itself
   when a new build is deployed and shows its build time.
+- 2026-10-17 Gadi: the dark basemap in dark mode is too dark. One light,
+  colourful basemap (OpenFreeMap Liberty) in every theme; it also shows bus
+  stops and landmarks, which the grey Positron did not.

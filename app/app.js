@@ -366,7 +366,8 @@ function renderResults(r, q) {
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // ---------------------------------------------------------------- journey detail + map (MapLibre, OpenFreeMap vector tiles)
-const MAP_STYLE = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'https://tiles.openfreemap.org/styles/dark' : 'https://tiles.openfreemap.org/styles/positron');
+// one light, colourful basemap in every app theme: a map reads best light. (localStorage 'wayli-map-style' overrides, for trying others)
+const MAP_STYLE = () => { let o = null; try { o = localStorage.getItem('wayli-map-style'); } catch (e) {} return `https://tiles.openfreemap.org/styles/${o || 'liberty'}`; };
 let rtlSet = false;
 function makeMap(container, center, zoom) {
   if (typeof maplibregl === 'undefined') return null;
@@ -412,7 +413,7 @@ function drawJourney(m, j) {
   const bounds = new maplibregl.LngLatBounds();
   for (const l of j.legs) {
     if (!l.path || l.path.length < 2) continue;
-    const color = l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#5b6470');
+    const color = l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#2b3036');
     const coords = l.path.map((p) => [p[1], p[0]]);
     coords.forEach((c) => bounds.extend(c));
     features.push({ type: 'Feature', properties: { color, ride: l.type === 'ride' ? 1 : 0 }, geometry: { type: 'LineString', coordinates: coords } });
@@ -425,7 +426,7 @@ function drawJourney(m, j) {
   if (m.getSource('journey')) m.getSource('journey').setData(data);
   else {
     m.addSource('journey', { type: 'geojson', data });
-    m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': .9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+    m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 8, 7], 'line-opacity': .9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
     m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
     m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   }
