@@ -484,7 +484,7 @@ async function plan(opts = {}) {
   $('planBtn').disabled = false;
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
-const inShort = (n) => (n > 120 || n < -120 ? '' : ` (${t('departsIn', { n: Math.max(0, n) })})`);
+const inShort = (n) => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
 const transfersText = (n) => n === 0 ? t('direct') : n === 1 ? t('transfer1') : t('transfers', { n });
 const chipClass = (l) => l.type === 'ride' ? `chip t${l.routeType}` : l.mode === 'bike' ? 'chip bike' : 'chip walk';
 const lineText = (line) => line === 'train' ? t('train') : line;
@@ -684,7 +684,7 @@ function openDetail(j, q, bikeOnly = false) {
 }
 /** Live badges on the ride legs of a journey happening around now, and the vehicles on the map. */
 async function liveForJourney(j, day, container, seq) {
-  if (!liveOn()) return;
+  if (!liveOn() || !dayInfo || dayInfo.date !== day) return;   // trip indices belong to the loaded day
   const now = live.nowOn(day);
   if (j.depart - now > 5400 || now - j.arrive > 1800) return;
   const rides = j.legs.filter((l) => l.type === 'ride' && l.routeId != null && l.depart - now < 5400 && now - l.arrive < 900).slice(0, 4);
@@ -1063,7 +1063,7 @@ async function followLive() {
   if (!fol || !liveOn()) return;
   const a = fol.a, now = live.nowOn(a.day);
   const leg = a.journey.legs.slice(a.state.step).find((l) => l.type === 'ride');
-  if (!leg || leg.routeId == null || leg.depart - now > 3600) { fol.liveEst = null; return; }
+  if (!leg || leg.routeId == null || leg.depart - now > 3600 || !dayInfo || dayInfo.date !== a.day) { fol.liveEst = null; return; }
   try {
     const vs = await live.vehiclesByLine(leg.routeId);
     const v = live.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
