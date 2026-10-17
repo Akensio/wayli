@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css" crossorigin="">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -23,22 +23,22 @@
   <button type="button" class="lang" id="langBtn">EN</button>
 </header>
 <main>
-  <div class="status" id="status"><span id="statusText">טוען…</span><div class="bar" id="statusBar"><div></div></div></div>
+  <div class="status" id="status"><span id="statusText">טוען…</span><div class="bar" id="statusBar"><div></div></div><span class="ver" id="ver"></span></div>
 
   <section class="screen" id="screen-plan">
     <div class="card">
       <div class="field">
         <span class="icon">●</span>
         <input type="text" id="fromQ" placeholder="מאיפה?" autocomplete="off" enterkeyhint="search">
-        <div class="locs"><button type="button" class="loc" id="fromMap" title="בחירה במפה">🗺️</button><button type="button" class="loc" id="fromLoc">המיקום שלי</button></div>
         <div class="dropdown" id="fromDrop" hidden></div>
       </div>
+      <div class="chips-row"><button type="button" class="chipbtn" id="fromLoc">📍 המיקום שלי</button><button type="button" class="chipbtn" id="fromMap">🗺️ בחירה במפה</button></div>
       <div class="field">
         <span class="icon">■</span>
         <input type="text" id="toQ" placeholder="לאן?" autocomplete="off" enterkeyhint="search">
-        <div class="locs"><button type="button" class="loc" id="toMap" title="בחירה במפה">🗺️</button><button type="button" class="loc" id="toLoc">המיקום שלי</button></div>
         <div class="dropdown" id="toDrop" hidden></div>
       </div>
+      <div class="chips-row"><button type="button" class="chipbtn" id="toLoc">📍 המיקום שלי</button><button type="button" class="chipbtn" id="toMap">🗺️ בחירה במפה</button></div>
       <div class="row">
         <button type="button" class="swap" id="swap">⇅ <span data-t="swap">החלף</span></button>
         <select id="day"></select>
@@ -135,7 +135,7 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin=""></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js" crossorigin=""></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -12,6 +12,7 @@ const STR = {
     loadingTT: 'טוען לוח זמנים', loadingST: 'טוען רשת רחובות (לאופניים ולהליכה מדויקת)', loadingPL: 'טוען כתובות ומקומות', unpacking: 'פורס…', ready: 'מוכן. {trips} נסיעות ליום {date}.',
     kindStop: 'תחנה', kindAddress: 'כתובת', kindStreet: 'רחוב', kindCity: 'עיר', kindPoi: 'מקום', approxNo: 'הקרוב ביותר: {n}', placesPending: 'כתובות ומקומות עדיין נטענים…', noMatch: 'לא נמצא. נסו שם תחנה, רחוב ומספר, או עיר.',
     pickTitle: 'בחירה במפה', pickHint: 'הזיזו את המפה כך שהסמן יהיה על המקום', choose: 'בחירה', cancel: 'ביטול', nearName: 'ליד {name}', pointName: 'נקודה במפה',
+    btnLoc: '📍 המיקום שלי', btnMap: '🗺️ בחירה במפה', build: 'גרסה {v}', updated: 'גרסה חדשה נטענה.',
     readyStreets: 'רשת הרחובות נטענה.', loadFail: 'הטעינה נכשלה: {msg}', planning: 'מחשב…', noJourney: 'לא נמצא מסלול עד 3 החלפות.',
     noOriginStops: 'אין תחנה במרחק סביר מנקודת המוצא.', noDestStops: 'אין תחנה במרחק סביר מהיעד.', pickBoth: 'בחרו מאיפה ולאן.',
     direct: 'ישיר', transfer1: 'החלפה אחת', transfers: '{n} החלפות', min: 'דק\'', hour: 'שע\'', walk: 'הליכה', bike2: 'רכיבה',
@@ -32,6 +33,7 @@ const STR = {
     loadingTT: 'Loading the timetable', loadingST: 'Loading the street network (bikes and exact walking)', loadingPL: 'Loading addresses and places', unpacking: 'unpacking…', ready: 'Ready. {trips} trips on {date}.',
     kindStop: 'stop', kindAddress: 'address', kindStreet: 'street', kindCity: 'city', kindPoi: 'place', approxNo: 'nearest: {n}', placesPending: 'Addresses and places are still loading…', noMatch: 'No match. Try a stop name, a street and number, or a city.',
     pickTitle: 'Pick on the map', pickHint: 'Move the map so the marker is on the place', choose: 'Choose', cancel: 'Cancel', nearName: 'near {name}', pointName: 'Point on the map',
+    btnLoc: '📍 My location', btnMap: '🗺️ Pick on the map', build: 'build {v}', updated: 'A new version has loaded.',
     readyStreets: 'Street network loaded.', loadFail: 'Loading failed: {msg}', planning: 'Planning…', noJourney: 'No journey found with up to 3 transfers.',
     noOriginStops: 'No stop within reach of the origin.', noDestStops: 'No stop within reach of the destination.', pickBoth: 'Pick both the origin and the destination.',
     direct: 'direct', transfer1: '1 transfer', transfers: '{n} transfers', min: 'min', hour: 'h', walk: 'walk', bike2: 'bike',
@@ -57,8 +59,8 @@ function applyLang() {
   document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
   $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('toQ');
-  $('fromLoc').textContent = t('myLoc'); $('toLoc').textContent = t('myLoc');
-  $('fromMap').title = t('pickTitle'); $('toMap').title = t('pickTitle');
+  $('fromLoc').textContent = t('btnLoc'); $('toLoc').textContent = t('btnLoc');
+  $('fromMap').textContent = t('btnMap'); $('toMap').textContent = t('btnMap');
   $('langBtn').textContent = lang === 'he' ? 'EN' : 'עב';
   renderDays();
   renderAbout();
@@ -143,6 +145,7 @@ async function loadPlaces() {
   try {
     await call('loadPlaces', { url: `data/${manifest.places.file}?v=${encodeURIComponent(manifest.places.built || manifest.built || '')}` });
     plReady = true;
+    for (const side of ['from', 'to']) if (!place[side] && $(side + 'Q').value.trim().length >= 2) $(side + 'Q').dispatchEvent(new Event('input'));
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); }
 }
 async function loadStreets() {
@@ -155,12 +158,23 @@ async function loadStreets() {
 }
 
 async function init() {
-  if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('sw.js'); } catch (e) { /* offline shell unavailable; fine */ } }
+  if ('serviceWorker' in navigator) {
+    try {
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (hadController && !reloading) { reloading = true; location.reload(); }
+      });
+      const reg = await navigator.serviceWorker.register('sw.js');
+      reg.update().catch(() => {});
+    } catch (e) { /* offline shell unavailable; fine */ }
+  }
   applyLang();
   try {
     manifest = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   renderAbout();
+  if (manifest.built) $('ver').textContent = t('build', { v: manifest.built.replace('T', ' ').slice(5, 16) });
   const today = todayStr();
   const start = manifest.days.some((d) => d.date === today) ? today : manifest.days[0].date;
   renderDays();
@@ -237,18 +251,18 @@ function openPicker(side) {
   $('picker').hidden = false;
   $('pickName').textContent = '…';
   requestAnimationFrame(async () => {
-    if (!pickMap && typeof L !== 'undefined') {
-      pickMap = L.map('pickMap', { zoomControl: false });
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(pickMap);
-      L.control.zoom({ position: lang === 'he' ? 'topleft' : 'topright' }).addTo(pickMap);
-      pickMap.on('moveend', () => nameCenter());
-      pickMap.on('click', (e) => pickMap.panTo(e.latlng));
-    }
-    if (!pickMap) return;
-    pickMap.invalidateSize();
     const other = place[side === 'from' ? 'to' : 'from'];
     const start = place[side] && place[side].lat != null ? place[side] : lastPos || (other && other.lat != null ? other : null);
-    pickMap.setView(start ? [start.lat, start.lon] : [32.08, 34.78], start ? 16 : 11);
+    if (!pickMap) {
+      pickMap = makeMap('pickMap', start ? [start.lat, start.lon] : [32.08, 34.78], start ? 16 : 11);
+      if (!pickMap) return;
+      pickMap.on('moveend', () => nameCenter());
+      pickMap.on('click', (e) => pickMap.easeTo({ center: e.lngLat, duration: 250 }));
+      pickMap.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, showAccuracyCircle: true }), lang === 'he' ? 'top-left' : 'top-right');
+    } else {
+      pickMap.resize();
+      pickMap.jumpTo({ center: start ? [start.lon, start.lat] : [34.78, 32.08], zoom: start ? 16 : 11 });
+    }
     nameCenter();
   });
 }
@@ -275,7 +289,7 @@ $('pickChoose').addEventListener('click', () => {
   $('picker').hidden = true;
 });
 $('pickLocate').addEventListener('click', async () => {
-  try { const p = await getPosition(); lastPos = p; if (pickMap) pickMap.setView([p.lat, p.lon], 16); } catch (e) { $('pickName').textContent = t('noLocation'); }
+  try { const p = await getPosition(); lastPos = p; if (pickMap) pickMap.easeTo({ center: [p.lon, p.lat], zoom: 16 }); } catch (e) { $('pickName').textContent = t('noLocation'); }
 });
 function getPosition() {
   return new Promise((resolve, reject) => {
@@ -351,15 +365,20 @@ function renderResults(r, q) {
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
-// ---------------------------------------------------------------- journey detail + map
-let map = null, mapLayer = null;
-function ensureMap() {
-  if (map || typeof L === 'undefined') return map;
-  map = L.map('map', { zoomControl: false });
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-  L.control.zoom({ position: lang === 'he' ? 'topleft' : 'topright' }).addTo(map);
-  return map;
+// ---------------------------------------------------------------- journey detail + map (MapLibre, OpenFreeMap vector tiles)
+const MAP_STYLE = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'https://tiles.openfreemap.org/styles/dark' : 'https://tiles.openfreemap.org/styles/positron');
+let rtlSet = false;
+function makeMap(container, center, zoom) {
+  if (typeof maplibregl === 'undefined') return null;
+  if (!rtlSet) { try { maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.js', true); } catch (e) {} rtlSet = true; }
+  const m = new maplibregl.Map({ container, style: MAP_STYLE(), center: [center[1], center[0]], zoom, attributionControl: { compact: true }, pitchWithRotate: false });
+  m.addControl(new maplibregl.NavigationControl({ showCompass: false }), lang === 'he' ? 'top-left' : 'top-right');
+  m.on('error', (e) => console.warn('map', e && e.error && e.error.message));
+  return m;
 }
+const whenStyled = (m, fn) => (m.isStyleLoaded() ? fn() : m.once('load', fn));
+let map = null, journeyMarkers = [];
+function ensureMap() { if (!map) map = makeMap('map', [32.08, 34.78], 10); return map; }
 function openDetail(j, q, bikeOnly = false) {
   $('detail').hidden = false;
   $('detailTitle').textContent = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '') : `${fmt(j.depart)} → ${fmt(j.arrive)} · ${dur(j.arrive - j.depart)}`;
@@ -382,18 +401,35 @@ function openDetail(j, q, bikeOnly = false) {
   requestAnimationFrame(() => {
     const m = ensureMap();
     if (!m) return;
-    m.invalidateSize();
-    if (mapLayer) mapLayer.remove();
-    mapLayer = L.featureGroup();
-    for (const l of j.legs) {
-      if (!l.path || l.path.length < 2) continue;
-      const color = l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#5b6470');
-      L.polyline(l.path, { color, weight: l.type === 'ride' ? 5 : 4, dashArray: l.type === 'ride' ? null : '6 6', opacity: .9 }).addTo(mapLayer);
-      if (l.type === 'ride') { L.circleMarker(l.path[0], { radius: 5, color, fillColor: '#fff', fillOpacity: 1 }).addTo(mapLayer); L.circleMarker(l.path[l.path.length - 1], { radius: 5, color, fillColor: '#fff', fillOpacity: 1 }).addTo(mapLayer); }
-    }
-    mapLayer.addTo(m);
-    try { m.fitBounds(mapLayer.getBounds(), { padding: [20, 20] }); } catch (e) { m.setView([32.08, 34.78], 11); }
+    m.resize();
+    whenStyled(m, () => drawJourney(m, j));
   });
+}
+function drawJourney(m, j) {
+  for (const mk of journeyMarkers) mk.remove();
+  journeyMarkers = [];
+  const features = [];
+  const bounds = new maplibregl.LngLatBounds();
+  for (const l of j.legs) {
+    if (!l.path || l.path.length < 2) continue;
+    const color = l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#5b6470');
+    const coords = l.path.map((p) => [p[1], p[0]]);
+    coords.forEach((c) => bounds.extend(c));
+    features.push({ type: 'Feature', properties: { color, ride: l.type === 'ride' ? 1 : 0 }, geometry: { type: 'LineString', coordinates: coords } });
+    if (l.type === 'ride') for (const c of [coords[0], coords[coords.length - 1]]) {
+      const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = color;
+      journeyMarkers.push(new maplibregl.Marker({ element: el }).setLngLat(c).addTo(m));
+    }
+  }
+  const data = { type: 'FeatureCollection', features };
+  if (m.getSource('journey')) m.getSource('journey').setData(data);
+  else {
+    m.addSource('journey', { type: 'geojson', data });
+    m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': .9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+    m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+    m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
+  }
+  if (!bounds.isEmpty()) m.fitBounds(bounds, { padding: 36, duration: 0, maxZoom: 16 });
 }
 $('detailBack').addEventListener('click', () => { $('detail').hidden = true; });
 

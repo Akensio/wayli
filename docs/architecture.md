@@ -121,8 +121,10 @@ toggle, no framework and no build step. Files: `index.html` (shell),
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
 router and street graph, shared with the test harness), `sw.js` (service
 worker: the shell and every downloaded data file are cached, so the app
-works offline once loaded), `styles.css`, `manifest.webmanifest`, icons.
-Leaflet from cdnjs draws the map with OpenStreetMap tiles.
+works offline once loaded; a new build reloads the page once), `styles.css`,
+`manifest.webmanifest`, icons. Maps are MapLibre GL (cdnjs) over OpenFreeMap
+vector tiles (no key, no cost; Positron style, Dark in dark mode) with the
+RTL text plugin for Hebrew and Arabic labels.
 
 Screens: plan (search with station grouping, "my location", day picker,
 time, bicycle choice, results with line chips, journey detail with map and

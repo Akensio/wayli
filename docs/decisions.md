@@ -77,3 +77,8 @@ so they are not re-litigated.
   work in general. Built an offline address book from OpenStreetMap
   (`pipeline/places.py`, `app/places.js`) rather than an online geocoder:
   no third party sees the rider's addresses, no usage limits, works offline.
+- 2026-10-17 Gadi: the raster map looks dated; pick-on-map must be obvious.
+  Switched both maps from Leaflet raster tiles to MapLibre GL with OpenFreeMap
+  vector tiles (free, keyless, crisp, dark mode). The location and map
+  buttons became labelled chips under each field. The app now reloads itself
+  when a new build is deployed and shows its build time.

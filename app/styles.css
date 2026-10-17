@@ -34,12 +34,14 @@ main { flex: 1; overflow: auto; padding: 0 max(16px, env(safe-area-inset-right, 
 .field input[type=text] { width: 100%; padding: 11px 40px 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
 .field .icon { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-2); pointer-events: none; font-size: 14px; }
 .field input[type=text] { padding-inline-start: 34px; padding-inline-end: 12px; }
-.field .locs { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px; }
-.field .loc { background: var(--chip); border: 0; border-radius: 8px; padding: 6px 9px; cursor: pointer; color: var(--ink); font-size: 13px; }
-.field input[type=text] { padding-inline-end: 150px; }
+.chips-row { display: flex; gap: 6px; margin: -2px 0 10px; }
+.chipbtn { background: var(--chip); border: 0; border-radius: 16px; padding: 7px 12px; cursor: pointer; color: var(--ink); font-size: 13px; min-height: 34px; }
+.chipbtn:active { background: var(--line); }
+.field input[type=text] { padding-inline-end: 12px; }
+.status .ver { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
 .pickwrap { position: relative; flex: 1; min-height: 0; }
 #pickMap { position: absolute; inset: 0; background: var(--chip); }
-.crosshair { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -28px 0 0 -14px; pointer-events: none; z-index: 500;
+.crosshair { position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -28px 0 0 -14px; pointer-events: none; z-index: 5;
   background: radial-gradient(circle at 50% 35%, var(--accent) 0 7px, transparent 8px); }
 .crosshair::after { content: ""; position: absolute; left: 13px; top: 14px; width: 2px; height: 14px; background: var(--accent); }
 .pickbar { background: var(--surface); border-top: 1px solid var(--line); padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
@@ -101,4 +103,7 @@ nav.tabs button[aria-selected="true"] { color: var(--accent); font-weight: 700; 
 .empty { color: var(--ink-2); text-align: center; padding: 30px 10px; }
 h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14px 0 8px; font-weight: 600; }
 .error-box { color: var(--warn); font-size: 14px; margin: 6px 0; }
-.leaflet-container { font: inherit; }
+.maplibregl-map { font: inherit; }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+.maplibregl-ctrl-group button { width: 34px; height: 34px; }
+.wayli-pin { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
