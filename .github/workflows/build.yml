@@ -51,7 +51,8 @@ jobs:
       - name: Timetable, the next 7 days
         run: |
           for i in 0 1 2 3 4 5 6; do
-            d=$(TZ=Asia/Jerusalem date -d "+$i day" +%Y%m%d)
+            # the service day: until 03:00 the night still belongs to the previous date
+            d=$(TZ=Asia/Jerusalem date -d "-3 hours +$i day" +%Y%m%d)
             python3 -I pipeline/compile.py data/gtfs.zip --date "$d" --streets data/streets.bin.gz --out "data/timetable-$d.bin.gz"
           done
       - run: python3 pipeline/build_site.py --out site
