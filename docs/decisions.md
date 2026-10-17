@@ -82,3 +82,29 @@ so they are not re-litigated.
   vector tiles (free, keyless, crisp, dark mode). The location and map
   buttons became labelled chips under each field. The app now reloads itself
   when a new build is deployed and shows its build time.
+- 2026-10-17 Gadi: the dark basemap in dark mode is too dark. One light,
+  colourful basemap (OpenFreeMap Liberty) in every theme; it also shows bus
+  stops and landmarks, which the grey Positron did not.
+- 2026-10-17 Gadi: play with the app and improve it by a drastic margin; his
+  list: compact the ways to go, history and saved places, "start a drive"
+  that says when to get off, resume a started trip, live times, re-check a
+  searched trip. All built as v0.2 (see `docs/architecture.md`), plus
+  arrive-by, earlier/later, countdowns, expandable stops, sharing, home and
+  work, settings, install prompt, night service in one file.
+- 2026-10-17 Live times come from Hasadna's Open Bus API straight from the
+  phone: it allows browser calls, needs no key, and SIRI line_ref equals
+  the GTFS route_id, so no relay and no secret. The timetable now stores
+  route_id per route. Delays are estimated on the device from the vehicle's
+  position against its schedule. Rejected: the Ministry's SIRI feed via a
+  relay (credentials, a server), kept as a fallback.
+- 2026-10-17 Gadi: a dark basemap in dark mode is fine if it is sensible and
+  under the user's control. OpenFreeMap "Fiord" (readable streets and
+  labels) is offered as a setting; light Liberty stays the default in both
+  themes; OpenFreeMap "dark" stays rejected.
+- 2026-10-17 Alerts in follow mode use the Notification API through the
+  service worker plus vibration and a short beep, all on the device.
+  Rejected: push notifications from a server (would need a worker and keys)
+  for something the phone can do itself while the trip screen is open.
+- 2026-10-17 A service day's file includes the next calendar day's trips
+  that start before 03:00, shifted by 24 h, because the feed codes night
+  buses on the next date. Rejected: loading two files at night in the app.

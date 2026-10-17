@@ -113,24 +113,63 @@ Known gaps, in rough order of importance:
 - The 10-minute cap on stop-to-stop walks and the 15/20-minute caps on
   access are guesses to revisit with real use.
 
-## The app (v0.1, `app/`)
+## The app (v0.2, `app/`)
 
 An installable web app, Hebrew and right-to-left first with an English
 toggle, no framework and no build step. Files: `index.html` (shell),
 `app.js` (UI), `worker.js` (a Web Worker that holds the data and answers
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
-router and street graph, shared with the test harness), `sw.js` (service
-worker: the shell and every downloaded data file are cached, so the app
-works offline once loaded; a new build reloads the page once), `styles.css`,
+router and street graph, shared with the test harness), `places.js` (the
+address book), `live.js` (real-time client and delay estimate), `follow.js`
+(the trip-following state machine, pure functions), `store.js` (settings,
+history, saved places and the trip in progress, all in localStorage),
+`sw.js` (service worker: the shell and every downloaded data file are
+cached, so the app works offline once loaded; a new build reloads the page
+once, and notification taps reopen the app), `styles.css`,
 `manifest.webmanifest`, icons. Maps are MapLibre GL (cdnjs) over OpenFreeMap
-vector tiles (no key, no cost; Positron style, Dark in dark mode) with the
-RTL text plugin for Hebrew and Arabic labels.
+vector tiles (no key, no cost): the Liberty style by default in every theme,
+and in dark mode the Fiord style when chosen in settings (OpenFreeMap's
+"dark" style was rejected as too dark to read). The RTL text plugin shapes
+Hebrew and Arabic labels.
 
-Screens: plan (search with station grouping, "my location", day picker,
-time, bicycle choice, results with line chips, journey detail with map and
-legs, star to save), nearby (stops around the device with the lines serving
-them, tap for the next departures, "from here"/"to here"), favorites (saved
-trips and stops, this device only), about.
+Screens: plan, nearby, saved, more (settings and about), plus overlays for a
+journey, a stop, a trip's stops, the map picker, the place chooser and the
+trip being followed.
+
+Planning: from and to can be a stop or station, an address, a street, a
+place, a city, the device's location or a point picked on the map; the
+search box lists saved and recent places when empty. Depart-at or arrive-by
+(a two-hour window ending at the target, latest departure first); day
+picker over the published service days, with "tonight" until 03:00 since a
+service day runs past midnight; bicycle choice; the longest walk to a stop
+is a setting (10 to 30 minutes). Results come back grouped: journeys that
+board and alight at the same stops are one card with its departure times
+("also at 08:17, 08:32") and the alternative lines of a leg shown together
+("5 / 18"); "leave in 4 min" counts down and departed options grey out;
+earlier/later buttons shift the window; no results offers an hour later or
+a longer walk. The last search and its results come back when the app is
+reopened within six hours, with one tap to plan it again from now; the
+eight most recent searches sit under the form and re-plan from now.
+
+Journey detail: map with the legs, pins at boarding and alighting stops and
+dots at the stops between; every ride leg expands to its stops and times;
+live badge per ride leg; start trip; share (Web Share with a text summary
+and a link that opens the app with the same query); star to save.
+
+Trip following ("start a trip"): the journey is stored on the device and
+followed with the geolocation watch, a screen wake lock and a five-second
+clock. `follow.js` advances through the legs from the rider's position
+(within 60 m of a stop, nearest stop along the ride with hysteresis, never
+backwards) and falls back to the timetable clock when there is no position.
+It raises "one more stop" when the alighting stop is next or within 350 m,
+"get off here" at the stop, and "arrived" at the end: vibration, a short
+beep and a notification (through the service worker, so it shows with the
+screen off), each switchable in settings. The screen shows the current
+step in large type, the vehicle's live position and delay, the remaining
+legs and a "next step" button for when GPS is wrong. Closing the app does
+not end the trip: a bar under the header offers to resume it, and if the
+app was on the follow screen it reopens there. A trip ends by the rider's
+"end", by arrival, or by going stale (45 minutes past its arrival).
 
 Search and addresses: `pipeline/places.py` compiles an offline address book
 from OpenStreetMap (streets with their city from the nearest transit stop,
@@ -145,10 +184,28 @@ on a map (crosshair, choose), and gets its name from the same book in reverse:
 nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
+Nearby and stops: stops around the device with the lines serving them and
+the walk in minutes; a stop shows its next departures with live times
+(below), refreshed every 45 seconds while open; a departure opens the
+trip's full stop list with where the vehicle is now; "from here" and
+"to here" feed the planner; stars save stops. Saved: home and work (one
+tap plans a trip there from the device's location), other saved places,
+saved trips, saved stops. Settings: language, dark-mode map, longest walk,
+live times on/off with a plain statement of what is sent, alerts, sound and
+vibration, a test alert, add to home screen, clear history.
+
+Time is Israel time whatever the phone's zone (`Intl` with
+`Asia/Jerusalem`), and "now" is expressed in seconds on the selected
+service day, so countdowns, live matching and following all agree past
+midnight.
+
 Data: `data/manifest.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
 being planned) and the street graph (10.7 MB, loaded after the first answer;
-until it is in, points use straight-line access with a detour factor).
+until it is in, points use straight-line access with a detour factor). A
+service day's file also carries the next calendar day's trips that start
+before 03:00, shifted by 24 hours, because the feed codes a 00:10 night bus
+on the next date; so the night is complete in one file.
 
 Deployment: `pipeline/build_site.py` assembles `site/`; the GitHub Actions
 workflow in `.github/workflows/build.yml` runs nightly (and on push to
@@ -156,9 +213,9 @@ workflow in `.github/workflows/build.yml` runs nightly (and on push to
 next 7 days, and deploys `site/` to GitHub Pages, turning Pages on by itself the first
 time (`actions/configure-pages` with `enablement: true`). No server, no cost.
 
-Not in v0.1: real-time, crowd reports, elevation, trips that cross midnight,
-stop name translations, Arabic, line pages, the bike-on-board rules for
-light rail.
+Not yet: crowd reports, elevation, stop name translations, Arabic, line
+pages beyond a trip's stop list, the bike-on-board rules for light rail,
+fares.
 
 ## Compact timetable (format 2, built by `pipeline/compile.py`)
 
@@ -203,13 +260,39 @@ station's platforms into one result.
 
 ## Real-time
 
-- Preferred: the Ministry of Transport SIRI feed, relayed by the worker
-  because its credentials cannot be embedded in a public app. Registration
-  with the Ministry can take time, so it starts early.
-- Alternative or complement: Hasadna's Open Bus project
-  (open-bus-stride-api.hasadna.org.il) records the same SIRI feed and
-  publishes it openly. Whether it is fresh enough for live arrivals is an
-  open question to measure.
+Done in v0.2 with Hasadna's Open Bus project (open-bus-stride-api.hasadna.org.il),
+which records the Ministry of Transport's SIRI vehicle feed every minute and
+serves it with `Access-Control-Allow-Origin: *`, so the phone asks it
+directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
+
+- `siri_vehicle_locations/list` answers in 1 to 3 s with a closed
+  `recorded_at_time` window and the right sort order: a line query
+  (`siri_routes__line_ref`) must sort by `recorded_at_time desc`, an area
+  query (lat/lon bounds) by `id desc`; other orders time out. A few rows
+  carry impossible future times and are dropped.
+- SIRI's `line_ref` is the GTFS `route_id`, which the timetable now stores
+  per route, and a ride's `scheduled_start_time` (UTC) is the trip's first
+  departure, so a vehicle maps to a timetable trip by (route, first
+  departure) with no extra data. Night trips are matched on the service day
+  they are shown on.
+- Delay is estimated on the device: the vehicle's position is projected on
+  its trip's stop sequence, the scheduled time at that point is compared
+  with when it was seen, and the result is applied to the stops ahead;
+  past the rider's stop it reads "passed". A vehicle more than 600 m off
+  its stop sequence gives no estimate; one older than four minutes is
+  marked stale. Mismatches between the feed and the operator's actual
+  schedule show up as implausible delays; rough, but honest about it.
+- Where it shows: badge per ride leg in a journey around now (and the
+  vehicle on the map), live times for a stop's next departures (one area
+  query, then by line for what it missed), the vehicle's place in a trip's
+  stop list, and the current vehicle while following a trip (every 30 s).
+- Privacy: while on, the phone sends Hasadna the line numbers and the area
+  it looks at, and Hasadna sees its IP, as any website does. The settings
+  screen says exactly this, and one switch turns live times off.
+
+The Ministry's own SIRI feed stays a fallback: it would need a relay with
+credentials, worth building only if Hasadna's copy proves too stale or
+unreliable in daily use.
 
 ## Crowd reports
 

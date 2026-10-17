@@ -8,12 +8,14 @@ The name sounds like וואי לי. The project is free software under the
 GNU AGPL-3.0 (see `LICENSE`).
 
 **Status (October 2026): live at https://akensio.github.io/wayli/.** One
-weekday of the national timetable compiles to a 3 MB file and the street
+service day of the national timetable compiles to a 3 MB file and the street
 network of the whole country to 10 MB. The app in `app/` plans trips (with
-bikes), shows nearby stops and departures, draws the journey on a map,
-saves favorites and works offline. A GitHub Action rebuilds the data every
-night and publishes to GitHub Pages. No real-time and no crowd reports yet;
-see "Roadmap" below.
+bikes, depart-at or arrive-by), groups the ways to go, shows live times from
+Hasadna's Open Bus data, follows a trip and says when to get off, remembers
+recent and saved places, shows nearby stops and departures, draws the journey
+on a map, shares a trip as a link and works offline. A GitHub Action rebuilds
+the data every night and publishes to GitHub Pages. No crowd reports yet; see
+"Roadmap" below.
 
 ## What it will do
 
@@ -77,10 +79,14 @@ Decisions and their dates are in `docs/decisions.md`.
    routes.
 2. Nightly pipeline: fetch GTFS and OpenStreetMap, compile, publish. Done
    as a GitHub Actions workflow (`.github/workflows/build.yml`).
-3. The app: planner, stops, map, favorites, Hebrew/RTL, offline. First
-   version done (`app/`); line pages and translations still to come.
-4. Real-time arrivals (SIRI access from the Ministry of Transport, or
-   Hasadna's Open Bus data).
+3. The app: planner, stops, map, favorites, Hebrew/RTL, offline. Done
+   (`app/`), then grown into v0.2: grouped results, arrive-by, history and
+   saved places, trip following with get-off alerts, a trip that survives
+   closing the app, sharing, settings. Translations of stop names and line
+   pages still to come.
+4. Real-time: done with Hasadna's Open Bus data, read straight from the
+   phone (no key, no relay). The Ministry's SIRI feed would only be worth
+   a relay if Hasadna's copy turns out too stale or unreliable.
 5. Crowd reports and the reliability statistics.
 
 ## Run the test yourself
@@ -117,9 +123,11 @@ the first run.
   gtfs.mot.gov.il.
 - Streets: OpenStreetMap, the Israel and Palestine extract (Geofabrik or the
   openstreetmap.fr mirror), ODbL.
-- Real-time: the Ministry's SIRI feed (needs registration), and Hasadna's
-  Open Bus project (open-bus-stride-api.hasadna.org.il), which records the
-  same feed and publishes it openly.
+- Real-time: Hasadna's Open Bus project (open-bus-stride-api.hasadna.org.il),
+  which records the Ministry's SIRI vehicle feed and publishes it openly
+  with open CORS, so the phone asks it directly. While live times are on,
+  the only thing that leaves the phone is which lines and which area it is
+  looking at; one switch in settings turns them off.
 
 ## Sustainability
 

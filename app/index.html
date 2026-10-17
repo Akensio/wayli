@@ -20,10 +20,12 @@
 <header>
   <h1><img src="icons/icon-192.png" alt=""> Wayli</h1>
   <span class="spacer"></span>
+  <span class="offline" id="offline" hidden data-t="offline">לא מקוון</span>
   <button type="button" class="lang" id="langBtn">EN</button>
 </header>
 <main>
   <div class="status" id="status"><span id="statusText">טוען…</span><div class="bar" id="statusBar"><div></div></div><span class="ver" id="ver"></span></div>
+  <button type="button" class="resume" id="resumeBar" hidden><span class="ic">🚌</span><span class="txt" id="resumeText"></span><span class="go" data-t="resume">המשך</span></button>
 
   <section class="screen" id="screen-plan">
     <div class="card">
@@ -40,7 +42,11 @@
       </div>
       <div class="chips-row"><button type="button" class="chipbtn" id="toLoc">📍 המיקום שלי</button><button type="button" class="chipbtn" id="toMap">🗺️ בחירה במפה</button></div>
       <div class="row">
-        <button type="button" class="swap" id="swap">⇅ <span data-t="swap">החלף</span></button>
+        <button type="button" class="swap" id="swap" title="החלף">⇅</button>
+        <div class="seg small" id="timeMode">
+          <button type="button" data-mode="depart" aria-pressed="true" data-t="departAt">יציאה</button>
+          <button type="button" data-mode="arrive" aria-pressed="false" data-t="arriveBy">הגעה עד</button>
+        </div>
         <select id="day"></select>
         <input type="time" id="at">
         <button type="button" class="swap" id="nowBtn" data-t="now">עכשיו</button>
@@ -58,6 +64,7 @@
       <div class="error-box" id="planError" hidden></div>
     </div>
     <div id="results"></div>
+    <div id="recentBox"></div>
   </section>
 
   <section class="screen" id="screen-nearby" hidden>
@@ -69,22 +76,35 @@
     <div id="nearbyList" class="stops-list"><div class="empty" data-t="nearbyEmpty">לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.</div></div>
   </section>
 
-  <section class="screen" id="screen-fav" hidden>
+  <section class="screen" id="screen-saved" hidden>
+    <h2 class="sec" data-t="savedPlaces">מקומות שמורים</h2>
+    <div id="savedPlaces" class="stops-list"></div>
     <h2 class="sec" data-t="favTrips">מסלולים שמורים</h2>
     <div id="favTrips"></div>
     <h2 class="sec" data-t="favStops">תחנות שמורות</h2>
     <div id="favStops" class="stops-list"></div>
   </section>
 
-  <section class="screen" id="screen-about" hidden>
+  <section class="screen" id="screen-more" hidden>
+    <div class="card settings">
+      <h2 class="sec" style="margin-top:0" data-t="settings">הגדרות</h2>
+      <div class="setrow"><span data-t="setLang">שפה</span><div class="seg small" id="setLang"><button type="button" data-v="he">עברית</button><button type="button" data-v="en">English</button></div></div>
+      <div class="setrow"><span data-t="setMap">מפה במצב כהה</span><div class="seg small" id="setMap"><button type="button" data-v="auto" data-t="mapLight">בהירה</button><button type="button" data-v="dark" data-t="mapDark">כהה</button></div></div>
+      <div class="setrow"><span data-t="setWalk">הליכה מרבית לתחנה</span><div class="seg small" id="setWalk"><button type="button" data-v="10">10</button><button type="button" data-v="15">15</button><button type="button" data-v="20">20</button><button type="button" data-v="30">30</button></div></div>
+      <label class="setrow check"><span data-t="setLive">זמני אמת</span><input type="checkbox" id="setLive"></label>
+      <div class="muted" data-t="liveNote">זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.</div>
+      <label class="setrow check"><span data-t="setNotify">התראות בנסיעה (לרדת בתחנה)</span><input type="checkbox" id="setNotify"></label>
+      <label class="setrow check"><span data-t="setSound">צליל ורטט בהתראה</span><input type="checkbox" id="setSound"></label>
+      <div class="row" style="margin-top:8px"><button type="button" class="ghost" id="testAlert" data-t="testAlert">בדיקת התראה</button><button type="button" class="ghost" id="installBtn" hidden data-t="install">הוספה למסך הבית</button><button type="button" class="ghost" id="clearHistory" data-t="clearHistory">מחיקת היסטוריה</button></div>
+    </div>
     <div class="card" id="aboutBox"></div>
   </section>
 </main>
 <nav class="tabs" role="tablist">
   <button type="button" role="tab" data-screen="plan" aria-selected="true"><span class="ic">🧭</span><span data-t="tabPlan">מסלול</span></button>
   <button type="button" role="tab" data-screen="nearby" aria-selected="false"><span class="ic">📍</span><span data-t="tabNearby">בקרבתי</span></button>
-  <button type="button" role="tab" data-screen="fav" aria-selected="false"><span class="ic">★</span><span data-t="tabFav">מועדפים</span></button>
-  <button type="button" role="tab" data-screen="about" aria-selected="false"><span class="ic">ⓘ</span><span data-t="tabAbout">אודות</span></button>
+  <button type="button" role="tab" data-screen="saved" aria-selected="false"><span class="ic">★</span><span data-t="tabSaved">שמורים</span></button>
+  <button type="button" role="tab" data-screen="more" aria-selected="false"><span class="ic">⚙</span><span data-t="tabMore">עוד</span></button>
 </nav>
 
 <div class="detail" id="detail" hidden>
@@ -95,6 +115,11 @@
   </div>
   <div class="body">
     <div id="map"></div>
+    <div class="actions">
+      <button type="button" class="primary slim" id="detailStart" data-t="startTrip">▶ התחלת נסיעה</button>
+      <button type="button" class="ghost" id="detailShare" data-t="share">שיתוף</button>
+    </div>
+    <div class="muted center" id="detailNote"></div>
     <div class="legs" id="detailLegs"></div>
   </div>
 </div>
@@ -128,13 +153,64 @@
       <div class="row" style="margin:8px 0">
         <button type="button" class="ghost" id="stopFrom" data-t="fromHere">מכאן</button>
         <button type="button" class="ghost" id="stopTo" data-t="toHere">לכאן</button>
+        <span class="spacer" style="flex:1"></span>
+        <button type="button" class="ghost" id="stopLive" data-t="refresh">רענון</button>
       </div>
-      <h2 class="sec" data-t="nextDeps">היציאות הבאות</h2>
+      <div class="row"><h2 class="sec" style="margin:8px 0" data-t="nextDeps">היציאות הבאות</h2><span class="muted" id="stopLiveNote"></span></div>
       <div id="stopDeps"></div>
     </div>
   </div>
 </div>
 
+<div class="detail" id="tripDetail" hidden>
+  <div class="bar">
+    <button type="button" class="ghost" id="tripBack" data-t="back">חזרה</button>
+    <h2 id="tripTitle"></h2>
+  </div>
+  <div class="body">
+    <div class="legs">
+      <div class="muted" id="tripMeta"></div>
+      <div id="tripStops"></div>
+    </div>
+  </div>
+</div>
+
+<div class="detail" id="chooser" hidden>
+  <div class="bar">
+    <button type="button" class="ghost" id="chCancel" data-t="cancel">ביטול</button>
+    <h2 id="chTitle"></h2>
+  </div>
+  <div class="body">
+    <div class="legs">
+      <div class="field">
+        <span class="icon">⌕</span>
+        <input type="text" id="chQ" autocomplete="off" enterkeyhint="search">
+        <div class="dropdown" id="chDrop" hidden></div>
+      </div>
+      <div class="chips-row"><button type="button" class="chipbtn" id="chLoc">📍 המיקום שלי</button><button type="button" class="chipbtn" id="chMap">🗺️ בחירה במפה</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="detail follow" id="follow" hidden>
+  <div class="bar">
+    <button type="button" class="ghost" id="followHide" title="הסתרה">⌄</button>
+    <button type="button" class="ghost" id="followEnd" data-t="endTrip">סיום</button>
+    <h2 id="followTitle"></h2>
+    <span class="livebadge" id="followLive" hidden></span>
+  </div>
+  <div class="body">
+    <div id="followMap"></div>
+    <div class="nowcard" id="followCard">
+      <div class="big" id="followBig"></div>
+      <div class="small" id="followSmall"></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="ghost" id="followSkip" data-t="nextStep">השלב הבא ›</button><span class="muted" id="followGps"></span></div>
+    </div>
+    <div class="legs" id="followNext"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js" crossorigin=""></script>
 <script type="module" src="app.js"></script>
 </body>

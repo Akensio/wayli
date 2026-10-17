@@ -1,7 +1,7 @@
 // Wayli service worker: the app shell works offline; data files are cached once downloaded.
-const SHELL = 'wayli-shell-v3';
+const SHELL = 'wayli-shell-v4';
 const DATA = 'wayli-data-v1';
-const SHELL_FILES = ['./', './index.html', './app.js', './worker.js', './raptor.js', './streets.js', './places.js', './styles.css',
+const SHELL_FILES = ['./', './index.html', './app.js', './worker.js', './raptor.js', './streets.js', './places.js', './live.js', './store.js', './follow.js', './styles.css',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-180.png'];
 
 self.addEventListener('install', (e) => {
@@ -26,4 +26,12 @@ self.addEventListener('fetch', (e) => {
       return r;
     })));
   }
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cs) => {
+    for (const c of cs) if ('focus' in c) return c.focus();
+    return self.clients.openWindow('./');
+  }));
 });

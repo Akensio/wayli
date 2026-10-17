@@ -42,6 +42,7 @@ TRANSFER_SLACK = 90     # s, minimum between alighting and boarding at the same 
 WALK_CHAIN_MAX = 600    # s, longest chain of footpaths the router may string together
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
 INTERCITY_KM = 15.0     # a bus line whose ends are in different cities this far apart counts as intercity (luggage compartment)
+NIGHT_END = 3 * 3600        # s: trips of the next calendar day starting before this hour belong to this night
 
 
 def route_cities(long_name):
@@ -141,7 +142,11 @@ def main():
             feed_info = {"feed_start_date": min(starts), "feed_end_date": max(ends), "feed_version": f"calendar {min(starts)}-{max(ends)}"}
     log(f"service day {args.date}")
     active = active_services(zf, args.date)
-    log(f"{len(active)} active service ids")
+    # the night after: the feed codes trips after midnight on the next calendar day (00:10, not 24:10),
+    # so they are added to this service day shifted by 24 h, and the day runs until about 03:00
+    next_date = (datetime.datetime.strptime(args.date, "%Y%m%d") + datetime.timedelta(days=1)).strftime("%Y%m%d")
+    active_next = active_services(zf, next_date)
+    log(f"{len(active)} active service ids, {len(active_next)} on the next day")
 
     agencies = {}
     if "agency.txt" in names:
@@ -154,10 +159,13 @@ def main():
                                      r.get("agency_id", ""), int(r.get("route_type", "3") or 3))
 
     trips_raw = {}  # trip_id -> (route_id, headsign)
+    trips_next = {}  # next-day trips; kept only if they start before NIGHT_END, shifted by a day
     for r in rows(zf, "trips.txt"):
         if r["service_id"] in active:
             trips_raw[r["trip_id"]] = (r["route_id"], r.get("trip_headsign", ""))
-    log(f"{len(trips_raw)} trips on that day (of all trips in the feed)")
+        if r["service_id"] in active_next:
+            trips_next[r["trip_id"]] = (r["route_id"], r.get("trip_headsign", ""))
+    log(f"{len(trips_raw)} trips on that day, {len(trips_next)} on the next (of all trips in the feed)")
 
     # ---- stop_times: stream the big file, keep only the day's trips ----
     per_trip = defaultdict(list)
@@ -167,19 +175,37 @@ def main():
         col = {name: i for i, name in enumerate(header)}
         ti, ai, di, si, qi = (col["trip_id"], col["arrival_time"], col["departure_time"],
                               col["stop_id"], col["stop_sequence"])
+        skip_next = set()   # next-day trips that start too late to belong to this night
         for line in f:
             n_lines += 1
             tid = line[:line.find(",")]
-            if tid not in trips_raw:
+            today = tid in trips_raw
+            if not today and (tid not in trips_next or tid in skip_next):
                 continue
             if '"' in line:
                 parts = next(csv.reader([line]))
             else:
                 parts = line.rstrip("\r\n").split(",")
-            per_trip[tid].append((int(parts[qi]), parts[si], hms(parts[ai]), hms(parts[di])))
+            ev = (int(parts[qi]), parts[si], hms(parts[ai]), hms(parts[di]))
+            if not today and tid not in per_trip and ev[3] >= NIGHT_END:
+                skip_next.add(tid)   # rows of a trip come in sequence order: the first one is its start
+                continue
+            per_trip[tid].append(ev)
             if n_lines % 5_000_000 == 0:
                 log(f"  stop_times: {n_lines/1e6:.0f}M lines read")
-    log(f"stop_times: {n_lines} lines, {sum(len(v) for v in per_trip.values())} kept, {time.time()-t0:.0f}s")
+    # next-day trips starting before NIGHT_END join this day a day later; the rest of them go
+    n_night = 0
+    for tid in list(per_trip):
+        if tid not in trips_next:
+            continue
+        evs = per_trip[tid]
+        if min(e[3] for e in evs) < NIGHT_END:
+            per_trip[tid + "+"] = [(q, s_, a + 86400, d + 86400) for q, s_, a, d in evs]
+            trips_raw[tid + "+"] = trips_next[tid]
+            n_night += 1
+        if tid not in trips_raw:
+            del per_trip[tid]
+    log(f"stop_times: {n_lines} lines, {sum(len(v) for v in per_trip.values())} kept ({n_night} trips of the night after), {time.time()-t0:.0f}s")
 
     # ---- stops: index only the ones used that day ----
     stops_raw = {}
@@ -245,7 +271,8 @@ def main():
         if route_id not in route_index:
             route_index[route_id] = len(route_list)
             short, long_, ag, rtype = routes_raw[route_id]
-            route_list.append([short, long_, agencies.get(ag, ag), rtype])
+            # the GTFS route_id last: it is the SIRI line_ref, which real-time data is keyed by
+            route_list.append([short, long_, agencies.get(ag, ag), rtype, int(route_id) if route_id.isdigit() else route_id])
 
     # ---- arrays ----
     P = len(patterns)

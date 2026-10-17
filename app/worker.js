@@ -90,9 +90,16 @@ function resolvePlace(place, mode, maxSeconds) {
 function legOut(l, q) {
   const o = { type: l.type, depart: l.depart, arrive: l.arrive, seconds: l.seconds };
   if (l.type === 'ride') {
+    const p = l.pattern, ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
+    const base = tt.tripTimesOff[p] + (l.trip - tt.patTripsOff[p]) * ns;
+    let bp = -1;   // board position on the pattern; a pattern can pass a stop twice, so match the time too
+    for (let i = 0; i < ns; i++) if (tt.patStops[tt.patStopsOff[p] + i] === l.from && tt.dep[base + i] === l.depart) { bp = i; break; }
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), stops: l.stops, line: routeLabel(l.route),
       headsign: headsign(l.route), agency: l.route[2], routeType: l.route[3],
-      path: l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]) });
+      trip: l.trip, routeId: l.route[4] ?? null, firstDep: tt.dep[base], boardPos: bp,
+      path: l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]),
+      // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
+      stopsAlong: l.via.map((s, i) => ({ stop: s, name: tt.stops[s][1], lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + bp + i], dep: tt.dep[base + bp + i] })) });
   } else if (l.type === 'walk') {
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), path: [[tt.stopLat[l.from], tt.stopLon[l.from]], [tt.stopLat[l.to], tt.stopLon[l.to]]] });
   } else if (l.type === 'access') {
@@ -114,6 +121,23 @@ function pathTo(point, stop, mode, reverse) {
   }
   if (!path) path = [[point.lat, point.lon], [tt.stopLat[stop], tt.stopLon[stop]]];
   return reverse ? path.reverse() : path;
+}
+
+/**
+ * Journeys that board and alight at the same stops, in the same order, are one way to go at several
+ * times, possibly with different lines on a leg. Groups keep the journey order (earliest first) and list
+ * the indices of their options and the distinct lines per leg.
+ */
+function groupJourneys(journeys) {
+  const byKey = new Map(), groups = [];
+  journeys.forEach((j, idx) => {
+    const key = j.legs.map((l) => l.type === 'ride' ? `r${l.from.stop}-${l.to.stop}` : l.type === 'walk' ? `w${l.from.stop}-${l.to.stop}` : l.type === 'access' ? `a${l.to.stop}` : `e${l.from.stop}`).join('|');
+    let g = byKey.get(key);
+    if (!g) { g = { options: [], lines: j.legs.map(() => []) }; byKey.set(key, g); groups.push(g); }
+    g.options.push(idx);
+    j.legs.forEach((l, i) => { if (l.type === 'ride' && !g.lines[i].includes(l.line)) g.lines[i].push(l.line); });
+  });
+  return groups;
 }
 
 const ops = {
@@ -152,15 +176,21 @@ const ops = {
     const merged = hasDigit ? [...top, ...stops, ...rest] : [...stops.slice(0, 5), ...top, ...rest, ...stops.slice(5)];
     return { results: merged.slice(0, limit + 4), placesLoaded: !!pl };
   },
-  plan({ from, to, fromTime, toTime, bike = 'none', folding = false, weekday = true, maxTransfers = 3 }) {
+  /**
+   * Journeys between two places in a departure window; with arriveBy, the window ends at toTime and
+   * only journeys arriving by then are kept. maxWalk (s) bounds the walk to the first and from the last stop.
+   */
+  plan({ from, to, fromTime, toTime, bike = 'none', folding = false, weekday = true, maxTransfers = 3, maxWalk = 900, arriveBy = false }) {
     const t0 = performance.now();
     const q = {
-      from: resolvePlace(from, bike === 'none' ? 'walk' : 'bike', bike === 'none' ? 900 : 1200),
-      to: resolvePlace(to, bike === 'along' ? 'bike' : 'walk', bike === 'along' ? 1200 : 900),
+      from: resolvePlace(from, bike === 'none' ? 'walk' : 'bike', bike === 'none' ? maxWalk : Math.max(1200, maxWalk)),
+      to: resolvePlace(to, bike === 'along' ? 'bike' : 'walk', bike === 'along' ? Math.max(1200, maxWalk) : maxWalk),
     };
-    if (!q.from.places.length || !q.to.places.length) return { journeys: [], reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops', ms: 0 };
+    if (!q.from.places.length || !q.to.places.length) return { journeys: [], groups: [], reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops', ms: 0 };
     const r = profile(tt, q.from.places, q.to.places, fromTime, toTime, { maxTransfers, bikeOnBoard: bike === 'along', folding, weekday });
-    const journeys = r.journeys.map((j) => ({
+    let found = r.journeys;
+    if (arriveBy) found = found.filter((j) => j.arrive <= toTime);
+    const journeys = found.map((j) => ({
       depart: j.depart, arrive: j.arrive, transfers: j.transfers, walkSeconds: j.walkSeconds,
       legs: j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q)),
     }));
@@ -169,7 +199,19 @@ const ops = {
       const br = route(st, q.from.point.lat, q.from.point.lon, q.to.point.lat, q.to.point.lon, 'bike', 3 * 3600);
       if (br) bikeOnly = { seconds: br.seconds, metres: br.metres, path: br.path };
     }
-    return { journeys, bikeOnly, candidates: r.candidates, streets: !!st, ms: performance.now() - t0 };
+    return { journeys, groups: groupJourneys(journeys), bikeOnly, candidates: r.candidates, streets: !!st, ms: performance.now() - t0 };
+  },
+  /** One trip's every stop with times, plus what identifies it in real-time data. */
+  tripStops({ trip }) {
+    const p = tt.tripPat[trip], ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
+    const base = tt.tripTimesOff[p] + (trip - tt.patTripsOff[p]) * ns;
+    const r = tt.routes[tt.patRoute[p]];
+    const stops = [];
+    for (let i = 0; i < ns; i++) {
+      const s = tt.patStops[tt.patStopsOff[p] + i];
+      stops.push({ ...stopOut(s), arr: tt.arr[base + i], dep: tt.dep[base + i] });
+    }
+    return { trip, routeId: r[4] ?? null, line: routeLabel(r), headsign: headsign(r), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
   },
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
   reverse({ lat, lon }) {
@@ -200,12 +242,12 @@ const ops = {
     for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {
       const p = tt.stopPats[2 * i], pos = tt.stopPats[2 * i + 1];
       const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
-      if (pos === ns - 1) continue;
+      if (pos === ns - 1) continue;   // a vehicle ending here is not a departure
       const r = tt.routes[tt.patRoute[p]];
       const tFirst = tt.patTripsOff[p], tEnd = tt.patTripsOff[p + 1], base = tt.tripTimesOff[p];
       for (let t = tFirst; t < tEnd; t++) {
         const d = tt.dep[base + (t - tFirst) * ns + pos];
-        if (d >= fromTime) out.push({ time: d, line: routeLabel(r), headsign: headsign(r), routeType: r[3], agency: r[2], trip: t });
+        if (d >= fromTime) out.push({ time: d, line: routeLabel(r), headsign: headsign(r), routeType: r[3], agency: r[2], trip: t, routeId: r[4] ?? null, firstDep: tt.dep[base + (t - tFirst) * ns], last: pos === ns - 1 });
       }
     }
     out.sort((a, b) => a.time - b.time);
