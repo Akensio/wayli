@@ -7,18 +7,21 @@ instead of Moovit or Bus Nearby.
 The name sounds like וואי לי. The project is free software under the
 GNU AGPL-3.0 (see `LICENSE`).
 
-**Status (October 2026): first usable app.** One weekday of the national
-timetable compiles to a 3 MB file and the street network of the whole
-country to 10.7 MB. The app in `app/` plans trips (with bikes), shows
-nearby stops and departures, draws the journey on a map, saves favorites
-and works offline. It deploys to GitHub Pages by a nightly GitHub Action.
-No real-time and no crowd reports yet; see "Roadmap" below.
+**Status (October 2026): live at https://akensio.github.io/wayli/.** One
+weekday of the national timetable compiles to a 3 MB file and the street
+network of the whole country to 10 MB. The app in `app/` plans trips (with
+bikes), shows nearby stops and departures, draws the journey on a map,
+saves favorites and works offline. A GitHub Action rebuilds the data every
+night and publishes to GitHub Pages. No real-time and no crowd reports yet;
+see "Roadmap" below.
 
 ## What it will do
 
 - Plan trips with any number of transfers across modes, bus to train to light
   rail in one query. This is the feature everything else is built around.
 - Live arrivals at a stop, nearby stops, line search, a map, favorites.
+- Search that understands addresses, streets, cities and places, offline,
+  from OpenStreetMap: nothing you type leaves your phone.
 - Hebrew and right-to-left as first-class, not an afterthought.
 - Bicycles as a real mode: ride to the station, ride between legs, take the
   bike on the train where allowed.

@@ -70,3 +70,10 @@ so they are not re-litigated.
   (`app/`), deployed by a nightly GitHub Action to GitHub Pages: one
   timetable file per day, the street graph loaded lazily, a service worker
   for offline. Testing through Claude artifacts is abandoned.
+- 2026-10-17 Live: Gadi enabled Pages (source: GitHub Actions) and
+  squash-merged the branch (PR #1); the first workflow run built 7 days and
+  the street graph in 9 minutes and published https://akensio.github.io/wayli/.
+- 2026-10-17 Gadi: the app did not find "הורדים 4, גבעתיים"; addresses must
+  work in general. Built an offline address book from OpenStreetMap
+  (`pipeline/places.py`, `app/places.js`) rather than an online geocoder:
+  no third party sees the rider's addresses, no usage limits, works offline.

@@ -16,7 +16,7 @@ import shutil
 import struct
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-APP_FILES = ["index.html", "app.js", "worker.js", "raptor.js", "streets.js", "styles.css", "sw.js", "manifest.webmanifest"]
+APP_FILES = ["index.html", "app.js", "worker.js", "raptor.js", "streets.js", "places.js", "styles.css", "sw.js", "manifest.webmanifest"]
 
 
 def header_of(path):
@@ -56,6 +56,12 @@ def main():
         h = header_of(sp)
         shutil.copy(sp, out / "data" / sp.name)
         streets = {"file": sp.name, "bytes": sp.stat().st_size, "nodes": h["counts"]["nodes"], "built": h.get("built")}
+    places = None
+    pp = data / "places.bin.gz"
+    if pp.exists():
+        h = header_of(pp)
+        shutil.copy(pp, out / "data" / pp.name)
+        places = {"file": pp.name, "bytes": pp.stat().st_size, "counts": h["counts"], "built": h.get("built")}
     first = header_of(data / days[0]["file"])
     manifest = {
         "built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -63,10 +69,11 @@ def main():
                  "version": (first.get("feed") or {}).get("feed_version")},
         "days": days,
         "streets": streets,
+        "places": places,
     }
     (out / "data" / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
     total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
-    print(f"site: {len(days)} days, streets {'yes' if streets else 'no'}, {total/1e6:.1f} MB in {out}")
+    print(f"site: {len(days)} days, streets {'yes' if streets else 'no'}, places {'yes' if places else 'no'}, {total/1e6:.1f} MB in {out}")
 
 
 if __name__ == "__main__":

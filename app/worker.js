@@ -1,8 +1,9 @@
 // Wayli worker: holds the timetable and the street graph, answers every query off the main thread.
 import { parseTimetable, searchStops, profile, fmtTime, routeLabel } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
+import { parsePlaces, searchPlaces, kindLabel, reverseGeocode } from './places.js';
 
-let tt = null, st = null;
+let tt = null, st = null, pl = null;
 const post = (m) => self.postMessage(m);
 
 async function fetchContainer(url, label) {
@@ -126,8 +127,30 @@ const ops = {
     st = parseStreets(buf);
     return { nodes: st.M };
   },
-  search({ q, limit = 10 }) {
-    return searchStops(tt, q, limit).map((g) => ({ key: g.key, name: g.name, city: g.city, stops: g.stops, lat: g.lat, lon: g.lon, code: g.code, platforms: g.stops.length }));
+  async loadPlaces({ url }) {
+    const buf = await fetchContainer(url, 'places');
+    pl = parsePlaces(buf);
+    return pl.header.counts;
+  },
+  /** Stops and stations first, then addresses, streets, places and cities from the address book. */
+  search({ q, limit = 10, lang = 'he', near = null }) {
+    let stops = searchStops(tt, q, limit).map((g) => ({ kind: 'stop', key: g.key, name: g.name, city: g.city, stops: g.stops, lat: g.lat, lon: g.lon, code: g.code, platforms: g.stops.length }));
+    if (near) {
+      // nearby first, search order within each distance band
+      const band = (g) => { const km = haversine(near.lat, near.lon, g.lat, g.lon) / 1000; return km < 3 ? 0 : km < 15 ? 1 : 2; };
+      stops = stops.map((g, i) => ({ g, i, b: band(g) })).sort((a, b) => a.b - b.b || a.i - b.i).map((x) => x.g);
+    }
+    const hasDigit = /\d/.test(q);
+    let places = [];
+    if (pl) {
+      places = searchPlaces(pl, q, limit, near).map((r) => ({ kind: r.kind, name: r.name, city: r.city, lat: r.lat, lon: r.lon, approx: r.approx ?? null,
+        label: r.kind === 'poi' ? kindLabel(r.poiKind, lang) : null, score: r.score }));
+    }
+    // an address-looking query puts addresses first; otherwise stops first, then the best places
+    const top = places.filter((p) => p.kind === 'address' || (p.kind === 'city' && p.score >= 6));
+    const rest = places.filter((p) => !top.includes(p));
+    const merged = hasDigit ? [...top, ...stops, ...rest] : [...stops.slice(0, 5), ...top, ...rest, ...stops.slice(5)];
+    return { results: merged.slice(0, limit + 4), placesLoaded: !!pl };
   },
   plan({ from, to, fromTime, toTime, bike = 'none', folding = false, weekday = true, maxTransfers = 3 }) {
     const t0 = performance.now();
@@ -147,6 +170,20 @@ const ops = {
       if (br) bikeOnly = { seconds: br.seconds, metres: br.metres, path: br.path };
     }
     return { journeys, bikeOnly, candidates: r.candidates, streets: !!st, ms: performance.now() - t0 };
+  },
+  /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
+  reverse({ lat, lon }) {
+    if (pl) {
+      const r = reverseGeocode(pl, lat, lon);
+      if (r) return { name: r.city && r.kind !== 'city' ? `${r.name}, ${r.city}` : r.name, kind: r.kind, distance: r.distance };
+    }
+    let best = -1, bd = 600;
+    for (let s = 0; s < tt.stops.length; s++) {
+      const d = haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]);
+      if (d < bd) { bd = d; best = s; }
+    }
+    if (best >= 0) return { name: tt.stops[best][1], kind: 'stop', distance: Math.round(bd) };
+    return { name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, kind: 'point', distance: 0 };
   },
   nearby({ lat, lon, limit = 15, radius = 1200 }) {
     const out = [];

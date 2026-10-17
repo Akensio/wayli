@@ -9,7 +9,9 @@ const STR = {
     plan: 'תכנון מסלול', nearbyTitle: 'תחנות בקרבתי', refresh: 'רענון', nearbyEmpty: 'לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.',
     favTrips: 'מסלולים שמורים', favStops: 'תחנות שמורות', tabPlan: 'מסלול', tabNearby: 'בקרבתי', tabFav: 'מועדפים', tabAbout: 'אודות',
     back: 'חזרה', fromHere: 'מכאן', toHere: 'לכאן', nextDeps: 'היציאות הבאות', fromQ: 'מאיפה?', toQ: 'לאן?', myLoc: 'המיקום שלי',
-    loadingTT: 'טוען לוח זמנים', loadingST: 'טוען רשת רחובות (לאופניים ולהליכה מדויקת)', unpacking: 'פורס…', ready: 'מוכן. {trips} נסיעות ליום {date}.',
+    loadingTT: 'טוען לוח זמנים', loadingST: 'טוען רשת רחובות (לאופניים ולהליכה מדויקת)', loadingPL: 'טוען כתובות ומקומות', unpacking: 'פורס…', ready: 'מוכן. {trips} נסיעות ליום {date}.',
+    kindStop: 'תחנה', kindAddress: 'כתובת', kindStreet: 'רחוב', kindCity: 'עיר', kindPoi: 'מקום', approxNo: 'הקרוב ביותר: {n}', placesPending: 'כתובות ומקומות עדיין נטענים…', noMatch: 'לא נמצא. נסו שם תחנה, רחוב ומספר, או עיר.',
+    pickTitle: 'בחירה במפה', pickHint: 'הזיזו את המפה כך שהסמן יהיה על המקום', choose: 'בחירה', cancel: 'ביטול', nearName: 'ליד {name}', pointName: 'נקודה במפה',
     readyStreets: 'רשת הרחובות נטענה.', loadFail: 'הטעינה נכשלה: {msg}', planning: 'מחשב…', noJourney: 'לא נמצא מסלול עד 3 החלפות.',
     noOriginStops: 'אין תחנה במרחק סביר מנקודת המוצא.', noDestStops: 'אין תחנה במרחק סביר מהיעד.', pickBoth: 'בחרו מאיפה ולאן.',
     direct: 'ישיר', transfer1: 'החלפה אחת', transfers: '{n} החלפות', min: 'דק\'', hour: 'שע\'', walk: 'הליכה', bike2: 'רכיבה',
@@ -27,7 +29,9 @@ const STR = {
     plan: 'Plan trip', nearbyTitle: 'Stops near me', refresh: 'Refresh', nearbyEmpty: 'Tap Refresh to find stops near your location.',
     favTrips: 'Saved trips', favStops: 'Saved stops', tabPlan: 'Plan', tabNearby: 'Nearby', tabFav: 'Favorites', tabAbout: 'About',
     back: 'Back', fromHere: 'From here', toHere: 'To here', nextDeps: 'Next departures', fromQ: 'From?', toQ: 'To?', myLoc: 'My location',
-    loadingTT: 'Loading the timetable', loadingST: 'Loading the street network (bikes and exact walking)', unpacking: 'unpacking…', ready: 'Ready. {trips} trips on {date}.',
+    loadingTT: 'Loading the timetable', loadingST: 'Loading the street network (bikes and exact walking)', loadingPL: 'Loading addresses and places', unpacking: 'unpacking…', ready: 'Ready. {trips} trips on {date}.',
+    kindStop: 'stop', kindAddress: 'address', kindStreet: 'street', kindCity: 'city', kindPoi: 'place', approxNo: 'nearest: {n}', placesPending: 'Addresses and places are still loading…', noMatch: 'No match. Try a stop name, a street and number, or a city.',
+    pickTitle: 'Pick on the map', pickHint: 'Move the map so the marker is on the place', choose: 'Choose', cancel: 'Cancel', nearName: 'near {name}', pointName: 'Point on the map',
     readyStreets: 'Street network loaded.', loadFail: 'Loading failed: {msg}', planning: 'Planning…', noJourney: 'No journey found with up to 3 transfers.',
     noOriginStops: 'No stop within reach of the origin.', noDestStops: 'No stop within reach of the destination.', pickBoth: 'Pick both the origin and the destination.',
     direct: 'direct', transfer1: '1 transfer', transfers: '{n} transfers', min: 'min', hour: 'h', walk: 'walk', bike2: 'bike',
@@ -54,6 +58,7 @@ function applyLang() {
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
   $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('toQ');
   $('fromLoc').textContent = t('myLoc'); $('toLoc').textContent = t('myLoc');
+  $('fromMap').title = t('pickTitle'); $('toMap').title = t('pickTitle');
   $('langBtn').textContent = lang === 'he' ? 'EN' : 'עב';
   renderDays();
   renderAbout();
@@ -89,13 +94,13 @@ function setStatus(text, error = false, frac = null) {
   if (frac != null) $('statusBar').firstElementChild.style.width = `${Math.round(frac * 100)}%`;
 }
 function showProgress(m) {
-  const label = m.label === 'timetable' ? t('loadingTT') : t('loadingST');
+  const label = m.label === 'timetable' ? t('loadingTT') : m.label === 'places' ? t('loadingPL') : t('loadingST');
   const mb = (m.got / 1e6).toFixed(1) + (m.total ? ' / ' + (m.total / 1e6).toFixed(1) : '') + ' MB';
   setStatus(`${label}: ${m.unpacking ? t('unpacking') : mb}`, false, m.total ? m.got / m.total : null);
 }
 
 // ---------------------------------------------------------------- data manifest and days
-let manifest = null, dayInfo = null, ttReady = false, stReady = false;
+let manifest = null, dayInfo = null, ttReady = false, stReady = false, plReady = false;
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
 const dateOf = (s) => new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
 function dayLabel(s) {
@@ -133,6 +138,13 @@ async function loadDay(date) {
   setStatus(t('ready', { trips: info.counts.trips.toLocaleString(), date: dayLabel(info.date) }));
   renderDays();
 }
+async function loadPlaces() {
+  if (plReady || !manifest.places) return;
+  try {
+    await call('loadPlaces', { url: `data/${manifest.places.file}?v=${encodeURIComponent(manifest.places.built || manifest.built || '')}` });
+    plReady = true;
+  } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); }
+}
 async function loadStreets() {
   if (stReady || !manifest.streets) return;
   try {
@@ -156,6 +168,7 @@ async function init() {
   setDefaultTime();
   try { await loadDay(start); } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   renderFavorites();
+  await loadPlaces();
   loadStreets();
 }
 $('day').addEventListener('change', () => { loadDay($('day').value).catch((e) => setStatus(t('loadFail', { msg: e.message }), true)); setDefaultTime(); });
@@ -180,17 +193,28 @@ function wireSearch(side) {
     if (q.length < 2 || !ttReady) { drop.hidden = true; return; }
     timer = setTimeout(async () => {
       const my = ++seq;
-      const hits = await call('search', { q, limit: 10 });
+      const { results, placesLoaded } = await call('search', { q, limit: 10, lang, near: lastPos });
       if (my !== seq) return;
       drop.innerHTML = '';
-      for (const g of hits) {
+      for (const g of results) {
         const b = document.createElement('button');
         b.type = 'button';
-        b.innerHTML = `${esc(g.name)}<small>${esc(g.city)}${g.platforms > 1 ? ' · ' + t('platforms', { n: g.platforms }) : ''}</small>`;
-        b.addEventListener('click', () => { place[side] = g; input.value = g.name; drop.hidden = true; });
+        const kind = g.kind === 'stop' ? (g.platforms > 1 ? t('platforms', { n: g.platforms }) : t('kindStop'))
+          : g.kind === 'poi' ? (g.label || t('kindPoi')) : t('kind' + g.kind[0].toUpperCase() + g.kind.slice(1));
+        const extra = g.approx != null ? ' · ' + t('approxNo', { n: g.approx }) : '';
+        b.innerHTML = `${esc(g.name)}<small>${esc(kind)}${g.city ? ' · ' + esc(g.city) : ''}${extra}</small>`;
+        b.addEventListener('click', () => {
+          place[side] = g.kind === 'stop' ? g : { name: g.city && g.kind !== 'city' ? `${g.name}, ${g.city}` : g.name, lat: g.lat, lon: g.lon };
+          input.value = place[side].name; drop.hidden = true;
+        });
         drop.appendChild(b);
       }
-      drop.hidden = hits.length === 0;
+      if (!results.length) {
+        const n = document.createElement('button'); n.type = 'button'; n.disabled = true;
+        n.textContent = placesLoaded ? t('noMatch') : t('placesPending');
+        drop.appendChild(n);
+      }
+      drop.hidden = false;
     }, 150);
   });
   input.addEventListener('focus', () => { if (drop.children.length && !place[side]) drop.hidden = false; });
@@ -205,6 +229,54 @@ function wireSearch(side) {
   });
 }
 wireSearch('from'); wireSearch('to');
+
+// ---- pick a point on the map
+let pickMap = null, pickSide = null, pickPoint = null, pickSeq = 0;
+function openPicker(side) {
+  pickSide = side;
+  $('picker').hidden = false;
+  $('pickName').textContent = '…';
+  requestAnimationFrame(async () => {
+    if (!pickMap && typeof L !== 'undefined') {
+      pickMap = L.map('pickMap', { zoomControl: false });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(pickMap);
+      L.control.zoom({ position: lang === 'he' ? 'topleft' : 'topright' }).addTo(pickMap);
+      pickMap.on('moveend', () => nameCenter());
+      pickMap.on('click', (e) => pickMap.panTo(e.latlng));
+    }
+    if (!pickMap) return;
+    pickMap.invalidateSize();
+    const other = place[side === 'from' ? 'to' : 'from'];
+    const start = place[side] && place[side].lat != null ? place[side] : lastPos || (other && other.lat != null ? other : null);
+    pickMap.setView(start ? [start.lat, start.lon] : [32.08, 34.78], start ? 16 : 11);
+    nameCenter();
+  });
+}
+async function nameCenter() {
+  if (!pickMap) return;
+  const c = pickMap.getCenter();
+  pickPoint = { lat: c.lat, lon: c.lng };
+  const my = ++pickSeq;
+  $('pickName').textContent = '…';
+  try {
+    const r = await call('reverse', { lat: c.lat, lon: c.lng });
+    if (my !== pickSeq) return;
+    $('pickName').textContent = r.kind === 'point' ? t('pointName') : r.distance > 40 ? t('nearName', { name: r.name }) : r.name;
+    pickPoint.name = $('pickName').textContent;
+  } catch (e) { if (my === pickSeq) { $('pickName').textContent = t('pointName'); pickPoint.name = t('pointName'); } }
+}
+$('fromMap').addEventListener('click', () => openPicker('from'));
+$('toMap').addEventListener('click', () => openPicker('to'));
+$('pickCancel').addEventListener('click', () => { $('picker').hidden = true; });
+$('pickChoose').addEventListener('click', () => {
+  if (!pickPoint || !pickSide) return;
+  place[pickSide] = { name: pickPoint.name || t('pointName'), lat: pickPoint.lat, lon: pickPoint.lon };
+  $(pickSide + 'Q').value = place[pickSide].name;
+  $('picker').hidden = true;
+});
+$('pickLocate').addEventListener('click', async () => {
+  try { const p = await getPosition(); lastPos = p; if (pickMap) pickMap.setView([p.lat, p.lon], 16); } catch (e) { $('pickName').textContent = t('noLocation'); }
+});
 function getPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('no geolocation')); return; }
@@ -327,6 +399,14 @@ $('detailBack').addEventListener('click', () => { $('detail').hidden = true; });
 
 // ---------------------------------------------------------------- nearby and stop detail
 let lastPos = null;
+// if location was already allowed, learn where the user is so search prefers nearby results
+(async () => {
+  try {
+    if (!navigator.permissions || !navigator.geolocation) return;
+    const st = await navigator.permissions.query({ name: 'geolocation' });
+    if (st.state === 'granted') lastPos = await getPosition();
+  } catch (e) { /* no location, no problem */ }
+})();
 $('nearbyRefresh').addEventListener('click', loadNearby);
 async function loadNearby() {
   const list = $('nearbyList');

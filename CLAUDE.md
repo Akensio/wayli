@@ -59,6 +59,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/streets.py`, `pipeline/streetgraph.py` | OpenStreetMap extract to the compact street graph; reader and stop-to-stop walking times for the compiler. |
 | `app/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
 | `app/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
+| `pipeline/places.py`, `app/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |
 | `app/index.html`, `app/app.js`, `app/worker.js`, `app/sw.js`, `app/styles.css` | The app: shell, UI, data worker, service worker, styles. Hebrew/RTL first, English toggle, no framework, no build step. |
 | `app/feasibility.html` | The routing test page (older harness). `app/bench.mjs` times the router in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` builds the artifact variant. |
 | `pipeline/build_site.py` | Assembles `site/`: app files, per-day timetables, street graph, `data/manifest.json`. |
@@ -70,10 +71,9 @@ relay, reports and push). Create it when the work starts.
 
 ## Current state
 
-2026-10-16: routing core (real transfers, window queries, bikes with the
-on-board rules) and the app v0.1 are built and tested under phone emulation;
-the nightly build-and-deploy workflow is written and enables Pages itself.
-Waiting on Gadi: get the branch onto `main` (merge, or allow a push). After
-that, the app's behaviour on real phones decides whether routing stays on
-the device. Next: real-time arrivals (Hasadna's API if it allows browser
-calls, else a tiny relay), line pages, translations, crowd reports.
+2026-10-17: the app is live at https://akensio.github.io/wayli/, rebuilt
+nightly by the workflow on `main`. Gadi merges session branches into `main`
+himself (squash); every merge redeploys. The app's behaviour on real phones
+decides whether routing stays on the device. Next: real-time arrivals
+(Hasadna's API if it allows browser calls, else a tiny relay), line pages,
+translations, crowd reports, elevation.

@@ -130,6 +130,19 @@ legs, star to save), nearby (stops around the device with the lines serving
 them, tap for the next departures, "from here"/"to here"), favorites (saved
 trips and stops, this device only), about.
 
+Search and addresses: `pipeline/places.py` compiles an offline address book
+from OpenStreetMap (streets with their city from the nearest transit stop,
+house numbers, cities from the feed, notable places such as hospitals,
+universities, malls, parks and stations): about 45k streets, 170k house
+numbers, 16k places, 1.8 MB. `app/places.js` parses free text ("הורדים 4,
+גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
+ranks stops, addresses, streets, places and cities together, nearer ones
+first when the user's location is known. A missing house number resolves to
+the nearest known one on that street and says so. A point can also be picked
+on a map (crosshair, choose), and gets its name from the same book in reverse:
+nearest house number, place or street, else the nearest stop. Nothing leaves
+the device.
+
 Data: `data/manifest.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
 being planned) and the street graph (10.7 MB, loaded after the first answer;

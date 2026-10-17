@@ -30,13 +30,13 @@
       <div class="field">
         <span class="icon">●</span>
         <input type="text" id="fromQ" placeholder="מאיפה?" autocomplete="off" enterkeyhint="search">
-        <button type="button" class="loc" id="fromLoc">המיקום שלי</button>
+        <div class="locs"><button type="button" class="loc" id="fromMap" title="בחירה במפה">🗺️</button><button type="button" class="loc" id="fromLoc">המיקום שלי</button></div>
         <div class="dropdown" id="fromDrop" hidden></div>
       </div>
       <div class="field">
         <span class="icon">■</span>
         <input type="text" id="toQ" placeholder="לאן?" autocomplete="off" enterkeyhint="search">
-        <button type="button" class="loc" id="toLoc">המיקום שלי</button>
+        <div class="locs"><button type="button" class="loc" id="toMap" title="בחירה במפה">🗺️</button><button type="button" class="loc" id="toLoc">המיקום שלי</button></div>
         <div class="dropdown" id="toDrop" hidden></div>
       </div>
       <div class="row">
@@ -96,6 +96,23 @@
   <div class="body">
     <div id="map"></div>
     <div class="legs" id="detailLegs"></div>
+  </div>
+</div>
+
+<div class="detail" id="picker" hidden>
+  <div class="bar">
+    <button type="button" class="ghost" id="pickCancel" data-t="cancel">ביטול</button>
+    <h2 id="pickTitle" data-t="pickTitle">בחירה במפה</h2>
+    <button type="button" class="ghost" id="pickLocate" title="המיקום שלי">📍</button>
+  </div>
+  <div class="pickwrap">
+    <div id="pickMap"></div>
+    <div class="crosshair" aria-hidden="true"></div>
+  </div>
+  <div class="pickbar">
+    <div class="muted" id="pickHint" data-t="pickHint">הזיזו את המפה כך שהסמן יהיה על המקום</div>
+    <div class="pickname" id="pickName">…</div>
+    <button type="button" class="primary" id="pickChoose" data-t="choose">בחירה</button>
   </div>
 </div>
 
