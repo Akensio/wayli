@@ -807,7 +807,7 @@ function openDetail(j, q, bikeOnly = false) {
     const el = document.createElement('div');
     el.className = `leg ${l.type}${l.type === 'ride' ? ' t' + l.routeType : ''}`;
     let what = '';
-    const mins = Math.round(l.seconds / 60);
+    const mins = Math.max(1, Math.round(l.seconds / 60));
     if (l.type === 'ride') {
       const planned = l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: l.live.stale }) : null;
       what = `<span class="chip btn t${l.routeType}" data-route="${l.route ?? ''}">${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live${planned ? ' ' + planned.cls : ''}" data-live="${l.trip}">${planned ? esc(planned.text) : ''}</span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${t('ride', { line: '', agency: esc(l.agency), stops: l.stops }).replace(/^ · /, '')}</small>`;
@@ -816,7 +816,9 @@ function openDetail(j, q, bikeOnly = false) {
     else if (l.type === 'access') what = (l.mode === 'bike' ? t('bikeTo', { min: mins, name: esc(l.to.name) }) : t('walkTo', { min: mins, name: esc(l.to.name) }));
     else if (l.type === 'egress') what = (l.mode === 'bike' ? t('bikeFrom', { min: mins, name: esc(l.from.name) }) : t('walkFrom', { min: mins, name: esc(l.from.name) }));
     else what = t('walkTo', { min: mins, name: esc(l.to.name) });
-    el.innerHTML = `<span class="t">${bikeOnly ? '' : fmt(l.depart)}${l.type === 'ride' ? '<br>' + fmt(l.arrive) : ''}</span><span class="dot"></span><span class="what">${what}</span>`;
+    const shifted = l.type === 'ride' && l.schedDepart != null && Math.abs(l.schedDepart - l.depart) >= 60;
+    const timeCol = bikeOnly ? '' : shifted ? `<s>${fmt(l.schedDepart)}</s><br><b>${fmt(l.depart)}</b><br>${fmt(l.arrive)}` : `${fmt(l.depart)}${l.type === 'ride' ? '<br>' + fmt(l.arrive) : ''}`;
+    el.innerHTML = `<span class="t">${timeCol}</span><span class="dot"></span><span class="what">${what}</span>`;
     const tg = el.querySelector('.toggle');
     if (tg) tg.addEventListener('click', () => { const sl = el.querySelector('.stoplist'); sl.hidden = !sl.hidden; tg.textContent = sl.hidden ? t('showStops') : t('hideStops'); });
     const ch = el.querySelector('.chip.btn');
@@ -871,7 +873,7 @@ async function liveForJourney(j, day, container, seq) {
 function shareJourney(j, q, bikeOnly) {
   const lines = [`${q.from.name} → ${q.to.name}`, `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`];
   for (const l of j.legs) {
-    const mins = Math.round(l.seconds / 60);
+    const mins = Math.max(1, Math.round(l.seconds / 60));
     if (l.type === 'ride') lines.push(`${fmt(l.depart)} ${lineText(l.line)} ${l.from.name} → ${l.to.name} ${fmt(l.arrive)}`);
     else lines.push(`${l.mode === 'bike' ? '🚲' : '🚶'} ${mins} ${t('min')}`);
   }
@@ -1388,7 +1390,7 @@ function renderFollow() {
   j.legs.forEach((l, i) => {
     const el = document.createElement('div');
     el.className = `leg ${l.type}${l.type === 'ride' ? ' t' + l.routeType : ''}${i < a.state.step ? ' done' : i === a.state.step ? ' current' : ''}`;
-    const mins = Math.round(l.seconds / 60);
+    const mins = Math.max(1, Math.round(l.seconds / 60));
     let what;
     if (l.type === 'ride') what = `<span class="chip t${l.routeType}">${esc(lineText(l.line))}</span> ${esc(l.from.name)} → ${esc(l.to.name)} · ${l.stops} ${t('kindStop')}`;
     else if (l.type === 'egress') what = l.mode === 'bike' ? t('bikeFrom', { min: mins, name: esc(l.from.name) }) : t('walkFrom', { min: mins, name: esc(l.from.name) });

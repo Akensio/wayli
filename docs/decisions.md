@@ -152,3 +152,11 @@ so they are not re-litigated.
 - 2026-10-18 Gadi: tapping a vehicle on a map must show a bubble on the map,
   not open a page. Bubbles (MapLibre popups) for vehicles and stops on every
   map, with buttons to the pages; the live map's bottom card is gone.
+- 2026-10-18 Gadi, at Rehovot station: "why a 2-minute walk, I'm in the
+  station?" and "the train is 18:24, delayed to 18:29; where does 18:28
+  come from?" Standing at a stop (150 m for a railway station) now counts
+  as being there, and nearby walks are capped by the straight line. 18:28
+  was the position-based delay estimate (+4, the official figure was +5);
+  the detail now shows the scheduled time struck through next to the live
+  one, and a bug that lost the live badge on refresh (the shifted first
+  departure was used as the matching key) is fixed.

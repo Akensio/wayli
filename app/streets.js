@@ -117,7 +117,7 @@ export function reach(g, node, mode, maxSeconds, onNode, prev) {
  * Transit stops reachable from (lat, lon) by `mode` within maxSeconds.
  * stopNode: Int32Array from the timetable (stop -> street node). Returns [{stop, walk}].
  */
-export function accessStops(g, stopNode, lat, lon, mode, maxSeconds, extraPerStop = 30) {
+export function accessStops(g, stopNode, lat, lon, mode, maxSeconds, extraPerStop = 30, stopLat = null, stopLon = null, stopBig = null) {
   const { node, metres } = nearestNode(g, lat, lon, mode);
   if (node < 0) return [];
   const byNode = new Map();
@@ -125,12 +125,24 @@ export function accessStops(g, stopNode, lat, lon, mode, maxSeconds, extraPerSto
     const n = stopNode[s];
     if (n >= 0) { if (!byNode.has(n)) byNode.set(n, []); byNode.get(n).push(s); }
   }
-  const speed = mode === 'bike' ? 4.0 : 1.2;
   const start = metres / 1.2;  // the first metres to the network are always on foot
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
   const out = [];
   reach(g, node, mode, maxSeconds - start, (u, d) => {
     const stops = byNode.get(u);
-    if (stops) for (const s of stops) out.push({ stop: s, walk: Math.round(start + d + extraPerStop), mode });
+    if (!stops) return;
+    for (const s of stops) {
+      let walk = start + d + extraPerStop;
+      // standing at the stop (a platform, a station hall): the network detour and the buffer do not apply.
+      // Nearby, the straight walk with a detour factor caps a network path that wanders off to reach the node.
+      if (mode === 'walk' && stopLat) {
+        const straight = Math.hypot((stopLon[s] - lon) * kx, (stopLat[s] - lat) * ky);
+        const at = stopBig && stopBig[s] ? 150 : 60;   // a railway station is one point in the feed but a big place
+        if (straight <= at) walk = Math.min(straight / 1.2, 30);
+        else if (straight <= 300) walk = Math.min(walk, straight * 1.3 / 1.2 + extraPerStop);
+      }
+      out.push({ stop: s, walk: Math.round(walk), mode });
+    }
   });
   return out;
 }

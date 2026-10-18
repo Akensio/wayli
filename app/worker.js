@@ -108,11 +108,27 @@ function stopOut(s) {
 }
 
 /** Resolve a place into origin/destination entries for the planner. */
+let stopRail = null;
+/** Which stops trains call at: standing anywhere on such a station counts as being at the stop. */
+function railStops() {
+  if (stopRail) return stopRail;
+  stopRail = new Uint8Array(tt.stops.length);
+  for (let p = 0; p < tt.patRoute.length; p++) if (tt.routes[tt.patRoute[p]][3] === 2) for (let i = tt.patStopsOff[p]; i < tt.patStopsOff[p + 1]; i++) stopRail[tt.patStops[i]] = 1;
+  return stopRail;
+}
+/** A trip's scheduled times, untouched by any live shift: from the stored start and deltas. */
+function rawTimes(p, t) {
+  const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p], base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns;
+  const dep = new Int32Array(ns), arr = new Int32Array(ns);
+  let cur = tt.tripStart[t];
+  for (let i = 0; i < ns; i++) { cur += tt.depDelta[base + i]; dep[i] = cur; arr[i] = cur - tt.dwell[base + i]; }
+  return { dep, arr };
+}
 function resolvePlace(place, mode, maxSeconds) {
   if (place.stops) return { places: place.stops.map((s) => ({ stop: s, walk: 0 })), point: place.lat != null ? { lat: place.lat, lon: place.lon } : null };
   const { lat, lon } = place;
   if (st) {
-    const places = accessStops(st, tt.stopNode, lat, lon, mode, maxSeconds);
+    const places = accessStops(st, tt.stopNode, lat, lon, mode, maxSeconds, 30, tt.stopLat, tt.stopLon, railStops());
     if (places.length) return { places, point: { lat, lon }, streets: true };
   }
   // no street graph (yet): straight-line distance with a detour factor
@@ -200,9 +216,11 @@ function legOut(l, q) {
     const base = tt.tripTimesOff[p] + (l.trip - tt.patTripsOff[p]) * ns;
     let bp = -1;   // board position on the pattern; a pattern can pass a stop twice, so match the time too
     for (let i = 0; i < ns; i++) if (tt.patStops[tt.patStopsOff[p] + i] === l.from && tt.dep[base + i] === l.depart) { bp = i; break; }
+    const raw = rawTimes(p, l.trip);   // the schedule: dep/arr may carry a live shift during a plan
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), stops: l.stops, line: routeLabel(l.route),
       headsign: headsign(l.route), agency: l.route[2], routeType: l.route[3],
-      trip: l.trip, routeId: l.route[4] ?? null, route: tt.patRoute[p], firstDep: tt.dep[base], boardPos: bp, live: tripLive.get(l.trip) || null,
+      trip: l.trip, routeId: l.route[4] ?? null, route: tt.patRoute[p], firstDep: raw.dep[0], boardPos: bp, live: tripLive.get(l.trip) || null,
+      schedDepart: bp >= 0 ? raw.dep[bp] : l.depart, schedArrive: bp >= 0 ? raw.arr[bp + l.stops] : l.arrive,
       pattern: p, alightPos: bp + l.stops,
       path: ridePath(p, bp, bp + l.stops) || l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]), pathKind: hasCourse(p) ? 'shape' : 'stops',
       // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
@@ -251,6 +269,7 @@ const ops = {
   async loadTimetable({ url }) {
     const buf = await fetchContainer(url, 'timetable');
     tt = parseTimetable(buf);
+    routeById = routePats = stopRail = null;
     return { date: tt.header.date, counts: tt.counts, feed: tt.header.feed, streets: !!tt.header.streets };
   },
   async loadStreets({ url }) {

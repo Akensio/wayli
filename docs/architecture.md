@@ -145,7 +145,12 @@ entry, so the phone's back button closes the overlay or returns to the
 previous tab instead of leaving the app.
 
 Planning: from and to can be a stop or station, an address, a street, a
-place, a city, the device's location or a point picked on the map; the
+place, a city, the device's location or a point picked on the map. From a
+point, the walk to each stop within reach is the street-network walk plus
+a 30 s buffer, except that standing within 60 m of a stop (150 m of a
+railway station, which the feed keeps as one point) counts as being there,
+and within 300 m the straight walk with a 1.3 detour factor caps a network
+path that wanders off to reach the stop's node; the
 search box lists saved and recent places when empty. Depart-at or arrive-by
 (a two-hour window ending at the target, latest departure first); day
 picker over the published service days, with "tonight" until 03:00 since a
@@ -340,7 +345,10 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   whose scheduled departure has passed but which is still on its way is
   offered at its real time, and a bus running early is not. The results
   say "live times as of HH:MM" or "schedule only"; each planned ride shows
-  its delay.
+  its delay, and the journey detail shows the scheduled time struck through
+  next to the live one. A leg's identity for later matching (its first
+  departure) is always the scheduled one, read from the stored start and
+  deltas, never the shifted arrays.
 - Freshness: Hasadna's ingestion sometimes lags by 20 minutes and backfills
   old snapshots, so queries look back half an hour, sort by recorded time
   (not id), and every screen shows how old the newest report is; a report
