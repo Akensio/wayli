@@ -300,18 +300,30 @@ def main():
         from shapes import read_shapes
         shapes = read_shapes(args.shapes)
         log(f"{len(shapes)} shapes loaded from {args.shapes}")
+        # every shape a route's trips name, so a pattern whose own trips name none (a few variant
+        # runs lack a shape_id) can borrow a sibling's course when its stops lie on it
+        route_shapes = defaultdict(list)
+        for _tid, (rid, _hs, sid) in trips_raw.items():
+            if sid.isdigit() and sid not in route_shapes[rid]:
+                route_shapes[rid].append(sid)
         for pi, (route_id, seq, trips) in enumerate(patterns):
-            # the first trip of the pattern that names a shape (a few trips have none)
-            sid = next((trips_raw[tr[1]][2] for tr in trips if trips_raw[tr[1]][2].isdigit()), "")
-            sh = shapes.get(int(sid)) if sid.isdigit() else None
-            segs, fracs = None, None
-            if sh is not None and len(sh[0]) >= 2:
-                segs, fracs, worst = project_stops([stop_list[i][2] for i in seq], [stop_list[i][3] for i in seq], sh[0], sh[1])
-                if worst > 400:  # a stop far off the course: the shape does not fit this pattern
-                    segs = None
+            own = next((trips_raw[tr[1]][2] for tr in trips if trips_raw[tr[1]][2].isdigit()), "")
+            candidates = ([own] if own else []) + [x for x in route_shapes.get(route_id, []) if x != own]
+            slat, slon = [stop_list[i][2] for i in seq], [stop_list[i][3] for i in seq]
+            segs, fracs, sid = None, None, ""
+            for cand in candidates:
+                sh = shapes.get(int(cand))
+                if sh is None or len(sh[0]) < 2:
+                    continue
+                sg, fr, worst = project_stops(slat, slon, sh[0], sh[1])
+                if worst <= 400:  # every stop near the course: this shape fits the pattern
+                    segs, fracs, sid = sg, fr, cand
+                    break
+            if segs is None:
+                if candidates:
                     n_off += 1
-            else:
-                n_noshape += 1
+                else:
+                    n_noshape += 1
             if segs is None:
                 pat_shape_seg.extend([0] * len(seq))
                 pat_shape_frac.extend([0] * len(seq))
