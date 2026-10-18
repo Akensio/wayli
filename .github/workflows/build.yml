@@ -44,8 +44,10 @@ jobs:
       - name: Street graph, address book and rail graph
         run: |
           if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ ! -f data/rail.bin.gz ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ]; then
-            curl -sSL -o data/osm/israel-and-palestine-latest.osm.pbf https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf \
-              || curl -sSL -o data/osm/israel-and-palestine-latest.osm.pbf https://download.openstreetmap.fr/extracts/asia/israel_and_palestine-latest.osm.pbf
+            # a mirror may answer with an error page instead of the extract: fail on HTTP errors and insist on a real file
+            dl() { curl -fsSL --retry 3 --retry-delay 15 -o "$1" "$2" && [ "$(stat -c %s "$1")" -gt 50000000 ]; }
+            dl data/osm/israel-and-palestine-latest.osm.pbf https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf \
+              || dl data/osm/israel-and-palestine-latest.osm.pbf https://download.openstreetmap.fr/extracts/asia/israel_and_palestine-latest.osm.pbf
             python3 -I pipeline/streets.py data/osm/israel-and-palestine-latest.osm.pbf --out data/streets.bin.gz
             python3 -I pipeline/places.py data/osm/israel-and-palestine-latest.osm.pbf --gtfs data/gtfs.zip --out data/places.bin.gz
             python3 -I pipeline/rail.py data/osm/israel-and-palestine-latest.osm.pbf --out data/rail.bin.gz
