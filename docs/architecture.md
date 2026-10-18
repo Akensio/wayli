@@ -344,7 +344,19 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
 
 The Ministry's own SIRI feed stays a fallback: it would need a relay with
 credentials, worth building only if Hasadna's copy proves too stale or
-unreliable in daily use.
+unreliable in daily use. What is known about it (2026-10-18): the current
+interface is SIRI-SM 2.8 over plain HTTPS GET,
+`https://moran.mot.gov.il/Channels/HTTPChannel/SmQuery/2.8/json?Key=<key>&MonitoringRef=<stop code or AllActiveTripsFilter>&StopVisitDetailLevel=normal`
+(a `moran-t.mot.gov.il` twin exists), as used by Hasadna's requester
+(github.com/hasadna/open-bus-siri-requester, `requester.py`); the key
+comes from the Ministry after sending its signed SIRI-SM form to
+ptsupport@mot.gov.il, and the Ministry registers the caller's IP, so a
+browser cannot call it directly. The Ministry's page is
+https://www.gov.il/he/Departments/General/real_time_information_siri (its
+2017 FAQ still names the older SOAP endpoint
+`http://siri.motrealtime.co.il:8081/Siri/SiriServices`). It covers buses
+and trains, not the Jerusalem light rail, and answers with predicted
+arrival times per stop, which Hasadna's positions do not carry.
 
 ## Crowd reports
 
