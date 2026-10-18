@@ -354,7 +354,11 @@ station's platforms into one result.
   be checked.
 - Nightly GitHub Action: fetch, validate, compile, publish static files plus
   a manifest (feed date, format version, checksums). The app reads the
-  manifest and downloads only when something changed.
+  manifest and downloads only when something changed. Every push to `main`
+  deploys too; the street and rail graphs are cached for a week and the
+  seven compiled days are cached by feed, graphs and compiler source, so
+  an app-only push skips the six-minute compile and is live in about two
+  minutes.
 - Hosting: GitHub Pages or Cloudflare Pages, both free. Torrent/IPFS were
   considered and rejected for now (a CDN is free; peer-to-peer in a browser
   still needs servers). An optional mirror can come later.

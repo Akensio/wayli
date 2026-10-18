@@ -213,3 +213,9 @@ so they are not re-litigated.
   brand colours (architecture.md lists them and their sources); light
   rail is red now so Kavim can be purple. Rejected: the feed's
   route_color (set for few routes, and the same FF9933 across operators).
+- 2026-10-18 Gadi: "why does the compilation take 9 minutes?" Every push
+  recompiled seven days. The compiled days are now cached by the feed,
+  the graphs and the compiler's source; app-only pushes deploy in about
+  two minutes. Rejected: a separate app-only workflow (two deploy paths
+  to keep consistent) and committing the compiled data (100 MB a day in
+  git).

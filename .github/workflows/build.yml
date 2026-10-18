@@ -57,9 +57,23 @@ jobs:
             python3 -I pipeline/places.py data/osm/israel-and-palestine-latest.osm.pbf --gtfs data/gtfs.zip --out data/places.bin.gz
             python3 -I pipeline/rail.py data/osm/israel-and-palestine-latest.osm.pbf --out data/rail.bin.gz
           fi
+      # The compiled days depend only on the feed, the graphs and the compiler: an app-only push reuses them.
+      - name: The first service day (until 03:00 the night belongs to the previous date)
+        id: day
+        run: echo "start=$(TZ=Asia/Jerusalem date -d '-3 hours' +%Y%m%d)" >> "$GITHUB_OUTPUT"
+      - name: Cache the compiled timetables and courses (reused while the feed, the graphs and the compiler are unchanged)
+        id: tt
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/timetable-*.bin.gz
+            data/shapes.bin.gz
+          key: tt-${{ steps.day.outputs.start }}-${{ hashFiles('data/gtfs.zip', 'data/streets.bin.gz', 'data/rail.bin.gz', 'pipeline/compile.py', 'pipeline/shapes.py', 'pipeline/rail.py', 'pipeline/streetgraph.py') }}
       - name: Vehicle courses (shapes)
+        if: steps.tt.outputs.cache-hit != 'true'
         run: python3 -I pipeline/shapes.py data/gtfs.zip --out data/shapes.bin.gz
       - name: Timetable, the next 7 days
+        if: steps.tt.outputs.cache-hit != 'true'
         run: |
           for i in 0 1 2 3 4 5 6; do
             # the service day: until 03:00 the night still belongs to the previous date
