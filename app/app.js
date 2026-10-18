@@ -635,8 +635,41 @@ function makeMap(container, center, zoom) {
 const whenStyled = (m, fn) => (m.isStyleLoaded() ? fn() : m.once('load', fn));
 function dropMaps() { for (const m of [map, pickMap, followMap, lmap, lineMap]) if (m) m.remove(); map = pickMap = followMap = lmap = lineMap = null; lmStops = false; }
 const legColor = (l) => l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#2b3036');
+const EMPTY = { type: 'FeatureCollection', features: [] };
+/** The map's sources and layers for a journey, created once, bottom to top: the faded whole lines, then the journey. */
+function ensureJourneyLayers(m) {
+  if (m.getSource('journey')) return;
+  m.addSource('context', { type: 'geojson', data: EMPTY });
+  m.addSource('context-stops', { type: 'geojson', data: EMPTY });
+  m.addSource('journey', { type: 'geojson', data: EMPTY });
+  m.addSource('stops', { type: 'geojson', data: EMPTY });
+  m.addLayer({ id: 'context-line', type: 'line', source: 'context', paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.3 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'context-stops', type: 'circle', source: 'context-stops', minzoom: 11, paint: { 'circle-radius': 3, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 1.5, 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 } });
+  m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 8, 7], 'line-opacity': .9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
+  m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 12, paint: { 'circle-radius': 3.5, 'circle-color': '#ffffff', 'circle-stroke-color': '#444', 'circle-stroke-width': 1.5 } });
+}
+/** The whole line of every ride, faded, with all its stops: where the bus comes from and where it goes on. */
+async function drawContext(m, j) {
+  const rides = j.legs.filter((l) => l.type === 'ride' && l.pattern != null);
+  if (!rides.length || !ttReady) return;
+  try {
+    const courses = await call('patternCourse', { patterns: rides.map((l) => l.pattern) });
+    if (!m.getSource('context')) return;
+    const lines = [], dots = [];
+    courses.forEach((c, i) => {
+      const color = legColor(rides[i]);
+      if (c.path && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: c.path.map((q) => [q[1], q[0]]) } });
+      for (const st of c.stops) dots.push({ type: 'Feature', properties: { color, name: st[2] }, geometry: { type: 'Point', coordinates: [st[1], st[0]] } });
+    });
+    m.getSource('context').setData({ type: 'FeatureCollection', features: lines });
+    m.getSource('context-stops').setData({ type: 'FeatureCollection', features: dots });
+  } catch (e) { /* the ride itself is still drawn */ }
+}
 /** Draw a journey on a map: casing, rides, dashed walks, pins at boarding and alighting stops, dots at the stops between. */
 function drawJourney(m, j, markers) {
+  ensureJourneyLayers(m);
   for (const mk of markers.splice(0)) mk.remove();
   const features = [], dots = [];
   const bounds = new maplibregl.LngLatBounds();
@@ -651,21 +684,33 @@ function drawJourney(m, j, markers) {
         const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = color;
         markers.push(new maplibregl.Marker({ element: el }).setLngLat(c).addTo(m));
       }
-      for (const c of coords.slice(1, -1)) dots.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } });
+      // the stops between boarding and alighting: from the leg's stop list (the path itself follows the road now)
+      const between = l.stopsAlong ? l.stopsAlong.slice(1, -1).map((st) => [st.lon, st.lat]) : (l.pathKind === 'stops' ? coords.slice(1, -1) : []);
+      for (const c of between) dots.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } });
     }
   }
-  const data = { type: 'FeatureCollection', features };
-  if (m.getSource('journey')) { m.getSource('journey').setData(data); m.getSource('stops').setData({ type: 'FeatureCollection', features: dots }); }
-  else {
-    m.addSource('journey', { type: 'geojson', data });
-    m.addSource('stops', { type: 'geojson', data: { type: 'FeatureCollection', features: dots } });
-    m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 8, 7], 'line-opacity': .9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-    m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-    m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
-    m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 12, paint: { 'circle-radius': 3.5, 'circle-color': '#ffffff', 'circle-stroke-color': '#444', 'circle-stroke-width': 1.5 } });
-  }
+  m.getSource('journey').setData({ type: 'FeatureCollection', features });
+  m.getSource('stops').setData({ type: 'FeatureCollection', features: dots });
+  m.getSource('context').setData(EMPTY); m.getSource('context-stops').setData(EMPTY);
+  drawContext(m, j);
   return bounds;
 }
+/** Every reporting vehicle of a line as a marker with its delay; the one running `mine` stands out. */
+function lineVehicleMarkers(m, markers, vs, statuses, routeType, mine) {
+  const icon = routeType === 2 ? '🚆' : routeType === 0 ? '🚊' : '🚌';
+  vs.forEach((v, i) => {
+    const st = statuses[i] || { trip: -1 };
+    const el = document.createElement('div');
+    el.className = 'wayli-bus lbl' + (st.stale || st.trip < 0 ? ' stale' : '') + (mine != null && st.trip === mine ? ' mine' : '');
+    const d = st.delay != null ? live.delayMinutes(st.delay) : null;
+    el.textContent = `${icon}${d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;
+    addHeading(el, heading(v));
+    el.title = `${v.recordedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}${st.headsign ? ' · ' + st.headsign : ''}`;
+    if (st.trip >= 0) el.addEventListener('click', () => openTrip(st.trip, -1));
+    markers.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(m));
+  });
+}
+const vehiclesForWorker = (vs) => vs.map((v) => ({ lineRef: v.lineRef, scheduledStart: v.scheduledStart.getTime(), lat: v.lat, lon: v.lon, recordedAt: v.recordedAt.getTime() }));
 /** A triangle on the rim of a vehicle marker, pointing where it heads. */
 function addHeading(el, deg) {
   if (deg < 0) return;
@@ -750,7 +795,7 @@ function openDetail(j, q, bikeOnly = false) {
     });
   });
 }
-/** Live badges on the ride legs of a journey happening around now, and the vehicles on the map. */
+/** Live badges on the ride legs of a journey happening around now; every vehicle of those lines on the map. */
 async function liveForJourney(j, day, container, seq) {
   if (!liveOn() || !dayInfo || dayInfo.date !== day) return;   // trip indices belong to the loaded day
   const now = live.nowOn(day);
@@ -761,6 +806,9 @@ async function liveForJourney(j, day, container, seq) {
     try {
       const vs = await live.vehiclesByLine(l.routeId);
       if (seq !== detailSeq) return;
+      const statuses = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
+      if (seq !== detailSeq) return;
+      if (map) lineVehicleMarkers(map, liveMarkers, vs, statuses, l.routeType, l.trip);
       const v = live.matchTrip(vs, l.routeId, l.firstDep, day);
       if (!v) { if (badge) badge.textContent = t('liveNoVehicle'); return; }
       const ts = await tripStopsCached(l.trip);
@@ -769,7 +817,6 @@ async function liveForJourney(j, day, container, seq) {
       if (seq !== detailSeq) return;
       const b = liveBadge(at);
       if (badge) { badge.textContent = b.text; badge.className = 'live ' + b.cls; }
-      if (est && map) vehicleMarker(map, liveMarkers, est, l.routeType === 2 ? '🚆' : l.routeType === 0 ? '🚊' : '🚌');
     } catch (e) { if (badge) badge.textContent = t('liveFail'); }
   }));
 }
@@ -1051,7 +1098,7 @@ async function openLine(route, replace = false) {
     lineMap.resize();
     whenStyled(lineMap, () => {
       if (my !== lineSeq) return;
-      const b = drawJourney(lineMap, { legs: [{ type: 'ride', routeType: info.routeType, path: info.path }] }, lineMarkers);
+      const b = drawJourney(lineMap, { legs: [{ type: 'ride', routeType: info.routeType, path: info.path, pattern: null }] }, lineMarkers);
       // every stop of the line as a dot
       const dots = { type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) };
       lineMap.getSource('stops').setData(dots);
@@ -1070,21 +1117,10 @@ async function lineLive() {
   try {
     const vs = await live.vehiclesByLine(info.routeId);
     if (my !== lineSeq || !lineMap) return;
-    const st = vs.length ? await call('vehiclesStatus', { vehicles: vs.map((v) => ({ lineRef: v.lineRef, scheduledStart: v.scheduledStart.getTime(), lat: v.lat, lon: v.lon, recordedAt: v.recordedAt.getTime() })) }) : [];
+    const st = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
     if (my !== lineSeq || !lineMap) return;
     for (const mk of lineVeh.splice(0)) mk.remove();
-    const icon = info.routeType === 2 ? '🚆' : info.routeType === 0 ? '🚊' : '🚌';
-    vs.forEach((v, i) => {
-      const s = st[i] || { trip: -1 };
-      const el = document.createElement('div');
-      el.className = 'wayli-bus lbl' + (s.stale || s.trip < 0 ? ' stale' : '');
-      const d = s.delay != null ? live.delayMinutes(s.delay) : null;
-      el.textContent = `${icon}${d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;
-      addHeading(el, heading(v));
-      el.title = `${v.recordedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}${s.headsign ? ' · ' + s.headsign : ''}`;
-      if (s.trip >= 0) el.addEventListener('click', () => openTrip(s.trip, -1));
-      lineVeh.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(lineMap));
-    });
+    lineVehicleMarkers(lineMap, lineVeh, vs, st, info.routeType, null);
     const nw = live.newest(vs);
     $('lineLive').textContent = vs.length ? `${t('vehiclesOnLine', { n: vs.length })} · ${nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}` : t('noLineVehicles');
     $('lineLive').className = 'livebadge ' + (vs.length ? 'ok' : '');
@@ -1333,9 +1369,12 @@ async function followLive() {
   if (!leg || leg.routeId == null || leg.depart - now > 3600 || !dayInfo || dayInfo.date !== a.day) { fol.liveEst = null; return; }
   try {
     const vs = await live.vehiclesByLine(leg.routeId);
-    const v = live.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
+    if (!fol) return;
+    const statuses = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
     if (!fol) return;
     for (const mk of followVehicle.splice(0)) mk.remove();
+    if (followMap) lineVehicleMarkers(followMap, followVehicle, vs, statuses, leg.routeType, leg.trip);
+    const v = live.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
     if (!v) { fol.liveEst = null; $('followLive').hidden = true; renderFollow(); return; }
     const ts = await tripStopsCached(leg.trip);
     const est = live.estimateDelay(v, ts.stops, a.day);
@@ -1343,7 +1382,6 @@ async function followLive() {
     fol.liveEst = est ? { est, at } : null;
     const b = liveBadge(at);
     $('followLive').textContent = b.text; $('followLive').className = 'livebadge ' + b.cls; $('followLive').hidden = !at;
-    if (est && followMap) vehicleMarker(followMap, followVehicle, est, leg.routeType === 2 ? '🚆' : leg.routeType === 0 ? '🚊' : '🚌');
     renderFollow();
   } catch (e) { /* live is a bonus */ }
 }

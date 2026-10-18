@@ -213,3 +213,6 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .wayli-bus .heading { position: absolute; inset: -9px; pointer-events: none; }
 .wayli-bus .heading::before { content: ""; position: absolute; left: 50%; top: 0; width: 0; height: 0; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid #1b1f24; }
 .wayli-bus.stale .heading::before { opacity: .6; }
+
+/* the vehicle of the planned ride, among the line's others */
+.wayli-bus.mine { box-shadow: 0 0 0 3px var(--accent), 0 1px 4px rgba(0,0,0,.4); z-index: 2; }

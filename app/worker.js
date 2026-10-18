@@ -265,6 +265,15 @@ const ops = {
   },
   /** Courses for ride legs planned before the shapes were loaded: null where there is none. */
   ridePaths({ legs }) { return legs.map((l) => ridePath(l.pattern, l.boardPos, l.alightPos)); },
+  /** The whole course of each pattern and all its stops, for drawing a line around a ride. */
+  patternCourse({ patterns }) {
+    return patterns.map((p) => {
+      const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
+      const stops = [];
+      for (let i = 0; i < ns; i++) { const st = tt.patStops[tt.patStopsOff[p] + i]; stops.push([tt.stopLat[st], tt.stopLon[st], tt.stops[st][1]]); }
+      return { path: (ns >= 2 && ridePath(p, 0, ns - 1)) || stops.map((x) => [x[0], x[1]]), stops };
+    });
+  },
   async loadPlaces({ url }) {
     const buf = await fetchContainer(url, 'places');
     pl = parsePlaces(buf);
