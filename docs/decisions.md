@@ -233,3 +233,6 @@ so they are not re-litigated.
   back clear the fields, a clear Go button on top, and the clock reads
   "now" unless he sets a time. All four done; a plan is a history entry
   so back clears it.
+- 2026-10-18 Gadi: the bar should first ask "where do you want to go?" and
+  open into the two rows on a tap; the language toggle belongs in
+  settings. Done; the EN button is gone from the bar.

@@ -12,7 +12,7 @@ const STR = {
   he: {
     swap: 'החלף', now: 'עכשיו', bike: 'אופניים', bikeNone: 'בלי', bikePark: 'עד התחנה', bikeAlong: 'לוקח/ת איתי', folding: 'מתקפלים',
     plan: 'תכנון מסלול', nearbyTitle: 'תחנות בקרבתי', refresh: 'רענון', nearbyEmpty: 'לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.',
-    favTrips: 'מסלולים שמורים', favStops: 'תחנות שמורות', savedPlaces: 'מקומות שמורים', tabPlan: 'תכנון מסלול', tabNearby: 'תחנות בקרבתי', tabSaved: 'שמורים', tabMore: 'הגדרות ועוד', goQ: 'לאן? (מקום, כתובת או מספר קו)', grpLines: 'קווים', grpPlaces: 'מקומות', menu: 'תפריט',
+    favTrips: 'מסלולים שמורים', favStops: 'תחנות שמורות', savedPlaces: 'מקומות שמורים', tabPlan: 'תכנון מסלול', tabNearby: 'תחנות בקרבתי', tabSaved: 'שמורים', tabMore: 'הגדרות ועוד', goQ: 'לאן רוצים להגיע?', grpLines: 'קווים', grpPlaces: 'מקומות', menu: 'תפריט',
     back: 'חזרה', fromHere: 'מכאן', toHere: 'לכאן', nextDeps: 'היציאות הבאות', fromQ: 'מאיפה? (ריק = המיקום שלי)', toQ: 'לאן?', myLoc: 'המיקום שלי',
     loadingTT: 'טוען לוח זמנים', loadingST: 'טוען רשת רחובות (לאופניים ולהליכה מדויקת)', loadingPL: 'טוען כתובות ומקומות', unpacking: 'פורס…', ready: 'מוכן. {trips} נסיעות ליום {date}.',
     kindStop: 'תחנה', kindAddress: 'כתובת', kindStreet: 'רחוב', kindCity: 'עיר', kindPoi: 'מקום', approxNo: 'הקרוב ביותר: {n}', placesPending: 'כתובות ומקומות עדיין נטענים…', noMatch: 'לא נמצא. נסו שם תחנה, רחוב ומספר, או עיר.',
@@ -49,7 +49,7 @@ const STR = {
   en: {
     swap: 'Swap', now: 'Now', bike: 'Bicycle', bikeNone: 'None', bikePark: 'To the stop', bikeAlong: 'Take it along', folding: 'Folding',
     plan: 'Plan trip', nearbyTitle: 'Stops near me', refresh: 'Refresh', nearbyEmpty: 'Tap Refresh to find stops near your location.',
-    favTrips: 'Saved trips', favStops: 'Saved stops', savedPlaces: 'Saved places', tabPlan: 'Plan a trip', tabNearby: 'Stops near me', tabSaved: 'Saved', tabMore: 'Settings & more', goQ: 'Where to? (place, address or line number)', grpLines: 'Lines', grpPlaces: 'Places', menu: 'Menu',
+    favTrips: 'Saved trips', favStops: 'Saved stops', savedPlaces: 'Saved places', tabPlan: 'Plan a trip', tabNearby: 'Stops near me', tabSaved: 'Saved', tabMore: 'Settings & more', goQ: 'Where do you want to go?', grpLines: 'Lines', grpPlaces: 'Places', menu: 'Menu',
     back: 'Back', fromHere: 'From here', toHere: 'To here', nextDeps: 'Next departures', fromQ: 'From? (empty = my location)', toQ: 'To?', myLoc: 'My location',
     loadingTT: 'Loading the timetable', loadingST: 'Loading the street network (bikes and exact walking)', loadingPL: 'Loading addresses and places', unpacking: 'unpacking…', ready: 'Ready. {trips} trips on {date}.',
     kindStop: 'stop', kindAddress: 'address', kindStreet: 'street', kindCity: 'city', kindPoi: 'place', approxNo: 'nearest: {n}', placesPending: 'Addresses and places are still loading…', noMatch: 'No match. Try a stop name, a street and number, or a city.',
@@ -97,7 +97,6 @@ function applyLang() {
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
   $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('goQ'); $('chQ').placeholder = t('toQ'); $('menuBtn').title = t('menu');
   $('chLoc').textContent = t('btnLoc'); $('chMap').textContent = t('btnMap');
-  $('langBtn').textContent = lang === 'he' ? 'EN' : 'עב';
   renderDays();
   renderAbout();
   renderSettings();
@@ -108,7 +107,6 @@ function setLang(l) {
   applyLang(); renderSaved(); renderRecent(); renderPeek();
   if (lastResult && lastQuery) renderResults(lastResult, lastQuery);
 }
-$('langBtn').addEventListener('click', () => setLang(lang === 'he' ? 'en' : 'he'));
 
 // ---------------------------------------------------------------- worker
 const worker = new Worker('worker.js', { type: 'module' });
@@ -324,7 +322,10 @@ for (const b of $('timeMode').querySelectorAll('button')) b.addEventListener('cl
 const place = { from: null, to: null };   // {name, stops:[...], lat, lon} or {name, lat, lon}
 function describePlace(p) { return p ? p.name + (p.platforms > 1 ? ` (${t('platforms', { n: p.platforms })})` : '') : ''; }
 function setPlace(side, p) { place[side] = p; $(side + 'Q').value = p ? p.name : ''; updateFromRow(); }
-function updateFromRow() { const on = !!(place.to || place.from); $('fromRow').hidden = !on; $('optRow').hidden = !on; if (!on) setOptions(false); layoutTop(); }
+let barOpen = false;   // the rider tapped the bar: both rows show until a plan is made or the bar is folded
+function updateFromRow() { const on = !!(place.to || place.from || barOpen); $('fromRow').hidden = !on; $('optRow').hidden = !on; $('toClear').hidden = !on; if (!on) setOptions(false); layoutTop(); }
+function openBar() { if (!barOpen) { barOpen = true; updateFromRow(); } }
+function foldBar() { if (barOpen && !place.to && !place.from) { barOpen = false; updateFromRow(); } }
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
 function layoutTop() { const r = $('topbar').getBoundingClientRect(); document.documentElement.style.setProperty('--top-h', `${Math.round(r.bottom + 6)}px`); }
 window.addEventListener('resize', layoutTop);
@@ -426,8 +427,7 @@ attachSearch($('fromQ'), $('fromDrop'), (p, typing) => {
   if (place.to) { nav.closeAll(); showScreen('plan'); plan(); }
 }, { actions: true });
 const myLocation = (pos) => ({ name: t('myLoc'), lat: pos.lat, lon: pos.lon, transient: true });
-for (const id of ['toQ', 'fromQ']) $(id).addEventListener('focus', () => { $('menu').hidden = true; });
-$('toQ').addEventListener('input', () => { $('toClear').hidden = !$('toQ').value; });
+for (const id of ['toQ', 'fromQ']) $(id).addEventListener('focus', () => { $('menu').hidden = true; openBar(); });
 $('goBtn').addEventListener('click', () => {
   if (!place.to) { $('toQ').focus(); return; }
   if (place.from && !place.from.transient) { nav.closeAll(); showScreen('plan'); plan(); } else planTo(place.to);
@@ -435,7 +435,7 @@ $('goBtn').addEventListener('click', () => {
 $('toClear').addEventListener('click', () => nav.close('plan'));
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 function clearPlan() {
-  place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = '';
+  place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = ''; barOpen = false;
   lastResult = null; lastQuery = null; lastSearch.clear();
   $('results').innerHTML = ''; showPlanError('');
   setOptions(false); $('nowBtn').click();
@@ -604,7 +604,6 @@ function setOptions(open) { $('formBody').hidden = !open; $('topbar').classList.
 function renderOptionChips() {
   const bike = bikeChoice(), day = $('day').value;
   $('optTime').textContent = timeTouched ? `🕒 ${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? dayLabel(day).split(' · ')[0] : ''} ${$('at').value}` : `🕒 ${t('now')}`;
-  $('toClear').hidden = !$('toQ').value;
   $('optBike').textContent = `🚲 ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
 }
 for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => setOptions($('formBody').hidden));
@@ -750,7 +749,7 @@ async function initMap() {
     if (isOpen('picker')) { m.easeTo({ center: e.lngLat, duration: 250 }); return; }
     $('menu').hidden = true;
     const hit = m.queryRenderedFeatures(e.point, { layers: ['lm-veh', 'lm-stops', 'journey-stops', 'context-stops'].filter((l) => m.getLayer(l)) });
-    if (!hit.length && !popup) sheet.set('peek');
+    if (!hit.length && !popup) { sheet.set('peek'); foldBar(); }
   });
   lmTimer = setInterval(refreshLiveMap, 20000);
   let known = false; try { known = !!localStorage.getItem('wayli-geo'); } catch (e) {}
