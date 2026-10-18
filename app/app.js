@@ -737,6 +737,11 @@ async function initMap() {
   const m = mainMap;
   geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } });
   m.addControl(geoCtl, lang === 'he' ? 'top-left' : 'top-right');
+  // a compass under it: shows the rotation and the tilt, a tap sets north up and flat; hidden while there is nothing to reset
+  const compass = new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true });
+  m.addControl(compass, lang === 'he' ? 'top-left' : 'top-right');
+  const compassVis = () => { const on = Math.abs(m.getBearing()) > 0.5 || m.getPitch() > 0.5; compass._container.classList.toggle('wayli-hidden', !on); };
+  compassVis(); for (const ev of ['rotate', 'pitch', 'moveend', 'load']) m.on(ev, compassVis);
   geoCtl.on('geolocate', (p) => notePos(p.coords.latitude, p.coords.longitude));
   m.once('load', () => { const a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show'); });
   m.on('style.load', () => {

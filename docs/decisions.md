@@ -241,3 +241,6 @@ so they are not re-litigated.
   now, over a dimmed map, closed by a tap outside, its ✕ or back. Found
   on the way: a pushState right after a programmatic history step back is
   swallowed by it; pushes now wait for that step to land.
+- 2026-10-18 Gadi: a button to align the compass, and the tilt with it.
+  MapLibre's compass control does both; it is shown only while the map is
+  rotated or tilted.

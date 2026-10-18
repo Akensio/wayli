@@ -149,7 +149,9 @@ a standing vehicle reports zero).
 Layout (v0.3, map first): one map under everything, showing every vehicle
 reporting in view with its line number and heading, the stops when zoomed
 in, the rider's position (MapLibre's locate control, started on its own once
-location was allowed before), and whatever the open panel is about. Over it,
+location was allowed before), a compass under it that appears once the map
+is rotated or tilted and resets both on a tap, and whatever the open panel
+is about. Over it,
 a floating top bar that is the planner: a menu button and one prompt,
 "where do you want to go?". A tap on it opens the bar: the destination
 field (tagged "to"; places, addresses and line numbers; its quick menu
