@@ -12,7 +12,8 @@ service day of the national timetable compiles to a 3 MB file and the street
 network of the whole country to 10 MB. The app in `app/` plans trips (with
 bikes, depart-at or arrive-by), groups the ways to go, plans with live
 delays and shows live times and a live map from Hasadna's Open Bus data,
-follows a trip and says when to get off, has line pages, remembers
+follows a trip, says when to get off and proposes a faster way when delays
+appear, has line pages, remembers
 recent and saved places, shows nearby stops and departures, shares a trip as
 a link and works offline. Since v0.3 the map is the home screen: live
 vehicles on it, one search bar over it, every panel in a bottom sheet. A GitHub Action rebuilds

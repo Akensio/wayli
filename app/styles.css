@@ -142,6 +142,12 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .follow .legs { padding-top: 8px; }
 .follow .leg { padding: 4px 0; } .follow .leg .what { font-size: 14px; }
 .leg.done { opacity: .45; }
+.altcard { margin: 10px 0 2px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.altcard[hidden] { display: none; }
+.altcard .title { font-weight: 700; color: var(--accent-text); }
+.altcard .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; align-items: center; }
+.altcard .row { margin-top: 8px; }
+.altcard .row .primary { flex: 1; margin: 0; }
 .leg.current .what { font-weight: 700; }
 
 

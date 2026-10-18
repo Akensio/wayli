@@ -206,6 +206,26 @@ not end the trip: a floating bar at the top offers to resume it, and if the
 app was on the follow panel it reopens there. A trip ends by the rider's
 "end", by arrival, or by going stale (45 minutes past its arrival).
 
+Re-planning on the way (v0.3.1): delays can make another way faster, so
+while a trip is followed the app plans again from the stop the rider
+reaches next (the next stop of the ride at its expected arrival, delay
+included; the boarding stop while waiting; the stop a walk leads to, when
+the walk ends) to the same destination, with the live vehicles around it,
+whenever the ride runs three or more minutes late, its vehicle is missing
+within ten minutes of departure, or five minutes have passed (never more
+than once per 90 s). An answer whose rides (trip and alighting stop each)
+are the ones already followed is the same plan, and its arrival is the
+best estimate of staying; any other answer is proposed only if it arrives
+at least four minutes earlier, plus three per extra transfer. The proposal
+is a card in the follow panel ("get off at X, line Y towards Z at T, arrive
+at T', n min earlier") with one tap to switch: the followed journey is
+spliced (the current ride cut at the next stop when the vehicle changes,
+the new ride from the next stop when only the alighting stop changes, the
+current walk kept), the follower's state is rebuilt on board or waiting,
+the map redrawn, the stored trip updated. A dismissed proposal stays away
+for fifteen minutes. The pure parts (origin, plan identity, splice) live in
+`follow.js`.
+
 Search and addresses: `pipeline/places.py` compiles an offline address book
 from OpenStreetMap (streets with their city from the nearest transit stop,
 house numbers, cities from the feed, notable places such as hospitals,

@@ -29,7 +29,12 @@ jobs:
       - name: Download the GTFS feed
         run: |
           mkdir -p data/osm
-          curl -sSL -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
+          # the Ministry's server resets connections now and then: retry, and insist on a real zip
+          for i in 1 2 3 4 5; do
+            curl -fsSL -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip && [ "$(stat -c %s data/gtfs.zip)" -gt 20000000 ] && break
+            echo "download failed (try $i)"; rm -f data/gtfs.zip; sleep 30
+          done
+          [ -f data/gtfs.zip ]
       - name: Cache the OpenStreetMap extract, street graph and address book (rebuilt weekly)
         id: osm
         uses: actions/cache@v4

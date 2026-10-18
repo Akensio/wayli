@@ -172,3 +172,11 @@ so they are not re-litigated.
 - 2026-10-18 Gadi: the accent colour is turquoise, not orange (and not
   cyan): #12998b in light mode, #2fcfbc in dark, a darker shade for text
   links; icons and the theme colour follow.
+- 2026-10-18 Gadi: while following a trip, "recalculate" when delays on
+  the road make it better to get off early and take another line. Built as
+  a periodic re-plan from the next stop with live vehicles, proposed as a
+  card with one tap to switch (details in architecture.md). Rejected:
+  switching automatically (the rider is on a vehicle; a surprise change is
+  worse than a late one) and re-planning every minute regardless (data use
+  on the phone; it runs when the ride is late, the vehicle is missing, or
+  every five minutes).

@@ -109,3 +109,58 @@ export function view(journey, state, nowSec) {
   const nextStop = stops[Math.min(lastIdx, state.rideIdx + 1)];
   return { kind: 'ride', leg, stopsLeft, nextStop, alight: stops[lastIdx], arrivesIn: Math.round((leg.arrive - nowSec) / 60), after: legs[state.step + 1] || null, nextRide };
 }
+
+// ------------------------------------------------------------------ re-planning on the way
+// Delays can make another way faster: get off a stop early and take another line, or take a different
+// line than the one being waited for. The planner answers from the stop the rider reaches next, at the
+// time they will be there; these helpers say where that is, whether an answer is the plan already
+// followed, and how to splice a chosen alternative into the journey.
+
+/** Where a re-plan starts: the next stop of the ride (at its expected arrival, delay included), the
+ *  boarding stop while waiting, or the stop a walk leads to. Null when there is nothing left to change. */
+export function replanOrigin(journey, state, nowSec, delay = 0) {
+  const v = view(journey, state, nowSec);
+  if (v.kind === 'done' || v.kind === 'final') return null;
+  const place = (s) => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
+  if (v.kind === 'ride') {
+    if (v.stopsLeft <= 1 || !v.nextStop) return null;
+    const s = v.nextStop;
+    return { kind: 'ride', from: place(s), fromTime: s.arr + Math.max(0, delay), offAt: s, rideStep: state.step };
+  }
+  if (v.kind === 'wait') return { kind: 'wait', from: place(v.leg.from), fromTime: nowSec, rideStep: state.step };
+  const to = v.leg.to;
+  if (!v.toRide || !to || to.stop == null) return null;
+  return { kind: 'walk', from: place(to), fromTime: Math.max(v.leg.arrive, nowSec), rideStep: state.step + 1 };
+}
+/** The rides of some legs as a key (trip and alighting stop each): equal keys mean the same plan. */
+export function ridesKey(legs) { return legs.filter((l) => l.type === 'ride').map((l) => `${l.trip}@${l.to.stop}`).join('|'); }
+export function remainingKey(journey, state) { return ridesKey(journey.legs.slice(state.step)); }
+/** The journey and state after switching to an alternative planned from `origin`. */
+export function spliceJourney(journey, state, alt, origin) {
+  const legs = journey.legs;
+  let newLegs;
+  const newState = { ...initialState(), startedAt: state.startedAt };
+  if (origin.kind === 'ride') {
+    const cur = legs[state.step];
+    if (alt.legs[0] && alt.legs[0].type === 'ride' && alt.legs[0].trip === cur.trip) {
+      // the same vehicle, a different stop to get off at: the new ride starts at the next stop, which is ahead
+      newLegs = alt.legs;
+      newState.onBoard = true; newState.rideIdx = 0;
+    } else {
+      // get off at the next stop: the current ride, cut there, then the alternative
+      const s = origin.offAt;
+      const idx = Math.max(0, cur.stopsAlong.findIndex((x) => x.stop === s.stop && x.arr === s.arr));
+      const along = cur.stopsAlong.slice(0, idx + 1);
+      const trunc = { ...cur, to: { stop: s.stop, name: s.name, lat: s.lat, lon: s.lon, city: '', code: '' }, arrive: s.arr, seconds: s.arr - cur.depart, stops: idx,
+        alightPos: cur.boardPos >= 0 ? cur.boardPos + idx : -1, pattern: cur.boardPos >= 0 ? cur.pattern : null, schedArrive: s.arr, stopsAlong: along, pathKind: 'stops', path: along.map((x) => [x.lat, x.lon]) };
+      newLegs = [trunc, ...alt.legs];
+      newState.onBoard = true; newState.rideIdx = Math.min(state.rideIdx, idx);
+    }
+  } else if (origin.kind === 'wait') {
+    newLegs = alt.legs;
+  } else {
+    newLegs = [legs[state.step], ...alt.legs];
+  }
+  const rides = newLegs.filter((l) => l.type === 'ride').length;
+  return { journey: { ...journey, legs: newLegs, arrive: alt.arrive, transfers: Math.max(0, rides - 1) }, state: newState };
+}

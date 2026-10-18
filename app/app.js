@@ -2,7 +2,7 @@
 // Pure logic lives next door: live.js (real-time), follow.js (trip following), store.js (on-device memory).
 import { settings, recentPlaces, recentTrips, savedPlaces, favs, lastSearch, activeTrip } from './store.js';
 import * as live from './live.js';
-import { initialState, advance, view as followView } from './follow.js';
+import { initialState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney } from './follow.js';
 import { darkLiberty } from './darkmap.js';
 
 const $ = (id) => document.getElementById(id);
@@ -42,6 +42,7 @@ const STR = {
     gpsNo: 'אין מיקום, מתקדם לפי השעון', gpsOk: 'מיקום {acc} מ\'', followTitle: '{line} ← {to}', walkTitle: 'הליכה ← {to}', copied: 'הקישור הועתק', walkToDest: 'הליכה {min} דק\' אל היעד: {name}',
     agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
     stopsCount: '{n} תחנות', popStops: 'התחנות', popLine: 'הקו', popDeps: 'יציאות', lineSearch: 'חיפוש קו לפי מספר', lineTitle: 'קו {line}', tripsToday: '{n} נסיעות היום', lineNoMatch: 'אין קו כזה היום', vehiclesOnLine: '{n} בשידור', otherDir: 'לכיוון {headsign}', noLineVehicles: 'אין רכב בשידור בקו',
+    fasterWay: 'יש דרך מהירה יותר', altGetOff: 'לרדת ב{stop}', altInstead: 'במקום קו {line}', altThen: 'קו {line} לכיוון {headsign} ב-{time}', altArrive: 'הגעה ב-{time}, {n} דק\' קודם', switchRoute: 'מעבר למסלול הזה', keepRoute: 'להישאר', routeSwitched: 'המסלול הוחלף',
     chooseHome: 'איפה הבית?', chooseWork: 'איפה העבודה?', choosePlace: 'מקום לשמירה', savePlace: 'שמירה', unsavePlace: 'הסרה מהשמורים', fromMyLoc: 'מהמיקום שלי', historyCleared: 'ההיסטוריה נמחקה', walkOnly: 'הליכה כל הדרך: {min} דק\'',
     about: '<p><b>Wayli</b> מתכנן נסיעות בתחבורה הציבורית בישראל על הטלפון שלכם: לוח הזמנים הארצי ורשת הרחובות יורדים פעם אחת, והחיפוש רץ מקומית. חיפושים, היסטוריה ומקומות שמורים נשארים בטלפון.</p><p>זמני אמת: פרויקט האוטובוס הפתוח של הסדנא לידע ציבורי (אפשר לכבות בהגדרות). הנתונים: משרד התחבורה (GTFS) ו-OpenStreetMap. התוכנה חופשית ברישיון AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>עדיין אין: דיווחים, גבהים (זמני רכיבה בחיפה ובירושלים אופטימיים). לוח זמנים: {feed}.</p>',
   },
@@ -78,6 +79,7 @@ const STR = {
     gpsNo: 'no position, following the clock', gpsOk: 'position ±{acc} m', followTitle: '{line} → {to}', walkTitle: 'Walk → {to}', copied: 'Link copied', walkToDest: 'walk {min} min to the destination: {name}',
     agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
     stopsCount: '{n} stops', popStops: 'Stops', popLine: 'Line', popDeps: 'Departures', lineSearch: 'Search a line by number', lineTitle: 'Line {line}', tripsToday: '{n} trips today', lineNoMatch: 'No such line today', vehiclesOnLine: '{n} reporting', otherDir: 'towards {headsign}', noLineVehicles: 'No vehicle of this line reporting',
+    fasterWay: 'There is a faster way', altGetOff: 'Get off at {stop}', altInstead: 'Instead of line {line}', altThen: 'line {line} towards {headsign} at {time}', altArrive: 'arrive at {time}, {n} min earlier', switchRoute: 'Switch to it', keepRoute: 'Keep mine', routeSwitched: 'Route switched',
     chooseHome: 'Where is home?', chooseWork: 'Where is work?', choosePlace: 'Place to save', savePlace: 'Save', unsavePlace: 'Remove from saved', fromMyLoc: 'from my location', historyCleared: 'History cleared', walkOnly: 'Walk all the way: {min} min',
     about: '<p><b>Wayli</b> plans public-transport trips in Israel on your phone: the national timetable and the street network download once, and every search runs locally. Searches, history and saved places stay on the phone.</p><p>Live times: the Public Knowledge Workshop\'s Open Bus project (can be turned off in settings). Data: Ministry of Transport (GTFS) and OpenStreetMap. Free software, AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>Not yet: reports, elevation (bike times in Haifa and Jerusalem are optimistic). Timetable: {feed}.</p>',
   },
@@ -1386,13 +1388,14 @@ function startTrip(j, q) {
 function openFollow(a) {
   if (fol && fol.a !== a) closeFollow(false);
   if (!fol) {
-    fol = { a, pos: null, watch: null, timer: 0, liveTimer: 0, wake: null, fitted: false, liveEst: null };
+    fol = { a, pos: null, watch: null, timer: 0, liveTimer: 0, replanTimer: 0, wake: null, liveEst: null, liveChecked: false, alt: null, dismissed: {}, replanAt: 0, replanning: false, toldKey: null };
     if (navigator.geolocation) {
       fol.watch = navigator.geolocation.watchPosition((p) => { fol.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() }; notePos(fol.pos.lat, fol.pos.lon); stepFollow(); },
         () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
     }
     fol.timer = setInterval(stepFollow, 5000);
     fol.liveTimer = setInterval(followLive, 30000);
+    fol.replanTimer = setInterval(() => replanCheck(), 60000);
     requestWake();
   }
   a.view = 'follow'; activeTrip.set(a);
@@ -1461,6 +1464,7 @@ function renderFollow() {
     $('followSkip').hidden = false;
   }
   $('followGps').textContent = fol.pos && Date.now() - fol.pos.at < 90000 ? t('gpsOk', { acc: Math.round(fol.pos.acc || 0) }) : t('gpsNo');
+  renderAlt();
   // the legs still ahead
   const nx = $('followNext');
   nx.innerHTML = '';
@@ -1488,6 +1492,7 @@ async function followLive() {
   const a = fol.a, now = live.nowOn(a.day);
   const leg = a.journey.legs.slice(a.state.step).find((l) => l.type === 'ride');
   if (!leg || leg.routeId == null || leg.depart - now > 3600 || !dayInfo || dayInfo.date !== a.day) { fol.liveEst = null; return; }
+  fol.liveChecked = true;
   try {
     const vs = await live.vehiclesByLine(leg.routeId);
     if (!fol) return;
@@ -1496,7 +1501,7 @@ async function followLive() {
     for (const mk of followVehicle.splice(0)) mk.remove();
     if (mainMap && drawnFor === 'follow') lineVehicleMarkers(mainMap, followVehicle, vs, statuses, leg.routeType, leg.trip, { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route });
     const v = live.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
-    if (!v) { fol.liveEst = null; $('followLive').hidden = true; renderFollow(); return; }
+    if (!v) { fol.liveEst = null; $('followLive').hidden = true; renderFollow(); replanCheck(); return; }
     const ts = await tripStopsCached(leg.trip);
     const est = live.estimateDelay(v, ts.stops, a.day);
     const at = live.liveAt(est, ts.stops, leg.boardPos);
@@ -1504,8 +1509,92 @@ async function followLive() {
     const b = liveBadge(at);
     $('followLive').textContent = b.text; $('followLive').className = 'livebadge ' + b.cls; $('followLive').hidden = !at;
     renderFollow();
+    replanCheck();
   } catch (e) { /* live is a bonus */ }
 }
+// ---- re-planning on the way: when delays make another way faster, say so and offer to switch
+let replanGain = 240;   // s: an alternative has to arrive this much earlier (plus 3 min per extra transfer) to be proposed
+const replanSkip = (why) => { try { window.wayliDebug = { ...(window.wayliDebug || {}), lastReplan: { skipped: why } }; } catch (e) {} };
+async function replanCheck(force = false) {
+  if (!fol || fol.replanning) return;
+  if (!liveOn() || !dayInfo || dayInfo.date !== fol.a.day || document.hidden) { replanSkip(!liveOn() ? 'live off' : document.hidden ? 'hidden' : 'other day'); return; }
+  const a = fol.a, now = live.nowOn(a.day);
+  const delay = fol.liveEst && fol.liveEst.est ? fol.liveEst.est.delay : 0;
+  const origin = replanOrigin(a.journey, a.state, now, delay);
+  if (!origin) { replanSkip('nothing left to change'); if (fol.alt) { fol.alt = null; renderFollow(); } return; }
+  // reasons to look: the ride is late, its vehicle is missing close to departure, or five minutes passed
+  const nextRide = a.journey.legs.slice(origin.rideStep).find((l) => l.type === 'ride');
+  const late = delay >= 180;
+  const missing = fol.liveChecked && !fol.liveEst && nextRide && nextRide.depart - now < 600 && nextRide.depart - now > -300;
+  const due = Date.now() - fol.replanAt > 300000;
+  if (!force && !(late || missing || due)) { replanSkip('no reason yet'); return; }
+  if (!force && Date.now() - fol.replanAt < 90000) { replanSkip('too soon'); return; }
+  fol.replanning = true; fol.replanAt = Date.now();
+  try {
+    let vehicles = null;
+    try { vehicles = await live.vehiclesForPlanning(origin.from.lat, origin.from.lon, { timeoutMs: 8000, radiusKm: 8 }); } catch (e) { vehicles = null; }
+    if (!fol || fol.a !== a) return;
+    const q = a.q;
+    const r = await call('plan', { from: origin.from, to: q.to, fromTime: origin.fromTime, toTime: origin.fromTime + 3600, bike: q.bike === 'along' ? 'along' : 'none', folding: !!q.folding, weekday: dateOf(a.day).getDay() <= 4, maxWalk: settings.get().maxWalk * 60, vehicles });
+    if (!fol || fol.a !== a) return;
+    const curKey = remainingKey(a.journey, a.state);
+    const remainingRides = a.journey.legs.slice(a.state.step).filter((l) => l.type === 'ride').length;
+    let curArrive = a.journey.arrive + Math.max(0, delay);
+    const same = r.journeys.find((j) => ridesKey(j.legs) === curKey);
+    if (same) curArrive = Math.min(curArrive, same.arrive);   // staying, with the delays the planner knows of
+    let best = null;
+    for (const j of r.journeys) {
+      const key = ridesKey(j.legs) || 'walk';
+      if (key === curKey) continue;
+      const rides = j.legs.filter((l) => l.type === 'ride').length;
+      if (curArrive - j.arrive < replanGain + 180 * Math.max(0, rides - remainingRides)) continue;
+      if (fol.dismissed[key] && Date.now() - fol.dismissed[key] < 900000) continue;
+      best = { journey: j, origin, key, gain: curArrive - j.arrive };
+      break;
+    }
+    fol.alt = best;
+    try { window.wayliDebug = { ...(window.wayliDebug || {}), lastReplan: { origin, found: r.journeys.length, curArrive, same: !!same, best: best && { arrive: best.journey.arrive, gain: best.gain, key: best.key } } }; } catch (e) {}
+    renderFollow();
+    if (best && best.key !== fol.toldKey) { fol.toldKey = best.key; toast(t('fasterWay'), 5000); try { if (settings.get().sound && navigator.vibrate) navigator.vibrate(200); } catch (e) {} }
+  } catch (e) { replanSkip('failed: ' + (e && e.message)); } finally { if (fol) fol.replanning = false; }
+}
+/** The card proposing the alternative, rebuilt only when it changes. */
+function renderAlt() {
+  const ac = $('followAlt');
+  const alt = fol && fol.alt;
+  if (!alt) { ac.hidden = true; ac.dataset.key = ''; return; }
+  if (ac.dataset.key === alt.key && !ac.hidden) return;
+  const a = fol.a, j = alt.journey, o = alt.origin;
+  const rides = j.legs.filter((l) => l.type === 'ride');
+  const cur = a.journey.legs[a.state.step];
+  const sameVehicle = o.kind === 'ride' && rides[0] && rides[0].trip === cur.trip;
+  let first = '';
+  if (o.kind === 'ride') first = t('altGetOff', { stop: sameVehicle ? rides[0].to.name : o.offAt.name });
+  else if (o.kind === 'wait') first = t('altInstead', { line: lineText(cur.line) });
+  const nextRide = sameVehicle ? rides[1] : rides[0];
+  const then = nextRide ? t('altThen', { line: lineText(nextRide.line), headsign: nextRide.headsign, time: fmt(nextRide.depart) }) : '';
+  const chips = j.legs.map((l) => `<span class="${chipClass(l)}">${chipText(l)}</span>`).join('<span class="muted">›</span>');
+  ac.innerHTML = `<div class="title">⚡ ${t('fasterWay')}</div><div>${esc(first)}${first && then ? ' · ' : ''}${esc(then)}</div><div class="chips">${chips}</div>` +
+    `<div class="muted">${esc(t('altArrive', { time: fmt(j.arrive), n: Math.round(alt.gain / 60) }))}</div>` +
+    `<div class="row"><button type="button" class="primary slim" data-act="go">${t('switchRoute')}</button><button type="button" class="ghost" data-act="no">${t('keepRoute')}</button></div>`;
+  ac.querySelector('[data-act="go"]').addEventListener('click', () => switchJourney(alt));
+  ac.querySelector('[data-act="no"]').addEventListener('click', () => { if (!fol) return; fol.dismissed[alt.key] = Date.now(); fol.alt = null; renderFollow(); });
+  ac.dataset.key = alt.key;
+  ac.hidden = false;
+}
+function switchJourney(alt) {
+  if (!fol) return;
+  const a = fol.a;
+  const { journey, state } = spliceJourney(a.journey, a.state, alt.journey, alt.origin);
+  a.journey = journey; a.state = state; a.replanned = (a.replanned || 0) + 1;
+  fol.alt = null; fol.liveEst = null; fol.toldKey = null; fol.replanAt = Date.now();
+  activeTrip.set(a);
+  $('followLive').hidden = true;
+  redrawMap(true);
+  stepFollow(); followLive();
+  toast(t('routeSwitched'));
+}
+try { window.wayliDebug = { ...(window.wayliDebug || {}), replan: () => replanCheck(true), setReplanGain: (g) => { replanGain = g; } }; } catch (e) {}
 $('followSkip').addEventListener('click', () => {
   if (!fol) return;
   const a = fol.a, legs = a.journey.legs, s = a.state;
@@ -1519,7 +1608,7 @@ function finishFollow() { setTimeout(() => { if (fol && fol.a.state.done) { clos
 function closeFollow(end) {
   if (fol) {
     if (fol.watch != null && navigator.geolocation) navigator.geolocation.clearWatch(fol.watch);
-    clearInterval(fol.timer); clearInterval(fol.liveTimer);
+    clearInterval(fol.timer); clearInterval(fol.liveTimer); clearInterval(fol.replanTimer);
     if (fol.wake) { try { fol.wake.release(); } catch (e) {} }
     if (end) activeTrip.clear(); else { fol.a.view = 'hidden'; activeTrip.set(fol.a); }
     fol = null;

@@ -84,7 +84,7 @@ the live vehicles under a search bar and a bottom sheet), plans
 routing), remembers (history, saved places, last search), follows a trip
 with get-off alerts and resumes it, shows live times from Hasadna's Open
 Bus data (no key, no relay), has line pages and bubbles on the map, shares
-trips, and has settings. Next: re-planning while following a trip when
-delays make another way faster, crowd reports, stop-name translations and
-Arabic, elevation, measuring live-data freshness in daily use, a fallback
-relay only if Hasadna proves unreliable.
+trips, proposes a faster way while following when delays appear (v0.3.1),
+and has settings. Next: crowd reports, stop-name translations and Arabic,
+elevation, measuring live-data freshness in daily use, a fallback relay
+only if Hasadna proves unreliable.

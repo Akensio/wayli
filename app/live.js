@@ -102,9 +102,9 @@ export async function trains({ sinceSec = 1800, limit = 500, timeoutMs } = {}) {
   return latest(rows);
 }
 /** What a plan from here needs: the vehicles around the origin plus every train, each query on its own. */
-export async function vehiclesForPlanning(lat, lon, { timeoutMs = 8000 } = {}) {
+export async function vehiclesForPlanning(lat, lon, { timeoutMs = 8000, radiusKm = 12 } = {}) {
   const [near, rail] = await Promise.all([
-    vehiclesNear(lat, lon, 12, { sinceSec: 1800, limit: 1200, timeoutMs }).catch(() => null),
+    vehiclesNear(lat, lon, radiusKm, { sinceSec: 1800, limit: 1200, timeoutMs }).catch(() => null),
     trains({ timeoutMs }).catch(() => null),
   ]);
   if (!near && !rail) throw new Error('live unavailable');
