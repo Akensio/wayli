@@ -3,7 +3,8 @@ Ministry's feed has no shapes for trains (checked 2026-10-18: every rail trip la
 
 Ways tagged railway=rail, except yards, sidings and spurs; every way node is kept (tracks curve);
 edges carry metres. The compiler (compile.py --rail) routes each pair of consecutive stations over
-this graph with A* and stores the course once per pair.
+this graph with A* (from the points where the tracks pass closest to each station, over any of the parallel
+tracks there) and stores the course once per pair.
 
 Container (like the others): u32 header length, JSON header, sections nodeLat/nodeLon int32 (1e-5
 degrees), edgeOff int32[N+1], edgeTo int32, edgeLen int32 (metres).
@@ -23,6 +24,7 @@ import osmium
 
 FORMAT_VERSION = 1
 SKIP_SERVICE = {"yard", "siding", "spur"}
+GAP_WEIGHT = 2.0   # a metre between the station point and the track costs this many metres of track
 
 
 def log(msg):
@@ -139,49 +141,106 @@ def load(path):
     return g
 
 
-def nearest(g, lat, lon, max_m=600.0):
-    d = np.hypot((g["lon"] - lon) * g["kx"], (g["lat"] - lat) * 110540.0)
-    i = int(np.argmin(d))
-    return i if d[i] <= max_m else -1
+def _edge_arrays(g):
+    """Each undirected edge once: from-node, to-node, length, and the edge's two ends in local metres."""
+    if "edgeU" not in g:
+        off, to = g["edgeOff"], g["edgeTo"]
+        u = np.repeat(np.arange(len(off) - 1, dtype=np.int32), np.diff(off))
+        keep = u < to
+        g["edgeU"], g["edgeV"], g["edgeM"] = u[keep], to[keep], g["edgeLen"][keep].astype(np.float64)
+        g["ux"], g["uy"] = g["lon"][g["edgeU"]] * g["kx"], g["lat"][g["edgeU"]] * 110540.0
+        g["vx"], g["vy"] = g["lon"][g["edgeV"]] * g["kx"], g["lat"][g["edgeV"]] * 110540.0
+    return g["edgeU"], g["edgeV"], g["edgeM"], g["ux"], g["uy"], g["vx"], g["vy"]
+
+
+def snap(g, lat, lon, max_m=600.0, slack_m=60.0):
+    """Where a point meets the tracks: every edge that passes within `slack_m` of the nearest one (parallel
+    tracks of a corridor all count), as (u, v, length, fraction along u->v, foot lat, foot lon, distance)."""
+    eu, ev, em, ux, uy, vx, vy = _edge_arrays(g)
+    if not len(eu):
+        return []
+    px, py = lon * g["kx"], lat * 110540.0
+    dx, dy = vx - ux, vy - uy
+    seg2 = dx * dx + dy * dy
+    t = np.clip(((px - ux) * dx + (py - uy) * dy) / np.where(seg2 > 0, seg2, 1.0), 0.0, 1.0)
+    fx, fy = ux + t * dx, uy + t * dy
+    d = np.hypot(px - fx, py - fy)
+    best = float(d.min())
+    if best > max_m:
+        return []
+    out = []
+    for k in np.flatnonzero(d <= best + slack_m):
+        out.append((int(eu[k]), int(ev[k]), float(em[k]), float(t[k]), float(fy[k] / 110540.0), float(fx[k] / g["kx"]), float(d[k])))
+    return out
 
 
 def route(g, lat1, lon1, lat2, lon2):
     """The track between two points as [(lat, lon), ...], or None when the graph does not connect them
-    within a sane detour."""
-    a, b = nearest(g, lat1, lon1), nearest(g, lat2, lon2)
-    if a < 0 or b < 0:
+    within a sane detour. Both ends may meet several parallel tracks; the search starts from and ends at
+    the points where the tracks pass closest, and picks the tracks that make the shortest run, so a
+    station on a multi-track corridor never sends the train past itself and back over a crossover."""
+    src, dst = snap(g, lat1, lon1), snap(g, lat2, lon2)
+    if not src or not dst:
         return None
     straight = haversine(lat1, lon1, lat2, lon2)
     limit = 2.5 * straight + 3000
     lat, lon, off, to, ln = g["lat"], g["lon"], g["edgeOff"], g["edgeTo"], g["edgeLen"]
     kx, ky = g["kx"], 110540.0
-    goal_x, goal_y = lon[b] * kx, lat[b] * ky
+    goal_x, goal_y = lon2 * kx, lat2 * ky
 
-    def h(i):
+    def h(i):   # admissible: every run ends with the gap from the track to the station point
         return math.hypot(lon[i] * kx - goal_x, lat[i] * ky - goal_y)
-    dist = {a: 0.0}
-    prev = {}
-    heap = [(h(a), 0.0, a)]
+    # the virtual start: the gap from the station to each nearby track, then either end of that edge. The
+    # gap counts double, so the run meets the track at the point nearest the station rather than at a
+    # point farther along it that saves as much track as it adds gap.
+    dist, prev, foot_in = {}, {}, {}
+    heap = []
+    for u, v, m, t, flat, flon, gap in src:
+        for node, cost in ((u, GAP_WEIGHT * gap + t * m), (v, GAP_WEIGHT * gap + (1.0 - t) * m)):
+            if cost < dist.get(node, math.inf):
+                dist[node], foot_in[node] = cost, (flat, flon)
+                heapq.heappush(heap, (cost + h(node), cost, node))
+    # the virtual end: reaching either end of a target edge finishes with the rest of that segment and the gap
+    finish = {}
+    for u, v, m, t, flat, flon, gap in dst:
+        for node, cost in ((u, GAP_WEIGHT * gap + t * m), (v, GAP_WEIGHT * gap + (1.0 - t) * m)):
+            if cost < finish.get(node, (math.inf,))[0]:
+                finish[node] = (cost, (flat, flon))
+    best = (math.inf, None, None)
+    # both points on the same edge: straight along it, without visiting a node
+    for su, sv, sm, st, slat, slon, sgap in src:
+        for du, dv, dm, dt, dlat, dlon, dgap in dst:
+            if su == du and sv == dv:
+                c = GAP_WEIGHT * (sgap + dgap) + abs(st - dt) * sm
+                if c < best[0]:
+                    best = (c, None, ((slat, slon), (dlat, dlon)))
     while heap:
         f, d, i = heapq.heappop(heap)
-        if i == b:
-            break
-        if d > dist.get(i, math.inf) or d > limit:
+        if d > dist.get(i, math.inf) or d > limit or f >= best[0]:
             continue
+        if i in finish:
+            c = d + finish[i][0]
+            if c < best[0]:
+                best = (c, i, finish[i][1])
         for k in range(off[i], off[i + 1]):
             j = int(to[k])
             nd = d + float(ln[k])
             if nd < dist.get(j, math.inf):
                 dist[j] = nd
                 prev[j] = i
+                if j in foot_in:
+                    del foot_in[j]
                 heapq.heappush(heap, (nd + h(j), nd, j))
-    if b not in dist or dist[b] > limit:
+    if best[0] > limit or best[2] is None:
         return None
-    path = []
-    i = b
+    if best[1] is None:
+        return [best[2][0], best[2][1]]
+    path = [best[2]]
+    i = best[1]
     while True:
         path.append((float(lat[i]), float(lon[i])))
-        if i == a:
+        if i in foot_in:
+            path.append(foot_in[i])
             break
         i = prev[i]
     path.reverse()

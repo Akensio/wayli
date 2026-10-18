@@ -244,3 +244,26 @@ so they are not re-litigated.
 - 2026-10-18 Gadi: a button to align the compass, and the tilt with it.
   MapLibre's compass control does both; it is shown only while the map is
   rotated or tilted.
+- 2026-10-18 Gadi: picking on the map by moving the map under a crosshair
+  is annoying; tap a spot, get a pin with a bubble and a confirm, tap
+  elsewhere to keep looking. Done; a tap on a stop picks the stop itself.
+- 2026-10-18 Gadi: the train's course near HaShalom was a tangle. Cause: the
+  rail router snapped each station to its single nearest track node, which
+  on the four-track Ayalon corridor could only be reached past the station
+  and back over a crossover. Now a station meets every nearby parallel
+  track at the closest point and the search chooses the track; the gap from
+  the station to the track counts double so it meets the track beside the
+  station.
+- 2026-10-18 Gadi: modernise the settings and every icon. One hand-drawn
+  stroke icon set as an SVG sprite replaces all emoji, including the
+  station badges on the map (drawn from the same paths on canvas), and
+  ordinary bus stops get a small badge close up; settings are grouped lists
+  with switches and pill segments.
+- 2026-10-18 Gadi: the sheet was hard to pull up by its thin handle. It is
+  now dragged from anywhere while collapsed or half open (the half size no
+  longer scrolls; a pull opens it fully), the handle is taller.
+- 2026-10-18 Gadi: a user icon attached to the search bar instead of the
+  floating hamburger. The round button sits inside the pill at its start
+  edge and opens the same drawer, now headed by the avatar and "no account,
+  everything stays on the phone". He also said the two-row to/from bar can
+  stay as designed (he had asked for a single box earlier).

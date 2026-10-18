@@ -168,10 +168,13 @@ fields and the results and drops the sheet to its strip. A bottom sheet with thr
 strip, about half the screen, nearly full) carries every panel: the plan
 screen (results and recent searches only), nearby, saved, settings,
 and the panels for a journey, a stop, a trip's stops, a line, the place
-chooser and the trip being followed. The sheet is dragged by its
-handle or tapped to cycle; a tap on empty map collapses it. Picking a point
-is a mode of the same map: the sheet and bar give way to a crosshair and a
-choose bar. The strip at the bottom when nothing is open offers plan, home,
+chooser and the trip being followed. The sheet is dragged from anywhere on
+it while it is collapsed or half open (its body does not scroll then; the
+half size is a preview, a pull opens it fully), from its handle always, and
+a tap on the handle cycles the sizes; a tap on empty map collapses it.
+Picking a point
+is a mode of the same map: the sheet and bar give way to a hint and a
+Cancel; a tap drops the pin. The strip at the bottom when nothing is open offers plan, home,
 work, recent places and nearby stops. Picking a destination in the top bar
 plans from the rider's location at once. The panels form a stack, and only
 the top one is shown with its map content (a panel registers what it draws;
@@ -181,11 +184,21 @@ returns to the previous screen instead of leaving the app. Closing a panel
 edits the stack first and lets history catch up, so programmatic closes and
 the back button never disagree; an entry pushed while that catch-up is
 pending waits for it (the browser measures a step back from where it was
-asked, so a push made meanwhile would be swallowed). The menu is a drawer
-sliding in from the start edge over a dimmed map, a history entry like the
-panels, with the four screens and the build time. The basemap is restyled in place when the
-theme changes (a full style reload, after which the app's layers are added
-again).
+asked, so a push made meanwhile would be swallowed). The menu opens from a
+round user button inside the search pill (at its start edge, where a
+hamburger used to float): a drawer sliding in from the start edge over a
+dimmed map, a history entry like the panels, headed by the same avatar with
+"no account, everything stays on the phone", then the four screens and the
+build time. The "to" tag on the search pill shows only once the bar is open
+in two rows. The basemap is restyled in place when the theme changes (a
+full style reload, after which the app's layers are added again).
+
+Icons are one hand-drawn stroke set on a 24-unit grid (`ICONS` in
+`app.js`): injected once as an inline SVG sprite and used as `<use>`
+references in markup and templates, and drawn with the same paths through
+`Path2D` on the canvases that become the map's station and stop badges. No
+emoji anywhere in the interface: emoji render differently on every phone
+and cannot take the app's colours.
 
 Planning: from and to can be a stop or station, an address, a street, a
 place, a city, the device's location or a point picked on the map. From a
@@ -269,7 +282,8 @@ named by its first word, a place's words count alike), nearness, a point
 ahead of a street at equal strength, an address ahead of everything when a
 number was typed. A missing house number resolves to
 the nearest known one on that street and says so. A point can also be picked
-on the map (it moves under a crosshair; choose), and gets its name from the same book in reverse:
+on the map (a tap drops a pin with a bubble naming the spot and a Choose
+button; another tap moves it; a tap on a stop picks the stop), and gets its name from the same book in reverse:
 nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
@@ -290,9 +304,11 @@ trip's full stop list with where the vehicle is now; the map eases to the
 stop with a pin; "to here" plans from the rider's location at once and
 "from here" opens the form; stars save stops. Saved: home and work (one
 tap plans a trip there from the device's location), other saved places,
-saved trips, saved stops. Settings: language, dark-mode map, longest walk,
-live times on/off with a plain statement of what is sent, alerts, sound and
-vibration, a test alert, add to home screen, clear history.
+saved trips, saved stops. Settings, as grouped lists (general, planning,
+live times and alerts, the app, about) with an icon per row: language and
+map look as pill segments, longest walk as a stepper, live times (with a
+plain statement of what is sent), alerts and sound as switches, then a test
+alert, add to home screen and clear history as rows, and the about text.
 
 Time is Israel time whatever the phone's zone (`Intl` with
 `Asia/Jerusalem`), and "now" is expressed in seconds on the selected
@@ -315,7 +331,14 @@ trip lacks a shape_id), so `pipeline/rail.py` turns OpenStreetMap's
 `railway=rail` ways (yards, sidings and spurs excluded) into a rail graph,
 and the compiler routes every pair of consecutive stations over it with
 A*, stores each pair's track once in the day's file (8 m simplification)
-and draws a train ride by chaining its pairs. A
+and draws a train ride by chaining its pairs. A station meets the graph at
+the points where the tracks pass closest to it, on every track within 60 m
+of the nearest one (a corridor like the Ayalon has four), and the search
+starts from and ends at those points, with the gap from the station point
+to the track counted double, so it picks the track that makes the shortest
+run and meets it beside the station. Snapping to the single nearest node
+instead sent trains 250 m past HaShalom and back over a crossover, which
+drew as a tangle of parallel lines. A
 service day's file also carries the next calendar day's trips that start
 before 03:00, shifted by 24 hours, because the feed codes a 00:10 night bus
 on the next date; so the night is complete in one file.
@@ -418,8 +441,9 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   (a parent with platforms) are badges with the mode's glyph from zoom 11,
   one per station at the centre of its platforms (a tap shows the lines of
   all its platforms); ordinary stops and platforms are the small circles
-  from zoom 14. The same badges mark stations along a drawn line or
-  journey. A tap on any vehicle, on any map, opens a bubble
+  from zoom 14, and from zoom 15.5 every bus stop also wears a smaller grey
+  badge with the bus glyph over its circle. The same badges mark stations
+  along a drawn line or journey. A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
   buttons to its trip's stops and its line page; a tap on any stop dot opens
   a bubble with the stop's lines and departures / from here / to here. No
