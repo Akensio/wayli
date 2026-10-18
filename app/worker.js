@@ -447,6 +447,15 @@ const ops = {
     return out.slice(0, limit).map((o) => ({ ...o, lines: linesAt(o.stop) }));
   },
   stopInfo({ stop }) { return { ...stopOut(stop), lines: linesAt(stop, 30) }; },
+  /** The GTFS route ids of the lines serving stops within `radius` m of a point: what can be taken from there. */
+  nearbyRoutes({ lat, lon, radius = 500 }) {
+    const ids = new Set();
+    for (let s = 0; s < tt.stops.length; s++) {
+      if (haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]) > radius) continue;
+      for (let i = tt.stopPatsOff[s]; i < tt.stopPatsOff[s + 1]; i++) { const id = tt.routes[tt.patRoute[tt.stopPats[2 * i]]][4]; if (id != null) ids.add(String(id)); }
+    }
+    return Array.from(ids);
+  },
   departures({ stop, fromTime, limit = 40 }) {
     const out = [];
     for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {

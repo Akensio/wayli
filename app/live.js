@@ -58,6 +58,9 @@ function norm(v) {
     rideId: v.siri_ride__id, vehicleRef: v.siri_ride__vehicle_ref, fromStart: v.distance_from_journey_start };
 }
 /** Latest position per ride (a few rows carry impossible future times; they are dropped). */
+let newestSeen = 0;   // ms: the newest report any query returned; "fresh" is measured against it, not the clock
+/** A vehicle whose last report is within five minutes of the newest report seen (the feed itself may lag). */
+export function isFresh(v, windowSec = 300) { const ref = newestSeen || Date.now(); return ref - v.recordedAt.getTime() <= windowSec * 1000; }
 function latest(rows) {
   const by = new Map();
   const horizon = Date.now() + 600e3;
@@ -67,6 +70,7 @@ function latest(rows) {
     const o = by.get(v.rideId);
     if (!o || v.recordedAt > o.recordedAt) by.set(v.rideId, v);
   }
+  for (const v of by.values()) if (v.recordedAt.getTime() > newestSeen) newestSeen = v.recordedAt.getTime();
   return Array.from(by.values());
 }
 // The sort order decides whether the database answers in a few seconds or times out: with a closed

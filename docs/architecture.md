@@ -134,7 +134,15 @@ ground near black, roads mid grey with lighter casings, buildings a shade
 above the ground, text light with a dark halo), so the dark map keeps all
 of Liberty's detail: road classes, 3D buildings, stops, places.
 OpenFreeMap's own dark styles were rejected as too bare. The RTL text
-plugin shapes Hebrew and Arabic labels. Vehicles on every map carry a
+plugin shapes Hebrew and Arabic labels. Lines are coloured by mode and
+operator: trains navy, light rail red (both lines running are "the red
+line"), buses in their operator's colour, approximate brand colours kept
+in one table in `app.js` (Egged green and Dan blue read off their sites;
+Metropoline orange, Kavim purple, Superbus orange-red, Nateev Express lime,
+Electra Afikim dark blue, Tnufa light blue, Extra magenta, Galim teal, Bet
+Shemesh Express brown from memory, to be corrected as seen on the road),
+other operators slate green; chips, legs, map lines, vehicle dots and
+markers all use the same colour. Vehicles on every map carry a
 triangle on their rim pointing where they head (SIRI's bearing; none when
 a standing vehicle reports zero).
 
@@ -142,12 +150,17 @@ Layout (v0.3, map first): one map under everything, showing every vehicle
 reporting in view with its line number and heading, the stops when zoomed
 in, the rider's position (MapLibre's locate control, started on its own once
 location was allowed before), and whatever the open panel is about. Over it,
-a floating top bar: a menu button, one search box for places and line
-numbers, the language toggle. A bottom sheet with three heights (a strip,
-about half the screen, nearly full) carries every panel: the plan screen
-(the form folds to one line while results are shown), nearby, saved,
-settings, and the panels for a journey, a stop, a trip's stops, a line, the
-place chooser and the trip being followed. The sheet is dragged by its
+a floating top bar that is the planner: a menu button, the destination
+field (places, addresses and line numbers; its quick menu offers my
+location, a point on the map, saved and recent places), the language
+toggle, and, once a place is set, a second row with the origin field
+(empty means my location) and a swap button. A destination plans at once;
+changing either field plans again. A bottom sheet with three heights (a
+strip, about half the screen, nearly full) carries every panel: the plan
+screen (the options for time, day and bicycle, folded to one line while
+results are shown; the results; recent searches), nearby, saved, settings,
+and the panels for a journey, a stop, a trip's stops, a line, the place
+chooser and the trip being followed. The sheet is dragged by its
 handle or tapped to cycle; a tap on empty map collapses it. Picking a point
 is a mode of the same map: the sheet and bar give way to a crosshair and a
 choose bar. The strip at the bottom when nothing is open offers plan, home,
@@ -377,10 +390,14 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   the map itself: every vehicle reporting in view, coloured by mode with
   its line number, refreshed every 20 s and on every pan (not while the
   sheet covers the map or the app is in the background), with the stops
-  when zoomed in. The layer follows the view: while results are shown it
-  keeps only the lines of those journeys (the note says so), and it is
-  hidden while a journey, a line or a followed trip draws its own
-  vehicles with their delays. A tap on any vehicle, on any map, opens a bubble
+  when zoomed in. The layer follows the view: with nothing searched and
+  the map around the rider, only the lines serving stops within 500 m of
+  them (what can be taken from there; elsewhere on the map, everything in
+  view); while results are shown, only the lines of those journeys (the
+  note says which); hidden while a journey, a line or a followed trip
+  draws its own vehicles with their delays. A vehicle whose last report is
+  more than five minutes behind the newest report of the feed is not drawn
+  at all (the feed lags as a whole; a single stale vehicle is noise). A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
   buttons to its trip's stops and its line page; a tap on any stop dot opens
   a bubble with the stop's lines and departures / from here / to here. No
@@ -404,7 +421,8 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
 - Freshness: Hasadna's ingestion sometimes lags by 20 minutes and backfills
   old snapshots, so queries look back half an hour, sort by recorded time
   (not id), and every screen shows how old the newest report is; a report
-  older than four minutes is marked with "?".
+  older than four minutes is marked with "?", and one more than five
+  minutes behind the feed's newest report is left off the map.
 - Privacy: while on, the phone sends Hasadna the line numbers and the area
   it looks at, and Hasadna sees its IP, as any website does. The settings
   screen says exactly this, and one switch turns live times off.

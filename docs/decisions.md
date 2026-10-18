@@ -196,3 +196,20 @@ so they are not re-litigated.
   ride leg in the journey detail focuses it. Rejected: a manual filter
   switch on the map (one more control; the view already says what is
   relevant).
+- 2026-10-18 Gadi: "we have search both on top and below the map; only on
+  top". The top bar is now the whole planner (destination field; origin
+  row once a place is set; swap), and the sheet's plan screen keeps only
+  the options, results and recent searches. Rejected: a single field with
+  the origin as a chip inside it (too tight on a phone).
+- 2026-10-18 Gadi, same evening: "I meant the live dots too, no need for
+  tons of irrelevant buses", and "why a 21:57 dot at 22:19?". With nothing
+  searched the home map now shows only the lines of the stops within
+  500 m of him (everything when he looks elsewhere), and a vehicle more
+  than five minutes behind the feed's newest report is dropped. Rejected:
+  an absolute age cutoff (the feed itself lags by 10 to 20 minutes, so it
+  would blank the map).
+- 2026-10-18 Gadi: operators have their colours, Egged green, Metropoline
+  orange; colour lines by operator. Done with one table of approximate
+  brand colours (architecture.md lists them and their sources); light
+  rail is red now so Kavim can be purple. Rejected: the feed's
+  route_color (set for few routes, and the same FF9933 across operators).

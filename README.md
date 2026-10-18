@@ -16,7 +16,8 @@ follows a trip, says when to get off and proposes a faster way when delays
 appear, has line pages, remembers
 recent and saved places, shows nearby stops and departures, shares a trip as
 a link and works offline. Since v0.3 the map is the home screen: live
-vehicles on it, one search bar over it, every panel in a bottom sheet. A GitHub Action rebuilds
+vehicles of the lines around you on it, the planner in one bar over it,
+every panel in a bottom sheet; lines carry their operator's colour. A GitHub Action rebuilds
 the data every night and publishes to GitHub Pages. No crowd reports yet; see
 "Roadmap" below.
 
