@@ -101,6 +101,7 @@ function applyLang() {
   renderDays();
   renderAbout();
   renderSettings();
+  renderOptionChips();
 }
 function setLang(l) {
   lang = l; try { localStorage.setItem('wayli-lang', lang); } catch (e) {}
@@ -504,6 +505,7 @@ function applyQuery(q) {
   if (q.day && manifest && manifest.days.some((d) => d.date === q.day)) $('day').value = q.day;
   if (q.at) $('at').value = q.at;
   setTimeMode(q.arriveBy ? 'arrive' : 'depart');
+  renderOptionChips();
 }
 function parseShared(params) {
   const pt = (s) => { if (!s) return null; const [lat, lon, ...rest] = s.split(','); const name = decodeURIComponent(rest.join(',')) || `${lat}, ${lon}`; return Number.isNaN(+lat) ? null : { name, lat: +lat, lon: +lon }; };
@@ -524,7 +526,7 @@ async function plan(opts = {}) {
   $('planBtn').disabled = true;
   $('results').innerHTML = `<div class="empty">${t('planning')}</div>`;
   $('recentBox').hidden = true;
-  collapseForm(false);
+  setOptions(false); renderOptionChips();
   const q = { from: place.from, to: place.to, day, at: $('at').value, bike, folding, arriveBy, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
   let vehicles = null, liveAsOf = null;
@@ -540,7 +542,7 @@ async function plan(opts = {}) {
     lastSearch.set({ q, result: r, at: Date.now() });
     renderResults(r, q);
     renderRecent();
-  } catch (e) { showPlanError(e.message); $('results').innerHTML = ''; collapseForm(false); }
+  } catch (e) { showPlanError(e.message); $('results').innerHTML = ''; }
   $('planBtn').disabled = false;
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
@@ -575,22 +577,21 @@ function journeyCard(j, q, alts, options) {
   d.addEventListener('click', () => openDetail(j, q));
   return d;
 }
-/** Fold the form to one line (what was asked) while results are shown; tapping it opens the form again. */
-function collapseForm(on) {
-  $('formCard').classList.toggle('collapsed', on);
-  $('formSummary').hidden = !on;
-  if (on && lastQuery) {
-    const q = lastQuery;
-    $('summaryText').innerHTML = `${t(q.arriveBy ? 'arriveBy' : 'departAt')} ${esc(dayLabel(q.day))} ${esc(q.at || '')}<small>${q.bike && q.bike !== 'none' ? '🚲 ' + esc(t(q.bike === 'along' ? 'bikeAlong' : 'bikePark')) + (q.folding ? ' · ' + t('folding') : '') : t('bike') + ': ' + t('bikeNone')}</small>`;
-  }
+/** The options as two chips (when; bicycle); the details open under them on a tap and close after planning. */
+function setOptions(open) { $('formBody').hidden = !open; $('formCard').classList.toggle('open', open); }
+function renderOptionChips() {
+  const bike = bikeChoice(), day = $('day').value;
+  $('optTime').textContent = `🕒 ${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? dayLabel(day).split(' · ')[0] : ''} ${$('at').value}`;
+  $('optBike').textContent = `🚲 ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
 }
-$('formSummary').addEventListener('click', () => { collapseForm(false); $('sheetBody').scrollTop = 0; });
+for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => { setOptions($('formBody').hidden); if (!$('formBody').hidden) $('sheetBody').scrollTop = 0; });
+for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at')]) { el.addEventListener('click', renderOptionChips); el.addEventListener('change', renderOptionChips); }
 function renderResults(r, q, resultsAt = null) {
   const box = $('results');
   box.innerHTML = '';
   $('recentBox').hidden = true;
   lastQuery = q;
-  collapseForm(true);
+  setOptions(false); renderOptionChips();
   $('sheetBody').scrollTop = 0;
   const note = q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
   const head = document.createElement('div');

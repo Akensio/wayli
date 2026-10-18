@@ -256,13 +256,12 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .detail .actions { padding: 0 0 6px; }
 .detail .center { padding: 4px 0 0; }
 .topbar[hidden] { display: none; }
-.summary { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.summary[hidden] { display: none; }
-.summary .txt { flex: 1; min-width: 0; font-size: 15px; }
-.summary .txt small { display: block; color: var(--ink-2); font-size: 12px; }
-.summary .edit { color: var(--accent-text); font-size: 18px; }
-.card.collapsed #formBody { display: none; }
-.card.collapsed { padding: 10px 12px; }
+/* the options: one row of chips (when and with what), the details only when a chip is tapped */
+.card.options { padding: 8px 10px; }
+.optrow { display: flex; gap: 6px; flex-wrap: wrap; }
+.card.options.open .optrow .chipbtn { background: var(--ink); color: var(--bg); }
+#formBody { margin-top: 10px; }
+#formBody[hidden] { display: none; }
 .peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
 .peekrow::-webkit-scrollbar { display: none; }
 .peekrow .chipbtn { flex: none; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }

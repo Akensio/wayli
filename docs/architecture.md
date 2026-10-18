@@ -157,8 +157,9 @@ toggle, and, once a place is set, a second row with the origin field
 (empty means my location) and a swap button. A destination plans at once;
 changing either field plans again. A bottom sheet with three heights (a
 strip, about half the screen, nearly full) carries every panel: the plan
-screen (the options for time, day and bicycle, folded to one line while
-results are shown; the results; recent searches), nearby, saved, settings,
+screen (two chips for the options, when and by bicycle, that open the
+details only when tapped; the results; recent searches), nearby, saved,
+settings,
 and the panels for a journey, a stop, a trip's stops, a line, the place
 chooser and the trip being followed. The sheet is dragged by its
 handle or tapped to cycle; a tap on empty map collapses it. Picking a point
