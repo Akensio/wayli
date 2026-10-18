@@ -236,3 +236,8 @@ so they are not re-litigated.
 - 2026-10-18 Gadi: the bar should first ask "where do you want to go?" and
   open into the two rows on a tap; the language toggle belongs in
   settings. Done; the EN button is gone from the bar.
+- 2026-10-18 Gadi: the hamburger menu "opens kinda weirdly" (a floating
+  dropdown with no motion, detached from the button). It is a side drawer
+  now, over a dimmed map, closed by a tap outside, its ✕ or back. Found
+  on the way: a pushState right after a programmatic history step back is
+  swallowed by it; pushes now wait for that step to land.

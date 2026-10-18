@@ -64,12 +64,15 @@
     <button type="button" class="primary slim" id="planBtn" data-t="plan">תכנון מסלול</button>
   </div>
 </div>
-<div class="menu" id="menu" hidden>
-  <button type="button" data-screen="plan"><span class="ic">🧭</span><span data-t="tabPlan">מסלול</span></button>
+<div class="backdrop" id="backdrop"></div>
+<nav class="drawer" id="menu" aria-label="תפריט">
+  <div class="head"><span class="brand">Wayli</span><button type="button" class="iconbtn flat" id="menuClose" aria-label="סגירה">✕</button></div>
+  <button type="button" data-screen="plan"><span class="ic">🧭</span><span data-t="tabPlan">תכנון מסלול</span></button>
   <button type="button" data-screen="nearby"><span class="ic">📍</span><span data-t="tabNearby">תחנות בקרבתי</span></button>
   <button type="button" data-screen="saved"><span class="ic">★</span><span data-t="tabSaved">שמורים</span></button>
   <button type="button" data-screen="more"><span class="ic">⚙</span><span data-t="tabMore">הגדרות ועוד</span></button>
-</div>
+  <div class="foot muted" id="drawerVer"></div>
+</nav>
 <div class="floating">
   <div class="status" id="status" hidden><span id="statusText">טוען…</span><div class="bar" id="statusBar"><div></div></div></div>
   <span class="offline" id="offline" hidden data-t="offline">לא מקוון</span>

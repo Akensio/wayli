@@ -286,7 +286,7 @@ async function init() {
     manifest = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   renderAbout();
-  if (manifest.built) { const b = live.ilParts(new Date(manifest.built)); $('ver').textContent = t('build', { v: `${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')} ${String(b.h).padStart(2, '0')}:${String(b.mi).padStart(2, '0')}` }); }
+  if (manifest.built) { const b = live.ilParts(new Date(manifest.built)); $('ver').textContent = t('build', { v: `${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')} ${String(b.h).padStart(2, '0')}:${String(b.mi).padStart(2, '0')}` }); $('drawerVer').textContent = $('ver').textContent; }
   const params = new URLSearchParams(location.search);
   const shared = parseShared(params);
   const last = shared ? null : lastSearch.get();
@@ -427,7 +427,7 @@ attachSearch($('fromQ'), $('fromDrop'), (p, typing) => {
   if (place.to) { nav.closeAll(); showScreen('plan'); plan(); }
 }, { actions: true });
 const myLocation = (pos) => ({ name: t('myLoc'), lat: pos.lat, lon: pos.lon, transient: true });
-for (const id of ['toQ', 'fromQ']) $(id).addEventListener('focus', () => { $('menu').hidden = true; openBar(); });
+for (const id of ['toQ', 'fromQ']) $(id).addEventListener('focus', () => openBar());
 $('goBtn').addEventListener('click', () => {
   if (!place.to) { $('toQ').focus(); return; }
   if (place.from && !place.from.transient) { nav.closeAll(); showScreen('plan'); plan(); } else planTo(place.to);
@@ -443,9 +443,12 @@ function clearPlan() {
   applyLiveShow(); renderPanels();
 }
 // the menu under the ☰ button
-$('menuBtn').addEventListener('click', (e) => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; });
-document.addEventListener('click', (e) => { if (!$('menu').contains(e.target) && e.target !== $('menuBtn')) $('menu').hidden = true; });
-for (const b of $('menu').querySelectorAll('button')) b.addEventListener('click', () => { $('menu').hidden = true; nav.closeAll(); showScreen(b.dataset.screen); if (b.dataset.screen === 'plan') sheet.set('half'); });
+// the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
+$('menuBtn').addEventListener('click', () => { $('toQ').blur(); showOverlay('drawer'); });
+$('backdrop').addEventListener('click', () => nav.close('drawer'));
+$('menuClose').addEventListener('click', () => nav.close('drawer'));
+for (const b of $('menu').querySelectorAll('[data-screen]')) b.addEventListener('click', () => { nav.closeAll(); showScreen(b.dataset.screen); if (b.dataset.screen === 'plan') sheet.set('half'); });
+function renderDrawer() { const on = isOpen('drawer'); $('menu').classList.toggle('open', on); $('backdrop').classList.toggle('open', on); }
 
 // ---- pick a point on the map
 let pickPoint = null, pickSeq = 0, pickResolve = null;
@@ -747,7 +750,6 @@ async function initMap() {
   m.on('moveend', () => { if (isOpen('picker')) nameCenter(); applyLiveShow(); clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
   m.on('click', (e) => {
     if (isOpen('picker')) { m.easeTo({ center: e.lngLat, duration: 250 }); return; }
-    $('menu').hidden = true;
     const hit = m.queryRenderedFeatures(e.point, { layers: ['lm-veh', 'lm-stops', 'journey-stops', 'context-stops'].filter((l) => m.getLayer(l)) });
     if (!hit.length && !popup) { sheet.set('peek'); foldBar(); }
   });
@@ -1775,9 +1777,27 @@ $('resumeBar').addEventListener('click', () => { const a = activeTrip.get(); if 
 // Every overlay and every tab change is a history entry, so the phone's back button (or the browser's)
 // closes the overlay or returns to the previous tab instead of leaving the app. Closing with an
 // in-app button goes through history too, so both paths look the same.
+// A close steps history back; the browser performs that later, and a pushState made meanwhile would be
+// swallowed by it (the traversal is measured from where the call was made). So while a step back is
+// pending, new entries wait in `queued` and are pushed once its popstate arrives.
 const nav = {
-  stack: [],   // entries: {kind: 'overlay', id} or {kind: 'tab', from}
-  push(entry) { this.stack.push(entry); try { history.pushState({ wayli: this.stack.length }, ''); } catch (e) {} },
+  stack: [],   // entries: {kind: 'overlay', id}, {kind: 'tab', from} or {kind: 'plan'}
+  settling: false, queued: [],
+  push(entry) {
+    this.stack.push(entry);
+    if (this.settling) { this.queued.push(entry); return; }
+    try { history.pushState({ wayli: this.stack.length }, ''); } catch (e) {}
+  },
+  /** History caught up with a close: push what waited, in stack order. */
+  settled() {
+    this.settling = false;
+    for (const e of this.queued.splice(0)) { const i = this.stack.indexOf(e); if (i >= 0) try { history.pushState({ wayli: i + 1 }, ''); } catch (x) {} }
+  },
+  stepBack(n) {
+    this.settling = true;
+    try { history.go(-n); } catch (e) { this.settled(); return; }
+    setTimeout(() => { if (this.settling) this.settled(); }, 600);
+  },
   /** Undo the top entry (called from popstate, or to close programmatically). */
   undo(entry) {
     if (entry.kind === 'overlay') hideOverlay(entry.id);
@@ -1790,7 +1810,7 @@ const nav = {
     if (i < 0) { if (id === 'plan') clearPlan(); return; }
     const [entry] = this.stack.splice(i, 1);
     if (entry.kind === 'plan') clearPlan(); else hideOverlay(id);
-    try { history.back(); } catch (e) {}
+    this.stepBack(1);
   },
   /** Replace one open overlay by another in place (the trip detail becomes the trip being followed). */
   swap(oldId, newId) {
@@ -1811,11 +1831,11 @@ const nav = {
     if (base) screen = base.from;
     for (const e of old) if (e.kind === 'overlay') hideOverlay(e.id);
     renderPanels();
-    try { history.go(-old.length); } catch (e) {}
+    this.stepBack(old.length);
   },
 };
 const isOpen = (id) => nav.stack.some((e) => e.kind === 'overlay' && e.id === id);
-const topPanel = () => { for (let i = nav.stack.length - 1; i >= 0; i--) if (nav.stack[i].kind === 'overlay') return nav.stack[i].id; return null; };
+const topPanel = () => { for (let i = nav.stack.length - 1; i >= 0; i--) if (nav.stack[i].kind === 'overlay' && nav.stack[i].id !== 'drawer') return nav.stack[i].id; return null; };
 const OVERLAY_CLOSE = { detail: () => { detailSeq++; delete mapOf.detail; }, stopDetail: () => { clearInterval(stopTimer); stopSeq++; delete mapOf.stopDetail; }, lineDetail: () => { clearInterval(lineTimer); lineSeq++; lineCur = null; delete mapOf.lineDetail; },
   picker: () => { const r = pickResolve; pickResolve = null; if (r) r(null); }, chooser: () => { const r = chooserResolve; chooserResolve = null; if (r) r(null); }, follow: () => { if (fol) closeFollow(false); delete mapOf.follow; } };
 const PANEL_EL = { picker: 'pickbar' };
@@ -1830,6 +1850,7 @@ function hideOverlay(id) {
   renderPanels();
 }
 window.addEventListener('popstate', (e) => {
+  if (nav.settling) { nav.settled(); return; }   // our own step back: the stack is already right
   const depth = e.state && e.state.wayli ? e.state.wayli : 0;
   while (nav.stack.length > depth) nav.undo(nav.stack.pop());
 });
@@ -1839,6 +1860,7 @@ let screen = 'plan';
 const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || place.from || place.to ? 'half' : 'peek'), 'screen-nearby': 'full', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
 /** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
 function renderPanels() {
+  renderDrawer();
   const top = topPanel();
   const picking = top === 'picker';
   $('crosshair').hidden = !picking; $('pickbar').hidden = !picking;

@@ -177,7 +177,11 @@ revealing a panel underneath redraws its content); every panel and screen
 change is a history entry, so the phone's back button closes the panel or
 returns to the previous screen instead of leaving the app. Closing a panel
 edits the stack first and lets history catch up, so programmatic closes and
-the back button never disagree. The basemap is restyled in place when the
+the back button never disagree; an entry pushed while that catch-up is
+pending waits for it (the browser measures a step back from where it was
+asked, so a push made meanwhile would be swallowed). The menu is a drawer
+sliding in from the start edge over a dimmed map, a history entry like the
+panels, with the four screens and the build time. The basemap is restyled in place when the
 theme changes (a full style reload, after which the app's layers are added
 again).
 

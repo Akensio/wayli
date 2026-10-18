@@ -222,11 +222,20 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .topbar .trow.opts .go { width: auto; margin: 0 0 0 auto; margin-inline-start: auto; padding: 7px 16px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
 .iconbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--surface); color: var(--ink); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 20px; cursor: pointer; flex: none; }
 .iconbtn.lang { font-size: 13px; font-weight: 700; }
-.menu { position: fixed; top: var(--top-h); inset-inline-start: 10px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 6px; z-index: 45; min-width: 200px; }
-.menu[hidden] { display: none; }
-.menu button { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: 0; color: var(--ink); padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 15px; text-align: start; }
-.menu button:active { background: var(--chip); }
-.menu button .ic { width: 24px; text-align: center; font-size: 18px; }
+/* the menu: a drawer sliding in from the start edge over a dimmed map */
+.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.backdrop.open { opacity: 1; pointer-events: auto; }
+.drawer { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; width: min(78vw, 320px); background: var(--surface); z-index: 60; display: flex; flex-direction: column; gap: 2px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 14px); box-shadow: 0 0 40px rgba(0,0,0,.3); transition: transform .2s ease; transform: translateX(100%); will-change: transform; }
+[dir="ltr"] .drawer { transform: translateX(-100%); }
+.drawer.open { transform: none; }
+.drawer .head { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 12px 2px; }
+.drawer .brand { font-weight: 700; font-size: 22px; color: var(--accent-text); letter-spacing: .01em; }
+.iconbtn.flat { box-shadow: none; background: var(--chip); width: 36px; height: 36px; font-size: 15px; }
+.drawer > button { display: flex; align-items: center; gap: 14px; width: 100%; background: none; border: 0; color: var(--ink); padding: 14px 12px; border-radius: 12px; cursor: pointer; font-size: 17px; text-align: start; }
+.drawer > button:active { background: var(--chip); }
+.drawer > button .ic { width: 28px; text-align: center; font-size: 20px; }
+.drawer .foot { margin-top: auto; padding: 0 12px; font-size: 12px; }
 .floating { position: fixed; top: calc(var(--top-h) + 2px); inset-inline: 10px; z-index: 35; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; pointer-events: none; }
 .floating > * { pointer-events: auto; }
 .status { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 12px; padding: 6px 10px; box-shadow: 0 4px 14px rgba(0,0,0,.15); max-width: 100%; }
