@@ -79,7 +79,8 @@ export function bikeAllowed(tt, p, depTime, folding, weekday = true) {
 // ---------------------------------------------------------------- search
 
 const PUNCT = /[.'"״׳`/()\-,:]+/g;
-function norm(s) { return s.toLowerCase().replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
+const INNER_QUOTE = /(?<=[\p{L}])['"״׳`]+(?=[\p{L}])/gu;   // a quote inside a word (הל"ה, ג'וליס) belongs to it
+function norm(s) { return s.toLowerCase().replace(INNER_QUOTE, '').replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
 
 function buildSearchIndex(tt) {
   const S = tt.stops.length;
@@ -114,7 +115,8 @@ export function searchStops(tt, query, limit = 12) {
     const name = tt.stopName[i], city = tt.stopCity[i];
     let score = 0, ok = true;
     for (const tok of tokens) {
-      if (name.startsWith(tok)) score += 3;
+      if (name === tok || name.startsWith(tok + ' ')) score += 4;   // a whole first word (הל"ה/הדרים for "הלה"), not just a prefix (הלהב)
+      else if (name.startsWith(tok)) score += 3;
       else if (name.includes(' ' + tok)) score += 2.5;
       else if (name.includes(tok)) score += 2;
       else if (city.startsWith(tok) || city.includes(' ' + tok)) score += 1;
@@ -122,6 +124,7 @@ export function searchStops(tt, query, limit = 12) {
       else { ok = false; break; }
     }
     if (!ok) continue;
+    if (tokens.join(' ') === name) score += 1.5;   // the whole name, typed in full
     score -= name.length / 200;
     const p = tt.stopParent[i];
     if (p >= 0) score += 1;

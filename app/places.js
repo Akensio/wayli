@@ -3,8 +3,10 @@
 
 const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
 const PUNCT = /[.'"״׳`/()\-,:]+/g;
+const INNER_QUOTE = /(?<=[\p{L}])['"״׳`]+(?=[\p{L}])/gu;   // הל"ה, צה"ל, ג'וליס, Far'a: the mark is part of the word
 
-export function norm(s) { return String(s || '').toLowerCase().replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
+/** Lower case, one space between words; a quote mark inside a word is dropped (הל"ה -> הלה), other punctuation separates. */
+export function norm(s) { return String(s || '').toLowerCase().replace(INNER_QUOTE, '').replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
 /** Looser form for matching Hebrew: drop a leading ה, collapse doubled ו/י, drop common street-word prefixes. */
 export function canon(word) {
   let w = word.replace(/^(רחוב|רח|שדרות|שד|דרך|סמטת|כיכר|ככר)$/, '');
@@ -29,7 +31,7 @@ function haversine(lat1, lon1, lat2, lon2) {
 export function proximity(near, lat, lon) {
   if (!near) return 0;
   const km = haversine(near.lat, near.lon, lat, lon) / 1000;
-  return km <= 3 ? 3 : km >= 30 ? 0 : 3 * (30 - km) / 27;
+  return km <= 3 ? 3 - km * 0.05 : km >= 30 ? 0 : 2.85 * (30 - km) / 27;   // nearer first, even among places close by
 }
 
 export function parsePlaces(ab) {
@@ -66,20 +68,26 @@ const KIND_HE = {
 };
 export function kindLabel(kind, lang = 'he') { return lang === 'he' ? (KIND_HE[kind] || 'מקום') : kind.split('=')[1].replace(/_/g, ' '); }
 
-/** Does every query word prefix-match a word of the name? Returns a score, or 0. */
-function matchWords(qWords, nameWords) {
-  let score = 0;
+/**
+ * Does every query word prefix-match a word of the name? Returns a score, or 0. A street is named by its
+ * first word, so an exact match there counts most; a place's words count alike (מרכז עזריאלי, קניון עזריאלי).
+ * A name typed in full beats partial matches.
+ */
+function matchWords(qWords, nameWords, firstWordNames = true) {
+  let score = 0, exact = 0;
   for (const q of qWords) {
     let best = 0;
     for (let i = 0; i < nameWords.length; i++) {
       const w = nameWords[i];
-      if (w === q) { best = Math.max(best, q.length < 2 ? 1 : i === 0 ? 4 : 3); }
+      if (w === q) { best = Math.max(best, q.length < 2 ? 1 : !firstWordNames ? 4 : i === 0 ? 5 : 3); }
       else if (q.length >= 2 && w.startsWith(q)) { best = Math.max(best, i === 0 ? 2.5 : 2); }
       else if (q.length >= 3 && w.includes(q)) { best = Math.max(best, 1); }
     }
     if (!best) return 0;
+    if (best >= 3) exact++;
     score += best;
   }
+  if (exact === qWords.length && qWords.length === nameWords.length) score += 1;
   return score - nameWords.length * 0.05;
 }
 
@@ -191,7 +199,7 @@ export function searchPlaces(pl, text, limit = 8, near = null) {
     }
     // notable places
     for (let p = 0; p < pl.pois.length; p++) {
-      let score = matchWords(q.words, pl.poiWords[p]);
+      let score = matchWords(q.words, pl.poiWords[p], false);
       if (!score) continue;
       if (cityName) { if (pl.poiCity[p] === cityName) score += 3; else score -= 1.5; }
       const poi = pl.pois[p];

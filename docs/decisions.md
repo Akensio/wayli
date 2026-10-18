@@ -180,3 +180,12 @@ so they are not re-litigated.
   worse than a late one) and re-planning every minute regardless (data use
   on the phone; it runs when the ride is late, the vehicle is missing, or
   every five minutes).
+- 2026-10-18 Gadi: a friend could not find her street הל"ה in Givatayim
+  ("לה", "הלה"). The normaliser turned the gershayim into a space, making
+  two words, while her spelling lost its leading ה and matched "לה
+  גוארדיה". Now a quote inside a word is part of the word (streets, stops,
+  places, cities, in the app and the pipeline), and stops and places are
+  ranked together on one scale (whole words over prefixes, full names over
+  partial ones, nearness, a stop ahead of a street at equal strength)
+  instead of five stops always first. Rejected: fuzzy matching (edit
+  distance) for now; the misses so far were normalisation, not typos.

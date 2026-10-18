@@ -300,22 +300,17 @@ const ops = {
   },
   /** Stops and stations first, then addresses, streets, places and cities from the address book. */
   search({ q, limit = 10, lang = 'he', near = null }) {
-    let stops = searchStops(tt, q, limit).map((g) => ({ kind: 'stop', key: g.key, name: g.name, city: g.city, stops: g.stops, lat: g.lat, lon: g.lon, code: g.code, platforms: g.stops.length }));
-    if (near) {
-      // nearby first, search order within each distance band
-      const band = (g) => { const km = haversine(near.lat, near.lon, g.lat, g.lon) / 1000; return km < 3 ? 0 : km < 15 ? 1 : 2; };
-      stops = stops.map((g, i) => ({ g, i, b: band(g) })).sort((a, b) => a.b - b.b || a.i - b.i).map((x) => x.g);
-    }
+    // stops and places on one scale: match strength (whole words over prefixes), nearness, and a point
+    // ahead of a street at equal strength (a stop is what the planner boards; an address when a number was typed)
+    const bandBonus = (g) => { if (!near) return 0; const km = haversine(near.lat, near.lon, g.lat, g.lon) / 1000; return km < 3 ? 3 : km < 15 ? 1.5 : 0; };
+    const stops = searchStops(tt, q, limit).map((g) => ({ kind: 'stop', key: g.key, name: g.name, city: g.city, stops: g.stops, lat: g.lat, lon: g.lon, code: g.code, platforms: g.stops.length, rank: g.score + 1 + bandBonus(g) }));
     const hasDigit = /\d/.test(q);
     let places = [];
     if (pl) {
       places = searchPlaces(pl, q, limit, near).map((r) => ({ kind: r.kind, name: r.name, city: r.city, lat: r.lat, lon: r.lon, approx: r.approx ?? null,
-        label: r.kind === 'poi' ? kindLabel(r.poiKind, lang) : null, score: r.score }));
+        label: r.kind === 'poi' ? kindLabel(r.poiKind, lang) : null, score: r.score, rank: r.score + (hasDigit && r.kind === 'address' ? 3 : 0) }));
     }
-    // an address-looking query puts addresses first; otherwise stops first, then the best places
-    const top = places.filter((p) => p.kind === 'address' || (p.kind === 'city' && p.score >= 6));
-    const rest = places.filter((p) => !top.includes(p));
-    const merged = hasDigit ? [...top, ...stops, ...rest] : [...stops.slice(0, 5), ...top, ...rest, ...stops.slice(5)];
+    const merged = [...stops, ...places].map((r, i) => ({ r, i })).sort((a, b) => b.r.rank - a.r.rank || a.i - b.i).map((x) => x.r);
     return { results: merged.slice(0, limit + 4), placesLoaded: !!pl };
   },
   /**

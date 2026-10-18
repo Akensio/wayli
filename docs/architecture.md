@@ -233,7 +233,15 @@ universities, malls, parks and stations): about 45k streets, 170k house
 numbers, 16k places, 1.8 MB. `app/places.js` parses free text ("הורדים 4,
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
 ranks stops, addresses, streets, places and cities together, nearer ones
-first when the user's location is known. A missing house number resolves to
+first when the user's location is known (distance breaks ties even among
+places close by). A quote mark inside a word belongs to the word, so הל"ה,
+צה"ל, ג'וליס and כפר חב"ד match whether typed with the mark, without it,
+or with the keyboard's ״ or ''; the same rule normalises stop names. Stops
+and places are ranked on one scale in the worker: match strength (a whole
+word over a prefix, a name typed in full over a partial one; a street is
+named by its first word, a place's words count alike), nearness, a point
+ahead of a street at equal strength, an address ahead of everything when a
+number was typed. A missing house number resolves to
 the nearest known one on that street and says so. A point can also be picked
 on the map (it moves under a crosshair; choose), and gets its name from the same book in reverse:
 nearest house number, place or street, else the nearest stop. Nothing leaves

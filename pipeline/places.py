@@ -43,6 +43,7 @@ POI_TAGS = {
 }
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
 PUNCT = re.compile(r"[.'\"״׳`/()\-,:]+")
+INNER_QUOTE = re.compile(r"(?<=[^\W\d_])['\"״׳`]+(?=[^\W\d_])")   # a quote inside a word (הל"ה, ג'וליס) belongs to it
 
 
 def log(msg):
@@ -50,7 +51,7 @@ def log(msg):
 
 
 def norm(s):
-    return re.sub(r"\s+", " ", PUNCT.sub(" ", s.lower())).strip()
+    return re.sub(r"\s+", " ", PUNCT.sub(" ", INNER_QUOTE.sub("", s.lower()))).strip()
 
 
 def hebrew_name(tags):
