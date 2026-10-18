@@ -149,3 +149,6 @@ so they are not re-litigated.
   rule), train courses dotted at every bend (dots now come from the stop
   list), and the service worker's shell cache is keyed by the build so
   every deploy refreshes the app on the phone.
+- 2026-10-18 Gadi: tapping a vehicle on a map must show a bubble on the map,
+  not open a page. Bubbles (MapLibre popups) for vehicles and stops on every
+  map, with buttons to the pages; the live map's bottom card is gone.

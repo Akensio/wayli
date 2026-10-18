@@ -323,8 +323,11 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   stop list, the current vehicle while following a trip (every 30 s), and
   the live map (nearby screen): every vehicle reporting in view, coloured
   by mode with its line number, refreshed every 20 s and on every pan, with
-  the stops when zoomed in; a tap shows the line, direction, when the
-  vehicle reported and its speed, and opens the trip's stop list.
+  the stops when zoomed in. A tap on any vehicle, on any map, opens a bubble
+  on the map (line, direction, agency, when it reported, speed, delay) with
+  buttons to its trip's stops and its line page; a tap on any stop dot opens
+  a bubble with the stop's lines and departures / from here / to here. No
+  tap on a map jumps to a page by itself.
 - Planning with live data: a plan from now (the current service day,
   within 20 minutes of the clock) first fetches the vehicles within 12 km of
   the origin and every train in the country (Israel Railways is SIRI

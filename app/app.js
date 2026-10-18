@@ -41,7 +41,7 @@ const STR = {
     alertSoon: 'עוד תחנה אחת', alertSoonBody: 'יורדים ב{name}', alertOff: 'לרדת כאן', alertArrived: 'הגעתם', testAlertMsg: 'כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.', alertPermNo: 'התראות חסומות לאתר; יישארו רטט וצליל.',
     gpsNo: 'אין מיקום, מתקדם לפי השעון', gpsOk: 'מיקום {acc} מ\'', followTitle: '{line} ← {to}', walkTitle: 'הליכה ← {to}', copied: 'הקישור הועתק', walkToDest: 'הליכה {min} דק\' אל היעד: {name}',
     agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
-    stopsCount: '{n} תחנות', lineSearch: 'חיפוש קו לפי מספר', lineTitle: 'קו {line}', tripsToday: '{n} נסיעות היום', lineNoMatch: 'אין קו כזה היום', vehiclesOnLine: '{n} בשידור', otherDir: 'לכיוון {headsign}', noLineVehicles: 'אין רכב בשידור בקו',
+    stopsCount: '{n} תחנות', popStops: 'התחנות', popLine: 'הקו', popDeps: 'יציאות', lineSearch: 'חיפוש קו לפי מספר', lineTitle: 'קו {line}', tripsToday: '{n} נסיעות היום', lineNoMatch: 'אין קו כזה היום', vehiclesOnLine: '{n} בשידור', otherDir: 'לכיוון {headsign}', noLineVehicles: 'אין רכב בשידור בקו',
     chooseHome: 'איפה הבית?', chooseWork: 'איפה העבודה?', choosePlace: 'מקום לשמירה', savePlace: 'שמירה', unsavePlace: 'הסרה מהשמורים', fromMyLoc: 'מהמיקום שלי', historyCleared: 'ההיסטוריה נמחקה', walkOnly: 'הליכה כל הדרך: {min} דק\'',
     about: '<p><b>Wayli</b> מתכנן נסיעות בתחבורה הציבורית בישראל על הטלפון שלכם: לוח הזמנים הארצי ורשת הרחובות יורדים פעם אחת, והחיפוש רץ מקומית. חיפושים, היסטוריה ומקומות שמורים נשארים בטלפון.</p><p>זמני אמת: פרויקט האוטובוס הפתוח של הסדנא לידע ציבורי (אפשר לכבות בהגדרות). הנתונים: משרד התחבורה (GTFS) ו-OpenStreetMap. התוכנה חופשית ברישיון AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>עדיין אין: דיווחים, גבהים (זמני רכיבה בחיפה ובירושלים אופטימיים). לוח זמנים: {feed}.</p>',
   },
@@ -77,7 +77,7 @@ const STR = {
     alertSoon: 'One more stop', alertSoonBody: 'Get off at {name}', alertOff: 'Get off here', alertArrived: 'You have arrived', testAlertMsg: 'This is what an alert looks like. If none showed, allow notifications for this site.', alertPermNo: 'Notifications are blocked for this site; vibration and sound remain.',
     gpsNo: 'no position, following the clock', gpsOk: 'position ±{acc} m', followTitle: '{line} → {to}', walkTitle: 'Walk → {to}', copied: 'Link copied', walkToDest: 'walk {min} min to the destination: {name}',
     agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
-    stopsCount: '{n} stops', lineSearch: 'Search a line by number', lineTitle: 'Line {line}', tripsToday: '{n} trips today', lineNoMatch: 'No such line today', vehiclesOnLine: '{n} reporting', otherDir: 'towards {headsign}', noLineVehicles: 'No vehicle of this line reporting',
+    stopsCount: '{n} stops', popStops: 'Stops', popLine: 'Line', popDeps: 'Departures', lineSearch: 'Search a line by number', lineTitle: 'Line {line}', tripsToday: '{n} trips today', lineNoMatch: 'No such line today', vehiclesOnLine: '{n} reporting', otherDir: 'towards {headsign}', noLineVehicles: 'No vehicle of this line reporting',
     chooseHome: 'Where is home?', chooseWork: 'Where is work?', choosePlace: 'Place to save', savePlace: 'Save', unsavePlace: 'Remove from saved', fromMyLoc: 'from my location', historyCleared: 'History cleared', walkOnly: 'Walk all the way: {min} min',
     about: '<p><b>Wayli</b> plans public-transport trips in Israel on your phone: the national timetable and the street network download once, and every search runs locally. Searches, history and saved places stay on the phone.</p><p>Live times: the Public Knowledge Workshop\'s Open Bus project (can be turned off in settings). Data: Ministry of Transport (GTFS) and OpenStreetMap. Free software, AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>Not yet: reports, elevation (bike times in Haifa and Jerusalem are optimistic). Timetable: {feed}.</p>',
   },
@@ -649,6 +649,7 @@ function ensureJourneyLayers(m) {
   m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 12, paint: { 'circle-radius': 3.5, 'circle-color': '#ffffff', 'circle-stroke-color': '#444', 'circle-stroke-width': 1.5 } });
+  wireStopLayers(m, ['journey-stops', 'context-stops'], null);
 }
 /** The whole line of every ride, faded, with all its stops: where the bus comes from and where it goes on. */
 async function drawContext(m, j) {
@@ -661,7 +662,7 @@ async function drawContext(m, j) {
     courses.forEach((c, i) => {
       const color = legColor(rides[i]);
       if (c.path && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: c.path.map((q) => [q[1], q[0]]) } });
-      for (const st of c.stops) dots.push({ type: 'Feature', properties: { color, name: st[2] }, geometry: { type: 'Point', coordinates: [st[1], st[0]] } });
+      for (const st of c.stops) dots.push({ type: 'Feature', properties: { color, name: st[2], stop: st[3] }, geometry: { type: 'Point', coordinates: [st[1], st[0]] } });
     });
     m.getSource('context').setData({ type: 'FeatureCollection', features: lines });
     m.getSource('context-stops').setData({ type: 'FeatureCollection', features: dots });
@@ -685,8 +686,8 @@ function drawJourney(m, j, markers) {
         markers.push(new maplibregl.Marker({ element: el }).setLngLat(c).addTo(m));
       }
       // the stops between boarding and alighting: from the leg's stop list (the path itself follows the road now)
-      const between = l.stopsAlong ? l.stopsAlong.slice(1, -1).map((st) => [st.lon, st.lat]) : (l.pathKind === 'stops' ? coords.slice(1, -1) : []);
-      for (const c of between) dots.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } });
+      const between = l.stopsAlong ? l.stopsAlong.slice(1, -1).map((st) => ({ c: [st.lon, st.lat], stop: st.stop })) : (l.pathKind === 'stops' ? coords.slice(1, -1).map((c) => ({ c, stop: '' })) : []);
+      for (const b of between) dots.push({ type: 'Feature', properties: { stop: b.stop }, geometry: { type: 'Point', coordinates: b.c } });
     }
   }
   m.getSource('journey').setData({ type: 'FeatureCollection', features });
@@ -695,8 +696,55 @@ function drawJourney(m, j, markers) {
   drawContext(m, j);
   return bounds;
 }
+// ---- bubbles on the map: one at a time, for a vehicle or a stop
+let popup = null;
+const clock = (d) => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+function openPopup(m, lngLat, html, wire) {
+  if (popup) { popup.remove(); popup = null; }
+  popup = new maplibregl.Popup({ offset: 18, maxWidth: '280px', closeButton: true, className: 'wayli-pop' }).setLngLat(lngLat).setHTML(html).addTo(m);
+  const el = popup.getElement();
+  if (wire && el) wire(el);
+  popup.on('close', () => { popup = null; });
+}
+/** A vehicle's bubble: line, direction, delay, when it reported, speed; its trip's stops and its line page. */
+function vehiclePopup(m, lngLat, v) {
+  const d = v.delay != null ? live.delayMinutes(v.delay) : null;
+  const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
+  const html = `<div class="pop"><div class="row"><span class="chip t${v.routeType}">${esc(lineText(v.line))}</span><b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
+    `<div class="muted">${v.agency ? esc(v.agency) + ' · ' : ''}${t('seenAgo', { time: clock(v.seen) })}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
+    (d == null ? '' : `<div><span class="live ${d >= 3 ? 'late' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
+    `<div class="row"><button type="button" class="ghost" data-act="trip" ${v.trip >= 0 ? '' : 'disabled'}>${t('popStops')}</button><button type="button" class="ghost" data-act="line" ${v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`;
+  openPopup(m, lngLat, html, (el) => {
+    const b1 = el.querySelector('[data-act="trip"]'), b2 = el.querySelector('[data-act="line"]');
+    if (b1) b1.addEventListener('click', () => { if (popup) popup.remove(); openTrip(v.trip, -1); });
+    if (b2) b2.addEventListener('click', () => { if (popup) popup.remove(); openLine(v.route); });
+  });
+}
+/** A stop's bubble: name, its lines, and departures / from here / to here. */
+async function stopPopup(m, lngLat, stop, closeOverlayFirst) {
+  let info;
+  try { info = await call('stopInfo', { stop }); } catch (e) { return; }
+  const html = `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
+    `<div class="chips">${info.lines.slice(0, 10).map((l) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}">${esc(lineText(l.label))}</span>`).join('')}</div>` +
+    `<div class="row"><button type="button" class="ghost" data-act="deps">${t('popDeps')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
+  openPopup(m, lngLat, html, (el) => {
+    const go = (side) => { if (popup) popup.remove(); setPlace(side, stopPlace(info)); if (closeOverlayFirst) nav.close(closeOverlayFirst); showScreen('plan'); };
+    el.querySelector('[data-act="deps"]').addEventListener('click', () => { if (popup) popup.remove(); openStop(stop); });
+    el.querySelector('[data-act="from"]').addEventListener('click', () => go('from'));
+    el.querySelector('[data-act="to"]').addEventListener('click', () => go('to'));
+    for (const c of el.querySelectorAll('.chip[data-route]')) if (c.dataset.route !== '') c.addEventListener('click', () => { if (popup) popup.remove(); openLine(+c.dataset.route); });
+  });
+}
+/** Stop dots on a journey or line map answer a tap with the stop's bubble. */
+function wireStopLayers(m, layers, closeOverlayFirst) {
+  for (const layer of layers) {
+    m.on('click', layer, (e) => { const f = e.features && e.features[0]; if (f && f.properties.stop != null && f.properties.stop !== '') stopPopup(m, f.geometry.coordinates, +f.properties.stop, closeOverlayFirst); });
+    m.on('mouseenter', layer, () => { m.getCanvas().style.cursor = 'pointer'; });
+    m.on('mouseleave', layer, () => { m.getCanvas().style.cursor = ''; });
+  }
+}
 /** Every reporting vehicle of a line as a marker with its delay; the one running `mine` stands out. */
-function lineVehicleMarkers(m, markers, vs, statuses, routeType, mine) {
+function lineVehicleMarkers(m, markers, vs, statuses, routeType, mine, fallback = {}) {
   const icon = routeType === 2 ? '🚆' : routeType === 0 ? '🚊' : '🚌';
   vs.forEach((v, i) => {
     const st = statuses[i] || { trip: -1 };
@@ -705,8 +753,8 @@ function lineVehicleMarkers(m, markers, vs, statuses, routeType, mine) {
     const d = st.delay != null ? live.delayMinutes(st.delay) : null;
     el.textContent = `${icon}${d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;
     addHeading(el, heading(v));
-    el.title = `${v.recordedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}${st.headsign ? ' · ' + st.headsign : ''}`;
-    if (st.trip >= 0) el.addEventListener('click', () => openTrip(st.trip, -1));
+    el.title = `${clock(v.recordedAt)}${st.headsign ? ' · ' + st.headsign : ''}`;
+    el.addEventListener('click', (e) => { e.stopPropagation(); vehiclePopup(m, [v.lon, v.lat], { line: st.line || fallback.line || '', routeType: st.routeType ?? routeType, headsign: st.headsign || fallback.headsign || '', agency: st.agency || fallback.agency || '', delay: st.delay, stale: !!st.stale, seen: v.recordedAt, velocity: v.velocity, trip: st.trip, route: st.route ?? fallback.route ?? null }); });
     markers.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(m));
   });
 }
@@ -808,7 +856,7 @@ async function liveForJourney(j, day, container, seq) {
       if (seq !== detailSeq) return;
       const statuses = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
       if (seq !== detailSeq) return;
-      if (map) lineVehicleMarkers(map, liveMarkers, vs, statuses, l.routeType, l.trip);
+      if (map) lineVehicleMarkers(map, liveMarkers, vs, statuses, l.routeType, l.trip, { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route });
       const v = live.matchTrip(vs, l.routeId, l.firstDep, day);
       if (!v) { if (badge) badge.textContent = t('liveNoVehicle'); return; }
       const ts = await tripStopsCached(l.trip);
@@ -951,7 +999,6 @@ const lmLabels = new Map();
 const typeColor = (type) => (type === 2 ? '#1f5fa8' : type === 0 ? '#8a3fb0' : '#2a7d4f');
 function openLiveMap() {
   showOverlay('liveMap');
-  $('liveInfo').hidden = true;
   $('liveMapNote').textContent = '';
   requestAnimationFrame(async () => {
     await styleReady();
@@ -969,8 +1016,9 @@ function openLiveMap() {
         for (const type of [0, 2, 3]) lmap.addImage(`wayli-arrow-${type}`, arrowImage(typeColor(type)), { pixelRatio: 2 });
         lmap.addLayer({ id: 'lm-veh-dir', type: 'symbol', source: 'lm-veh', filter: ['>', ['get', 'bearing'], -1], layout: { 'icon-image': ['concat', 'wayli-arrow-', ['to-string', ['get', 'type']]], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.55, 15, 1], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': [0, -17], 'icon-allow-overlap': true, 'icon-ignore-placement': true }, paint: { 'icon-opacity': ['get', 'opacity'] } });
         lmap.addLayer({ id: 'lm-veh-label', type: 'symbol', source: 'lm-veh', minzoom: 13.5, layout: { 'text-field': ['get', 'line'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 9, 16, 12], 'text-allow-overlap': true, 'text-ignore-placement': true, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#ffffff', 'text-opacity': ['get', 'opacity'] } });
-        lmap.on('click', 'lm-veh', (e) => { if (e.features && e.features[0]) selectVehicle(e.features[0].properties); });
-        lmap.on('click', 'lm-stops', (e) => { if (e.features && e.features[0] && !lmap.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) openStop(+e.features[0].properties.stop); });
+        lmap.on('click', 'lm-veh', (e) => { if (e.features && e.features[0]) selectVehicle(e.features[0].properties, e.features[0].geometry.coordinates); });
+        lmap.on('click', 'lm-stops', (e) => { if (e.features && e.features[0] && !lmap.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) stopPopup(lmap, e.features[0].geometry.coordinates, +e.features[0].properties.stop, 'liveMap'); });
+        try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMap: lmap }; } catch (e) {}
         for (const layer of ['lm-veh', 'lm-stops']) { lmap.on('mouseenter', layer, () => { lmap.getCanvas().style.cursor = 'pointer'; }); lmap.on('mouseleave', layer, () => { lmap.getCanvas().style.cursor = ''; }); }
         loadStopsGeo();
         refreshLiveMap();
@@ -1026,21 +1074,15 @@ function arrowImage(color) {
   ctx.lineWidth = 2.5; ctx.strokeStyle = '#ffffff'; ctx.lineJoin = 'round'; ctx.stroke();
   return ctx.getImageData(0, 0, size, size);
 }
-function selectVehicle(p) {
-  $('liveInfo').hidden = false;
-  $('liveInfoLine').textContent = p.line; $('liveInfoLine').className = `chip t${p.type}`;
-  $('liveInfoHead').textContent = p.headsign ? t('toward', { headsign: p.headsign }) : '';
-  const seen = new Date(+p.seen).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
-  $('liveInfoMeta').textContent = `${p.agency ? p.agency + ' · ' : ''}${t('seenAgo', { time: seen })} · ${Math.round(+p.velocity)} ${t('kmh')}`;
-  $('liveInfoLine').onclick = () => { const lb = lmLabels.get(String(p.lineRef)); if (lb && lb.route != null) openLine(lb.route); };
-  $('liveInfoLine').style.cursor = 'pointer';
-  $('liveInfoStops').onclick = async () => {
-    try { const trip = await call('tripFor', { routeId: p.lineRef, scheduledStart: +p.start }); if (trip >= 0) openTrip(trip, -1); else toast(t('liveNoVehicle')); } catch (e) { toast(t('liveFail')); }
-  };
+async function selectVehicle(p, coords) {
+  const lb = lmLabels.get(String(p.lineRef));
+  // which trip it runs and how late: one worker call
+  let st = { trip: -1 };
+  try { st = (await call('vehiclesStatus', { vehicles: [{ lineRef: p.lineRef, scheduledStart: +p.start, lat: coords[1], lon: coords[0], recordedAt: +p.seen }] }))[0] || st; } catch (e) { /* schedule only */ }
+  vehiclePopup(lmap, coords, { line: st.line || (lb ? lb.line : '?'), routeType: st.routeType ?? (lb ? lb.type : 3), headsign: st.headsign || (lb ? lb.headsign : ''), agency: st.agency || (lb ? lb.agency : ''), delay: st.delay, stale: !!st.stale, seen: new Date(+p.seen), velocity: +p.velocity, trip: st.trip, route: st.route ?? (lb ? lb.route : null) });
 }
 $('nearbyMap').addEventListener('click', openLiveMap);
 $('liveMapBack').addEventListener('click', () => nav.close('liveMap'));
-$('liveInfoClose').addEventListener('click', () => { $('liveInfo').hidden = true; });
 
 // ---- lines: search by number, and a line's page (course, stops, vehicles now)
 {
@@ -1100,7 +1142,7 @@ async function openLine(route, replace = false) {
       if (my !== lineSeq) return;
       const b = drawJourney(lineMap, { legs: [{ type: 'ride', routeType: info.routeType, path: info.path, pattern: null }] }, lineMarkers);
       // every stop of the line as a dot
-      const dots = { type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) };
+      const dots = { type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) };
       lineMap.getSource('stops').setData(dots);
       if (!b.isEmpty()) lineMap.fitBounds(b, { padding: 30, duration: 0, maxZoom: 15 });
     });
@@ -1120,7 +1162,7 @@ async function lineLive() {
     const st = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
     if (my !== lineSeq || !lineMap) return;
     for (const mk of lineVeh.splice(0)) mk.remove();
-    lineVehicleMarkers(lineMap, lineVeh, vs, st, info.routeType, null);
+    lineVehicleMarkers(lineMap, lineVeh, vs, st, info.routeType, null, { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route });
     const nw = live.newest(vs);
     $('lineLive').textContent = vs.length ? `${t('vehiclesOnLine', { n: vs.length })} · ${nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}` : t('noLineVehicles');
     $('lineLive').className = 'livebadge ' + (vs.length ? 'ok' : '');
@@ -1373,7 +1415,7 @@ async function followLive() {
     const statuses = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
     if (!fol) return;
     for (const mk of followVehicle.splice(0)) mk.remove();
-    if (followMap) lineVehicleMarkers(followMap, followVehicle, vs, statuses, leg.routeType, leg.trip);
+    if (followMap) lineVehicleMarkers(followMap, followVehicle, vs, statuses, leg.routeType, leg.trip, { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route });
     const v = live.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
     if (!v) { fol.liveEst = null; $('followLive').hidden = true; renderFollow(); return; }
     const ts = await tripStopsCached(leg.trip);
@@ -1449,6 +1491,7 @@ function showOverlay(id) {
 function hideOverlay(id) {
   if ($(id).hidden) return;
   $(id).hidden = true;
+  if (popup) { popup.remove(); popup = null; }
   if (OVERLAY_CLOSE[id]) OVERLAY_CLOSE[id]();
 }
 window.addEventListener('popstate', (e) => {

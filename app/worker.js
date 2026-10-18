@@ -270,7 +270,7 @@ const ops = {
     return patterns.map((p) => {
       const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
       const stops = [];
-      for (let i = 0; i < ns; i++) { const st = tt.patStops[tt.patStopsOff[p] + i]; stops.push([tt.stopLat[st], tt.stopLon[st], tt.stops[st][1]]); }
+      for (let i = 0; i < ns; i++) { const st = tt.patStops[tt.patStopsOff[p] + i]; stops.push([tt.stopLat[st], tt.stopLon[st], tt.stops[st][1], st]); }
       return { path: (ns >= 2 && ridePath(p, 0, ns - 1)) || stops.map((x) => [x[0], x[1]]), stops };
     });
   },
@@ -385,7 +385,8 @@ const ops = {
       if (t < 0) return { trip: -1 };
       const { stops } = tripStopList(t);
       const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: new Date(v.recordedAt) }, stops, day);
-      return { trip: t, delay: est ? est.delay : null, stale: est ? est.ageSec > 240 : true, index: est ? est.index : -1, headsign: headsign(tt.routes[tt.patRoute[tt.tripPat[t]]]) };
+      const ri = tt.patRoute[tt.tripPat[t]];
+      return { trip: t, delay: est ? est.delay : null, stale: est ? est.ageSec > 240 : true, index: est ? est.index : -1, headsign: headsign(tt.routes[ri]), route: ri, line: routeLabel(tt.routes[ri]), agency: tt.routes[ri][2], routeType: tt.routes[ri][3] };
     });
   },
   /** The trip a reported vehicle is running: route id and scheduled start (ISO or ms). */
