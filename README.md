@@ -10,8 +10,9 @@ GNU AGPL-3.0 (see `LICENSE`).
 **Status (October 2026): live at https://akensio.github.io/wayli/.** One
 service day of the national timetable compiles to a 3 MB file and the street
 network of the whole country to 10 MB. The app in `app/` plans trips (with
-bikes, depart-at or arrive-by), groups the ways to go, shows live times from
-Hasadna's Open Bus data, follows a trip and says when to get off, remembers
+bikes, depart-at or arrive-by), groups the ways to go, plans with live
+delays and shows live times and a live map from Hasadna's Open Bus data,
+follows a trip and says when to get off, remembers
 recent and saved places, shows nearby stops and departures, draws the journey
 on a map, shares a trip as a link and works offline. A GitHub Action rebuilds
 the data every night and publishes to GitHub Pages. No crowd reports yet; see

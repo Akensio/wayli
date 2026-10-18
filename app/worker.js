@@ -2,6 +2,7 @@
 import { parseTimetable, searchStops, profile, fmtTime, routeLabel } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode } from './places.js';
+import { estimateDelay, secondsOn } from './live.js';
 
 let tt = null, st = null, pl = null;
 const post = (m) => self.postMessage(m);
@@ -87,6 +88,72 @@ function resolvePlace(place, mode, maxSeconds) {
   return { places: out.slice(0, 40), point: { lat, lon }, streets: false };
 }
 
+// ---------------------------------------------------------------- live data in the timetable
+// A plan "from now" first moves the delayed trips: each reported vehicle is matched to its trip
+// (route id + first departure) and the delay estimated from its position shifts that trip's times from
+// where it is onwards. Trips of a pattern stay in order at every stop (a trip never moves past the
+// next one or before the previous one), so the router's binary searches hold. Everything is undone
+// after the plan.
+let routeById = null, routePats = null;
+function indexRoutes() {
+  routeById = new Map(); routePats = new Map();
+  tt.routes.forEach((r, i) => { if (r[4] != null) routeById.set(String(r[4]), i); });
+  for (let p = 0; p < tt.patRoute.length; p++) { const r = tt.patRoute[p]; if (!routePats.has(r)) routePats.set(r, []); routePats.get(r).push(p); }
+}
+/** The trip of a route whose first departure is at `start` (seconds on the loaded day), else -1. */
+function tripFor(routeId, start) {
+  if (!routeById) indexRoutes();
+  const ri = routeById.get(String(routeId));
+  if (ri == null) return -1;
+  for (const p of routePats.get(ri) || []) {
+    const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
+    for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) if (Math.abs(tt.dep[tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns] - start) <= 90) return t;
+  }
+  return -1;
+}
+function tripStopList(t) {
+  const p = tt.tripPat[t], ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p], base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns;
+  const out = [];
+  for (let i = 0; i < ns; i++) { const s = tt.patStops[tt.patStopsOff[p] + i]; out.push({ lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + i], dep: tt.dep[base + i] }); }
+  return { p, ns, base, stops: out };
+}
+let liveEdits = [], tripLive = new Map();
+function applyLive(vehicles) {
+  const day = tt.header.date, now = Date.now();
+  const byTrip = new Map();   // the latest report per trip
+  for (const v of vehicles) {
+    const rec = new Date(v.recordedAt), start = new Date(v.scheduledStart);
+    const age = (now - rec.getTime()) / 1000;
+    if (Number.isNaN(age) || age > 1800 || age < -120) continue;
+    const t = tripFor(v.lineRef, secondsOn(start, day));
+    if (t < 0) continue;
+    const o = byTrip.get(t);
+    if (!o || rec > o.rec) byTrip.set(t, { v, rec });
+  }
+  for (const [t, { v, rec }] of byTrip) {
+    const { p, ns, base, stops } = tripStopList(t);
+    const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: rec }, stops, day);
+    if (!est) continue;
+    tripLive.set(t, { delay: est.delay, index: est.index, seen: rec.getTime(), stale: est.ageSec > 240, lat: v.lat, lon: v.lon });
+    if (Math.abs(est.delay) < 60) continue;
+    const prevBase = t > tt.patTripsOff[p] ? base - ns : -1, nextBase = t + 1 < tt.patTripsOff[p + 1] ? base + ns : -1;
+    for (let i = est.index; i < ns; i++) {
+      const idx = base + i;
+      let nd = tt.dep[idx] + est.delay, na = tt.arr[idx] + est.delay;
+      if (nextBase >= 0) { nd = Math.min(nd, tt.dep[nextBase + i]); na = Math.min(na, tt.arr[nextBase + i]); }
+      if (prevBase >= 0) { nd = Math.max(nd, tt.dep[prevBase + i]); na = Math.max(na, tt.arr[prevBase + i]); }
+      if (na > nd) na = nd;
+      liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
+      tt.dep[idx] = nd; tt.arr[idx] = na;
+    }
+  }
+  return tripLive.size;
+}
+function revertLive() {
+  for (let i = liveEdits.length - 3; i >= 0; i -= 3) { tt.dep[liveEdits[i]] = liveEdits[i + 1]; tt.arr[liveEdits[i]] = liveEdits[i + 2]; }
+  liveEdits = []; tripLive = new Map();
+}
+
 function legOut(l, q) {
   const o = { type: l.type, depart: l.depart, arrive: l.arrive, seconds: l.seconds };
   if (l.type === 'ride') {
@@ -96,7 +163,7 @@ function legOut(l, q) {
     for (let i = 0; i < ns; i++) if (tt.patStops[tt.patStopsOff[p] + i] === l.from && tt.dep[base + i] === l.depart) { bp = i; break; }
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), stops: l.stops, line: routeLabel(l.route),
       headsign: headsign(l.route), agency: l.route[2], routeType: l.route[3],
-      trip: l.trip, routeId: l.route[4] ?? null, firstDep: tt.dep[base], boardPos: bp,
+      trip: l.trip, routeId: l.route[4] ?? null, firstDep: tt.dep[base], boardPos: bp, live: tripLive.get(l.trip) || null,
       path: l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]),
       // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
       stopsAlong: l.via.map((s, i) => ({ stop: s, name: tt.stops[s][1], lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + bp + i], dep: tt.dep[base + bp + i] })) });
@@ -180,13 +247,17 @@ const ops = {
    * Journeys between two places in a departure window; with arriveBy, the window ends at toTime and
    * only journeys arriving by then are kept. maxWalk (s) bounds the walk to the first and from the last stop.
    */
-  plan({ from, to, fromTime, toTime, bike = 'none', folding = false, weekday = true, maxTransfers = 3, maxWalk = 900, arriveBy = false }) {
+  plan({ from, to, fromTime, toTime, bike = 'none', folding = false, weekday = true, maxTransfers = 3, maxWalk = 900, arriveBy = false, vehicles = null }) {
     const t0 = performance.now();
+    let live = null;
+    if (vehicles) { try { live = { matched: applyLive(vehicles), vehicles: vehicles.length }; } catch (e) { revertLive(); live = null; } }
+    try { return planNow(); } finally { revertLive(); }
+    function planNow() {
     const q = {
       from: resolvePlace(from, bike === 'none' ? 'walk' : 'bike', bike === 'none' ? maxWalk : Math.max(1200, maxWalk)),
       to: resolvePlace(to, bike === 'along' ? 'bike' : 'walk', bike === 'along' ? Math.max(1200, maxWalk) : maxWalk),
     };
-    if (!q.from.places.length || !q.to.places.length) return { journeys: [], groups: [], reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops', ms: 0 };
+    if (!q.from.places.length || !q.to.places.length) return { journeys: [], groups: [], reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops', live, ms: 0 };
     const r = profile(tt, q.from.places, q.to.places, fromTime, toTime, { maxTransfers, bikeOnBoard: bike === 'along', folding, weekday });
     let found = r.journeys;
     if (arriveBy) found = found.filter((j) => j.arrive <= toTime);
@@ -199,7 +270,23 @@ const ops = {
       const br = route(st, q.from.point.lat, q.from.point.lon, q.to.point.lat, q.to.point.lon, 'bike', 3 * 3600);
       if (br) bikeOnly = { seconds: br.seconds, metres: br.metres, path: br.path };
     }
-    return { journeys, groups: groupJourneys(journeys), bikeOnly, candidates: r.candidates, streets: !!st, ms: performance.now() - t0 };
+    return { journeys, groups: groupJourneys(journeys), bikeOnly, candidates: r.candidates, streets: !!st, live, ms: performance.now() - t0 };
+    }
+  },
+  /** Line labels for SIRI line refs (GTFS route ids) of the loaded day. */
+  routeLabels({ ids }) {
+    if (!routeById) indexRoutes();
+    const out = {};
+    for (const id of ids) { const ri = routeById.get(String(id)); if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(r) }; } }
+    return out;
+  },
+  /** The trip a reported vehicle is running: route id and scheduled start (ISO or ms). */
+  tripFor({ routeId, scheduledStart }) { return tripFor(routeId, secondsOn(new Date(scheduledStart), tt.header.date)); },
+  /** Every stop of the day as GeoJSON, for the live map. */
+  stopsGeo() {
+    const features = [];
+    for (let s = 0; s < tt.stops.length; s++) features.push({ type: 'Feature', properties: { stop: s, name: tt.stops[s][1] }, geometry: { type: 'Point', coordinates: [tt.stopLon[s], tt.stopLat[s]] } });
+    return { type: 'FeatureCollection', features };
   },
   /** One trip's every stop with times, plus what identifies it in real-time data. */
   tripStops({ trip }) {

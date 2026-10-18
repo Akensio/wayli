@@ -187,3 +187,10 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 
 /* numbers with a sign read left to right inside Hebrew text */
 .live, .livebadge, .veh { direction: ltr; unicode-bidi: isolate; }
+
+/* ---- live map */
+#liveMapEl { position: absolute; inset: 0; background: var(--chip); }
+.liveinfo { padding-top: 8px; }
+.liveinfo .muted { margin-top: 4px; }
+.journey .leave .live { margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; }
+.results-head .live { font-size: 12px; border-radius: 10px; padding: 0 7px; }

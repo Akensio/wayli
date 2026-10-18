@@ -78,6 +78,7 @@ rebuilt nightly by the workflow. Gadi normally merges session branches into
 app plans (depart/arrive-by, grouped results, countdowns), remembers
 (history, saved places, last search), follows a trip with get-off alerts
 and resumes it, shows live times from Hasadna's Open Bus data (no key, no
-relay), shares trips, and has settings. Next: crowd reports, line pages,
+relay; v0.2.1 adds the live map and live-aware planning: delayed trips are
+shifted before routing), shares trips, and has settings. Next: crowd reports, line pages,
 stop-name translations and Arabic, elevation, measuring live-data
 freshness in daily use, a fallback relay only if Hasadna proves unreliable.

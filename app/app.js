@@ -39,6 +39,7 @@ const STR = {
     getOffNext: 'לרדת בתחנה הבאה!', getOffNow: 'לרדת כאן: {name}', arrived: 'הגעתם ליעד 🎉', arrivesAt: 'הגעה ב-{time}', boarded: 'עלינו על קו {line}', tripOver: 'הנסיעה הזאת כבר הסתיימה.', tripEnded: 'הנסיעה הסתיימה.',
     alertSoon: 'עוד תחנה אחת', alertSoonBody: 'יורדים ב{name}', alertOff: 'לרדת כאן', alertArrived: 'הגעתם', testAlertMsg: 'כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.', alertPermNo: 'התראות חסומות לאתר; יישארו רטט וצליל.',
     gpsNo: 'אין מיקום, מתקדם לפי השעון', gpsOk: 'מיקום {acc} מ\'', followTitle: '{line} ← {to}', walkTitle: 'הליכה ← {to}', copied: 'הקישור הועתק', walkToDest: 'הליכה {min} דק\' אל היעד: {name}',
+    agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
     chooseHome: 'איפה הבית?', chooseWork: 'איפה העבודה?', choosePlace: 'מקום לשמירה', savePlace: 'שמירה', unsavePlace: 'הסרה מהשמורים', fromMyLoc: 'מהמיקום שלי', historyCleared: 'ההיסטוריה נמחקה', walkOnly: 'הליכה כל הדרך: {min} דק\'',
     about: '<p><b>Wayli</b> מתכנן נסיעות בתחבורה הציבורית בישראל על הטלפון שלכם: לוח הזמנים הארצי ורשת הרחובות יורדים פעם אחת, והחיפוש רץ מקומית. חיפושים, היסטוריה ומקומות שמורים נשארים בטלפון.</p><p>זמני אמת: פרויקט האוטובוס הפתוח של הסדנא לידע ציבורי (אפשר לכבות בהגדרות). הנתונים: משרד התחבורה (GTFS) ו-OpenStreetMap. התוכנה חופשית ברישיון AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>עדיין אין: דיווחים, גבהים (זמני רכיבה בחיפה ובירושלים אופטימיים). לוח זמנים: {feed}.</p>',
   },
@@ -73,6 +74,7 @@ const STR = {
     getOffNext: 'Get off at the next stop!', getOffNow: 'Get off here: {name}', arrived: 'You have arrived 🎉', arrivesAt: 'arrives at {time}', boarded: 'On line {line}', tripOver: 'This trip is already over.', tripEnded: 'Trip ended.',
     alertSoon: 'One more stop', alertSoonBody: 'Get off at {name}', alertOff: 'Get off here', alertArrived: 'You have arrived', testAlertMsg: 'This is what an alert looks like. If none showed, allow notifications for this site.', alertPermNo: 'Notifications are blocked for this site; vibration and sound remain.',
     gpsNo: 'no position, following the clock', gpsOk: 'position ±{acc} m', followTitle: '{line} → {to}', walkTitle: 'Walk → {to}', copied: 'Link copied', walkToDest: 'walk {min} min to the destination: {name}',
+    agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
     chooseHome: 'Where is home?', chooseWork: 'Where is work?', choosePlace: 'Place to save', savePlace: 'Save', unsavePlace: 'Remove from saved', fromMyLoc: 'from my location', historyCleared: 'History cleared', walkOnly: 'Walk all the way: {min} min',
     about: '<p><b>Wayli</b> plans public-transport trips in Israel on your phone: the national timetable and the street network download once, and every search runs locally. Searches, history and saved places stay on the phone.</p><p>Live times: the Public Knowledge Workshop\'s Open Bus project (can be turned off in settings). Data: Ministry of Transport (GTFS) and OpenStreetMap. Free software, AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>Not yet: reports, elevation (bike times in Haifa and Jerusalem are optimistic). Timetable: {feed}.</p>',
   },
@@ -208,7 +210,7 @@ async function loadDay(date) {
   ttReady = false;
   $('planBtn').disabled = true;
   const info = await call('loadTimetable', { url: `data/${d.file}?v=${encodeURIComponent(manifest.built || '')}` });
-  dayInfo = info; ttReady = true; tsCache.clear();
+  dayInfo = info; ttReady = true; tsCache.clear(); lmLabels.clear(); lmStops = false;
   $('planBtn').disabled = false;
   setStatus(t('ready', { trips: info.counts.trips.toLocaleString(), date: dayLabel(info.date) }));
   renderDays();
@@ -473,8 +475,15 @@ async function plan(opts = {}) {
   $('results').innerHTML = `<div class="empty">${t('planning')}</div>`;
   $('recentBox').hidden = true;
   const q = { from: place.from, to: place.to, day, at: $('at').value, bike, folding, arriveBy, maxWalk: maxWalk / 60 };
+  // a plan from now takes the delays of the vehicles on the road into account
+  let vehicles = null, liveAsOf = null;
+  const svc = live.serviceDay();
+  if (liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200 && place.from.lat != null) {
+    try { vehicles = await live.vehiclesForPlanning(place.from.lat, place.from.lon, { timeoutMs: 8000 }); liveAsOf = live.newest(vehicles); } catch (e) { vehicles = null; }
+  }
+  q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null; q.liveTried = !!(liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200);
   try {
-    const r = await call('plan', { from: place.from, to: place.to, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy });
+    const r = await call('plan', { from: place.from, to: place.to, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
     lastResult = r; lastQuery = q;
     recentTrips.add(q); recentPlaces.add(place.from); recentPlaces.add(place.to);
     lastSearch.set({ q, result: r, at: Date.now() });
@@ -489,6 +498,13 @@ const transfersText = (n) => n === 0 ? t('direct') : n === 1 ? t('transfer1') : 
 const chipClass = (l) => l.type === 'ride' ? `chip t${l.routeType}` : l.mode === 'bike' ? 'chip bike' : 'chip walk';
 const lineText = (line) => line === 'train' ? t('train') : line;
 const chipText = (l, alts) => l.type === 'ride' ? esc(alts && alts.length > 1 ? alts.map(lineText).join(' / ') : lineText(l.line)) : `${l.mode === 'bike' ? '🚲' : '🚶'} ${Math.round(l.seconds / 60)}`;
+/** A ride leg planned with live data: how late its vehicle runs. */
+function liveLine(l) {
+  if (!l || !l.live) return '';
+  const d = live.delayMinutes(l.live.delay);
+  const txt = d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
+  return `<div class="muted"><span class="live ${d >= 3 ? 'late' : 'ok'}">${esc(txt)}${l.live.stale ? ' ?' : ''}</span></div>`;
+}
 function journeyCard(j, q, alts, options) {
   const d = document.createElement('div');
   d.className = 'journey';
@@ -497,7 +513,7 @@ function journeyCard(j, q, alts, options) {
     `<div class="chips">${j.legs.map((l, i) => `<span class="${chipClass(l)}">${chipText(l, alts && alts[i])}</span>`).join('<span class="muted">›</span>')}</div>` +
     `<div class="sub">${rides.map(({ l }) => `${esc(lineText(l.line))} ${t('toward', { headsign: esc(l.headsign) })}`).join(' · ')}</div>` +
     (options && options.length > 1 ? `<div class="opts"><span class="muted">${t('alsoAt')}</span>${options.slice(1).map((o, k) => `<button type="button" class="opt" data-k="${k + 1}">${fmt(o.depart)}</button>`).join('')}</div>` : '') +
-    `<div class="leave" data-dep="${j.depart}" data-day="${q.day}">${leaveText(j.depart, q.day)}</div>`;
+    `<div class="leave" data-dep="${j.depart}" data-day="${q.day}">${leaveText(j.depart, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
   if (leaveText(j.depart, q.day) === t('departed')) d.querySelector('.leave').classList.add('past');
   for (const b of d.querySelectorAll('.opt')) {
     const o = options[+b.dataset.k];
@@ -515,7 +531,9 @@ function renderResults(r, q, resultsAt = null) {
   const head = document.createElement('div');
   head.className = 'results-head muted';
   const n = (r.groups || r.journeys).length;
-  head.innerHTML = `<span>${resultsAt ? t('resultsFrom', { time: new Date(resultsAt).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) }) + ' · ' : ''}${t('found', { n })}${note}${q.arriveBy ? ' · ' + t('arriveByNote', { time: q.at }) : ''}</span><span class="spacer"></span>`;
+  const clock = (ms) => new Date(ms).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+  const liveNote = q.liveTried ? (q.liveAsOf ? ` · <span class="live ok">${t('livePlanned', { time: clock(q.liveAsOf) })}</span>` : ` · <span class="live">${t('schedOnly')}</span>`) : '';
+  head.innerHTML = `<span>${resultsAt ? t('resultsFrom', { time: clock(resultsAt) }) + ' · ' : ''}${t('found', { n })}${note}${q.arriveBy ? ' · ' + t('arriveByNote', { time: q.at }) : ''}${liveNote}</span><span class="spacer"></span>`;
   if (resultsAt) { const b = document.createElement('button'); b.type = 'button'; b.className = 'linkbtn'; b.textContent = t('planAgain'); b.addEventListener('click', () => { $('nowBtn').click(); plan(); }); head.appendChild(b); }
   box.appendChild(head);
   if (r.bikeOnly) {
@@ -589,7 +607,7 @@ function makeMap(container, center, zoom) {
   return m;
 }
 const whenStyled = (m, fn) => (m.isStyleLoaded() ? fn() : m.once('load', fn));
-function dropMaps() { for (const m of [map, pickMap, followMap]) if (m) m.remove(); map = pickMap = followMap = null; }
+function dropMaps() { for (const m of [map, pickMap, followMap, lmap]) if (m) m.remove(); map = pickMap = followMap = lmap = null; lmStops = false; }
 const legColor = (l) => l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#2b3036');
 /** Draw a journey on a map: casing, rides, dashed walks, pins at boarding and alighting stops, dots at the stops between. */
 function drawJourney(m, j, markers) {
@@ -654,7 +672,8 @@ function openDetail(j, q, bikeOnly = false) {
     let what = '';
     const mins = Math.round(l.seconds / 60);
     if (l.type === 'ride') {
-      what = `<span class="chip t${l.routeType}">${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live" data-live="${l.trip}"></span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${t('ride', { line: '', agency: esc(l.agency), stops: l.stops }).replace(/^ · /, '')}</small>`;
+      const planned = l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: l.live.stale }) : null;
+      what = `<span class="chip t${l.routeType}">${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live${planned ? ' ' + planned.cls : ''}" data-live="${l.trip}">${planned ? esc(planned.text) : ''}</span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${t('ride', { line: '', agency: esc(l.agency), stops: l.stops }).replace(/^ · /, '')}</small>`;
       if (l.stopsAlong && l.stopsAlong.length > 2) what += `<button type="button" class="toggle">${t('showStops')}</button><div class="stoplist" hidden>${l.stopsAlong.map((s) => `<div><span>${fmt(s.arr)}</span><span>${esc(s.name)}</span></div>`).join('')}</div>`;
     }
     else if (l.type === 'access') what = (l.mode === 'bike' ? t('bikeTo', { min: mins, name: esc(l.to.name) }) : t('walkTo', { min: mins, name: esc(l.to.name) }));
@@ -820,7 +839,8 @@ async function liveForStop(info, deps, day, seq) {
       tm.textContent = fmt(at.time); tm.className = 'time ' + (dmin >= 3 ? 'late' : 'live');
       inEl.innerHTML = `${esc(inText(at.time, day))} <span class="live ${dmin >= 3 ? 'late' : 'ok'}">⦿${dmin ? ` ${dmin > 0 ? '+' : ''}${dmin}` : ''}${at.stale ? '?' : ''}</span>`;
     }
-    $('stopLiveNote').textContent = t('liveUpdated', { time: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) });
+    const nw = live.newest(vs);
+    $('stopLiveNote').textContent = nw ? t('liveUpdated', { time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) }) : t('liveNoVehicle');
   } catch (e) { $('stopLiveNote').textContent = t('liveFail'); }
 }
 $('stopLive').addEventListener('click', () => { if (currentStop) openStop(currentStop.stop); });
@@ -828,6 +848,87 @@ $('stopBack').addEventListener('click', () => { $('stopDetail').hidden = true; c
 const stopPlace = (s) => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
 $('stopFrom').addEventListener('click', () => { if (!currentStop) return; setPlace('from', stopPlace(currentStop)); $('stopDetail').hidden = true; showScreen('plan'); });
 $('stopTo').addEventListener('click', () => { if (!currentStop) return; setPlace('to', stopPlace(currentStop)); $('stopDetail').hidden = true; showScreen('plan'); });
+
+// ---- the live map: every vehicle reporting in view, stops when zoomed in
+let lmap = null, lmTimer = 0, lmMove = 0, lmSeq = 0, lmStops = false;
+const lmLabels = new Map();
+const typeColor = (type) => (type === 2 ? '#1f5fa8' : type === 0 ? '#8a3fb0' : '#2a7d4f');
+function openLiveMap() {
+  $('liveMap').hidden = false;
+  $('liveInfo').hidden = true;
+  $('liveMapNote').textContent = '';
+  requestAnimationFrame(() => {
+    const start = lastPos || place.from || place.to || { lat: 32.08, lon: 34.78 };
+    if (!lmap) {
+      lmap = makeMap('liveMapEl', [start.lat, start.lon], lastPos ? 14.5 : 12);
+      if (!lmap) return;
+      lmap.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true }), lang === 'he' ? 'top-left' : 'top-right');
+      whenStyled(lmap, () => {
+        const empty = { type: 'FeatureCollection', features: [] };
+        lmap.addSource('lm-stops', { type: 'geojson', data: empty });
+        lmap.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
+        lmap.addSource('lm-veh', { type: 'geojson', data: empty });
+        lmap.addLayer({ id: 'lm-veh', type: 'circle', source: 'lm-veh', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 13, 7, 15, 11], 'circle-color': ['get', 'color'], 'circle-opacity': ['get', 'opacity'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-stroke-opacity': ['get', 'opacity'] } });
+        lmap.addLayer({ id: 'lm-veh-label', type: 'symbol', source: 'lm-veh', minzoom: 13.5, layout: { 'text-field': ['get', 'line'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 9, 16, 12], 'text-allow-overlap': true, 'text-ignore-placement': true, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#ffffff', 'text-opacity': ['get', 'opacity'] } });
+        lmap.on('click', 'lm-veh', (e) => { if (e.features && e.features[0]) selectVehicle(e.features[0].properties); });
+        lmap.on('click', 'lm-stops', (e) => { if (e.features && e.features[0] && !lmap.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) openStop(+e.features[0].properties.stop); });
+        for (const layer of ['lm-veh', 'lm-stops']) { lmap.on('mouseenter', layer, () => { lmap.getCanvas().style.cursor = 'pointer'; }); lmap.on('mouseleave', layer, () => { lmap.getCanvas().style.cursor = ''; }); }
+        loadStopsGeo();
+        refreshLiveMap();
+      });
+      lmap.on('moveend', () => { clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
+    } else { lmap.resize(); refreshLiveMap(); }
+    clearInterval(lmTimer);
+    lmTimer = setInterval(refreshLiveMap, 20000);
+  });
+}
+async function loadStopsGeo() {
+  if (lmStops || !ttReady || !lmap) return;
+  try { const geo = await call('stopsGeo'); if (lmap && lmap.getSource('lm-stops')) { lmap.getSource('lm-stops').setData(geo); lmStops = true; } } catch (e) { /* stops are a bonus */ }
+}
+async function refreshLiveMap() {
+  if (!lmap || $('liveMap').hidden) return;
+  if (!liveOn()) { $('liveMapNote').textContent = t('liveOff'); return; }
+  if (lmap.getZoom() < 10) { $('liveMapNote').textContent = t('liveMapZoom'); return; }
+  const my = ++lmSeq;
+  const b = lmap.getBounds();
+  try {
+    const vs = await live.vehiclesInBounds({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
+    if (my !== lmSeq || !lmap) return;
+    const need = Array.from(new Set(vs.map((v) => String(v.lineRef)).filter((id) => !lmLabels.has(id))));
+    if (need.length && ttReady) {
+      const labels = await call('routeLabels', { ids: need });
+      for (const id of need) lmLabels.set(id, labels[id] || null);
+      if (my !== lmSeq || !lmap) return;
+    }
+    const now = Date.now();
+    const features = vs.map((v) => {
+      const lb = lmLabels.get(String(v.lineRef));
+      const age = (now - v.recordedAt.getTime()) / 1000;
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
+        properties: { line: lb ? lineText(lb.line) : '?', type: lb ? lb.type : 3, color: typeColor(lb ? lb.type : 3), opacity: age > 300 ? 0.55 : 1,
+          headsign: lb ? lb.headsign : '', agency: lb ? lb.agency : '', lineRef: v.lineRef, start: v.scheduledStart.getTime(), seen: v.recordedAt.getTime(), velocity: v.velocity || 0 } };
+    });
+    lmap.getSource('lm-veh').setData({ type: 'FeatureCollection', features });
+    const nw = live.newest(vs);
+    const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
+    $('liveMapNote').textContent = features.length ? t('liveMapCount', { n: features.length, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone');
+    try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch (e) {}
+  } catch (e) { if (my === lmSeq) $('liveMapNote').textContent = t('liveFail'); }
+}
+function selectVehicle(p) {
+  $('liveInfo').hidden = false;
+  $('liveInfoLine').textContent = p.line; $('liveInfoLine').className = `chip t${p.type}`;
+  $('liveInfoHead').textContent = p.headsign ? t('toward', { headsign: p.headsign }) : '';
+  const seen = new Date(+p.seen).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+  $('liveInfoMeta').textContent = `${p.agency ? p.agency + ' · ' : ''}${t('seenAgo', { time: seen })} · ${Math.round(+p.velocity)} ${t('kmh')}`;
+  $('liveInfoStops').onclick = async () => {
+    try { const trip = await call('tripFor', { routeId: p.lineRef, scheduledStart: +p.start }); if (trip >= 0) openTrip(trip, -1); else toast(t('liveNoVehicle')); } catch (e) { toast(t('liveFail')); }
+  };
+}
+$('nearbyMap').addEventListener('click', openLiveMap);
+$('liveMapBack').addEventListener('click', () => { $('liveMap').hidden = true; clearInterval(lmTimer); lmSeq++; });
+$('liveInfoClose').addEventListener('click', () => { $('liveInfo').hidden = true; });
 
 // ---- one trip: every stop with its time, and where the vehicle is
 async function openTrip(trip, hereStop) {

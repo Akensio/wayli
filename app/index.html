@@ -71,6 +71,7 @@
     <div class="row" style="margin-bottom:8px">
       <h2 class="sec" style="margin:0" data-t="nearbyTitle">תחנות בקרבתי</h2>
       <span class="spacer" style="flex:1"></span>
+      <button type="button" class="ghost" id="nearbyMap" data-t="liveMap">🗺️ מפה חיה</button>
       <button type="button" class="ghost" id="nearbyRefresh" data-t="refresh">רענון</button>
     </div>
     <div id="nearbyList" class="stops-list"><div class="empty" data-t="nearbyEmpty">לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.</div></div>
@@ -138,6 +139,22 @@
     <div class="muted" id="pickHint" data-t="pickHint">הזיזו את המפה כך שהסמן יהיה על המקום</div>
     <div class="pickname" id="pickName">…</div>
     <button type="button" class="primary" id="pickChoose" data-t="choose">בחירה</button>
+  </div>
+</div>
+
+<div class="detail" id="liveMap" hidden>
+  <div class="bar">
+    <button type="button" class="ghost" id="liveMapBack" data-t="back">חזרה</button>
+    <h2 data-t="liveMap">מפה חיה</h2>
+    <span class="muted" id="liveMapNote"></span>
+  </div>
+  <div class="pickwrap">
+    <div id="liveMapEl"></div>
+  </div>
+  <div class="pickbar liveinfo" id="liveInfo" hidden>
+    <div class="row"><span class="chip" id="liveInfoLine"></span><span class="pickname" id="liveInfoHead" style="flex:1;margin:0"></span><button type="button" class="ghost" id="liveInfoClose">✕</button></div>
+    <div class="muted" id="liveInfoMeta"></div>
+    <div class="row" style="margin-top:6px"><button type="button" class="ghost" id="liveInfoStops" data-t="showStops">הצגת התחנות</button></div>
   </div>
 </div>
 

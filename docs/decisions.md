@@ -108,3 +108,13 @@ so they are not re-litigated.
 - 2026-10-17 A service day's file includes the next calendar day's trips
   that start before 03:00, shifted by 24 h, because the feed codes night
   buses on the next date. Rejected: loading two files at night in the app.
+- 2026-10-18 Gadi: show live buses on the map, and use live train data in
+  planning (a delayed train from HaShalom to Rehovot was missing). Built a
+  live map (every reporting vehicle in view, stops when zoomed in) and
+  live-aware planning: a plan from now shifts delayed trips (buses near the
+  origin, every train) before routing, keeping each pattern's trips in
+  order. Rejected: re-sorting trips after delays (breaks the format's
+  assumptions) and server-side routing with live data (a server).
+- 2026-10-18 Live queries sort by recorded time, look back half an hour and
+  show the data's age: Hasadna's ingestion was 20 minutes behind that
+  morning and backfilled old snapshots, so "newest by id" lied.

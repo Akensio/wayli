@@ -266,10 +266,10 @@ serves it with `Access-Control-Allow-Origin: *`, so the phone asks it
 directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
 
 - `siri_vehicle_locations/list` answers in 1 to 3 s with a closed
-  `recorded_at_time` window and the right sort order: a line query
-  (`siri_routes__line_ref`) must sort by `recorded_at_time desc`, an area
-  query (lat/lon bounds) by `id desc`; other orders time out. A few rows
-  carry impossible future times and are dropped.
+  `recorded_at_time` window (from and to) and `order_by=recorded_at_time
+  desc`, for line, area and operator queries alike; without the closed
+  window, or unsorted, it times out. A few rows carry impossible future
+  times and are dropped.
 - SIRI's `line_ref` is the GTFS `route_id`, which the timetable now stores
   per route, and a ride's `scheduled_start_time` (UTC) is the trip's first
   departure, so a vehicle maps to a timetable trip by (route, first
@@ -285,7 +285,28 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
 - Where it shows: badge per ride leg in a journey around now (and the
   vehicle on the map), live times for a stop's next departures (one area
   query, then by line for what it missed), the vehicle's place in a trip's
-  stop list, and the current vehicle while following a trip (every 30 s).
+  stop list, the current vehicle while following a trip (every 30 s), and
+  the live map (nearby screen): every vehicle reporting in view, coloured
+  by mode with its line number, refreshed every 20 s and on every pan, with
+  the stops when zoomed in; a tap shows the line, direction, when the
+  vehicle reported and its speed, and opens the trip's stop list.
+- Planning with live data: a plan from now (the current service day,
+  within 20 minutes of the clock) first fetches the vehicles within 12 km of
+  the origin and every train in the country (Israel Railways is SIRI
+  operator 2, one query), hands them to the worker, which matches each to
+  its trip, estimates its delay and shifts that trip's times from where the
+  vehicle is onwards before routing. A trip never moves past the next trip
+  of its pattern or before the previous one, so the router's sorted-trip
+  searches still hold; a vehicle so late that the next one catches up shows
+  as departing with it. Everything is undone after the plan. So a train
+  whose scheduled departure has passed but which is still on its way is
+  offered at its real time, and a bus running early is not. The results
+  say "live times as of HH:MM" or "schedule only"; each planned ride shows
+  its delay.
+- Freshness: Hasadna's ingestion sometimes lags by 20 minutes and backfills
+  old snapshots, so queries look back half an hour, sort by recorded time
+  (not id), and every screen shows how old the newest report is; a report
+  older than four minutes is marked with "?".
 - Privacy: while on, the phone sends Hasadna the line numbers and the area
   it looks at, and Hasadna sees its IP, as any website does. The settings
   screen says exactly this, and one switch turns live times off.

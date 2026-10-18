@@ -39,7 +39,8 @@ export function secondsOn(date, day) {
 export const nowOn = (day) => secondsOn(new Date(), day);
 
 // ------------------------------------------------------------------ fetching
-async function get(path, params, timeoutMs = 15000) {
+async function get(path, params, timeoutMs) {
+  timeoutMs = timeoutMs || 15000;
   const u = new URL(STRIDE + path);
   for (const [k, v] of Object.entries(params)) if (v != null) u.searchParams.set(k, v);
   const ctl = new AbortController();
@@ -68,23 +69,54 @@ function latest(rows) {
   }
   return Array.from(by.values());
 }
-// The sort order decides whether the database answers in a second or times out (measured 2026-10-17):
-// a line query must sort by recorded_at_time, an area query by id. Both get a closed time window.
+// The sort order decides whether the database answers in a few seconds or times out: with a closed
+// recorded_at_time window, "recorded_at_time desc" answers in 1-3 s for line, area and operator queries
+// (measured 2026-10-17/18). "id desc" was fast too but ids follow ingestion order, and the ingestion
+// backfills old snapshots, so its first rows were not the newest positions.
 const window = (sinceSec) => ({ recorded_at_time_from: iso(new Date(Date.now() - sinceSec * 1000)), recorded_at_time_to: iso(new Date(Date.now() + 60e3)) });
+// Hasadna's feed sometimes lags: the newest position can be 20 minutes old (measured 2026-10-18 morning).
+// Queries therefore look back half an hour and callers show the age; the newest rows come first, so
+// the limit only trims old reports. A delay seen twenty minutes ago is still worth more than the timetable alone.
 /** Vehicles of one line (GTFS route_id) seen in the last sinceSec seconds. */
-export async function vehiclesByLine(routeId, { sinceSec = 300, limit = 80 } = {}) {
-  const rows = await get('/siri_vehicle_locations/list', { siri_routes__line_ref: routeId, ...window(sinceSec), order_by: 'recorded_at_time desc', limit });
+export async function vehiclesByLine(routeId, { sinceSec = 1800, limit = 200, timeoutMs } = {}) {
+  const rows = await get('/siri_vehicle_locations/list', { siri_routes__line_ref: routeId, ...window(sinceSec), order_by: 'recorded_at_time desc', limit }, timeoutMs);
+  return latest(rows);
+}
+/** Vehicles inside a box {south, west, north, east}. */
+export async function vehiclesInBounds(b, { sinceSec = 1800, limit = 1200, timeoutMs } = {}) {
+  const rows = await get('/siri_vehicle_locations/list', {
+    ...window(sinceSec), order_by: 'recorded_at_time desc', limit,
+    lat__greater_or_equal: b.south.toFixed(4), lat__lower_or_equal: b.north.toFixed(4),
+    lon__greater_or_equal: b.west.toFixed(4), lon__lower_or_equal: b.east.toFixed(4),
+  }, timeoutMs);
   return latest(rows);
 }
 /** Vehicles around a point. */
-export async function vehiclesNear(lat, lon, radiusKm = 6, { sinceSec = 150, limit = 500 } = {}) {
+export function vehiclesNear(lat, lon, radiusKm = 6, opts = {}) {
   const dlat = radiusKm / 110.5, dlon = radiusKm / (111.3 * Math.cos(lat * Math.PI / 180));
-  const rows = await get('/siri_vehicle_locations/list', {
-    ...window(sinceSec), order_by: 'id desc', limit,
-    lat__greater_or_equal: (lat - dlat).toFixed(4), lat__lower_or_equal: (lat + dlat).toFixed(4),
-    lon__greater_or_equal: (lon - dlon).toFixed(4), lon__lower_or_equal: (lon + dlon).toFixed(4),
-  });
+  return vehiclesInBounds({ south: lat - dlat, north: lat + dlat, west: lon - dlon, east: lon + dlon }, opts);
+}
+/** Every train in the country (Israel Railways is SIRI operator 2): one cheap query. */
+export async function trains({ sinceSec = 1800, limit = 500, timeoutMs } = {}) {
+  const rows = await get('/siri_vehicle_locations/list', { siri_routes__operator_ref: 2, ...window(sinceSec), order_by: 'recorded_at_time desc', limit }, timeoutMs);
   return latest(rows);
+}
+/** What a plan from here needs: the vehicles around the origin plus every train, each query on its own. */
+export async function vehiclesForPlanning(lat, lon, { timeoutMs = 8000 } = {}) {
+  const [near, rail] = await Promise.all([
+    vehiclesNear(lat, lon, 12, { sinceSec: 1800, limit: 1200, timeoutMs }).catch(() => null),
+    trains({ timeoutMs }).catch(() => null),
+  ]);
+  if (!near && !rail) throw new Error('live unavailable');
+  const by = new Map();
+  for (const v of [...(near || []), ...(rail || [])]) { const o = by.get(v.rideId); if (!o || v.recordedAt > o.recordedAt) by.set(v.rideId, v); }
+  return Array.from(by.values());
+}
+/** When the newest of these vehicles was seen, or null. */
+export function newest(vehicles) {
+  let m = null;
+  for (const v of vehicles) if (!m || v.recordedAt > m) m = v.recordedAt;
+  return m;
 }
 
 // ------------------------------------------------------------------ matching vehicles to trips
