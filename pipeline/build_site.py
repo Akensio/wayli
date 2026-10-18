@@ -35,8 +35,12 @@ def main():
         shutil.rmtree(out)
     (out / "data").mkdir(parents=True)
     (out / "icons").mkdir()
+    built = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for name in APP_FILES:
-        shutil.copy(ROOT / "app" / name, out / name)
+        if name == "sw.js":
+            (out / name).write_text((ROOT / "app" / name).read_text(encoding="utf-8").replace("__BUILD__", built), encoding="utf-8")
+        else:
+            shutil.copy(ROOT / "app" / name, out / name)
     for p in (ROOT / "app" / "icons").glob("*.png"):
         shutil.copy(p, out / "icons" / p.name)
     data = pathlib.Path(args.data)
@@ -70,7 +74,7 @@ def main():
         places = {"file": pp.name, "bytes": pp.stat().st_size, "counts": h["counts"], "built": h.get("built")}
     first = header_of(data / days[0]["file"])
     manifest = {
-        "built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "built": built,
         "feed": {"start": (first.get("feed") or {}).get("feed_start_date"), "end": (first.get("feed") or {}).get("feed_end_date"),
                  "version": (first.get("feed") or {}).get("feed_version")},
         "days": days,
