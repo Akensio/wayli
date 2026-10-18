@@ -189,3 +189,10 @@ so they are not re-litigated.
   partial ones, nearness, a stop ahead of a street at equal strength)
   instead of five stops always first. Rejected: fuzzy matching (edit
   distance) for now; the misses so far were normalisation, not typos.
+- 2026-10-18 Gadi: on the map, show only the lines relevant to the current
+  search, and when he taps a ride and sees its course, only that line. The
+  live layer now follows the view (the results' lines; nothing while a
+  journey, line or followed trip draws its own vehicles), and a tap on a
+  ride leg in the journey detail focuses it. Rejected: a manual filter
+  switch on the map (one more control; the view already says what is
+  relevant).

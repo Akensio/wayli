@@ -40,7 +40,7 @@ const STR = {
     getOffNext: 'לרדת בתחנה הבאה!', getOffNow: 'לרדת כאן: {name}', arrived: 'הגעתם ליעד 🎉', arrivesAt: 'הגעה ב-{time}', boarded: 'עלינו על קו {line}', tripOver: 'הנסיעה הזאת כבר הסתיימה.', tripEnded: 'הנסיעה הסתיימה.',
     alertSoon: 'עוד תחנה אחת', alertSoonBody: 'יורדים ב{name}', alertOff: 'לרדת כאן', alertArrived: 'הגעתם', testAlertMsg: 'כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.', alertPermNo: 'התראות חסומות לאתר; יישארו רטט וצליל.',
     gpsNo: 'אין מיקום, מתקדם לפי השעון', gpsOk: 'מיקום {acc} מ\'', followTitle: '{line} ← {to}', walkTitle: 'הליכה ← {to}', copied: 'הקישור הועתק', walkToDest: 'הליכה {min} דק\' אל היעד: {name}',
-    agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
+    agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveOnlyLines: 'רק קווי החיפוש', legHint: 'לחיצה על נסיעה מציגה רק את הקו שלה במפה', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
     stopsCount: '{n} תחנות', popStops: 'התחנות', popLine: 'הקו', popDeps: 'יציאות', lineSearch: 'חיפוש קו לפי מספר', lineTitle: 'קו {line}', tripsToday: '{n} נסיעות היום', lineNoMatch: 'אין קו כזה היום', vehiclesOnLine: '{n} בשידור', otherDir: 'לכיוון {headsign}', noLineVehicles: 'אין רכב בשידור בקו',
     fasterWay: 'יש דרך מהירה יותר', altGetOff: 'לרדת ב{stop}', altInstead: 'במקום קו {line}', altThen: 'קו {line} לכיוון {headsign} ב-{time}', altArrive: 'הגעה ב-{time}, {n} דק\' קודם', switchRoute: 'מעבר למסלול הזה', keepRoute: 'להישאר', routeSwitched: 'המסלול הוחלף',
     chooseHome: 'איפה הבית?', chooseWork: 'איפה העבודה?', choosePlace: 'מקום לשמירה', savePlace: 'שמירה', unsavePlace: 'הסרה מהשמורים', fromMyLoc: 'מהמיקום שלי', historyCleared: 'ההיסטוריה נמחקה', walkOnly: 'הליכה כל הדרך: {min} דק\'',
@@ -77,7 +77,7 @@ const STR = {
     getOffNext: 'Get off at the next stop!', getOffNow: 'Get off here: {name}', arrived: 'You have arrived 🎉', arrivesAt: 'arrives at {time}', boarded: 'On line {line}', tripOver: 'This trip is already over.', tripEnded: 'Trip ended.',
     alertSoon: 'One more stop', alertSoonBody: 'Get off at {name}', alertOff: 'Get off here', alertArrived: 'You have arrived', testAlertMsg: 'This is what an alert looks like. If none showed, allow notifications for this site.', alertPermNo: 'Notifications are blocked for this site; vibration and sound remain.',
     gpsNo: 'no position, following the clock', gpsOk: 'position ±{acc} m', followTitle: '{line} → {to}', walkTitle: 'Walk → {to}', copied: 'Link copied', walkToDest: 'walk {min} min to the destination: {name}',
-    agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
+    agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveOnlyLines: 'only the lines of this search', legHint: 'Tap a ride to see only its line on the map', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
     stopsCount: '{n} stops', popStops: 'Stops', popLine: 'Line', popDeps: 'Departures', lineSearch: 'Search a line by number', lineTitle: 'Line {line}', tripsToday: '{n} trips today', lineNoMatch: 'No such line today', vehiclesOnLine: '{n} reporting', otherDir: 'towards {headsign}', noLineVehicles: 'No vehicle of this line reporting',
     fasterWay: 'There is a faster way', altGetOff: 'Get off at {stop}', altInstead: 'Instead of line {line}', altThen: 'line {line} towards {headsign} at {time}', altArrive: 'arrive at {time}, {n} min earlier', switchRoute: 'Switch to it', keepRoute: 'Keep mine', routeSwitched: 'Route switched',
     chooseHome: 'Where is home?', chooseWork: 'Where is work?', choosePlace: 'Place to save', savePlace: 'Save', unsavePlace: 'Remove from saved', fromMyLoc: 'from my location', historyCleared: 'History cleared', walkOnly: 'Walk all the way: {min} min',
@@ -603,6 +603,7 @@ function renderResults(r, q, resultsAt = null) {
     foot.appendChild(later);
     if (r.reason && q.maxWalk < 30) { const w = document.createElement('button'); w.type = 'button'; w.className = 'ghost'; w.textContent = t('tryMoreWalk'); w.addEventListener('click', () => plan({ maxWalk: 30 })); foot.appendChild(w); }
     box.appendChild(foot);
+    applyLiveShow();
     return;
   }
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
@@ -620,6 +621,7 @@ function renderResults(r, q, resultsAt = null) {
   foot.append(earlier, later);
   box.appendChild(foot);
   if (!topPanel() && screen === 'plan' && sheet.state === 'peek') sheet.set('half');
+  applyLiveShow();
 }
 /** Recent searches, under the form while there are no results. */
 function renderRecent() {
@@ -701,7 +703,7 @@ async function initMap() {
     mapStyled = true;
     for (const r of styledWaiters.splice(0)) r(m);
     lmStops = false; loadStopsGeo();
-    drawnFor = null; redrawMap();
+    liveShow = null; drawnFor = null; redrawMap();
     refreshLiveMap();
   });
   m.on('moveend', () => { if (isOpen('picker')) nameCenter(); clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
@@ -746,6 +748,7 @@ const stale = (seq) => seq !== drawSeq;
 /** Draw what the panel on top wants on the map; nothing when it wants nothing. */
 function redrawMap(force = false) {
   const key = topPanel() || 'screen-' + screen;
+  applyLiveShow();
   if (!force && key === drawnFor) return;
   drawnFor = key;
   const seq = ++drawSeq;
@@ -754,6 +757,33 @@ function redrawMap(force = false) {
   clearMap(m);
   const fn = mapOf[key];
   if (fn) fn(seq);
+}
+// ---- which vehicles the live layer shows: every one in view, only the lines of the current results, or none
+// (a journey, line or followed trip draws its own vehicles, with delays, so the layer would only repeat them)
+let liveShow = null;
+const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label'];
+function liveShowFor(key) {
+  if (key === 'detail' || key === 'lineDetail' || key === 'follow') return 'none';
+  if (key === 'screen-plan' && lastResult && lastResult.journeys && lastResult.journeys.length && $('results').children.length) {
+    const ids = new Set();
+    for (const j of lastResult.journeys) for (const l of j.legs) if (l.type === 'ride' && l.routeId != null) ids.add(String(l.routeId));
+    if (ids.size) return Array.from(ids).sort();
+  }
+  return 'all';
+}
+function applyLiveShow() {
+  const want = liveShowFor(topPanel() || 'screen-' + screen);
+  const same = liveShow != null && String(want) === String(liveShow);
+  liveShow = want;
+  const m = mainMap;
+  if (same || !m || !mapStyled || !m.getLayer('lm-veh')) return;
+  for (const id of LIVE_LAYERS) m.setLayoutProperty(id, 'visibility', want === 'none' ? 'none' : 'visible');
+  if (want !== 'none') {
+    const f = Array.isArray(want) ? ['in', ['get', 'ref'], ['literal', want]] : null;
+    m.setFilter('lm-veh', f); m.setFilter('lm-veh-label', f);
+    m.setFilter('lm-veh-dir', f ? ['all', ['>', ['get', 'bearing'], -1], f] : ['>', ['get', 'bearing'], -1]);
+    refreshLiveMap();
+  } else $('liveNote').textContent = '';
 }
 function clearMap(m) {
   for (const arr of [journeyMarkers, liveMarkers, lineVeh, followVehicle]) for (const mk of arr.splice(0)) mk.remove();
@@ -787,8 +817,8 @@ function ensureJourneyLayers(m) {
   wireStopLayers(m, ['journey-stops', 'context-stops']);
 }
 /** The whole line of every ride, faded, with all its stops: where the bus comes from and where it goes on. */
-async function drawContext(m, j) {
-  const rides = j.legs.filter((l) => l.type === 'ride' && l.pattern != null);
+async function drawContext(m, j, focus = -1) {
+  const rides = j.legs.filter((l, i) => l.type === 'ride' && l.pattern != null && (focus < 0 || i === focus));
   if (!rides.length || !ttReady) return;
   try {
     const courses = await call('patternCourse', { patterns: rides.map((l) => l.pattern) });
@@ -804,7 +834,7 @@ async function drawContext(m, j) {
   } catch (e) { /* the ride itself is still drawn */ }
 }
 /** Draw a journey on a map: casing, rides, dashed walks, pins at boarding and alighting stops, dots at the stops between. */
-function drawJourney(m, j, markers) {
+function drawJourney(m, j, markers, focus = -1) {
   ensureJourneyLayers(m);
   for (const mk of markers.splice(0)) mk.remove();
   const features = [], dots = [];
@@ -828,9 +858,10 @@ function drawJourney(m, j, markers) {
   m.getSource('journey').setData({ type: 'FeatureCollection', features });
   m.getSource('stops').setData({ type: 'FeatureCollection', features: dots });
   m.getSource('context').setData(EMPTY); m.getSource('context-stops').setData(EMPTY);
-  drawContext(m, j);
+  drawContext(m, j, focus);
   return bounds;
 }
+const boundsOf = (path) => { const b = new maplibregl.LngLatBounds(); for (const p of path || []) b.extend([p[1], p[0]]); return b; };
 // ---- bubbles on the map: one at a time, for a vehicle or a stop
 let popup = null;
 const clock = (d) => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
@@ -909,7 +940,15 @@ function vehicleMarker(m, markers, v, label) {
 }
 
 // ---------------------------------------------------------------- journey detail
-let journeyMarkers = [], liveMarkers = [], detailSeq = 0;
+let journeyMarkers = [], liveMarkers = [], detailSeq = 0, detailFocus = -1;
+/** Focus one ride of the journey being shown (or release it): its course alone, only its vehicles, the map on it. */
+function focusLeg(i) {
+  detailFocus = detailFocus === i ? -1 : i;
+  const legs = $('detailLegs');
+  legs.classList.toggle('focused', detailFocus >= 0);
+  legs.querySelectorAll(':scope > .leg').forEach((el, k) => el.classList.toggle('focus', k === detailFocus));
+  redrawMap(true);
+}
 const tripStopsCached = (trip) => { if (!tsCache.has(trip)) tsCache.set(trip, call('tripStops', { trip })); return tsCache.get(trip); };
 const liveOn = () => settings.get().live && navigator.onLine !== false;
 function liveBadge(at) {
@@ -938,16 +977,18 @@ function openDetail(j, q, bikeOnly = false) {
     if (!m || my !== detailSeq || stale(seq)) return;
     if (!bikeOnly) await withCourses(j);
     if (my !== detailSeq || stale(seq)) return;
-    const b = drawJourney(m, j, journeyMarkers);
+    const b = drawJourney(m, j, journeyMarkers, detailFocus);
     for (const mk of liveMarkers.splice(0)) mk.remove();
-    fitMap(b, 16);
-    if (!bikeOnly) liveForJourney(j, q.day, legs, my);
+    fitMap(detailFocus >= 0 && j.legs[detailFocus] ? boundsOf(j.legs[detailFocus].path) : b, 16);
+    if (!bikeOnly) liveForJourney(j, q.day, legs, my, detailFocus);
   };
+  detailFocus = -1;
   showOverlay('detail');
   $('detailTitle').textContent = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '') : `${fmt(j.depart)} → ${fmt(j.arrive)} · ${dur(j.arrive - j.depart)}`;
-  $('detailNote').textContent = '';
+  $('detailNote').textContent = bikeOnly ? '' : t('legHint');
   legs.innerHTML = '';
-  for (const l of j.legs) {
+  legs.classList.remove('focused');
+  j.legs.forEach((l, idx) => {
     const el = document.createElement('div');
     el.className = `leg ${l.type}${l.type === 'ride' ? ' t' + l.routeType : ''}`;
     let what = '';
@@ -966,9 +1007,10 @@ function openDetail(j, q, bikeOnly = false) {
     const tg = el.querySelector('.toggle');
     if (tg) tg.addEventListener('click', () => { const sl = el.querySelector('.stoplist'); sl.hidden = !sl.hidden; tg.textContent = sl.hidden ? t('showStops') : t('hideStops'); });
     const ch = el.querySelector('.chip.btn');
-    if (ch && ch.dataset.route !== '') ch.addEventListener('click', () => openLine(+ch.dataset.route));
+    if (ch && ch.dataset.route !== '') ch.addEventListener('click', (e) => { e.stopPropagation(); openLine(+ch.dataset.route); });
+    if (l.type === 'ride') el.addEventListener('click', (e) => { if (e.target.closest('.toggle, .stoplist')) return; focusLeg(idx); });
     legs.appendChild(el);
-  }
+  });
   updateStar('detailStar', q && !bikeOnly ? tripKey(q) : null, 'trips');
   $('detailStar').onclick = () => { if (q && !bikeOnly) { favs.toggle('trips', tripKey(q), { from: q.from, to: q.to, bike: q.bike, folding: q.folding }); renderSaved(); } updateStar('detailStar', tripKey(q), 'trips'); };
   $('detailStart').hidden = bikeOnly;
@@ -976,11 +1018,11 @@ function openDetail(j, q, bikeOnly = false) {
   $('detailShare').onclick = () => shareJourney(j, q, bikeOnly);
 }
 /** Live badges on the ride legs of a journey happening around now; every vehicle of those lines on the map. */
-async function liveForJourney(j, day, container, seq) {
+async function liveForJourney(j, day, container, seq, focus = -1) {
   if (!liveOn() || !dayInfo || dayInfo.date !== day) return;   // trip indices belong to the loaded day
   const now = live.nowOn(day);
   if (j.depart - now > 5400 || now - j.arrive > 1800) return;
-  const rides = j.legs.filter((l) => l.type === 'ride' && l.routeId != null && l.depart - now < 5400 && now - l.arrive < 900).slice(0, 4);
+  const rides = j.legs.filter((l, i) => l.type === 'ride' && l.routeId != null && (focus < 0 || i === focus) && l.depart - now < 5400 && now - l.arrive < 900).slice(0, 4);
   await Promise.all(rides.map(async (l) => {
     const badge = container.querySelector(`[data-live="${l.trip}"]`);
     try {
@@ -1143,7 +1185,7 @@ async function loadStopsGeo() {
 async function refreshLiveMap() {
   const m = mainMap;
   if (!m || !mapStyled || document.hidden || sheet.state === 'full') return;
-  if (isOpen('picker')) { $('liveNote').textContent = ''; return; }
+  if (isOpen('picker') || liveShow === 'none') { $('liveNote').textContent = ''; return; }
   if (!liveOn()) { $('liveNote').textContent = ''; m.getSource('lm-veh').setData(EMPTY); return; }
   if (m.getZoom() < 10) { $('liveNote').textContent = t('liveMapZoom'); m.getSource('lm-veh').setData(EMPTY); return; }
   const my = ++lmSeq;
@@ -1163,12 +1205,13 @@ async function refreshLiveMap() {
       const age = (now - v.recordedAt.getTime()) / 1000;
       return { type: 'Feature', geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
         properties: { line: lb ? lineText(lb.line) : '?', type: lb ? lb.type : 3, color: typeColor(lb ? lb.type : 3), opacity: age > 300 ? 0.55 : 1, bearing: heading(v),
-          headsign: lb ? lb.headsign : '', agency: lb ? lb.agency : '', lineRef: v.lineRef, start: v.scheduledStart.getTime(), seen: v.recordedAt.getTime(), velocity: v.velocity || 0 } };
+          headsign: lb ? lb.headsign : '', agency: lb ? lb.agency : '', lineRef: v.lineRef, ref: String(v.lineRef), start: v.scheduledStart.getTime(), seen: v.recordedAt.getTime(), velocity: v.velocity || 0 } };
     });
     m.getSource('lm-veh').setData({ type: 'FeatureCollection', features });
     const nw = live.newest(vs);
     const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
-    $('liveNote').textContent = features.length ? t('liveMapCount', { n: features.length, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone');
+    const shown = Array.isArray(liveShow) ? features.filter((f) => liveShow.includes(f.properties.ref)).length : features.length;
+    $('liveNote').textContent = (shown ? t('liveMapCount', { n: shown, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone')) + (Array.isArray(liveShow) ? ' · ' + t('liveOnlyLines') : '');
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch (e) {}
   } catch (e) { if (my === lmSeq) $('liveNote').textContent = t('liveFail'); }
 }

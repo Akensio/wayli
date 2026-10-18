@@ -183,7 +183,8 @@ reopened within six hours, with one tap to plan it again from now; the
 eight most recent searches sit under the form and re-plan from now.
 
 Journey detail: the legs drawn on the map, pins at boarding and alighting stops and
-dots at the stops between, the whole line of every ride drawn faded
+dots at the stops between (a tap on a ride leg focuses it: its course alone, only
+its vehicles, the map fitted to it; a second tap releases), the whole line of every ride drawn faded
 beneath it with all its stops (where the bus comes from and goes on), and
 every reporting vehicle of those lines with its delay and heading, the one
 running the planned trip ringed; every ride leg expands to its stops and
@@ -373,10 +374,13 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   vehicle on the map), live times for a stop's next departures (one area
   query, then by line for what it missed), the vehicle's place in a trip's
   stop list, the current vehicle while following a trip (every 30 s), and
-  the map itself, always: every vehicle reporting in view, coloured by mode
-  with its line number, refreshed every 20 s and on every pan (not while
-  the sheet covers the map or the app is in the background), with the stops
-  when zoomed in. A tap on any vehicle, on any map, opens a bubble
+  the map itself: every vehicle reporting in view, coloured by mode with
+  its line number, refreshed every 20 s and on every pan (not while the
+  sheet covers the map or the app is in the background), with the stops
+  when zoomed in. The layer follows the view: while results are shown it
+  keeps only the lines of those journeys (the note says so), and it is
+  hidden while a journey, a line or a followed trip draws its own
+  vehicles with their delays. A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
   buttons to its trip's stops and its line page; a tap on any stop dot opens
   a bubble with the stop's lines and departures / from here / to here. No
