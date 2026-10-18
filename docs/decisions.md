@@ -225,6 +225,7 @@ so they are not re-litigated.
   the bar; the sheet's plan screen is results and recent searches only.
 - 2026-10-18 Gadi: station dots need icons; the longest walk needs a finer
   setting. Stations (rail, light rail, bus stations) are badges with the
-  mode's glyph, one per station; the walk is a slider by the minute.
-  Rejected for the walk: a number field (fiddly on a phone) and more
-  preset buttons (still coarse).
+  mode's glyph, one per station; the walk is a stepper (minus, the
+  number, plus; the number can be typed). A slider was tried first and
+  rejected by Gadi at once: an exact value among forty is not a slider's
+  job on a phone.

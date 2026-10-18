@@ -187,7 +187,7 @@ search box lists saved and recent places when empty. Depart-at or arrive-by
 (a two-hour window ending at the target, latest departure first); day
 picker over the published service days, with "tonight" until 03:00 since a
 service day runs past midnight; bicycle choice; the longest walk to a stop
-is a setting (a slider, 3 to 45 minutes by the minute). Results come back grouped: journeys that
+is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
 ("also at 08:17, 08:32") and the alternative lines of a leg shown together
 ("5 / 18"); "leave in 4 min" counts down and departed options grey out;

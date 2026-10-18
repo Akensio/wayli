@@ -1444,13 +1444,15 @@ function renderSettings() {
   const s = settings.get();
   const seg = (id, v) => { for (const b of $(id).querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); };
   seg('setLang', lang); seg('setMap', s.map);
-  $('setWalk').value = s.maxWalk; $('setWalkVal').textContent = `${s.maxWalk} ${t('min')}`;
+  $('setWalk').value = s.maxWalk;
   $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
 }
 for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
 for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); renderSettings(); });
-$('setWalk').addEventListener('input', () => { $('setWalkVal').textContent = `${$('setWalk').value} ${t('min')}`; });
-$('setWalk').addEventListener('change', () => { settings.set({ maxWalk: +$('setWalk').value }); renderSettings(); });
+const setWalk = (v) => { settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(+v) || 15)) }); renderSettings(); };
+$('setWalk').addEventListener('change', () => setWalk($('setWalk').value));
+$('walkMinus').addEventListener('click', () => setWalk(settings.get().maxWalk - 1));
+$('walkPlus').addEventListener('click', () => setWalk(settings.get().maxWalk + 1));
 $('setLive').addEventListener('change', () => settings.set({ live: $('setLive').checked }));
 $('setNotify').addEventListener('change', async () => { settings.set({ notify: $('setNotify').checked }); if ($('setNotify').checked) await requestAlertPermission(); });
 $('setSound').addEventListener('change', () => settings.set({ sound: $('setSound').checked }));

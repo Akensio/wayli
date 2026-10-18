@@ -119,9 +119,11 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .stopsrow .veh { color: var(--ok); font-size: 12px; }
 .settings .setrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .settings .setrow:last-of-type { border-bottom: 0; }
-.settings .setrow.walk { flex-wrap: wrap; }
-.settings .setrow.walk input[type=range] { flex: 1 1 100%; accent-color: var(--accent); margin: 4px 0 2px; }
-.settings .setrow.walk b { color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button { width: 36px; height: 36px; border: 0; border-radius: 10px; background: var(--chip); color: var(--ink); font-size: 20px; cursor: pointer; }
+.stepper input[type=number] { width: 52px; text-align: center; padding: 6px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font-size: 16px; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper .unit { color: var(--ink-2); font-size: 13px; margin-inline-end: 4px; }
 .settings label.setrow input { width: 22px; height: 22px; }
 .settings .muted { margin: -2px 0 6px; line-height: 1.4; }
 .saved-row { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
