@@ -164,7 +164,13 @@ nothing chosen folds the bar back to the prompt. Language lives in
 settings. A destination plans at once; changing either field
 plans again; nothing of the planner sits in the sheet. A plan is a history
 entry: the back button (or the ✕ in the destination field) clears both
-fields and the results and drops the sheet to its strip. A bottom sheet with three heights (a
+fields and the results and drops the sheet to its strip. The bar has three
+states: the prompt pill when nothing is chosen; the two rows with the time
+and bike chips and the Go button while editing (a focus on either field
+opens them); and, once a plan is made, one summary box (to, then from, time
+and bike on a second line) that a tap reopens into the rows and a map tap
+folds back. The suggestion list while typing hangs below all the rows, so
+it never covers the other field. A bottom sheet with three heights (a
 strip, about half the screen, nearly full) carries every panel: the plan
 screen (results and recent searches only), nearby, saved, settings,
 and the panels for a journey, a stop, a trip's stops, a line, the place
@@ -441,9 +447,16 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   (a parent with platforms) are badges with the mode's glyph from zoom 11,
   one per station at the centre of its platforms (a tap shows the lines of
   all its platforms); ordinary stops and platforms are the small circles
-  from zoom 14, and from zoom 15.5 every bus stop also wears a smaller grey
-  badge with the bus glyph over its circle. The same badges mark stations
-  along a drawn line or journey. A tap on any vehicle, on any map, opens a bubble
+  from zoom 14, and from zoom 15 every bus stop also wears a smaller grey
+  badge with the bus glyph over its circle. Station names sit under the
+  badges from zoom 12.5 (the basemap's own transit symbols, the blue
+  squares, and their labels are hidden, since they doubled our stops). The
+  same badges mark stations along a drawn line or journey. A tap within 14
+  px of any drawn stop opens its bubble, a dot being smaller than a finger.
+  A tap on the bare map while the sheet is collapsed drops a pin with a
+  bubble naming the spot (a place of the basemap under the finger by its
+  name, anything else by reverse geocoding) and "to here" and "from here";
+  with the sheet open, a map tap only collapses it. A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
   buttons to its trip's stops and its line page; a tap on any stop dot opens
   a bubble with the stop's lines and departures / from here / to here. No

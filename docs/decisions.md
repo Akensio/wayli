@@ -267,3 +267,19 @@ so they are not re-litigated.
   edge and opens the same drawer, now headed by the avatar and "no account,
   everything stays on the phone". He also said the two-row to/from bar can
   stay as designed (he had asked for a single box earlier).
+- 2026-10-18 Gadi: once a plan is made the top bar should fold into one
+  summary box over the to/from/time/bike rows (the folded card he had once
+  told me to scrap was, he says, the one good thing in that batch; the rest
+  deserved scrapping). Done, on top: a tap reopens the rows.
+- 2026-10-18 Gadi: stops on the plain map are hard to tap and not clearly
+  stops, and the basemap shows its own squares for them. The basemap's
+  transit symbols are hidden, our bus-stop badges start at zoom 15, station
+  names sit under our badges, and a tap within 14 px of a stop opens it.
+- 2026-10-18 Gadi: "something like the plan-a-trip view for simply tapping
+  where you want to go". A tap on the bare map (sheet collapsed) drops a pin
+  with the place's name and "to here" (plans at once) / "from here" (opens
+  the bar on the destination field).
+- 2026-10-18 Gadi asked whether suggestions should hang below all the boxes
+  rather than under the field being typed in; he was unsure. Recommended and
+  done: it never hides the other field and the list does not jump between
+  rows; one CSS rule to undo.

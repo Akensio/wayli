@@ -20,13 +20,20 @@
 <div id="mainMap"></div>
 
 <div class="topbar" id="topbar">
-  <div class="trow">
+  <div class="trow" id="toRow">
     <div class="field search tagged withuser">
       <button type="button" class="userbtn" id="menuBtn" title="תפריט" aria-label="תפריט"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg></button>
       <span class="tag" data-t="tagTo">אל</span>
       <input type="text" id="toQ" placeholder="לאן רוצים להגיע?" autocomplete="off" enterkeyhint="search">
       <button type="button" class="clearbtn" id="toClear" hidden aria-label="נקה"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
       <div class="dropdown" id="toDrop" hidden></div>
+    </div>
+  </div>
+  <div class="trow" id="sumRow" hidden>
+    <div class="sumbox">
+      <button type="button" class="userbtn" id="menuBtn2" title="תפריט" aria-label="תפריט"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg></button>
+      <button type="button" class="sumtxt" id="sumEdit"><span class="l1" id="sumTo"></span><span class="l2" id="sumMeta"></span></button>
+      <button type="button" class="clearbtn" id="sumClear" aria-label="נקה"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
     </div>
   </div>
   <div class="trow origin" id="fromRow" hidden>

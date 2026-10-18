@@ -250,6 +250,17 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .field.withuser .tag { inset-inline-start: 46px; }
 .topbar:not(.two) .field.withuser .tag { display: none; }
 .topbar:not(.two) .field.withuser input[type=text] { padding-inline-start: 50px; }
+/* the summary box: one pill with to, from, time and bike once a plan is made; a tap reopens the rows */
+.sumbox { position: relative; flex: 1; min-width: 0; background: var(--surface); border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-height: 54px; display: flex; align-items: center; }
+.sumtxt { flex: 1; min-width: 0; background: none; border: 0; text-align: start; padding: 7px 44px 7px 44px; padding-inline-start: 48px; padding-inline-end: 44px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.sumtxt .l1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sumtxt .l2 { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.sumtxt .l2 .i { width: 14px; height: 14px; } .sumtxt .sep { color: var(--line); padding: 0 1px; }
+.sumbox .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
+.sumbox .tag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-inline-end: 6px; vertical-align: 1px; }
+.sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
+/* the suggestions list hangs below all the boxes, never over the other field */
+.topbar .dropdown { position: fixed; top: var(--top-h); inset-inline: 10px; margin-top: 0; max-height: calc(100vh - var(--top-h) - 16px); max-height: calc(100dvh - var(--top-h) - 16px); }
 .userbtn { position: absolute; inset-inline-start: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); display: grid; place-items: center; cursor: pointer; z-index: 1; padding: 0; }
 .userbtn .i { width: 21px; height: 21px; }
 .userbtn:active { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }

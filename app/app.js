@@ -145,7 +145,7 @@ function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
-  $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('goQ'); $('chQ').placeholder = t('toQ'); $('menuBtn').title = t('menu');
+  $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('goQ'); $('chQ').placeholder = t('toQ'); $('menuBtn').title = t('menu'); $('menuBtn2').title = t('menu');
   $('chLoc').innerHTML = ic('locate') + ' ' + t('btnLoc'); $('chMap').innerHTML = ic('map') + ' ' + t('btnMap');
   renderDays();
   renderAbout();
@@ -372,10 +372,26 @@ for (const b of $('timeMode').querySelectorAll('button')) b.addEventListener('cl
 const place = { from: null, to: null };   // {name, stops:[...], lat, lon} or {name, lat, lon}
 function describePlace(p) { return p ? p.name + (p.platforms > 1 ? ` (${t('platforms', { n: p.platforms })})` : '') : ''; }
 function setPlace(side, p) { place[side] = p; $(side + 'Q').value = p ? p.name : ''; updateFromRow(); }
-let barOpen = false;   // the rider tapped the bar: both rows show until a plan is made or the bar is folded
-function updateFromRow() { const on = !!(place.to || place.from || barOpen); $('fromRow').hidden = !on; $('optRow').hidden = !on; $('toClear').hidden = !on; $('topbar').classList.toggle('two', on); if (!on) setOptions(false); layoutTop(); }
+let barOpen = false;   // the rider is editing: both rows and the options show
+/** Three states of the bar: the prompt pill (nothing chosen), the two rows with options (editing), and one
+ *  summary box of to, from, time and bike once a plan is made; a tap on the summary reopens the rows. */
+function updateFromRow() {
+  const has = !!(place.to || place.from), edit = barOpen, sum = !barOpen && has;
+  $('fromRow').hidden = !edit; $('optRow').hidden = !edit; $('toClear').hidden = !edit;
+  $('toRow').hidden = sum; $('sumRow').hidden = !sum;
+  $('topbar').classList.toggle('two', edit);
+  if (!edit) setOptions(false);
+  if (sum) renderSummary();
+  layoutTop();
+}
+function renderSummary() {
+  const to = place.to ? place.to.name : $('toQ').value, from = place.from ? place.from.name : ($('fromQ').value || t('myLoc'));
+  $('sumTo').innerHTML = `<span class="tag">${t('tagTo')}</span>${esc(to)}`;
+  $('sumMeta').innerHTML = `<span class="tag">${t('tagFrom')}</span>${esc(from)}<span class="sep">·</span>${$('optTime').innerHTML}<span class="sep">·</span>${$('optBike').innerHTML}`;
+}
 function openBar() { if (!barOpen) { barOpen = true; updateFromRow(); } }
-function foldBar() { if (barOpen && !place.to && !place.from) { barOpen = false; updateFromRow(); } }
+function foldBar() { if (barOpen) { barOpen = false; updateFromRow(); } }
+$('sumEdit').addEventListener('click', () => { barOpen = true; updateFromRow(); });
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
 function layoutTop() { const r = $('topbar').getBoundingClientRect(); document.documentElement.style.setProperty('--top-h', `${Math.round(r.bottom + 6)}px`); }
 window.addEventListener('resize', layoutTop);
@@ -482,7 +498,7 @@ $('goBtn').addEventListener('click', () => {
   if (!place.to) { $('toQ').focus(); return; }
   if (place.from && !place.from.transient) { nav.closeAll(); showScreen('plan'); plan(); } else planTo(place.to);
 });
-$('toClear').addEventListener('click', () => nav.close('plan'));
+for (const id of ['toClear', 'sumClear']) $(id).addEventListener('click', () => { if (nav.stack.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); });
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 function clearPlan() {
   place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = ''; barOpen = false;
@@ -494,7 +510,7 @@ function clearPlan() {
 }
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
-$('menuBtn').addEventListener('click', () => { $('toQ').blur(); showOverlay('drawer'); });
+for (const id of ['menuBtn', 'menuBtn2']) $(id).addEventListener('click', () => { $('toQ').blur(); showOverlay('drawer'); });
 $('backdrop').addEventListener('click', () => nav.close('drawer'));
 $('menuClose').addEventListener('click', () => nav.close('drawer'));
 for (const b of $('menu').querySelectorAll('[data-screen]')) b.addEventListener('click', () => { nav.closeAll(); showScreen(b.dataset.screen); if (b.dataset.screen === 'plan') sheet.set('half'); });
@@ -662,6 +678,7 @@ function renderOptionChips() {
   const bike = bikeChoice(), day = $('day').value;
   $('optTime').innerHTML = ic('clock') + ' ' + (timeTouched ? `${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? esc(dayLabel(day).split(' · ')[0]) : ''} ${esc($('at').value)}` : t('now'));
   $('optBike').innerHTML = `${ic('bike')} ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
+  if (!$('sumRow').hidden) renderSummary();
 }
 for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => setOptions($('formBody').hidden));
 for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at')]) { el.addEventListener('click', renderOptionChips); el.addEventListener('change', renderOptionChips); }
@@ -670,7 +687,7 @@ function renderResults(r, q, resultsAt = null) {
   box.innerHTML = '';
   $('recentBox').hidden = true;
   lastQuery = q;
-  setOptions(false); renderOptionChips();
+  barOpen = false; updateFromRow(); renderOptionChips();
   $('sheetBody').scrollTop = 0;
   const note = q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
   const head = document.createElement('div');
@@ -809,28 +826,74 @@ async function initMap() {
   m.on('moveend', () => { applyLiveShow(); clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
   m.on('click', (e) => {
     if (isOpen('picker')) {
-      const stops = m.queryRenderedFeatures(e.point, { layers: ['lm-stops', 'lm-stops-icon', 'lm-stations', 'journey-stops', 'context-stops'].filter((l) => m.getLayer(l)) });
-      const s = stops[0] && stops[0].properties.stop != null && stops[0].properties.stop !== '' ? { stop: +stops[0].properties.stop, name: stops[0].properties.name || '' } : null;
-      pickAt(m, s ? stops[0].geometry.coordinates : [e.lngLat.lng, e.lngLat.lat], s);
+      const f = stopNear(m, e.point);
+      const s = f ? { stop: +f.properties.stop, name: f.properties.name || '' } : null;
+      pickAt(m, s ? f.geometry.coordinates : [e.lngLat.lng, e.lngLat.lat], s);
       return;
     }
-    const hit = m.queryRenderedFeatures(e.point, { layers: ['lm-veh', 'lm-stops', 'lm-stops-icon', 'journey-stops', 'context-stops'].filter((l) => m.getLayer(l)) });
-    if (!hit.length && !popup) { sheet.set('peek'); foldBar(); }
+    const hit = m.queryRenderedFeatures(e.point, { layers: ['lm-veh', ...STOP_LAYERS].filter((l) => m.getLayer(l)) });
+    if (hit.length || popup) return;   // the layer's own handler answers, or the open bubble closes
+    const near = stopNear(m, e.point);
+    if (near) { stopPopup(m, near.geometry.coordinates, +near.properties.stop, near.properties.station); return; }
+    if (sheet.state !== 'peek' || barOpen) { sheet.set('peek'); foldBar(); return; }
+    placeBubble(m, e);
   });
   lmTimer = setInterval(refreshLiveMap, 20000);
   let known = false; try { known = !!localStorage.getItem('wayli-geo'); } catch (e) {}
   if (known) m.once('load', () => { try { geoCtl.trigger(); } catch (e) {} });
   try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMap: m }; } catch (e) {}
 }
+const STOP_LAYERS = ['lm-stops', 'lm-stops-icon', 'lm-stations', 'journey-stops', 'context-stops', 'journey-stations', 'context-stations'];
+/** The stop drawn nearest to a point, within a finger's width (14 px), or null. */
+function stopNear(m, point) {
+  const r = 14, fs = m.queryRenderedFeatures([[point.x - r, point.y - r], [point.x + r, point.y + r]], { layers: STOP_LAYERS.filter((l) => m.getLayer(l)) }).filter((f) => f.properties.stop != null && f.properties.stop !== '');
+  let best = null, bd = Infinity;
+  for (const f of fs) { const p = m.project(f.geometry.coordinates); const d = Math.hypot(p.x - point.x, p.y - point.y); if (d < bd) { bd = d; best = f; } }
+  return best;
+}
+/** A tap on the bare map (sheet collapsed): a pin and a bubble naming the spot, a place of the basemap under the
+ *  finger by its name, anything else by reverse geocoding, with "to here" and "from here". */
+async function placeBubble(m, e) {
+  const my = ++pickSeq;
+  const poiLayers = (m.getStyle().layers || []).filter((l) => l.type === 'symbol' && /^poi/.test(l.id) && l.id !== 'poi_transit').map((l) => l.id);
+  const r = 12, pois = poiLayers.length ? m.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: poiLayers }) : [];
+  const poi = pois.find((f) => f.properties && f.properties.name);
+  const lngLat = poi ? poi.geometry.coordinates.slice() : [e.lngLat.lng, e.lngLat.lat];
+  let p = { name: poi ? (lang === 'he' ? poi.properties['name:he'] || poi.properties.name : poi.properties['name:en'] || poi.properties['name:latin'] || poi.properties.name) : '…', lat: lngLat[1], lon: lngLat[0] };
+  if (pickMarker) pickMarker.remove();
+  const el = document.createElement('div'); el.className = 'wayli-pick';
+  pickMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(lngLat).addTo(m);
+  const show = () => {
+    openPopup(m, lngLat, `<div class="pop"><b>${esc(p.name)}</b><div class="row"><button type="button" class="primary slim" data-act="to">${t('toHere')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button></div></div>`, (el2) => {
+      el2.querySelector('[data-act="to"]').addEventListener('click', () => { if (popup) popup.remove(); planTo(p); });
+      el2.querySelector('[data-act="from"]').addEventListener('click', () => { if (popup) popup.remove(); nav.closeAll(); setPlace('from', p); showScreen('plan'); barOpen = true; updateFromRow(); $('toQ').focus(); });
+    });
+    if (popup) popup.on('close', () => { if (pickMarker && !isOpen('picker')) { pickMarker.remove(); pickMarker = null; } });
+  };
+  show();
+  if (poi) return;
+  try {
+    const g = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
+    if (my !== pickSeq || !popup) return;
+    p = { ...p, name: g.kind === 'point' ? t('pointName') : g.distance > 40 ? t('nearName', { name: g.name }) : g.name };
+  } catch (x) { if (my !== pickSeq || !popup) return; p = { ...p, name: t('pointName') }; }
+  show();
+}
 /** Sources and layers of the main map, bottom to top: every stop, the journey or line, live vehicles. Re-made after a style change. */
 function setupMapLayers(m) {
   if (m.getSource('lm-veh')) return;
+  // the basemap's own transit squares would double our stops
+  if (m.getLayer('poi_transit')) m.setLayoutProperty('poi_transit', 'visibility', 'none');
+  const dark = typeof currentStyle === 'object';
   m.addSource('lm-stops', { type: 'geojson', data: EMPTY });
   m.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, filter: ['in', ['get', 'kind'], ['literal', ['bus', 'platform']]], paint: { 'circle-radius': ['case', ['==', ['get', 'kind'], 'platform'], 3, 4], 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
   for (const k of BADGE_KINDS) if (!m.hasImage('wayli-st-' + k)) m.addImage('wayli-st-' + k, stationImage(k), { pixelRatio: 2 });
   // close up, every bus stop gets its badge over the dot; stations keep theirs from zoom 11
-  m.addLayer({ id: 'lm-stops-icon', type: 'symbol', source: 'lm-stops', minzoom: 15.5, filter: ['==', ['get', 'kind'], 'bus'], layout: { 'icon-image': 'wayli-st-bus', 'icon-allow-overlap': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 15.5, 0.8, 17, 1] } });
-  m.addLayer({ id: 'lm-stations', type: 'symbol', source: 'lm-stops', minzoom: 11, filter: ['in', ['get', 'kind'], ['literal', ['rail', 'lrt', 'station']]], layout: { 'icon-image': ['concat', 'wayli-st-', ['get', 'kind']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 15, 1], 'icon-allow-overlap': true } });
+  m.addLayer({ id: 'lm-stops-icon', type: 'symbol', source: 'lm-stops', minzoom: 15, filter: ['==', ['get', 'kind'], 'bus'], layout: { 'icon-image': 'wayli-st-bus', 'icon-allow-overlap': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.75, 17, 1] } });
+  // stations: the badge from zoom 11, the name under it from zoom 12.5 (the basemap's station labels are hidden with its squares)
+  m.addLayer({ id: 'lm-stations', type: 'symbol', source: 'lm-stops', minzoom: 11, filter: ['in', ['get', 'kind'], ['literal', ['rail', 'lrt', 'station']]],
+    layout: { 'icon-image': ['concat', 'wayli-st-', ['get', 'kind']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 15, 1], 'icon-allow-overlap': true, 'text-field': ['step', ['zoom'], '', 12.5, ['get', 'name']], 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 12.5, 10, 16, 12], 'text-anchor': 'top', 'text-offset': [0, 1.05], 'text-max-width': 9, 'text-optional': true },
+    paint: { 'text-color': dark ? '#e9eae6' : '#1b1f24', 'text-halo-color': dark ? '#15181c' : '#ffffff', 'text-halo-width': 1.4 } });
   ensureJourneyLayers(m);
   m.addSource('lm-veh', { type: 'geojson', data: EMPTY });
   m.addLayer({ id: 'lm-veh', type: 'circle', source: 'lm-veh', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 13, 7, 15, 11], 'circle-color': ['get', 'color'], 'circle-opacity': ['get', 'opacity'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-stroke-opacity': ['get', 'opacity'] } });
@@ -1489,7 +1552,7 @@ async function planTo(p) {
   setPlace('to', p);
   $('results').innerHTML = `<div class="empty">${t('locating')}</div>`; $('recentBox').hidden = true;
   sheet.set('half');
-  $('fromQ').value = t('locating');
+  $('fromQ').value = t('locating'); updateFromRow();
   try { const pos = await getPosition(); setPlace('from', myLocation(pos)); } catch (e) { if (!place.from || place.from.transient) { $('fromQ').value = ''; place.from = null; } else $('fromQ').value = place.from.name; }
   $('nowBtn').click();
   if (place.from) plan(); else { $('results').innerHTML = ''; showPlanError(t('noLocation')); $('toQ').focus(); }
