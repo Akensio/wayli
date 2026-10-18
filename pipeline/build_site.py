@@ -16,7 +16,7 @@ import shutil
 import struct
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-APP_FILES = ["index.html", "app.js", "worker.js", "raptor.js", "streets.js", "places.js", "live.js", "store.js", "follow.js", "styles.css", "sw.js", "manifest.webmanifest"]
+APP_FILES = ["index.html", "app.js", "worker.js", "raptor.js", "streets.js", "places.js", "live.js", "store.js", "follow.js", "darkmap.js", "styles.css", "sw.js", "manifest.webmanifest"]
 
 
 def header_of(path):

@@ -136,3 +136,9 @@ so they are not re-litigated.
   stored once per station pair in the day's file. Rejected: drawing trains
   stop to stop (Gadi's own example was a train) and asking Israel Railways
   for geometry (no open source of it).
+- 2026-10-18 Gadi: the dark map lacks the light map's detail (3D shapes,
+  road types, stops); show each live vehicle's direction; the build time
+  must be Israel time. The dark map is now Liberty itself recoloured at
+  runtime (Fiord dropped); vehicles carry heading arrows; times shown are
+  Israel time everywhere. Rejected: hand-maintaining a dark style JSON
+  (Liberty changes under us) and a server-side style (a server).

@@ -64,6 +64,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/places.py`, `app/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |
 | `app/index.html`, `app/app.js`, `app/worker.js`, `app/sw.js`, `app/styles.css` | The app: shell, UI, data worker, service worker, styles. Hebrew/RTL first, English toggle, no framework, no build step. |
 | `app/live.js`, `app/follow.js`, `app/store.js` | Real-time client (Hasadna Open Bus, delay estimate, Israel-time helpers); trip-following state machine (pure, testable in Node); on-device store (settings, history, saved places, trip in progress). |
+| `app/darkmap.js` | The dark basemap: OpenFreeMap's Liberty style recoloured by role at runtime. |
 | `app/feasibility.html` | The routing test page (older harness). `app/bench.mjs` times the router in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` builds the artifact variant. |
 | `pipeline/build_site.py` | Assembles `site/`: app files, per-day timetables, street graph, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |

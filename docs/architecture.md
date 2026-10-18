@@ -128,9 +128,15 @@ cached, so the app works offline once loaded; a new build reloads the page
 once, and notification taps reopen the app), `styles.css`,
 `manifest.webmanifest`, icons. Maps are MapLibre GL (cdnjs) over OpenFreeMap
 vector tiles (no key, no cost): the Liberty style by default in every theme,
-and in dark mode the Fiord style when chosen in settings (OpenFreeMap's
-"dark" style was rejected as too dark to read). The RTL text plugin shapes
-Hebrew and Arabic labels.
+and in dark mode, when chosen in settings, the same Liberty recoloured on
+the device (`darkmap.js`: every colour in the style turned by its role,
+ground near black, roads mid grey with lighter casings, buildings a shade
+above the ground, text light with a dark halo), so the dark map keeps all
+of Liberty's detail: road classes, 3D buildings, stops, places.
+OpenFreeMap's own dark styles were rejected as too bare. The RTL text
+plugin shapes Hebrew and Arabic labels. Vehicles on every map carry a
+triangle on their rim pointing where they head (SIRI's bearing; none when
+a standing vehicle reports zero).
 
 Screens: plan, nearby, saved, more (settings and about), plus overlays for a
 journey, a stop, a trip's stops, the map picker, the place chooser, the live

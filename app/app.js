@@ -3,6 +3,7 @@
 import { settings, recentPlaces, recentTrips, savedPlaces, favs, lastSearch, activeTrip } from './store.js';
 import * as live from './live.js';
 import { initialState, advance, view as followView } from './follow.js';
+import { darkLiberty } from './darkmap.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -269,6 +270,7 @@ async function init() {
   }
   applyLang();
   updateOnline();
+  styleReady();
   renderSaved(); renderRecent();
   // a trip in progress comes back first, timetable or not
   const active = activeTrip.get();
@@ -277,7 +279,7 @@ async function init() {
     manifest = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   renderAbout();
-  if (manifest.built) $('ver').textContent = t('build', { v: manifest.built.replace('T', ' ').slice(5, 16) });
+  if (manifest.built) { const b = live.ilParts(new Date(manifest.built)); $('ver').textContent = t('build', { v: `${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')} ${String(b.h).padStart(2, '0')}:${String(b.mi).padStart(2, '0')}` }); }
   const params = new URLSearchParams(location.search);
   const shared = parseShared(params);
   const last = shared ? null : lastSearch.get();
@@ -390,7 +392,8 @@ function pickOnMap(startAt) {
     pickResolve = resolve;
     showOverlay('picker');
     $('pickName').textContent = '…';
-    requestAnimationFrame(() => {
+    requestAnimationFrame(async () => {
+      await styleReady();
       const start = startAt && startAt.lat != null ? startAt : lastPos || place.from || place.to;
       if (!pickMap) {
         pickMap = makeMap('pickMap', start ? [start.lat, start.lon] : [32.08, 34.78], start ? 16 : 11);
@@ -603,12 +606,23 @@ function renderRecent() {
 }
 
 // ---------------------------------------------------------------- maps (MapLibre, OpenFreeMap vector tiles)
-// light Liberty everywhere; in dark mode the "Fiord" basemap when chosen in settings. (localStorage 'wayli-map-style' overrides, for trying others)
+// light Liberty everywhere; in dark mode, when chosen in settings, the same Liberty recoloured dark
+// (darkmap.js), so the dark map keeps every detail. (localStorage 'wayli-map-style' overrides, for trying others)
+const wantDarkMap = () => settings.get().map === 'dark' && matchMedia('(prefers-color-scheme: dark)').matches;
+let darkStyle = null, darkStyleLoading = null;
+/** Resolves once the style to use is at hand (the dark one needs a fetch); maps are made after it. */
+function styleReady() {
+  if (!wantDarkMap() || darkStyle) return Promise.resolve();
+  if (!darkStyleLoading) darkStyleLoading = darkLiberty().then((st) => { darkStyle = st; }).catch(() => {}).finally(() => { darkStyleLoading = null; });
+  return darkStyleLoading;
+}
 function mapStyle() {
   let o = null; try { o = localStorage.getItem('wayli-map-style'); } catch (e) {}
-  const dark = settings.get().map === 'dark' && matchMedia('(prefers-color-scheme: dark)').matches;
-  return `https://tiles.openfreemap.org/styles/${o || (dark ? 'fiord' : 'liberty')}`;
+  if (o) return `https://tiles.openfreemap.org/styles/${o}`;
+  if (wantDarkMap() && darkStyle) return darkStyle;
+  return 'https://tiles.openfreemap.org/styles/liberty';
 }
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { dropMaps(); styleReady(); });
 let rtlSet = false;
 function makeMap(container, center, zoom) {
   if (typeof maplibregl === 'undefined') return null;
@@ -652,8 +666,15 @@ function drawJourney(m, j, markers) {
   }
   return bounds;
 }
+/** A triangle on the rim of a vehicle marker, pointing where it heads. */
+function addHeading(el, deg) {
+  if (deg < 0) return;
+  const a = document.createElement('span'); a.className = 'heading'; a.style.transform = `rotate(${deg}deg)`;
+  el.appendChild(a);
+}
 function vehicleMarker(m, markers, v, label) {
   const el = document.createElement('div'); el.className = 'wayli-bus' + (v.stale ? ' stale' : ''); el.textContent = label || '🚌'; el.title = v.vehicle ? fmt(v.seen) : '';
+  addHeading(el, v.vehicle ? heading(v.vehicle) : -1);
   const mk = new maplibregl.Marker({ element: el }).setLngLat([v.vehicle.lon, v.vehicle.lat]).addTo(m);
   markers.push(mk);
   return mk;
@@ -715,6 +736,7 @@ function openDetail(j, q, bikeOnly = false) {
   $('detailStart').onclick = () => startTrip(j, q);
   $('detailShare').onclick = () => shareJourney(j, q, bikeOnly);
   requestAnimationFrame(async () => {
+    await styleReady();
     const m = ensureMap();
     if (!m) return;
     m.resize();
@@ -884,7 +906,8 @@ function openLiveMap() {
   showOverlay('liveMap');
   $('liveInfo').hidden = true;
   $('liveMapNote').textContent = '';
-  requestAnimationFrame(() => {
+  requestAnimationFrame(async () => {
+    await styleReady();
     const start = lastPos || place.from || place.to || { lat: 32.08, lon: 34.78 };
     if (!lmap) {
       lmap = makeMap('liveMapEl', [start.lat, start.lon], lastPos ? 14.5 : 12);
@@ -896,6 +919,8 @@ function openLiveMap() {
         lmap.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
         lmap.addSource('lm-veh', { type: 'geojson', data: empty });
         lmap.addLayer({ id: 'lm-veh', type: 'circle', source: 'lm-veh', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 13, 7, 15, 11], 'circle-color': ['get', 'color'], 'circle-opacity': ['get', 'opacity'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-stroke-opacity': ['get', 'opacity'] } });
+        for (const type of [0, 2, 3]) lmap.addImage(`wayli-arrow-${type}`, arrowImage(typeColor(type)), { pixelRatio: 2 });
+        lmap.addLayer({ id: 'lm-veh-dir', type: 'symbol', source: 'lm-veh', filter: ['>', ['get', 'bearing'], -1], layout: { 'icon-image': ['concat', 'wayli-arrow-', ['to-string', ['get', 'type']]], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.55, 15, 1], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': [0, -17], 'icon-allow-overlap': true, 'icon-ignore-placement': true }, paint: { 'icon-opacity': ['get', 'opacity'] } });
         lmap.addLayer({ id: 'lm-veh-label', type: 'symbol', source: 'lm-veh', minzoom: 13.5, layout: { 'text-field': ['get', 'line'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 9, 16, 12], 'text-allow-overlap': true, 'text-ignore-placement': true, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#ffffff', 'text-opacity': ['get', 'opacity'] } });
         lmap.on('click', 'lm-veh', (e) => { if (e.features && e.features[0]) selectVehicle(e.features[0].properties); });
         lmap.on('click', 'lm-stops', (e) => { if (e.features && e.features[0] && !lmap.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) openStop(+e.features[0].properties.stop); });
@@ -933,7 +958,7 @@ async function refreshLiveMap() {
       const lb = lmLabels.get(String(v.lineRef));
       const age = (now - v.recordedAt.getTime()) / 1000;
       return { type: 'Feature', geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
-        properties: { line: lb ? lineText(lb.line) : '?', type: lb ? lb.type : 3, color: typeColor(lb ? lb.type : 3), opacity: age > 300 ? 0.55 : 1,
+        properties: { line: lb ? lineText(lb.line) : '?', type: lb ? lb.type : 3, color: typeColor(lb ? lb.type : 3), opacity: age > 300 ? 0.55 : 1, bearing: heading(v),
           headsign: lb ? lb.headsign : '', agency: lb ? lb.agency : '', lineRef: v.lineRef, start: v.scheduledStart.getTime(), seen: v.recordedAt.getTime(), velocity: v.velocity || 0 } };
     });
     lmap.getSource('lm-veh').setData({ type: 'FeatureCollection', features });
@@ -942,6 +967,17 @@ async function refreshLiveMap() {
     $('liveMapNote').textContent = features.length ? t('liveMapCount', { n: features.length, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone');
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch (e) {}
   } catch (e) { if (my === lmSeq) $('liveMapNote').textContent = t('liveFail'); }
+}
+/** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
+const heading = (v) => (v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1);
+/** A small upward triangle in a colour, with a white edge, drawn at 2x for crisp rotation. */
+function arrowImage(color) {
+  const size = 36, c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.beginPath(); ctx.moveTo(size / 2, 4); ctx.lineTo(size - 7, size - 6); ctx.lineTo(size / 2, size - 13); ctx.lineTo(7, size - 6); ctx.closePath();
+  ctx.fillStyle = color; ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = '#ffffff'; ctx.lineJoin = 'round'; ctx.stroke();
+  return ctx.getImageData(0, 0, size, size);
 }
 function selectVehicle(p) {
   $('liveInfo').hidden = false;
@@ -1007,7 +1043,9 @@ async function openLine(route, replace = false) {
   const box = $('lineStops');
   box.innerHTML = info.stops.map((st, i) => `<div class="linerow" data-i="${i}"><span class="idx">${i + 1}</span><span class="name">${esc(st.name)}<small class="muted"> ${esc(st.city || '')}</small></span></div>`).join('');
   for (const row of box.querySelectorAll('.linerow')) row.addEventListener('click', () => openStop(info.stops[+row.dataset.i].stop));
-  requestAnimationFrame(() => {
+  requestAnimationFrame(async () => {
+    await styleReady();
+    if (my !== lineSeq) return;
     if (!lineMap) lineMap = makeMap('lineMap', [32.08, 34.78], 11);
     if (!lineMap) return;
     lineMap.resize();
@@ -1042,6 +1080,7 @@ async function lineLive() {
       el.className = 'wayli-bus lbl' + (s.stale || s.trip < 0 ? ' stale' : '');
       const d = s.delay != null ? live.delayMinutes(s.delay) : null;
       el.textContent = `${icon}${d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;
+      addHeading(el, heading(v));
       el.title = `${v.recordedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}${s.headsign ? ' · ' + s.headsign : ''}`;
       if (s.trip >= 0) el.addEventListener('click', () => openTrip(s.trip, -1));
       lineVeh.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(lineMap));
@@ -1135,7 +1174,7 @@ function renderSettings() {
   $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
 }
 for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
-for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); dropMaps(); renderSettings(); });
+for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); dropMaps(); styleReady(); renderSettings(); });
 for (const b of $('setWalk').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ maxWalk: +b.dataset.v }); renderSettings(); });
 $('setLive').addEventListener('change', () => settings.set({ live: $('setLive').checked }));
 $('setNotify').addEventListener('change', async () => { settings.set({ notify: $('setNotify').checked }); if ($('setNotify').checked) await requestAlertPermission(); });
@@ -1204,6 +1243,7 @@ function openFollow(a) {
   showOverlay('follow');
   $('resumeBar').hidden = true;
   requestAnimationFrame(async () => {
+    await styleReady();
     await withCourses(a.journey);
     if (!fol || fol.a !== a) return;
     if (!followMap) followMap = makeMap('followMap', [32.08, 34.78], 12);

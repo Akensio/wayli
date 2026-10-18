@@ -1,7 +1,7 @@
 // Wayli service worker: the app shell works offline; data files are cached once downloaded.
-const SHELL = 'wayli-shell-v4';
+const SHELL = 'wayli-shell-v5';
 const DATA = 'wayli-data-v1';
-const SHELL_FILES = ['./', './index.html', './app.js', './worker.js', './raptor.js', './streets.js', './places.js', './live.js', './store.js', './follow.js', './styles.css',
+const SHELL_FILES = ['./', './index.html', './app.js', './worker.js', './raptor.js', './streets.js', './places.js', './live.js', './store.js', './follow.js', './darkmap.js', './styles.css',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-180.png'];
 
 self.addEventListener('install', (e) => {

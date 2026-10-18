@@ -207,3 +207,9 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .wayli-bus.lbl { width: auto; min-width: 30px; padding: 0 6px; border-radius: 15px; font-size: 12px; font-weight: 700; gap: 3px; }
 
 .wayli-bus.lbl, .livebadge { direction: ltr; }
+
+/* ---- heading arrow on vehicle markers: a triangle on the rim, rotated to the bearing */
+.wayli-bus { position: relative; }
+.wayli-bus .heading { position: absolute; inset: -9px; pointer-events: none; }
+.wayli-bus .heading::before { content: ""; position: absolute; left: 50%; top: 0; width: 0; height: 0; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid #1b1f24; }
+.wayli-bus.stale .heading::before { opacity: .6; }
