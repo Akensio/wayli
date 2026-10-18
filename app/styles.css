@@ -194,3 +194,16 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .liveinfo .muted { margin-top: 4px; }
 .journey .leave .live { margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; }
 .results-head .live { font-size: 12px; border-radius: 10px; padding: 0 7px; }
+
+/* ---- line page */
+#lineMap { height: 36vh; min-height: 200px; background: var(--chip); }
+.linerow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.linerow .name { flex: 1; min-width: 0; }
+.linerow .idx { color: var(--ink-2); font-size: 12px; min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+.dropdown button.line { display: flex; align-items: center; gap: 8px; }
+.dropdown button.line .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown button.line small { display: inline; }
+.chip.btn, .stop .chips .chip { cursor: pointer; }
+.wayli-bus.lbl { width: auto; min-width: 30px; padding: 0 6px; border-radius: 15px; font-size: 12px; font-weight: 700; gap: 3px; }
+
+.wayli-bus.lbl, .livebadge { direction: ltr; }

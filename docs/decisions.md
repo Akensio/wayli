@@ -118,3 +118,16 @@ so they are not re-litigated.
 - 2026-10-18 Live queries sort by recorded time, look back half an hour and
   show the data's age: Hasadna's ingestion was 20 minutes behind that
   morning and backfilled old snapshots, so "newest by id" lied.
+- 2026-10-18 Gadi: the phone's back button must go back inside the app, and
+  rides must follow their real course, not straight lines between stops.
+  Overlays and tab changes became history entries (popstate closes them);
+  the feed's shapes.txt is compiled to a 3.6 MB courses file loaded last,
+  and each day's file records where every stop falls on its pattern's
+  course. Rejected: routing rides along the street graph (wrong for rail,
+  approximate for buses) and per-day shape files (the courses hardly change,
+  one cached file serves every day).
+- 2026-10-18 Gadi: search by line number; tap a station on the map to see
+  its lines. Line search and a line page (course, stops, the line's
+  vehicles now with their delays, other directions); the live map's stops
+  open the stop page with its lines and departures. Gadi also floated a
+  map-first home screen; not decided, see the discussion in the session.

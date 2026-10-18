@@ -133,8 +133,10 @@ and in dark mode the Fiord style when chosen in settings (OpenFreeMap's
 Hebrew and Arabic labels.
 
 Screens: plan, nearby, saved, more (settings and about), plus overlays for a
-journey, a stop, a trip's stops, the map picker, the place chooser and the
-trip being followed.
+journey, a stop, a trip's stops, the map picker, the place chooser, the live
+map and the trip being followed. Every overlay and tab change is a history
+entry, so the phone's back button closes the overlay or returns to the
+previous tab instead of leaving the app.
 
 Planning: from and to can be a stop or station, an address, a street, a
 place, a city, the device's location or a point picked on the map; the
@@ -184,6 +186,16 @@ on a map (crosshair, choose), and gets its name from the same book in reverse:
 nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
+Lines: a search box on the nearby screen finds a line by number (exact
+first, then prefix; "רכבת" lists the trains), one row per direction with
+its agency and today's trip count. A line page shows the direction's
+course on a map with every stop as a dot and the line's vehicles reporting
+now, each with its delay (tap one for its trip's stops), the other
+directions as buttons, today's trip count and first and last departure,
+and the stop list (tap a stop for its page). Line chips everywhere (stop
+cards, a stop's lines, a ride in a journey, a vehicle on the live map) open
+the line page.
+
 Nearby and stops: stops around the device with the lines serving them and
 the walk in minutes; a stop shows its next departures with live times
 (below), refreshed every 45 seconds while open; a departure opens the
@@ -201,8 +213,15 @@ midnight.
 
 Data: `data/manifest.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
-being planned) and the street graph (10.7 MB, loaded after the first answer;
-until it is in, points use straight-line access with a detour factor). A
+being planned), the street graph (10.7 MB, loaded after the first answer;
+until it is in, points use straight-line access with a detour factor), the
+address book, and the courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749
+shapes simplified to 6 m, 1.26M points as int32 1e-5 degrees, loaded last).
+Each day's file says which shape every pattern runs on and where each of
+its stops falls along it (segment and fraction, computed by projecting the
+stop on the simplified course, never backwards), so a ride between two
+stops is drawn along the road or the track; until the courses are loaded,
+rides are drawn stop to stop. A
 service day's file also carries the next calendar day's trips that start
 before 03:00, shifted by 24 hours, because the feed codes a 00:10 night bus
 on the next date; so the night is complete in one file.

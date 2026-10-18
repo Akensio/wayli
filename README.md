@@ -12,7 +12,7 @@ service day of the national timetable compiles to a 3 MB file and the street
 network of the whole country to 10 MB. The app in `app/` plans trips (with
 bikes, depart-at or arrive-by), groups the ways to go, plans with live
 delays and shows live times and a live map from Hasadna's Open Bus data,
-follows a trip and says when to get off, remembers
+follows a trip and says when to get off, has line pages, remembers
 recent and saved places, shows nearby stops and departures, draws the journey
 on a map, shares a trip as a link and works offline. A GitHub Action rebuilds
 the data every night and publishes to GitHub Pages. No crowd reports yet; see
@@ -109,7 +109,8 @@ files next to it and open it in a browser.
 ## Run the app
 
 ```
-python3 -I pipeline/compile.py data/gtfs.zip --date 20261019 --streets data/streets.bin.gz --out data/timetable-20261019.bin.gz
+python3 -I pipeline/shapes.py data/gtfs.zip --out data/shapes.bin.gz     # ~1 min: the courses of the lines
+python3 -I pipeline/compile.py data/gtfs.zip --date 20261019 --streets data/streets.bin.gz --shapes data/shapes.bin.gz --out data/timetable-20261019.bin.gz
 python3 pipeline/build_site.py --out site        # app + data + data/manifest.json
 python3 -m http.server --directory site 8080     # then open http://localhost:8080/
 ```

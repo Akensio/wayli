@@ -4,7 +4,34 @@ import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode } from './places.js';
 import { estimateDelay, secondsOn } from './live.js';
 
-let tt = null, st = null, pl = null;
+let tt = null, st = null, pl = null, sh = null;
+
+/** The compact shapes file: int32 coordinates (1e-5 degrees) per GTFS shape id. */
+function parseShapes(ab) {
+  const headerLen = new DataView(ab).getUint32(0, true);
+  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
+  const base = 4 + headerLen, out = { header };
+  for (const s of header.sections) out[s.name] = new Int32Array(ab, base + s.offset, s.length);
+  out.index = new Map();
+  for (let i = 0; i < out.shapeId.length; i++) out.index.set(out.shapeId[i], i);
+  return out;
+}
+/** The course of a ride between two stops of a pattern, along the road or the track; null without shapes. */
+function ridePath(p, bp, ap) {
+  if (!sh || !tt.patShape || tt.patShape[p] < 0) return null;
+  const si = sh.index.get(tt.patShape[p]);
+  if (si == null) return null;
+  const off = sh.shapeOff[si], n = sh.shapeOff[si + 1] - off;
+  const at = (i) => tt.patStopsOff[p] + i;
+  const seg0 = tt.patShapeSeg[at(bp)], f0 = tt.patShapeFrac[at(bp)] / 65535, seg1 = tt.patShapeSeg[at(ap)], f1 = tt.patShapeFrac[at(ap)] / 65535;
+  if (seg1 < seg0 || seg1 + 1 >= n) return null;
+  const pt = (i) => [sh.ptLat[off + i] / 1e5, sh.ptLon[off + i] / 1e5];
+  const lerp = (seg, f) => { const a = pt(seg), b = pt(seg + 1); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; };
+  const path = [lerp(seg0, f0)];
+  for (let i = seg0 + 1; i <= seg1; i++) path.push(pt(i));
+  path.push(lerp(seg1, f1));
+  return path;
+}
 const post = (m) => self.postMessage(m);
 
 async function fetchContainer(url, label) {
@@ -50,7 +77,7 @@ function linesAt(stop, limit = 12) {
     const p = tt.stopPats[2 * i];
     const r = tt.routes[tt.patRoute[p]];
     const label = routeLabel(r);
-    if (!seen.has(label)) seen.set(label, { label, type: r[3], agency: r[2] });
+    if (!seen.has(label)) seen.set(label, { label, type: r[3], agency: r[2], route: tt.patRoute[p] });
   }
   return Array.from(seen.values()).slice(0, limit);
 }
@@ -163,8 +190,9 @@ function legOut(l, q) {
     for (let i = 0; i < ns; i++) if (tt.patStops[tt.patStopsOff[p] + i] === l.from && tt.dep[base + i] === l.depart) { bp = i; break; }
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), stops: l.stops, line: routeLabel(l.route),
       headsign: headsign(l.route), agency: l.route[2], routeType: l.route[3],
-      trip: l.trip, routeId: l.route[4] ?? null, firstDep: tt.dep[base], boardPos: bp, live: tripLive.get(l.trip) || null,
-      path: l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]),
+      trip: l.trip, routeId: l.route[4] ?? null, route: tt.patRoute[p], firstDep: tt.dep[base], boardPos: bp, live: tripLive.get(l.trip) || null,
+      pattern: p, alightPos: bp + l.stops,
+      path: ridePath(p, bp, bp + l.stops) || l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]), pathKind: sh && tt.patShape && tt.patShape[p] >= 0 ? 'shape' : 'stops',
       // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
       stopsAlong: l.via.map((s, i) => ({ stop: s, name: tt.stops[s][1], lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + bp + i], dep: tt.dep[base + bp + i] })) });
   } else if (l.type === 'walk') {
@@ -218,6 +246,13 @@ const ops = {
     st = parseStreets(buf);
     return { nodes: st.M };
   },
+  async loadShapes({ url }) {
+    const buf = await fetchContainer(url, 'shapes');
+    sh = parseShapes(buf);
+    return sh.header.counts;
+  },
+  /** Courses for ride legs planned before the shapes were loaded: null where there is none. */
+  ridePaths({ legs }) { return legs.map((l) => ridePath(l.pattern, l.boardPos, l.alightPos)); },
   async loadPlaces({ url }) {
     const buf = await fetchContainer(url, 'places');
     pl = parsePlaces(buf);
@@ -277,8 +312,60 @@ const ops = {
   routeLabels({ ids }) {
     if (!routeById) indexRoutes();
     const out = {};
-    for (const id of ids) { const ri = routeById.get(String(id)); if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(r) }; } }
+    for (const id of ids) { const ri = routeById.get(String(id)); if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(r), route: ri }; } }
     return out;
+  },
+  /** Lines by number: exact matches first, then prefix; one row per direction, grouped by line and agency. */
+  searchLines({ q, limit = 20 }) {
+    if (!routePats) indexRoutes();
+    const n = String(q || '').trim().toLowerCase();
+    if (!n) return [];
+    const rows = [];
+    const trainQ = 'train'.startsWith(n) || 'רכבת'.startsWith(n);
+    tt.routes.forEach((r, i) => {
+      const label = routeLabel(r).toLowerCase();
+      const score = label === n ? 3 : (label === 'train' && trainQ) ? 2 : label.startsWith(n) ? 1 : 0;
+      if (!score) return;
+      let trips = 0;
+      for (const p of routePats.get(i) || []) trips += tt.patTripsOff[p + 1] - tt.patTripsOff[p];
+      rows.push({ route: i, routeId: r[4] ?? null, line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(r), trips, score });
+    });
+    const num = (x) => { const m = /^\d+/.exec(x); return m ? +m[0] : 1e9; };
+    rows.sort((a, b) => b.score - a.score || num(a.line) - num(b.line) || a.line.localeCompare(b.line) || a.agency.localeCompare(b.agency) || b.trips - a.trips);
+    return rows.slice(0, limit);
+  },
+  /** One direction of a line: its main pattern's stops and course, today's trips, and its other directions. */
+  lineInfo({ route }) {
+    if (!routePats) indexRoutes();
+    const r = tt.routes[route];
+    const pats = routePats.get(route) || [];
+    let best = -1, bestTrips = -1, trips = 0, first = Infinity, last = -Infinity;
+    for (const p of pats) {
+      const n = tt.patTripsOff[p + 1] - tt.patTripsOff[p];
+      trips += n;
+      if (n > bestTrips) { bestTrips = n; best = p; }
+      const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
+      for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) { const d = tt.dep[tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns]; if (d < first) first = d; if (d > last) last = d; }
+    }
+    const stops = [];
+    if (best >= 0) for (let i = tt.patStopsOff[best]; i < tt.patStopsOff[best + 1]; i++) stops.push(stopOut(tt.patStops[i]));
+    const ns = stops.length;
+    const path = best >= 0 && ns >= 2 ? (ridePath(best, 0, ns - 1) || stops.map((s) => [s.lat, s.lon])) : [];
+    const others = [];
+    const label = routeLabel(r);
+    tt.routes.forEach((o, i) => { if (i !== route && routeLabel(o) === label && o[2] === r[2] && (routePats.get(i) || []).length) others.push({ route: i, headsign: headsign(o) }); });
+    return { route, routeId: r[4] ?? null, line: label, agency: r[2], routeType: r[3], headsign: headsign(r), stops, path, pathKind: sh && tt.patShape && best >= 0 && tt.patShape[best] >= 0 ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+  },
+  /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
+  vehiclesStatus({ vehicles }) {
+    const day = tt.header.date;
+    return vehicles.map((v) => {
+      const t = tripFor(v.lineRef, secondsOn(new Date(v.scheduledStart), day));
+      if (t < 0) return { trip: -1 };
+      const { stops } = tripStopList(t);
+      const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: new Date(v.recordedAt) }, stops, day);
+      return { trip: t, delay: est ? est.delay : null, stale: est ? est.ageSec > 240 : true, index: est ? est.index : -1, headsign: headsign(tt.routes[tt.patRoute[tt.tripPat[t]]]) };
+    });
   },
   /** The trip a reported vehicle is running: route id and scheduled start (ISO or ms). */
   tripFor({ routeId, scheduledStart }) { return tripFor(routeId, secondsOn(new Date(scheduledStart), tt.header.date)); },

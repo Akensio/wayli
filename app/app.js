@@ -40,6 +40,7 @@ const STR = {
     alertSoon: 'עוד תחנה אחת', alertSoonBody: 'יורדים ב{name}', alertOff: 'לרדת כאן', alertArrived: 'הגעתם', testAlertMsg: 'כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.', alertPermNo: 'התראות חסומות לאתר; יישארו רטט וצליל.',
     gpsNo: 'אין מיקום, מתקדם לפי השעון', gpsOk: 'מיקום {acc} מ\'', followTitle: '{line} ← {to}', walkTitle: 'הליכה ← {to}', copied: 'הקישור הועתק', walkToDest: 'הליכה {min} דק\' אל היעד: {name}',
     agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
+    stopsCount: '{n} תחנות', lineSearch: 'חיפוש קו לפי מספר', lineTitle: 'קו {line}', tripsToday: '{n} נסיעות היום', lineNoMatch: 'אין קו כזה היום', vehiclesOnLine: '{n} בשידור', otherDir: 'לכיוון {headsign}', noLineVehicles: 'אין רכב בשידור בקו',
     chooseHome: 'איפה הבית?', chooseWork: 'איפה העבודה?', choosePlace: 'מקום לשמירה', savePlace: 'שמירה', unsavePlace: 'הסרה מהשמורים', fromMyLoc: 'מהמיקום שלי', historyCleared: 'ההיסטוריה נמחקה', walkOnly: 'הליכה כל הדרך: {min} דק\'',
     about: '<p><b>Wayli</b> מתכנן נסיעות בתחבורה הציבורית בישראל על הטלפון שלכם: לוח הזמנים הארצי ורשת הרחובות יורדים פעם אחת, והחיפוש רץ מקומית. חיפושים, היסטוריה ומקומות שמורים נשארים בטלפון.</p><p>זמני אמת: פרויקט האוטובוס הפתוח של הסדנא לידע ציבורי (אפשר לכבות בהגדרות). הנתונים: משרד התחבורה (GTFS) ו-OpenStreetMap. התוכנה חופשית ברישיון AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>עדיין אין: דיווחים, גבהים (זמני רכיבה בחיפה ובירושלים אופטימיים). לוח זמנים: {feed}.</p>',
   },
@@ -75,6 +76,7 @@ const STR = {
     alertSoon: 'One more stop', alertSoonBody: 'Get off at {name}', alertOff: 'Get off here', alertArrived: 'You have arrived', testAlertMsg: 'This is what an alert looks like. If none showed, allow notifications for this site.', alertPermNo: 'Notifications are blocked for this site; vibration and sound remain.',
     gpsNo: 'no position, following the clock', gpsOk: 'position ±{acc} m', followTitle: '{line} → {to}', walkTitle: 'Walk → {to}', copied: 'Link copied', walkToDest: 'walk {min} min to the destination: {name}',
     agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
+    stopsCount: '{n} stops', lineSearch: 'Search a line by number', lineTitle: 'Line {line}', tripsToday: '{n} trips today', lineNoMatch: 'No such line today', vehiclesOnLine: '{n} reporting', otherDir: 'towards {headsign}', noLineVehicles: 'No vehicle of this line reporting',
     chooseHome: 'Where is home?', chooseWork: 'Where is work?', choosePlace: 'Place to save', savePlace: 'Save', unsavePlace: 'Remove from saved', fromMyLoc: 'from my location', historyCleared: 'History cleared', walkOnly: 'Walk all the way: {min} min',
     about: '<p><b>Wayli</b> plans public-transport trips in Israel on your phone: the national timetable and the street network download once, and every search runs locally. Searches, history and saved places stay on the phone.</p><p>Live times: the Public Knowledge Workshop\'s Open Bus project (can be turned off in settings). Data: Ministry of Transport (GTFS) and OpenStreetMap. Free software, AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>.</p><p>Not yet: reports, elevation (bike times in Haifa and Jerusalem are optimistic). Timetable: {feed}.</p>',
   },
@@ -90,7 +92,7 @@ function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
-  $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('toQ'); $('chQ').placeholder = t('toQ');
+  $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('toQ'); $('chQ').placeholder = t('toQ'); $('lineQ').placeholder = t('lineSearch');
   for (const id of ['fromLoc', 'toLoc', 'chLoc']) $(id).textContent = t('btnLoc');
   for (const id of ['fromMap', 'toMap', 'chMap']) $(id).textContent = t('btnMap');
   $('langBtn').textContent = lang === 'he' ? 'EN' : 'עב';
@@ -134,6 +136,7 @@ function setStatus(text, error = false, frac = null) {
   if (frac != null) $('statusBar').firstElementChild.style.width = `${Math.round(frac * 100)}%`;
 }
 function showProgress(m) {
+  if (m.label === 'shapes') return;   // quiet: the courses arrive in the background
   const label = m.label === 'timetable' ? t('loadingTT') : m.label === 'places' ? t('loadingPL') : t('loadingST');
   const mb = (m.got / 1e6).toFixed(1) + (m.total ? ' / ' + (m.total / 1e6).toFixed(1) : '') + ' MB';
   setStatus(`${label}: ${m.unpacking ? t('unpacking') : mb}`, false, m.total ? m.got / m.total : null);
@@ -147,6 +150,7 @@ function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp
 
 // ---------------------------------------------------------------- time, days (Israel time, service days)
 const fmt = (sec) => `${String(Math.floor(sec / 3600) % 24).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`;
+const fmtPlus = (sec) => fmt(sec) + (sec >= 86400 ? '⁺' : '');   // past midnight, still this service day
 const dur = (sec) => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
 const dateOf = (s) => new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
 const calToday = () => { const p = live.ilParts(); return live.dayStr(p.y, p.m, p.d); };
@@ -188,7 +192,7 @@ setInterval(() => {
 }, 20000);
 
 // ---------------------------------------------------------------- data manifest and days
-let manifest = null, dayInfo = null, ttReady = false, stReady = false, plReady = false;
+let manifest = null, dayInfo = null, ttReady = false, stReady = false, plReady = false, shReady = false;
 const tsCache = new Map();   // trip -> promise of tripStops, per loaded day
 function renderDays() {
   if (!manifest) return;
@@ -222,6 +226,13 @@ async function loadPlaces() {
     plReady = true;
     for (const side of ['from', 'to']) if (!place[side] && $(side + 'Q').value.trim().length >= 2) $(side + 'Q').dispatchEvent(new Event('input'));
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); }
+}
+async function loadShapes() {
+  if (shReady || !manifest.shapes) return;
+  try {
+    await call('loadShapes', { url: `data/${manifest.shapes.file}?v=${encodeURIComponent(manifest.shapes.built || manifest.built || '')}` });
+    shReady = true;
+  } catch (e) { /* straight lines between stops until then */ }
 }
 async function loadStreets() {
   if (stReady || !manifest.streets) return;
@@ -281,7 +292,8 @@ async function init() {
   try { await loadDay(start); } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   if (shared) { history.replaceState(null, '', location.pathname); plan(); }
   await loadPlaces();
-  loadStreets();
+  await loadStreets();
+  loadShapes();
 }
 $('day').addEventListener('change', () => { loadDay($('day').value).catch((e) => setStatus(t('loadFail', { msg: e.message }), true)); setDefaultTime(); });
 $('nowBtn').addEventListener('click', () => {
@@ -376,7 +388,7 @@ let pickMap = null, pickPoint = null, pickSeq = 0, pickResolve = null;
 function pickOnMap(startAt) {
   return new Promise((resolve) => {
     pickResolve = resolve;
-    $('picker').hidden = false;
+    showOverlay('picker');
     $('pickName').textContent = '…';
     requestAnimationFrame(() => {
       const start = startAt && startAt.lat != null ? startAt : lastPos || place.from || place.to;
@@ -407,7 +419,7 @@ async function nameCenter() {
     pickPoint.name = $('pickName').textContent;
   } catch (e) { if (my === pickSeq) { $('pickName').textContent = t('pointName'); pickPoint.name = t('pointName'); } }
 }
-const closePicker = (p) => { $('picker').hidden = true; const r = pickResolve; pickResolve = null; if (r) r(p); };
+const closePicker = (p) => { const r = pickResolve; pickResolve = null; nav.close('picker'); if (r) r(p); };
 $('pickCancel').addEventListener('click', () => closePicker(null));
 $('pickChoose').addEventListener('click', () => { if (!pickPoint) return; closePicker({ name: pickPoint.name || t('pointName'), lat: pickPoint.lat, lon: pickPoint.lon }); });
 $('pickLocate').addEventListener('click', async () => {
@@ -425,11 +437,11 @@ function choosePlace(title) {
   return new Promise((resolve) => {
     chooserResolve = resolve;
     $('chTitle').textContent = title; $('chQ').value = ''; $('chDrop').hidden = true;
-    $('chooser').hidden = false;
+    showOverlay('chooser');
     setTimeout(() => $('chQ').focus(), 50);
   });
 }
-const closeChooser = (p) => { $('chooser').hidden = true; const r = chooserResolve; chooserResolve = null; if (r) r(p); };
+const closeChooser = (p) => { const r = chooserResolve; chooserResolve = null; nav.close('chooser'); if (r) r(p); };
 attachSearch($('chQ'), $('chDrop'), (p, typing) => { if (!typing && p) closeChooser(p); });
 $('chCancel').addEventListener('click', () => closeChooser(null));
 $('chLoc').addEventListener('click', async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); closeChooser({ name: r.name, lat: pos.lat, lon: pos.lon }); } catch (e) { toast(t('noLocation')); } });
@@ -607,7 +619,7 @@ function makeMap(container, center, zoom) {
   return m;
 }
 const whenStyled = (m, fn) => (m.isStyleLoaded() ? fn() : m.once('load', fn));
-function dropMaps() { for (const m of [map, pickMap, followMap, lmap]) if (m) m.remove(); map = pickMap = followMap = lmap = null; lmStops = false; }
+function dropMaps() { for (const m of [map, pickMap, followMap, lmap, lineMap]) if (m) m.remove(); map = pickMap = followMap = lmap = lineMap = null; lmStops = false; }
 const legColor = (l) => l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#2b3036');
 /** Draw a journey on a map: casing, rides, dashed walks, pins at boarding and alighting stops, dots at the stops between. */
 function drawJourney(m, j, markers) {
@@ -659,9 +671,19 @@ function liveBadge(at) {
   const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
   return { text, cls: d >= 3 ? 'late' : 'ok' };
 }
+/** Ride legs planned before the shapes were loaded get their course now (in place). */
+async function withCourses(j) {
+  if (!shReady || !ttReady) return;
+  const rides = j.legs.filter((l) => l.type === 'ride' && l.pathKind !== 'shape' && l.pattern != null);
+  if (!rides.length) return;
+  try {
+    const paths = await call('ridePaths', { legs: rides.map((l) => ({ pattern: l.pattern, boardPos: l.boardPos, alightPos: l.alightPos })) });
+    rides.forEach((l, i) => { if (paths[i]) { l.path = paths[i]; l.pathKind = 'shape'; } });
+  } catch (e) { /* straight lines then */ }
+}
 function openDetail(j, q, bikeOnly = false) {
   const my = ++detailSeq;
-  $('detail').hidden = false;
+  showOverlay('detail');
   $('detailTitle').textContent = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '') : `${fmt(j.depart)} → ${fmt(j.arrive)} · ${dur(j.arrive - j.depart)}`;
   $('detailNote').textContent = '';
   const legs = $('detailLegs');
@@ -673,7 +695,7 @@ function openDetail(j, q, bikeOnly = false) {
     const mins = Math.round(l.seconds / 60);
     if (l.type === 'ride') {
       const planned = l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: l.live.stale }) : null;
-      what = `<span class="chip t${l.routeType}">${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live${planned ? ' ' + planned.cls : ''}" data-live="${l.trip}">${planned ? esc(planned.text) : ''}</span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${t('ride', { line: '', agency: esc(l.agency), stops: l.stops }).replace(/^ · /, '')}</small>`;
+      what = `<span class="chip btn t${l.routeType}" data-route="${l.route ?? ''}">${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live${planned ? ' ' + planned.cls : ''}" data-live="${l.trip}">${planned ? esc(planned.text) : ''}</span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${t('ride', { line: '', agency: esc(l.agency), stops: l.stops }).replace(/^ · /, '')}</small>`;
       if (l.stopsAlong && l.stopsAlong.length > 2) what += `<button type="button" class="toggle">${t('showStops')}</button><div class="stoplist" hidden>${l.stopsAlong.map((s) => `<div><span>${fmt(s.arr)}</span><span>${esc(s.name)}</span></div>`).join('')}</div>`;
     }
     else if (l.type === 'access') what = (l.mode === 'bike' ? t('bikeTo', { min: mins, name: esc(l.to.name) }) : t('walkTo', { min: mins, name: esc(l.to.name) }));
@@ -682,6 +704,8 @@ function openDetail(j, q, bikeOnly = false) {
     el.innerHTML = `<span class="t">${bikeOnly ? '' : fmt(l.depart)}${l.type === 'ride' ? '<br>' + fmt(l.arrive) : ''}</span><span class="dot"></span><span class="what">${what}</span>`;
     const tg = el.querySelector('.toggle');
     if (tg) tg.addEventListener('click', () => { const sl = el.querySelector('.stoplist'); sl.hidden = !sl.hidden; tg.textContent = sl.hidden ? t('showStops') : t('hideStops'); });
+    const ch = el.querySelector('.chip.btn');
+    if (ch && ch.dataset.route !== '') ch.addEventListener('click', () => openLine(+ch.dataset.route));
     legs.appendChild(el);
   }
   updateStar('detailStar', q && !bikeOnly ? tripKey(q) : null, 'trips');
@@ -689,10 +713,12 @@ function openDetail(j, q, bikeOnly = false) {
   $('detailStart').hidden = bikeOnly;
   $('detailStart').onclick = () => startTrip(j, q);
   $('detailShare').onclick = () => shareJourney(j, q, bikeOnly);
-  requestAnimationFrame(() => {
+  requestAnimationFrame(async () => {
     const m = ensureMap();
     if (!m) return;
     m.resize();
+    if (!bikeOnly) await withCourses(j);
+    if (my !== detailSeq) return;
     whenStyled(m, () => {
       const b = drawJourney(m, j, journeyMarkers);
       for (const mk of liveMarkers.splice(0)) mk.remove();
@@ -742,7 +768,7 @@ function shareJourney(j, q, bikeOnly) {
   if (navigator.share) navigator.share({ title: 'Wayli', text, url: u.toString() }).catch(() => {});
   else if (navigator.clipboard) navigator.clipboard.writeText(`${text}\n${u}`).then(() => toast(t('copied'))).catch(() => {});
 }
-$('detailBack').addEventListener('click', () => { $('detail').hidden = true; detailSeq++; });
+$('detailBack').addEventListener('click', () => nav.close('detail'));
 
 // ---------------------------------------------------------------- nearby and stop detail
 let lastPos = null;
@@ -769,8 +795,8 @@ function renderStops(container, stops, withDistance) {
     d.className = 'stop';
     const walk = withDistance && s.distance != null ? ` · 🚶 ${Math.max(1, Math.round(s.distance * 1.25 / 1.2 / 60))} ${t('min')}` : '';
     d.innerHTML = `<div class="name">${esc(s.name)}</div><div class="meta">${esc(s.city || '')}${withDistance && s.distance != null ? ` · ${s.distance} ${t('m')}${walk}` : ''}${s.code ? ` · ${esc(s.code)}` : ''}</div>` +
-      `<div class="chips">${(s.lines || []).map((l) => `<span class="chip t${l.type}">${esc(lineText(l.label))}</span>`).join('')}</div>`;
-    d.addEventListener('click', () => openStop(s.stop));
+      `<div class="chips">${(s.lines || []).map((l) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}">${esc(lineText(l.label))}</span>`).join('')}</div>`;
+    d.addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (c && c.dataset.route !== '') { e.stopPropagation(); openLine(+c.dataset.route); } else openStop(s.stop); });
     container.appendChild(d);
   }
 }
@@ -779,7 +805,7 @@ async function openStop(stop) {
   const my = ++stopSeq;
   const info = await call('stopInfo', { stop });
   currentStop = info;
-  $('stopDetail').hidden = false;
+  showOverlay('stopDetail');
   $('stopTitle').textContent = info.name;
   $('stopMeta').textContent = `${info.city || ''}${info.code ? ' · ' + info.code : ''}`;
   $('stopLiveNote').textContent = '';
@@ -844,17 +870,17 @@ async function liveForStop(info, deps, day, seq) {
   } catch (e) { $('stopLiveNote').textContent = t('liveFail'); }
 }
 $('stopLive').addEventListener('click', () => { if (currentStop) openStop(currentStop.stop); });
-$('stopBack').addEventListener('click', () => { $('stopDetail').hidden = true; clearInterval(stopTimer); stopSeq++; });
+$('stopBack').addEventListener('click', () => nav.close('stopDetail'));
 const stopPlace = (s) => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
-$('stopFrom').addEventListener('click', () => { if (!currentStop) return; setPlace('from', stopPlace(currentStop)); $('stopDetail').hidden = true; showScreen('plan'); });
-$('stopTo').addEventListener('click', () => { if (!currentStop) return; setPlace('to', stopPlace(currentStop)); $('stopDetail').hidden = true; showScreen('plan'); });
+$('stopFrom').addEventListener('click', () => { if (!currentStop) return; setPlace('from', stopPlace(currentStop)); nav.close('stopDetail'); showScreen('plan'); });
+$('stopTo').addEventListener('click', () => { if (!currentStop) return; setPlace('to', stopPlace(currentStop)); nav.close('stopDetail'); showScreen('plan'); });
 
 // ---- the live map: every vehicle reporting in view, stops when zoomed in
 let lmap = null, lmTimer = 0, lmMove = 0, lmSeq = 0, lmStops = false;
 const lmLabels = new Map();
 const typeColor = (type) => (type === 2 ? '#1f5fa8' : type === 0 ? '#8a3fb0' : '#2a7d4f');
 function openLiveMap() {
-  $('liveMap').hidden = false;
+  showOverlay('liveMap');
   $('liveInfo').hidden = true;
   $('liveMapNote').textContent = '';
   requestAnimationFrame(() => {
@@ -922,24 +948,121 @@ function selectVehicle(p) {
   $('liveInfoHead').textContent = p.headsign ? t('toward', { headsign: p.headsign }) : '';
   const seen = new Date(+p.seen).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
   $('liveInfoMeta').textContent = `${p.agency ? p.agency + ' · ' : ''}${t('seenAgo', { time: seen })} · ${Math.round(+p.velocity)} ${t('kmh')}`;
+  $('liveInfoLine').onclick = () => { const lb = lmLabels.get(String(p.lineRef)); if (lb && lb.route != null) openLine(lb.route); };
+  $('liveInfoLine').style.cursor = 'pointer';
   $('liveInfoStops').onclick = async () => {
     try { const trip = await call('tripFor', { routeId: p.lineRef, scheduledStart: +p.start }); if (trip >= 0) openTrip(trip, -1); else toast(t('liveNoVehicle')); } catch (e) { toast(t('liveFail')); }
   };
 }
 $('nearbyMap').addEventListener('click', openLiveMap);
-$('liveMapBack').addEventListener('click', () => { $('liveMap').hidden = true; clearInterval(lmTimer); lmSeq++; });
+$('liveMapBack').addEventListener('click', () => nav.close('liveMap'));
 $('liveInfoClose').addEventListener('click', () => { $('liveInfo').hidden = true; });
+
+// ---- lines: search by number, and a line's page (course, stops, vehicles now)
+{
+  const input = $('lineQ'), drop = $('lineDrop');
+  let timer = 0, seq = 0;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (!q || !ttReady) { drop.hidden = true; return; }
+    timer = setTimeout(async () => {
+      const my = ++seq;
+      const rows = await call('searchLines', { q, limit: 20 });
+      if (my !== seq) return;
+      drop.innerHTML = '';
+      for (const r of rows) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'line';
+        b.innerHTML = `<span class="chip t${r.routeType}">${esc(lineText(r.line))}</span><span class="txt">${esc(t('toward', { headsign: r.headsign }))}<small> · ${esc(r.agency)} · ${t('tripsToday', { n: r.trips })}</small></span>`;
+        b.addEventListener('click', () => { drop.hidden = true; input.value = lineText(r.line); openLine(r.route); });
+        drop.appendChild(b);
+      }
+      if (!rows.length) { const n = document.createElement('button'); n.type = 'button'; n.disabled = true; n.textContent = t('lineNoMatch'); drop.appendChild(n); }
+      drop.hidden = false;
+    }, 120);
+  });
+  input.addEventListener('focus', () => { if (drop.children.length && input.value.trim()) drop.hidden = false; });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const f = drop.querySelector('button:not(:disabled)'); if (f) f.click(); } });
+  document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input) drop.hidden = true; });
+}
+let lineMap = null, lineMarkers = [], lineVeh = [], lineTimer = 0, lineSeq = 0, lineCur = null;
+async function openLine(route, replace = false) {
+  const my = ++lineSeq;
+  let info;
+  try { info = await call('lineInfo', { route }); } catch (e) { toast(t('liveFail')); return; }
+  if (my !== lineSeq) return;
+  lineCur = info;
+  if (!replace) showOverlay('lineDetail');
+  $('lineTitle').textContent = `${t('lineTitle', { line: lineText(info.line) })} · ${t('toward', { headsign: info.headsign })}`;
+  $('lineMeta').textContent = `${info.agency} · ${t('tripsToday', { n: info.trips })} · ${fmtPlus(info.first)}–${fmtPlus(info.last)} · ${t('stopsCount', { n: info.stops.length })}`;
+  $('lineLive').hidden = true;
+  const dirs = $('lineDirs');
+  dirs.innerHTML = '';
+  for (const o of info.others) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn'; b.textContent = `↔ ${t('otherDir', { headsign: o.headsign })}`;
+    b.addEventListener('click', () => openLine(o.route, true));
+    dirs.appendChild(b);
+  }
+  const box = $('lineStops');
+  box.innerHTML = info.stops.map((st, i) => `<div class="linerow" data-i="${i}"><span class="idx">${i + 1}</span><span class="name">${esc(st.name)}<small class="muted"> ${esc(st.city || '')}</small></span></div>`).join('');
+  for (const row of box.querySelectorAll('.linerow')) row.addEventListener('click', () => openStop(info.stops[+row.dataset.i].stop));
+  requestAnimationFrame(() => {
+    if (!lineMap) lineMap = makeMap('lineMap', [32.08, 34.78], 11);
+    if (!lineMap) return;
+    lineMap.resize();
+    whenStyled(lineMap, () => {
+      if (my !== lineSeq) return;
+      const b = drawJourney(lineMap, { legs: [{ type: 'ride', routeType: info.routeType, path: info.path }] }, lineMarkers);
+      // every stop of the line as a dot
+      const dots = { type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) };
+      lineMap.getSource('stops').setData(dots);
+      if (!b.isEmpty()) lineMap.fitBounds(b, { padding: 30, duration: 0, maxZoom: 15 });
+    });
+  });
+  clearInterval(lineTimer);
+  lineTimer = setInterval(lineLive, 20000);
+  lineLive();
+}
+/** The line's vehicles on its map, with how late each runs. */
+async function lineLive() {
+  const info = lineCur;
+  if (!info || $('lineDetail').hidden || !liveOn() || info.routeId == null) return;
+  const my = lineSeq;
+  try {
+    const vs = await live.vehiclesByLine(info.routeId);
+    if (my !== lineSeq || !lineMap) return;
+    const st = vs.length ? await call('vehiclesStatus', { vehicles: vs.map((v) => ({ lineRef: v.lineRef, scheduledStart: v.scheduledStart.getTime(), lat: v.lat, lon: v.lon, recordedAt: v.recordedAt.getTime() })) }) : [];
+    if (my !== lineSeq || !lineMap) return;
+    for (const mk of lineVeh.splice(0)) mk.remove();
+    const icon = info.routeType === 2 ? '🚆' : info.routeType === 0 ? '🚊' : '🚌';
+    vs.forEach((v, i) => {
+      const s = st[i] || { trip: -1 };
+      const el = document.createElement('div');
+      el.className = 'wayli-bus lbl' + (s.stale || s.trip < 0 ? ' stale' : '');
+      const d = s.delay != null ? live.delayMinutes(s.delay) : null;
+      el.textContent = `${icon}${d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;
+      el.title = `${v.recordedAt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}${s.headsign ? ' · ' + s.headsign : ''}`;
+      if (s.trip >= 0) el.addEventListener('click', () => openTrip(s.trip, -1));
+      lineVeh.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(lineMap));
+    });
+    const nw = live.newest(vs);
+    $('lineLive').textContent = vs.length ? `${t('vehiclesOnLine', { n: vs.length })} · ${nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}` : t('noLineVehicles');
+    $('lineLive').className = 'livebadge ' + (vs.length ? 'ok' : '');
+    $('lineLive').hidden = false;
+  } catch (e) { /* the schedule stays */ }
+}
+$('lineBack').addEventListener('click', () => nav.close('lineDetail'));
 
 // ---- one trip: every stop with its time, and where the vehicle is
 async function openTrip(trip, hereStop) {
   const ts = await tripStopsCached(trip);
-  $('tripDetail').hidden = false;
+  showOverlay('tripDetail');
   $('tripTitle').textContent = t('tripStopsTitle', { line: lineText(ts.line), headsign: ts.headsign });
-  $('tripMeta').textContent = `${ts.agency} · ${ts.stops.length} ${t('kindStop')}`;
+  $('tripMeta').textContent = `${ts.agency} · ${t('stopsCount', { n: ts.stops.length })}`;
   const box = $('tripStops');
   const day = $('day').value;
   box.innerHTML = ts.stops.map((s, i) => `<div class="stopsrow${s.stop === hereStop ? ' here' : ''}" data-i="${i}"><span class="time">${fmt(s.arr)}</span><span>${esc(s.name)}</span></div>`).join('');
-  for (const row of box.querySelectorAll('.stopsrow')) row.addEventListener('click', () => { $('tripDetail').hidden = true; openStop(ts.stops[+row.dataset.i].stop); });
+  for (const row of box.querySelectorAll('.stopsrow')) row.addEventListener('click', () => { nav.close('tripDetail'); openStop(ts.stops[+row.dataset.i].stop); });
   if (!liveOn() || ts.routeId == null) return;
   try {
     const vs = await live.vehiclesByLine(ts.routeId);
@@ -950,7 +1073,7 @@ async function openTrip(trip, hereStop) {
     if (row) { const tag = document.createElement('span'); tag.className = 'veh'; tag.textContent = `🚌 ${t('vehicleHere')}${est.delay ? ` (${live.delayMinutes(est.delay) > 0 ? '+' : ''}${live.delayMinutes(est.delay)})` : ''}`; row.appendChild(tag); row.scrollIntoView({ block: 'center' }); }
   } catch (e) { /* no live, no problem */ }
 }
-$('tripBack').addEventListener('click', () => { $('tripDetail').hidden = true; });
+$('tripBack').addEventListener('click', () => nav.close('tripDetail'));
 
 // ---------------------------------------------------------------- saved: places, trips, stops (this device only)
 function tripKey(q) { return `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`; }
@@ -1061,7 +1184,7 @@ function startTrip(j, q) {
   const a = { journey: { ...j, to: q.to.lat != null ? { name: q.to.name, lat: q.to.lat, lon: q.to.lon } : null }, q: { from: q.from, to: q.to, bike: q.bike, folding: q.folding }, day, state: initialState(), view: 'follow', startedAt: Date.now() };
   activeTrip.set(a);
   requestAlertPermission();
-  $('detail').hidden = true;
+  nav.close('detail');
   openFollow(a);
 }
 function openFollow(a) {
@@ -1077,9 +1200,11 @@ function openFollow(a) {
     requestWake();
   }
   a.view = 'follow'; activeTrip.set(a);
-  $('follow').hidden = false;
+  showOverlay('follow');
   $('resumeBar').hidden = true;
-  requestAnimationFrame(() => {
+  requestAnimationFrame(async () => {
+    await withCourses(a.journey);
+    if (!fol || fol.a !== a) return;
     if (!followMap) followMap = makeMap('followMap', [32.08, 34.78], 12);
     if (followMap) { followMap.resize(); whenStyled(followMap, () => { const b = drawJourney(followMap, a.journey, followMarkers); if (!fol.fitted && !b.isEmpty()) { followMap.fitBounds(b, { padding: 40, duration: 0, maxZoom: 16 }); fol.fitted = true; } }); }
     stepFollow(); followLive();
@@ -1201,11 +1326,11 @@ function closeFollow(end) {
   }
   for (const mk of followVehicle.splice(0)) mk.remove();
   if (meMarker) { meMarker.remove(); meMarker = null; }
-  $('follow').hidden = true;
+  if (!$('follow').hidden) { $('follow').hidden = true; nav.stack = nav.stack.filter((e) => !(e.kind === 'overlay' && e.id === 'follow')); }
   updateResumeBar();
 }
 $('followEnd').addEventListener('click', () => { closeFollow(true); toast(t('tripEnded')); });
-$('followHide').addEventListener('click', () => closeFollow(false));
+$('followHide').addEventListener('click', () => nav.close('follow'));
 function updateResumeBar() {
   const a = activeTrip.get();
   const bar = $('resumeBar');
@@ -1216,8 +1341,46 @@ function updateResumeBar() {
 }
 $('resumeBar').addEventListener('click', () => { const a = activeTrip.get(); if (a) openFollow(a); });
 
-// ---------------------------------------------------------------- screens
-function showScreen(name) {
+// ---------------------------------------------------------------- screens and the back button
+// Every overlay and every tab change is a history entry, so the phone's back button (or the browser's)
+// closes the overlay or returns to the previous tab instead of leaving the app. Closing with an
+// in-app button goes through history too, so both paths look the same.
+const nav = {
+  stack: [],   // entries: {kind: 'overlay', id} or {kind: 'tab', from}
+  push(entry) { this.stack.push(entry); history.pushState({ wayli: this.stack.length }, ''); },
+  /** Undo the top entry (called from popstate, or to close programmatically). */
+  undo(entry) {
+    if (entry.kind === 'overlay') hideOverlay(entry.id);
+    else if (entry.kind === 'tab') showScreen(entry.from, false);
+  },
+  /** Close the given overlay: through history if it is the top entry, else directly. */
+  close(id) {
+    const top = this.stack[this.stack.length - 1];
+    if (top && top.kind === 'overlay' && top.id === id) history.back();
+    else { this.stack = this.stack.filter((e) => !(e.kind === 'overlay' && e.id === id)); hideOverlay(id); }
+  },
+};
+const OVERLAY_CLOSE = { detail: () => { detailSeq++; }, stopDetail: () => { clearInterval(stopTimer); stopSeq++; }, liveMap: () => { clearInterval(lmTimer); lmSeq++; }, lineDetail: () => { clearInterval(lineTimer); lineSeq++; lineCur = null; },
+  picker: () => { const r = pickResolve; pickResolve = null; if (r) r(null); }, chooser: () => { const r = chooserResolve; chooserResolve = null; if (r) r(null); }, follow: () => { if (fol) closeFollow(false); } };
+function showOverlay(id) {
+  if (!$(id).hidden) return;
+  $(id).hidden = false;
+  nav.push({ kind: 'overlay', id });
+}
+function hideOverlay(id) {
+  if ($(id).hidden) return;
+  $(id).hidden = true;
+  if (OVERLAY_CLOSE[id]) OVERLAY_CLOSE[id]();
+}
+window.addEventListener('popstate', (e) => {
+  const depth = e.state && e.state.wayli ? e.state.wayli : 0;
+  while (nav.stack.length > depth) nav.undo(nav.stack.pop());
+});
+try { history.replaceState({ wayli: 0 }, ''); } catch (e) {}
+let screen = 'plan';
+function showScreen(name, record = true) {
+  if (record && name !== screen) nav.push({ kind: 'tab', from: screen });
+  screen = name;
   for (const s of document.querySelectorAll('.screen')) s.hidden = s.id !== 'screen-' + name;
   for (const b of document.querySelectorAll('nav.tabs button')) b.setAttribute('aria-selected', String(b.dataset.screen === name));
   if (name === 'nearby' && ttReady && !$('nearbyList').querySelector('.stop')) loadNearby();

@@ -68,6 +68,11 @@
   </section>
 
   <section class="screen" id="screen-nearby" hidden>
+    <div class="field">
+      <span class="icon">⌕</span>
+      <input type="text" id="lineQ" placeholder="חיפוש קו לפי מספר" autocomplete="off" inputmode="search" enterkeyhint="search">
+      <div class="dropdown" id="lineDrop" hidden></div>
+    </div>
     <div class="row" style="margin-bottom:8px">
       <h2 class="sec" style="margin:0" data-t="nearbyTitle">תחנות בקרבתי</h2>
       <span class="spacer" style="flex:1"></span>
@@ -155,6 +160,22 @@
     <div class="row"><span class="chip" id="liveInfoLine"></span><span class="pickname" id="liveInfoHead" style="flex:1;margin:0"></span><button type="button" class="ghost" id="liveInfoClose">✕</button></div>
     <div class="muted" id="liveInfoMeta"></div>
     <div class="row" style="margin-top:6px"><button type="button" class="ghost" id="liveInfoStops" data-t="showStops">הצגת התחנות</button></div>
+  </div>
+</div>
+
+<div class="detail" id="lineDetail" hidden>
+  <div class="bar">
+    <button type="button" class="ghost" id="lineBack" data-t="back">חזרה</button>
+    <h2 id="lineTitle"></h2>
+    <span class="livebadge" id="lineLive" hidden></span>
+  </div>
+  <div class="body">
+    <div id="lineMap"></div>
+    <div class="legs">
+      <div class="muted" id="lineMeta"></div>
+      <div class="chips" id="lineDirs" style="margin:8px 0"></div>
+      <div id="lineStops"></div>
+    </div>
   </div>
 </div>
 

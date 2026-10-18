@@ -103,6 +103,33 @@ def active_services(zf, date):
     return active
 
 
+def project_stops(slat, slon, plat, plon):
+    """Where each stop falls along a polyline (degrees): segment index and fraction along it, never
+    going backwards from one stop to the next. Returns (segments, fractions, worst distance in m)."""
+    kx = 111320.0 * math.cos(math.radians(float(plat.mean())))
+    ky = 110540.0
+    x, y = plon * kx, plat * ky
+    ax, ay = x[:-1], y[:-1]
+    dx, dy = x[1:] - ax, y[1:] - ay
+    seg2 = dx * dx + dy * dy
+    seg2[seg2 == 0] = 1e-9
+    segs, fracs, worst, prev = [], [], 0.0, 0
+    for lat, lon in zip(slat, slon):
+        sx, sy = lon * kx, lat * ky
+        px, py = sx - ax[prev:], sy - ay[prev:]
+        t = np.clip((px * dx[prev:] + py * dy[prev:]) / seg2[prev:], 0.0, 1.0)
+        d = np.hypot(px - t * dx[prev:], py - t * dy[prev:])
+        # a course can pass the same place twice (loops): take the first segment that is close
+        # enough, and only otherwise the nearest one ahead
+        close = np.flatnonzero(d < 60.0)
+        j = int(close[0]) if len(close) else int(np.argmin(d))
+        worst = max(worst, float(d[j]))
+        prev += j
+        segs.append(prev)
+        fracs.append(float(t[j]))
+    return segs, fracs, worst
+
+
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371000.0
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -122,6 +149,7 @@ def main():
     ap.add_argument("--walk-radius", type=float, default=WALK_RADIUS, help="footpaths between stops closer than this, metres")
     ap.add_argument("--streets", default=None, help="compact street graph from streets.py: real walking times between stops")
     ap.add_argument("--max-walk", type=int, default=600, help="seconds: longest stop-to-stop walk on the street graph")
+    ap.add_argument("--shapes", default=None, help="compact shapes from shapes.py: each pattern's course and where its stops fall on it")
     args = ap.parse_args()
     WALK_RADIUS = args.walk_radius
 
@@ -162,9 +190,9 @@ def main():
     trips_next = {}  # next-day trips; kept only if they start before NIGHT_END, shifted by a day
     for r in rows(zf, "trips.txt"):
         if r["service_id"] in active:
-            trips_raw[r["trip_id"]] = (r["route_id"], r.get("trip_headsign", ""))
+            trips_raw[r["trip_id"]] = (r["route_id"], r.get("trip_headsign", ""), r.get("shape_id", ""))
         if r["service_id"] in active_next:
-            trips_next[r["trip_id"]] = (r["route_id"], r.get("trip_headsign", ""))
+            trips_next[r["trip_id"]] = (r["route_id"], r.get("trip_headsign", ""), r.get("shape_id", ""))
     log(f"{len(trips_raw)} trips on that day, {len(trips_next)} on the next (of all trips in the feed)")
 
     # ---- stop_times: stream the big file, keep only the day's trips ----
@@ -263,6 +291,36 @@ def main():
             patterns.append((route_id, seq, sub[1]))
     patterns.sort(key=lambda p: (p[0], p[1]))
     log(f"{len(patterns)} patterns after splitting overtaking trips")
+
+    # ---- shapes: each pattern's course, and where every stop of it lies along that course ----
+    pat_shape = np.full(len(patterns), -1, np.int32)
+    pat_shape_seg, pat_shape_frac = [], []
+    n_shaped = n_noshape = n_off = 0
+    if args.shapes:
+        from shapes import read_shapes
+        shapes = read_shapes(args.shapes)
+        log(f"{len(shapes)} shapes loaded from {args.shapes}")
+        for pi, (route_id, seq, trips) in enumerate(patterns):
+            # the first trip of the pattern that names a shape (a few trips have none)
+            sid = next((trips_raw[tr[1]][2] for tr in trips if trips_raw[tr[1]][2].isdigit()), "")
+            sh = shapes.get(int(sid)) if sid.isdigit() else None
+            segs, fracs = None, None
+            if sh is not None and len(sh[0]) >= 2:
+                segs, fracs, worst = project_stops([stop_list[i][2] for i in seq], [stop_list[i][3] for i in seq], sh[0], sh[1])
+                if worst > 400:  # a stop far off the course: the shape does not fit this pattern
+                    segs = None
+                    n_off += 1
+            else:
+                n_noshape += 1
+            if segs is None:
+                pat_shape_seg.extend([0] * len(seq))
+                pat_shape_frac.extend([0] * len(seq))
+            else:
+                pat_shape[pi] = int(sid)
+                pat_shape_seg.extend(segs)
+                pat_shape_frac.extend(fracs)
+                n_shaped += 1
+        log(f"{n_shaped} of {len(patterns)} patterns follow a shape ({n_noshape} without a shape, {n_off} off their shape)")
 
     # ---- routes used ----
     route_index = {}
@@ -435,6 +493,10 @@ def main():
     add("stopLon", lon, "float32")
     add("stopParent", stop_parent, "int32")
     add("stopNode", stop_node, "int32")
+    if args.shapes:
+        add("patShape", pat_shape, "int32")
+        add("patShapeSeg", np.array(pat_shape_seg, np.int32), "int32")
+        add("patShapeFrac", np.array([int(round(f * 65535)) for f in pat_shape_frac], np.uint16), "uint16")
 
     header = {
         "format": FORMAT_VERSION,
@@ -451,6 +513,7 @@ def main():
         "stops": [[s[0], s[1], s[4], s[6]] for s in stop_list],
         "stations": [[pid, stops_raw[pid][0] if pid in stops_raw else ""] for pid in parent_index],
         "streets": {"file": args.streets.split("/")[-1], "max_walk_s": args.max_walk, "footpaths": n_street} if args.streets else None,
+        "shapes": {"file": args.shapes.split("/")[-1], "patterns": int(n_shaped)} if args.shapes else None,
     }
     hjson = json.dumps(header, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     while (4 + len(hjson)) % 4:
