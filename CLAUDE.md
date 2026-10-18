@@ -58,6 +58,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/compile.py` | GTFS zip to one service day's compact timetable (format in `docs/architecture.md`); with `--streets`, real walking transfers. |
 | `pipeline/streets.py`, `pipeline/streetgraph.py` | OpenStreetMap extract to the compact street graph; reader and stop-to-stop walking times for the compiler. |
 | `pipeline/shapes.py` | GTFS shapes to the compact courses file (simplified polylines per shape); the compiler (`--shapes`) records each pattern's course and where its stops fall on it. |
+| `pipeline/rail.py` | OpenStreetMap railways to a small rail graph with an A* router; the compiler (`--rail`) draws train patterns along the track, since the feed has no shapes for trains. |
 | `app/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
 | `app/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
 | `pipeline/places.py`, `app/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |

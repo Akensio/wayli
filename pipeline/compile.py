@@ -150,6 +150,7 @@ def main():
     ap.add_argument("--streets", default=None, help="compact street graph from streets.py: real walking times between stops")
     ap.add_argument("--max-walk", type=int, default=600, help="seconds: longest stop-to-stop walk on the street graph")
     ap.add_argument("--shapes", default=None, help="compact shapes from shapes.py: each pattern's course and where its stops fall on it")
+    ap.add_argument("--rail", default=None, help="rail graph from rail.py: train rides along the track (the feed has no shapes for trains)")
     args = ap.parse_args()
     WALK_RADIUS = args.walk_radius
 
@@ -293,8 +294,13 @@ def main():
     log(f"{len(patterns)} patterns after splitting overtaking trips")
 
     # ---- shapes: each pattern's course, and where every stop of it lies along that course ----
+    total_stops = sum(len(seq) for _, seq, _ in patterns)
     pat_shape = np.full(len(patterns), -1, np.int32)
-    pat_shape_seg, pat_shape_frac = [], []
+    pat_shape_seg = [0] * total_stops
+    pat_shape_frac = [0.0] * total_stops
+    pat_stop_off = [0]
+    for _, seq, _ in patterns:
+        pat_stop_off.append(pat_stop_off[-1] + len(seq))
     n_shaped = n_noshape = n_off = 0
     if args.shapes:
         from shapes import read_shapes
@@ -324,15 +330,47 @@ def main():
                     n_off += 1
                 else:
                     n_noshape += 1
-            if segs is None:
-                pat_shape_seg.extend([0] * len(seq))
-                pat_shape_frac.extend([0] * len(seq))
-            else:
-                pat_shape[pi] = int(sid)
-                pat_shape_seg.extend(segs)
-                pat_shape_frac.extend(fracs)
-                n_shaped += 1
+                continue
+            pat_shape[pi] = int(sid)
+            o = pat_stop_off[pi]
+            pat_shape_seg[o:o + len(seq)] = segs
+            pat_shape_frac[o:o + len(seq)] = fracs
+            n_shaped += 1
         log(f"{n_shaped} of {len(patterns)} patterns follow a shape ({n_noshape} without a shape, {n_off} off their shape)")
+
+    # ---- rail: trains have no shapes in the feed; their course comes from OpenStreetMap's tracks,
+    # routed once per pair of consecutive stations and shared by every pattern using that pair ----
+    rail_pair_off, rail_lat, rail_lon = [0], [], []
+    n_rail = n_rail_fallback = 0
+    if args.rail:
+        import rail
+        from shapes import simplify_mask
+        rg = rail.load(args.rail)
+        pairs = {}
+        for pi, (route_id, seq, trips) in enumerate(patterns):
+            if pat_shape[pi] >= 0 or routes_raw[route_id][3] != 2 or len(seq) < 2:
+                continue
+            o = pat_stop_off[pi]
+            for k, (a, b) in enumerate(zip(seq[:-1], seq[1:])):
+                if (a, b) not in pairs:
+                    path = rail.route(rg, stop_list[a][2], stop_list[a][3], stop_list[b][2], stop_list[b][3])
+                    if path is None:
+                        path = []
+                        n_rail_fallback += 1
+                    else:
+                        plat, plon = np.array([q[0] for q in path]), np.array([q[1] for q in path])
+                        keep = simplify_mask(plat, plon, 8.0)
+                        path = list(zip(plat[keep].tolist(), plon[keep].tolist()))
+                    path = [(stop_list[a][2], stop_list[a][3])] + path + [(stop_list[b][2], stop_list[b][3])]
+                    pairs[(a, b)] = len(rail_pair_off) - 1
+                    rail_lat.extend(q[0] for q in path)
+                    rail_lon.extend(q[1] for q in path)
+                    rail_pair_off.append(len(rail_lat))
+                pat_shape_seg[o + k] = pairs[(a, b)]
+            pat_shape_seg[o + len(seq) - 1] = pairs[(seq[-2], seq[-1])]
+            pat_shape[pi] = -2
+            n_rail += 1
+        log(f"{n_rail} train patterns follow the tracks: {len(pairs)} station pairs, {n_rail_fallback} without a track (straight)")
 
     # ---- routes used ----
     route_index = {}
@@ -505,10 +543,14 @@ def main():
     add("stopLon", lon, "float32")
     add("stopParent", stop_parent, "int32")
     add("stopNode", stop_node, "int32")
-    if args.shapes:
+    if args.shapes or args.rail:
         add("patShape", pat_shape, "int32")
         add("patShapeSeg", np.array(pat_shape_seg, np.int32), "int32")
         add("patShapeFrac", np.array([int(round(f * 65535)) for f in pat_shape_frac], np.uint16), "uint16")
+    if args.rail:
+        add("railPairOff", np.array(rail_pair_off, np.int32), "int32")
+        add("railLat", np.round(np.array(rail_lat, np.float64) * 1e5).astype(np.int32), "int32")
+        add("railLon", np.round(np.array(rail_lon, np.float64) * 1e5).astype(np.int32), "int32")
 
     header = {
         "format": FORMAT_VERSION,
@@ -526,6 +568,7 @@ def main():
         "stations": [[pid, stops_raw[pid][0] if pid in stops_raw else ""] for pid in parent_index],
         "streets": {"file": args.streets.split("/")[-1], "max_walk_s": args.max_walk, "footpaths": n_street} if args.streets else None,
         "shapes": {"file": args.shapes.split("/")[-1], "patterns": int(n_shaped)} if args.shapes else None,
+        "rail": {"pairs": len(rail_pair_off) - 1, "patterns": int(n_rail), "straight": int(n_rail_fallback)} if args.rail else None,
     }
     hjson = json.dumps(header, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     while (4 + len(hjson)) % 4:

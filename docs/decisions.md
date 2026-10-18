@@ -131,3 +131,8 @@ so they are not re-litigated.
   vehicles now with their delays, other directions); the live map's stops
   open the stop page with its lines and departures. Gadi also floated a
   map-first home screen; not decided, see the discussion in the session.
+- 2026-10-18 The feed has no shapes for trains, so train courses come from
+  OpenStreetMap railways routed station to station (`pipeline/rail.py`),
+  stored once per station pair in the day's file. Rejected: drawing trains
+  stop to stop (Gadi's own example was a train) and asking Israel Railways
+  for geometry (no open source of it).

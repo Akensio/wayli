@@ -219,9 +219,15 @@ address book, and the courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749
 shapes simplified to 6 m, 1.26M points as int32 1e-5 degrees, loaded last).
 Each day's file says which shape every pattern runs on and where each of
 its stops falls along it (segment and fraction, computed by projecting the
-stop on the simplified course, never backwards), so a ride between two
-stops is drawn along the road or the track; until the courses are loaded,
-rides are drawn stop to stop. A
+stop on the simplified course, never backwards; a pattern whose trips name
+no shape borrows a sibling's when its stops lie on it), so a ride between
+two stops is drawn along the road; until the courses are loaded, rides are
+drawn stop to stop. Trains have no shapes in the feed at all (every rail
+trip lacks a shape_id), so `pipeline/rail.py` turns OpenStreetMap's
+`railway=rail` ways (yards, sidings and spurs excluded) into a rail graph,
+and the compiler routes every pair of consecutive stations over it with
+A*, stores each pair's track once in the day's file (8 m simplification)
+and draws a train ride by chaining its pairs. A
 service day's file also carries the next calendar day's trips that start
 before 03:00, shifted by 24 hours, because the feed codes a 00:10 night bus
 on the next date; so the night is complete in one file.

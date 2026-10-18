@@ -38,15 +38,17 @@ jobs:
             data/osm/israel-and-palestine-latest.osm.pbf
             data/streets.bin.gz
             data/places.bin.gz
+            data/rail.bin.gz
           key: osm-${{ github.run_id }}
           restore-keys: osm-
-      - name: Street graph and address book
+      - name: Street graph, address book and rail graph
         run: |
-          if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ]; then
+          if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ ! -f data/rail.bin.gz ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ]; then
             curl -sSL -o data/osm/israel-and-palestine-latest.osm.pbf https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf \
               || curl -sSL -o data/osm/israel-and-palestine-latest.osm.pbf https://download.openstreetmap.fr/extracts/asia/israel_and_palestine-latest.osm.pbf
             python3 -I pipeline/streets.py data/osm/israel-and-palestine-latest.osm.pbf --out data/streets.bin.gz
             python3 -I pipeline/places.py data/osm/israel-and-palestine-latest.osm.pbf --gtfs data/gtfs.zip --out data/places.bin.gz
+            python3 -I pipeline/rail.py data/osm/israel-and-palestine-latest.osm.pbf --out data/rail.bin.gz
           fi
       - name: Vehicle courses (shapes)
         run: python3 -I pipeline/shapes.py data/gtfs.zip --out data/shapes.bin.gz
@@ -55,7 +57,7 @@ jobs:
           for i in 0 1 2 3 4 5 6; do
             # the service day: until 03:00 the night still belongs to the previous date
             d=$(TZ=Asia/Jerusalem date -d "-3 hours +$i day" +%Y%m%d)
-            python3 -I pipeline/compile.py data/gtfs.zip --date "$d" --streets data/streets.bin.gz --shapes data/shapes.bin.gz --out "data/timetable-$d.bin.gz"
+            python3 -I pipeline/compile.py data/gtfs.zip --date "$d" --streets data/streets.bin.gz --shapes data/shapes.bin.gz --rail data/rail.bin.gz --out "data/timetable-$d.bin.gz"
           done
       - run: python3 pipeline/build_site.py --out site
       - uses: actions/upload-pages-artifact@v3

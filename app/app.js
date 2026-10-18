@@ -683,6 +683,7 @@ async function withCourses(j) {
 }
 function openDetail(j, q, bikeOnly = false) {
   const my = ++detailSeq;
+  try { window.wayliDebug = { ...(window.wayliDebug || {}), journey: j }; } catch (e) {}
   showOverlay('detail');
   $('detailTitle').textContent = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '') : `${fmt(j.depart)} → ${fmt(j.arrive)} · ${dur(j.arrive - j.depart)}`;
   $('detailNote').textContent = '';

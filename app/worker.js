@@ -16,13 +16,25 @@ function parseShapes(ab) {
   for (let i = 0; i < out.shapeId.length; i++) out.index.set(out.shapeId[i], i);
   return out;
 }
-/** The course of a ride between two stops of a pattern, along the road or the track; null without shapes. */
+/** Does this pattern have a course: a feed shape (loaded) or a track from the rail pairs? */
+const hasCourse = (p) => !!tt.patShape && (tt.patShape[p] === -2 ? !!tt.railPairOff : tt.patShape[p] >= 0 && !!sh);
+/** The course of a ride between two stops of a pattern, along the road or the track; null without one. */
 function ridePath(p, bp, ap) {
-  if (!sh || !tt.patShape || tt.patShape[p] < 0) return null;
+  if (!tt.patShape) return null;
+  const at = (i) => tt.patStopsOff[p] + i;
+  if (tt.patShape[p] === -2) {   // a train: the track, one stored piece per pair of consecutive stations
+    if (!tt.railPairOff) return null;
+    const path = [];
+    for (let i = bp; i < ap; i++) {
+      const k = tt.patShapeSeg[at(i)], o = tt.railPairOff[k], e = tt.railPairOff[k + 1];
+      for (let j = o + (i > bp ? 1 : 0); j < e; j++) path.push([tt.railLat[j] / 1e5, tt.railLon[j] / 1e5]);
+    }
+    return path.length >= 2 ? path : null;
+  }
+  if (!sh || tt.patShape[p] < 0) return null;
   const si = sh.index.get(tt.patShape[p]);
   if (si == null) return null;
   const off = sh.shapeOff[si], n = sh.shapeOff[si + 1] - off;
-  const at = (i) => tt.patStopsOff[p] + i;
   const seg0 = tt.patShapeSeg[at(bp)], f0 = tt.patShapeFrac[at(bp)] / 65535, seg1 = tt.patShapeSeg[at(ap)], f1 = tt.patShapeFrac[at(ap)] / 65535;
   if (seg1 < seg0 || seg1 + 1 >= n) return null;
   const pt = (i) => [sh.ptLat[off + i] / 1e5, sh.ptLon[off + i] / 1e5];
@@ -192,7 +204,7 @@ function legOut(l, q) {
       headsign: headsign(l.route), agency: l.route[2], routeType: l.route[3],
       trip: l.trip, routeId: l.route[4] ?? null, route: tt.patRoute[p], firstDep: tt.dep[base], boardPos: bp, live: tripLive.get(l.trip) || null,
       pattern: p, alightPos: bp + l.stops,
-      path: ridePath(p, bp, bp + l.stops) || l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]), pathKind: sh && tt.patShape && tt.patShape[p] >= 0 ? 'shape' : 'stops',
+      path: ridePath(p, bp, bp + l.stops) || l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]), pathKind: hasCourse(p) ? 'shape' : 'stops',
       // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
       stopsAlong: l.via.map((s, i) => ({ stop: s, name: tt.stops[s][1], lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + bp + i], dep: tt.dep[base + bp + i] })) });
   } else if (l.type === 'walk') {
@@ -354,7 +366,7 @@ const ops = {
     const others = [];
     const label = routeLabel(r);
     tt.routes.forEach((o, i) => { if (i !== route && routeLabel(o) === label && o[2] === r[2] && (routePats.get(i) || []).length) others.push({ route: i, headsign: headsign(o) }); });
-    return { route, routeId: r[4] ?? null, line: label, agency: r[2], routeType: r[3], headsign: headsign(r), stops, path, pathKind: sh && tt.patShape && best >= 0 && tt.patShape[best] >= 0 ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    return { route, routeId: r[4] ?? null, line: label, agency: r[2], routeType: r[3], headsign: headsign(r), stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {
