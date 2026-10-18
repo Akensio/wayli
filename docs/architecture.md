@@ -160,9 +160,13 @@ reopened within six hours, with one tap to plan it again from now; the
 eight most recent searches sit under the form and re-plan from now.
 
 Journey detail: map with the legs, pins at boarding and alighting stops and
-dots at the stops between; every ride leg expands to its stops and times;
-live badge per ride leg; start trip; share (Web Share with a text summary
-and a link that opens the app with the same query); star to save.
+dots at the stops between, the whole line of every ride drawn faded
+beneath it with all its stops (where the bus comes from and goes on), and
+every reporting vehicle of those lines with its delay and heading, the one
+running the planned trip ringed; every ride leg expands to its stops and
+times; live badge per ride leg; start trip; share (Web Share with a text
+summary and a link that opens the app with the same query); star to save.
+The follow map shows the same.
 
 Trip following ("start a trip"): the journey is stored on the device and
 followed with the geolocation watch, a screen wake lock and a five-second

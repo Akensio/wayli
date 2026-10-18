@@ -142,3 +142,10 @@ so they are not re-litigated.
   runtime (Fiord dropped); vehicles carry heading arrows; times shown are
   Israel time everywhere. Rejected: hand-maintaining a dark style JSON
   (Liberty changes under us) and a server-side style (a server).
+- 2026-10-18 Gadi: the ride's map must show the whole line, faded where he
+  is not on it, and every live vehicle of it. Done on the journey and
+  follow maps; the planned trip's vehicle is ringed. Also fixed the same
+  morning: vehicle markers stretched across the map (a stray position
+  rule), train courses dotted at every bend (dots now come from the stop
+  list), and the service worker's shell cache is keyed by the build so
+  every deploy refreshes the app on the phone.
