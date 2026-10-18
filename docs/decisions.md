@@ -160,3 +160,15 @@ so they are not re-litigated.
   the detail now shows the scheduled time struck through next to the live
   one, and a bug that lost the live badge on refresh (the shifted first
   departure was used as the matching key) is fixed.
+- 2026-10-18 Gadi, on the proposal for a map-oriented interface: "let's do
+  it". v0.3 is map first: one map under everything with the live vehicles
+  always on it, a floating search bar for places and line numbers (a
+  destination plans from where you are), a bottom sheet with three heights
+  for every panel, a menu instead of tabs, picking a point and following a
+  trip on the same map. Rejected: keeping the tab bar with a map tab (the
+  map is the home, not a destination), one map per panel as before (five
+  maps on a phone, each refitting), and a framework for the sheet (a few
+  pointer events do it).
+- 2026-10-18 Gadi: the accent colour is turquoise, not orange (and not
+  cyan): #12998b in light mode, #2fcfbc in dark, a darker shade for text
+  links; icons and the theme colour follow.

@@ -13,8 +13,9 @@ network of the whole country to 10 MB. The app in `app/` plans trips (with
 bikes, depart-at or arrive-by), groups the ways to go, plans with live
 delays and shows live times and a live map from Hasadna's Open Bus data,
 follows a trip and says when to get off, has line pages, remembers
-recent and saved places, shows nearby stops and departures, draws the journey
-on a map, shares a trip as a link and works offline. A GitHub Action rebuilds
+recent and saved places, shows nearby stops and departures, shares a trip as
+a link and works offline. Since v0.3 the map is the home screen: live
+vehicles on it, one search bar over it, every panel in a bottom sheet. A GitHub Action rebuilds
 the data every night and publishes to GitHub Pages. No crowd reports yet; see
 "Roadmap" below.
 
@@ -83,8 +84,9 @@ Decisions and their dates are in `docs/decisions.md`.
 3. The app: planner, stops, map, favorites, Hebrew/RTL, offline. Done
    (`app/`), then grown into v0.2: grouped results, arrive-by, history and
    saved places, trip following with get-off alerts, a trip that survives
-   closing the app, sharing, settings. Translations of stop names and line
-   pages still to come.
+   closing the app, sharing, settings; v0.2.1 added live planning, the live
+   map and line pages; v0.3 made the map the home screen. Translations of
+   stop names still to come.
 4. Real-time: done with Hasadna's Open Bus data, read straight from the
    phone (no key, no relay). The Ministry's SIRI feed would only be worth
    a relay if Hasadna's copy turns out too stale or unreliable.

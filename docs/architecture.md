@@ -113,7 +113,7 @@ Known gaps, in rough order of importance:
 - The 10-minute cap on stop-to-stop walks and the 15/20-minute caps on
   access are guesses to revisit with real use.
 
-## The app (v0.2, `app/`)
+## The app (v0.3, `app/`)
 
 An installable web app, Hebrew and right-to-left first with an English
 toggle, no framework and no build step. Files: `index.html` (shell),
@@ -138,11 +138,29 @@ plugin shapes Hebrew and Arabic labels. Vehicles on every map carry a
 triangle on their rim pointing where they head (SIRI's bearing; none when
 a standing vehicle reports zero).
 
-Screens: plan, nearby, saved, more (settings and about), plus overlays for a
-journey, a stop, a trip's stops, the map picker, the place chooser, the live
-map and the trip being followed. Every overlay and tab change is a history
-entry, so the phone's back button closes the overlay or returns to the
-previous tab instead of leaving the app.
+Layout (v0.3, map first): one map under everything, showing every vehicle
+reporting in view with its line number and heading, the stops when zoomed
+in, the rider's position (MapLibre's locate control, started on its own once
+location was allowed before), and whatever the open panel is about. Over it,
+a floating top bar: a menu button, one search box for places and line
+numbers, the language toggle. A bottom sheet with three heights (a strip,
+about half the screen, nearly full) carries every panel: the plan screen
+(the form folds to one line while results are shown), nearby, saved,
+settings, and the panels for a journey, a stop, a trip's stops, a line, the
+place chooser and the trip being followed. The sheet is dragged by its
+handle or tapped to cycle; a tap on empty map collapses it. Picking a point
+is a mode of the same map: the sheet and bar give way to a crosshair and a
+choose bar. The strip at the bottom when nothing is open offers plan, home,
+work, recent places and nearby stops. Picking a destination in the top bar
+plans from the rider's location at once. The panels form a stack, and only
+the top one is shown with its map content (a panel registers what it draws;
+revealing a panel underneath redraws its content); every panel and screen
+change is a history entry, so the phone's back button closes the panel or
+returns to the previous screen instead of leaving the app. Closing a panel
+edits the stack first and lets history catch up, so programmatic closes and
+the back button never disagree. The basemap is restyled in place when the
+theme changes (a full style reload, after which the app's layers are added
+again).
 
 Planning: from and to can be a stop or station, an address, a street, a
 place, a city, the device's location or a point picked on the map. From a
@@ -164,14 +182,14 @@ a longer walk. The last search and its results come back when the app is
 reopened within six hours, with one tap to plan it again from now; the
 eight most recent searches sit under the form and re-plan from now.
 
-Journey detail: map with the legs, pins at boarding and alighting stops and
+Journey detail: the legs drawn on the map, pins at boarding and alighting stops and
 dots at the stops between, the whole line of every ride drawn faded
 beneath it with all its stops (where the bus comes from and goes on), and
 every reporting vehicle of those lines with its delay and heading, the one
 running the planned trip ringed; every ride leg expands to its stops and
 times; live badge per ride leg; start trip; share (Web Share with a text
 summary and a link that opens the app with the same query); star to save.
-The follow map shows the same.
+Following a trip draws the same, with the rider's position.
 
 Trip following ("start a trip"): the journey is stored on the device and
 followed with the geolocation watch, a screen wake lock and a five-second
@@ -184,8 +202,8 @@ beep and a notification (through the service worker, so it shows with the
 screen off), each switchable in settings. The screen shows the current
 step in large type, the vehicle's live position and delay, the remaining
 legs and a "next step" button for when GPS is wrong. Closing the app does
-not end the trip: a bar under the header offers to resume it, and if the
-app was on the follow screen it reopens there. A trip ends by the rider's
+not end the trip: a floating bar at the top offers to resume it, and if the
+app was on the follow panel it reopens there. A trip ends by the rider's
 "end", by arrival, or by going stale (45 minutes past its arrival).
 
 Search and addresses: `pipeline/places.py` compiles an offline address book
@@ -197,25 +215,26 @@ numbers, 16k places, 1.8 MB. `app/places.js` parses free text ("הורדים 4,
 ranks stops, addresses, streets, places and cities together, nearer ones
 first when the user's location is known. A missing house number resolves to
 the nearest known one on that street and says so. A point can also be picked
-on a map (crosshair, choose), and gets its name from the same book in reverse:
+on the map (it moves under a crosshair; choose), and gets its name from the same book in reverse:
 nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
-Lines: a search box on the nearby screen finds a line by number (exact
-first, then prefix; "רכבת" lists the trains), one row per direction with
-its agency and today's trip count. A line page shows the direction's
-course on a map with every stop as a dot and the line's vehicles reporting
-now, each with its delay (tap one for its trip's stops), the other
+Lines: the top bar finds a line by number (exact first, then prefix; "רכבת"
+lists the trains), one row per direction with its agency and today's trip
+count, listed above the places for short queries. A line page shows the
+direction's course on the map with every stop as a dot and the line's
+vehicles reporting now, each with its delay (tap one for its trip's stops), the other
 directions as buttons, today's trip count and first and last departure,
 and the stop list (tap a stop for its page). Line chips everywhere (stop
-cards, a stop's lines, a ride in a journey, a vehicle on the live map) open
-the line page.
+cards, a stop's lines, a ride in a journey, a vehicle bubble) open the line
+page.
 
 Nearby and stops: stops around the device with the lines serving them and
 the walk in minutes; a stop shows its next departures with live times
 (below), refreshed every 45 seconds while open; a departure opens the
-trip's full stop list with where the vehicle is now; "from here" and
-"to here" feed the planner; stars save stops. Saved: home and work (one
+trip's full stop list with where the vehicle is now; the map eases to the
+stop with a pin; "to here" plans from the rider's location at once and
+"from here" opens the form; stars save stops. Saved: home and work (one
 tap plans a trip there from the device's location), other saved places,
 saved trips, saved stops. Settings: language, dark-mode map, longest walk,
 live times on/off with a plain statement of what is sent, alerts, sound and
@@ -326,9 +345,10 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   vehicle on the map), live times for a stop's next departures (one area
   query, then by line for what it missed), the vehicle's place in a trip's
   stop list, the current vehicle while following a trip (every 30 s), and
-  the live map (nearby screen): every vehicle reporting in view, coloured
-  by mode with its line number, refreshed every 20 s and on every pan, with
-  the stops when zoomed in. A tap on any vehicle, on any map, opens a bubble
+  the map itself, always: every vehicle reporting in view, coloured by mode
+  with its line number, refreshed every 20 s and on every pan (not while
+  the sheet covers the map or the app is in the background), with the stops
+  when zoomed in. A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
   buttons to its trip's stops and its line page; a tap on any stop dot opens
   a bubble with the stop's lines and departures / from here / to here. No

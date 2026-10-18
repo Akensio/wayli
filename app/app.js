@@ -12,7 +12,7 @@ const STR = {
   he: {
     swap: 'החלף', now: 'עכשיו', bike: 'אופניים', bikeNone: 'בלי', bikePark: 'עד התחנה', bikeAlong: 'לוקח/ת איתי', folding: 'מתקפלים',
     plan: 'תכנון מסלול', nearbyTitle: 'תחנות בקרבתי', refresh: 'רענון', nearbyEmpty: 'לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.',
-    favTrips: 'מסלולים שמורים', favStops: 'תחנות שמורות', savedPlaces: 'מקומות שמורים', tabPlan: 'מסלול', tabNearby: 'בקרבתי', tabSaved: 'שמורים', tabMore: 'עוד',
+    favTrips: 'מסלולים שמורים', favStops: 'תחנות שמורות', savedPlaces: 'מקומות שמורים', tabPlan: 'תכנון מסלול', tabNearby: 'תחנות בקרבתי', tabSaved: 'שמורים', tabMore: 'הגדרות ועוד', goQ: 'לאן? (מקום, כתובת או מספר קו)', grpLines: 'קווים', grpPlaces: 'מקומות', menu: 'תפריט',
     back: 'חזרה', fromHere: 'מכאן', toHere: 'לכאן', nextDeps: 'היציאות הבאות', fromQ: 'מאיפה?', toQ: 'לאן?', myLoc: 'המיקום שלי',
     loadingTT: 'טוען לוח זמנים', loadingST: 'טוען רשת רחובות (לאופניים ולהליכה מדויקת)', loadingPL: 'טוען כתובות ומקומות', unpacking: 'פורס…', ready: 'מוכן. {trips} נסיעות ליום {date}.',
     kindStop: 'תחנה', kindAddress: 'כתובת', kindStreet: 'רחוב', kindCity: 'עיר', kindPoi: 'מקום', approxNo: 'הקרוב ביותר: {n}', placesPending: 'כתובות ומקומות עדיין נטענים…', noMatch: 'לא נמצא. נסו שם תחנה, רחוב ומספר, או עיר.',
@@ -48,7 +48,7 @@ const STR = {
   en: {
     swap: 'Swap', now: 'Now', bike: 'Bicycle', bikeNone: 'None', bikePark: 'To the stop', bikeAlong: 'Take it along', folding: 'Folding',
     plan: 'Plan trip', nearbyTitle: 'Stops near me', refresh: 'Refresh', nearbyEmpty: 'Tap Refresh to find stops near your location.',
-    favTrips: 'Saved trips', favStops: 'Saved stops', savedPlaces: 'Saved places', tabPlan: 'Plan', tabNearby: 'Nearby', tabSaved: 'Saved', tabMore: 'More',
+    favTrips: 'Saved trips', favStops: 'Saved stops', savedPlaces: 'Saved places', tabPlan: 'Plan a trip', tabNearby: 'Stops near me', tabSaved: 'Saved', tabMore: 'Settings & more', goQ: 'Where to? (place, address or line number)', grpLines: 'Lines', grpPlaces: 'Places', menu: 'Menu',
     back: 'Back', fromHere: 'From here', toHere: 'To here', nextDeps: 'Next departures', fromQ: 'From?', toQ: 'To?', myLoc: 'My location',
     loadingTT: 'Loading the timetable', loadingST: 'Loading the street network (bikes and exact walking)', loadingPL: 'Loading addresses and places', unpacking: 'unpacking…', ready: 'Ready. {trips} trips on {date}.',
     kindStop: 'stop', kindAddress: 'address', kindStreet: 'street', kindCity: 'city', kindPoi: 'place', approxNo: 'nearest: {n}', placesPending: 'Addresses and places are still loading…', noMatch: 'No match. Try a stop name, a street and number, or a city.',
@@ -93,7 +93,7 @@ function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
-  $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('toQ'); $('chQ').placeholder = t('toQ'); $('lineQ').placeholder = t('lineSearch');
+  $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('toQ'); $('chQ').placeholder = t('toQ'); $('goQ').placeholder = t('goQ'); $('menuBtn').title = t('menu');
   for (const id of ['fromLoc', 'toLoc', 'chLoc']) $(id).textContent = t('btnLoc');
   for (const id of ['fromMap', 'toMap', 'chMap']) $(id).textContent = t('btnMap');
   $('langBtn').textContent = lang === 'he' ? 'EN' : 'עב';
@@ -103,7 +103,7 @@ function applyLang() {
 }
 function setLang(l) {
   lang = l; try { localStorage.setItem('wayli-lang', lang); } catch (e) {}
-  applyLang(); renderSaved(); renderRecent();
+  applyLang(); renderSaved(); renderRecent(); renderPeek();
   if (lastResult && lastQuery) renderResults(lastResult, lastQuery);
 }
 $('langBtn').addEventListener('click', () => setLang(lang === 'he' ? 'en' : 'he'));
@@ -130,11 +130,15 @@ worker.onmessage = (ev) => {
 worker.onerror = (e) => setStatus(t('loadFail', { msg: e.message || 'worker' }), true);
 
 // ---------------------------------------------------------------- status, toast
+let statusTimer = 0;
 function setStatus(text, error = false, frac = null) {
   $('statusText').textContent = text;
   $('status').classList.toggle('error', error);
+  $('status').hidden = false;
   $('statusBar').hidden = frac == null;
   if (frac != null) $('statusBar').firstElementChild.style.width = `${Math.round(frac * 100)}%`;
+  clearTimeout(statusTimer);
+  if (!error && frac == null) statusTimer = setTimeout(() => { $('status').hidden = true; }, 4000);
 }
 function showProgress(m) {
   if (m.label === 'shapes') return;   // quiet: the courses arrive in the background
@@ -217,6 +221,7 @@ async function loadDay(date) {
   const info = await call('loadTimetable', { url: `data/${d.file}?v=${encodeURIComponent(manifest.built || '')}` });
   dayInfo = info; ttReady = true; tsCache.clear(); lmLabels.clear(); lmStops = false;
   $('planBtn').disabled = false;
+  loadStopsGeo(); refreshLiveMap();
   setStatus(t('ready', { trips: info.counts.trips.toLocaleString(), date: dayLabel(info.date) }));
   renderDays();
 }
@@ -270,8 +275,8 @@ async function init() {
   }
   applyLang();
   updateOnline();
-  styleReady();
-  renderSaved(); renderRecent();
+  initMap();
+  renderSaved(); renderRecent(); renderPeek();
   // a trip in progress comes back first, timetable or not
   const active = activeTrip.get();
   if (active && !tripStale(active)) { updateResumeBar(); if (active.view === 'follow') openFollow(active); } else if (active) activeTrip.clear();
@@ -317,7 +322,7 @@ const fromResult = (g) => g.kind === 'stop' ? g : { name: g.city && g.kind !== '
  * A search box: free text over stops, addresses, streets, places and cities; when empty, the saved and
  * recent places. onPick gets the chosen place.
  */
-function attachSearch(input, drop, onPick) {
+function attachSearch(input, drop, onPick, opts = {}) {
   let timer = 0, seq = 0;
   const pick = (p) => { onPick(p); drop.hidden = true; };
   const row = (html, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html; return b; };
@@ -349,9 +354,22 @@ function attachSearch(input, drop, onPick) {
     if (q.length < 2 || !ttReady) { drop.hidden = true; return; }
     timer = setTimeout(async () => {
       const my = ++seq;
-      const { results, placesLoaded } = await call('search', { q, limit: 10, lang, near: lastPos });
+      const [{ results, placesLoaded }, lines] = await Promise.all([
+        call('search', { q, limit: 10, lang, near: lastPos }),
+        opts.lines && q.length <= 5 ? call('searchLines', { q, limit: 6 }).catch(() => []) : [],
+      ]);
       if (my !== seq) return;
       drop.innerHTML = '';
+      const grp = (k) => { const g = document.createElement('div'); g.className = 'grp'; g.textContent = t(k); drop.appendChild(g); };
+      if (lines.length) {
+        grp('grpLines');
+        for (const r of lines) {
+          const b = row(`<span class="chip t${r.routeType}">${esc(lineText(r.line))}</span><span class="txt">${esc(t('toward', { headsign: r.headsign }))}<small> · ${esc(r.agency)} · ${t('tripsToday', { n: r.trips })}</small></span>`, 'line');
+          b.addEventListener('click', () => { drop.hidden = true; opts.onLine(r); });
+          drop.appendChild(b);
+        }
+        if (results.length) grp('grpPlaces');
+      }
       for (const g of results) {
         const kind = g.kind === 'stop' ? (g.platforms > 1 ? t('platforms', { n: g.platforms }) : t('kindStop'))
           : g.kind === 'poi' ? (g.label || t('kindPoi')) : t('kind' + g.kind[0].toUpperCase() + g.kind.slice(1));
@@ -360,7 +378,7 @@ function attachSearch(input, drop, onPick) {
         b.addEventListener('click', () => pick(fromResult(g)));
         drop.appendChild(b);
       }
-      if (!results.length) { const n = row(placesLoaded ? t('noMatch') : t('placesPending')); n.disabled = true; drop.appendChild(n); }
+      if (!results.length && !lines.length) { const n = row(placesLoaded ? t('noMatch') : t('placesPending')); n.disabled = true; drop.appendChild(n); }
       drop.hidden = false;
     }, 150);
   });
@@ -384,34 +402,33 @@ function wireSide(side) {
 }
 const myLocation = (pos) => ({ name: t('myLoc'), lat: pos.lat, lon: pos.lon, transient: true });
 wireSide('from'); wireSide('to');
+attachSearch($('goQ'), $('goDrop'), (p, typing) => { if (!typing && p) { $('goQ').value = ''; $('goQ').blur(); planTo(p); } },
+  { lines: true, onLine: (r) => { $('goQ').value = ''; $('goQ').blur(); openLine(r.route); } });
+$('goQ').addEventListener('focus', () => { $('menu').hidden = true; });
+// the menu under the ☰ button
+$('menuBtn').addEventListener('click', (e) => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; });
+document.addEventListener('click', (e) => { if (!$('menu').contains(e.target) && e.target !== $('menuBtn')) $('menu').hidden = true; });
+for (const b of $('menu').querySelectorAll('button')) b.addEventListener('click', () => { $('menu').hidden = true; nav.closeAll(); showScreen(b.dataset.screen); if (b.dataset.screen === 'plan') sheet.set('half'); });
 
 // ---- pick a point on the map
-let pickMap = null, pickPoint = null, pickSeq = 0, pickResolve = null;
+let pickPoint = null, pickSeq = 0, pickResolve = null;
 function pickOnMap(startAt) {
   return new Promise((resolve) => {
     pickResolve = resolve;
     showOverlay('picker');
     $('pickName').textContent = '…';
-    requestAnimationFrame(async () => {
-      await styleReady();
+    (async () => {
+      const m = await mapReady();
+      if (!m || !pickResolve) return;
       const start = startAt && startAt.lat != null ? startAt : lastPos || place.from || place.to;
-      if (!pickMap) {
-        pickMap = makeMap('pickMap', start ? [start.lat, start.lon] : [32.08, 34.78], start ? 16 : 11);
-        if (!pickMap) return;
-        pickMap.on('moveend', () => nameCenter());
-        pickMap.on('click', (e) => pickMap.easeTo({ center: e.lngLat, duration: 250 }));
-        pickMap.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, showAccuracyCircle: true }), lang === 'he' ? 'top-left' : 'top-right');
-      } else {
-        pickMap.resize();
-        pickMap.jumpTo({ center: start ? [start.lon, start.lat] : [34.78, 32.08], zoom: start ? 16 : 11 });
-      }
+      if (start) m.jumpTo({ center: [start.lon, start.lat], zoom: Math.max(m.getZoom(), 15.5) });
       nameCenter();
-    });
+    })();
   });
 }
 async function nameCenter() {
-  if (!pickMap) return;
-  const c = pickMap.getCenter();
+  if (!mainMap || !isOpen('picker')) return;
+  const c = mainMap.getCenter();
   pickPoint = { lat: c.lat, lon: c.lng };
   const my = ++pickSeq;
   $('pickName').textContent = '…';
@@ -425,13 +442,14 @@ async function nameCenter() {
 const closePicker = (p) => { const r = pickResolve; pickResolve = null; nav.close('picker'); if (r) r(p); };
 $('pickCancel').addEventListener('click', () => closePicker(null));
 $('pickChoose').addEventListener('click', () => { if (!pickPoint) return; closePicker({ name: pickPoint.name || t('pointName'), lat: pickPoint.lat, lon: pickPoint.lon }); });
-$('pickLocate').addEventListener('click', async () => {
-  try { const p = await getPosition(); lastPos = p; if (pickMap) pickMap.easeTo({ center: [p.lon, p.lat], zoom: 16 }); } catch (e) { $('pickName').textContent = t('noLocation'); }
-});
+let lastPosAt = 0;
+const notePos = (lat, lon) => { lastPos = { lat, lon }; lastPosAt = Date.now(); try { localStorage.setItem('wayli-geo', '1'); } catch (e) {} };
 function getPosition() {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) { reject(new Error('no geolocation')); return; }
-    navigator.geolocation.getCurrentPosition((p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }), reject, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    if (lastPos && Date.now() - lastPosAt < 20000) { resolve(lastPos); return; }
+    const fallback = (err) => { if (lastPos && Date.now() - lastPosAt < 600000) resolve(lastPos); else reject(err); };
+    if (!navigator.geolocation) { fallback(new Error('no geolocation')); return; }
+    navigator.geolocation.getCurrentPosition((p) => { notePos(p.coords.latitude, p.coords.longitude); resolve(lastPos); }, fallback, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
   });
 }
 // ---- choose a place for home / work / saved (search, my location or the map)
@@ -457,7 +475,7 @@ $('swap').addEventListener('click', () => {
 for (const b of $('bikeMode').querySelectorAll('button')) b.addEventListener('click', () => setBike(b.dataset.mode));
 function setBike(mode) { for (const o of $('bikeMode').querySelectorAll('button')) o.setAttribute('aria-pressed', String(o.dataset.mode === mode)); }
 const bikeChoice = () => $('bikeMode').querySelector('[aria-pressed="true"]').dataset.mode;
-function showPlanError(msg) { $('planError').textContent = msg; $('planError').hidden = !msg; }
+function showPlanError(msg) { $('planError').textContent = msg; $('planError').hidden = !msg; if (msg && sheet.state === 'peek') sheet.set('half'); }
 
 // ---------------------------------------------------------------- planning
 let lastResult = null, lastQuery = null;
@@ -489,6 +507,7 @@ async function plan(opts = {}) {
   $('planBtn').disabled = true;
   $('results').innerHTML = `<div class="empty">${t('planning')}</div>`;
   $('recentBox').hidden = true;
+  collapseForm(false);
   const q = { from: place.from, to: place.to, day, at: $('at').value, bike, folding, arriveBy, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
   let vehicles = null, liveAsOf = null;
@@ -504,7 +523,7 @@ async function plan(opts = {}) {
     lastSearch.set({ q, result: r, at: Date.now() });
     renderResults(r, q);
     renderRecent();
-  } catch (e) { showPlanError(e.message); $('results').innerHTML = ''; }
+  } catch (e) { showPlanError(e.message); $('results').innerHTML = ''; collapseForm(false); }
   $('planBtn').disabled = false;
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
@@ -538,10 +557,24 @@ function journeyCard(j, q, alts, options) {
   d.addEventListener('click', () => openDetail(j, q));
   return d;
 }
+/** Fold the form to one line (what was asked) while results are shown; tapping it opens the form again. */
+function collapseForm(on) {
+  $('formCard').classList.toggle('collapsed', on);
+  $('formSummary').hidden = !on;
+  if (on && lastQuery) {
+    const q = lastQuery;
+    const arrow = lang === 'he' ? '←' : '→';
+    $('summaryText').innerHTML = `${esc(q.from.name)} ${arrow} ${esc(q.to.name)}<small>${esc(dayLabel(q.day))} ${esc(q.at || '')}${q.arriveBy ? ' · ' + t('arriveBy') : ''}${q.bike && q.bike !== 'none' ? ' · 🚲' : ''}</small>`;
+  }
+}
+$('formSummary').addEventListener('click', () => { collapseForm(false); $('sheetBody').scrollTop = 0; });
 function renderResults(r, q, resultsAt = null) {
   const box = $('results');
   box.innerHTML = '';
   $('recentBox').hidden = true;
+  lastQuery = q;
+  collapseForm(true);
+  $('sheetBody').scrollTop = 0;
   const note = q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
   const head = document.createElement('div');
   head.className = 'results-head muted';
@@ -584,6 +617,7 @@ function renderResults(r, q, resultsAt = null) {
   later.addEventListener('click', () => { setAt(atSeconds() + 3600); plan(); });
   foot.append(earlier, later);
   box.appendChild(foot);
+  if (!topPanel() && screen === 'plan' && sheet.state === 'peek') sheet.set('half');
 }
 /** Recent searches, under the form while there are no results. */
 function renderRecent() {
@@ -598,11 +632,24 @@ function renderRecent() {
     const when = new Date(r.at);
     d.innerHTML = `<span class="ic">🕓</span><span class="txt"><span class="name">${esc(r.from.name)} ← ${esc(r.to.name)}</span><small>${esc(dayLabel(r.day || calToday()))} ${esc(r.time || '')}${r.bike && r.bike !== 'none' ? ' · 🚲' : ''}${r.arriveBy ? ' · ' + t('arriveBy') : ''}</small></span>`;
     if (lang !== 'he') d.querySelector('.name').textContent = `${r.from.name} → ${r.to.name}`;
-    d.addEventListener('click', () => { applyQuery(r); $('nowBtn').click(); showScreen('plan'); plan(); });
+    d.addEventListener('click', () => { applyQuery(r); $('nowBtn').click(); nav.closeAll(); showScreen('plan'); plan(); });
     box.appendChild(d);
   }
   box.hidden = !!$('results').children.length;
   void when;
+  renderPeek();
+}
+/** The strip the sheet shows when collapsed: plan, home, work, recent places, nearby stops. */
+function renderPeek() {
+  const box = $('peekRow');
+  box.innerHTML = '';
+  const chip = (txt, fn, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn ' + cls; b.textContent = txt; b.addEventListener('click', fn); box.appendChild(b); };
+  chip('🧭 ' + t('tabPlan'), () => { showScreen('plan'); sheet.set('half'); }, 'accent');
+  const sp = savedPlaces.get();
+  if (sp.home) chip('🏠 ' + t('home'), () => planTo(sp.home));
+  if (sp.work) chip('💼 ' + t('work'), () => planTo(sp.work));
+  for (const p of recentPlaces.list().filter((r) => !savedPlaces.has(r)).slice(0, 4)) chip('🕓 ' + p.name, () => planTo(p));
+  chip('📍 ' + t('tabNearby'), () => showScreen('nearby'));
 }
 
 // ---------------------------------------------------------------- maps (MapLibre, OpenFreeMap vector tiles)
@@ -622,18 +669,104 @@ function mapStyle() {
   if (wantDarkMap() && darkStyle) return darkStyle;
   return 'https://tiles.openfreemap.org/styles/liberty';
 }
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { dropMaps(); styleReady(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapStyle);
 let rtlSet = false;
 function makeMap(container, center, zoom) {
   if (typeof maplibregl === 'undefined') return null;
   if (!rtlSet) { try { maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.js', true); } catch (e) {} rtlSet = true; }
-  const m = new maplibregl.Map({ container, style: mapStyle(), center: [center[1], center[0]], zoom, attributionControl: { compact: true }, pitchWithRotate: false });
-  m.addControl(new maplibregl.NavigationControl({ showCompass: false }), lang === 'he' ? 'top-left' : 'top-right');
+  currentStyle = mapStyle();
+  const m = new maplibregl.Map({ container, style: currentStyle, center: [center[1], center[0]], zoom, attributionControl: { compact: true }, pitchWithRotate: false });
   m.on('error', (e) => console.warn('map', e && e.error && e.error.message));
   return m;
 }
-const whenStyled = (m, fn) => (m.isStyleLoaded() ? fn() : m.once('load', fn));
-function dropMaps() { for (const m of [map, pickMap, followMap, lmap, lineMap]) if (m) m.remove(); map = pickMap = followMap = lmap = lineMap = null; lmStops = false; }
+// ---- the one map under everything. Panels register what they draw on it (mapOf); whichever panel is on top is drawn.
+let mainMap = null, mapStyled = false, mapFailed = false, currentStyle = null, geoCtl = null;
+const styledWaiters = [];
+/** Resolves to the map once its style is loaded (again after a style change); null when there is no map. */
+const mapReady = () => new Promise((res) => { if (mapFailed) res(null); else if (mainMap && mapStyled) res(mainMap); else styledWaiters.push(res); });
+async function initMap() {
+  await styleReady();
+  const start = lastPos || { lat: 32.08, lon: 34.78 };
+  mainMap = makeMap('mainMap', [start.lat, start.lon], lastPos ? 14.5 : 11);
+  if (!mainMap) { mapFailed = true; for (const r of styledWaiters.splice(0)) r(null); return; }
+  const m = mainMap;
+  geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } });
+  m.addControl(geoCtl, lang === 'he' ? 'top-left' : 'top-right');
+  geoCtl.on('geolocate', (p) => notePos(p.coords.latitude, p.coords.longitude));
+  m.once('load', () => { const a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show'); });
+  m.on('style.load', () => {
+    setupMapLayers(m);
+    mapStyled = true;
+    for (const r of styledWaiters.splice(0)) r(m);
+    lmStops = false; loadStopsGeo();
+    drawnFor = null; redrawMap();
+    refreshLiveMap();
+  });
+  m.on('moveend', () => { if (isOpen('picker')) nameCenter(); clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
+  m.on('click', (e) => {
+    if (isOpen('picker')) { m.easeTo({ center: e.lngLat, duration: 250 }); return; }
+    $('menu').hidden = true;
+    const hit = m.queryRenderedFeatures(e.point, { layers: ['lm-veh', 'lm-stops', 'journey-stops', 'context-stops'].filter((l) => m.getLayer(l)) });
+    if (!hit.length && !popup) sheet.set('peek');
+  });
+  lmTimer = setInterval(refreshLiveMap, 20000);
+  let known = false; try { known = !!localStorage.getItem('wayli-geo'); } catch (e) {}
+  if (known) m.once('load', () => { try { geoCtl.trigger(); } catch (e) {} });
+  try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMap: m }; } catch (e) {}
+}
+/** Sources and layers of the main map, bottom to top: every stop, the journey or line, live vehicles. Re-made after a style change. */
+function setupMapLayers(m) {
+  if (m.getSource('lm-veh')) return;
+  m.addSource('lm-stops', { type: 'geojson', data: EMPTY });
+  m.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
+  ensureJourneyLayers(m);
+  m.addSource('lm-veh', { type: 'geojson', data: EMPTY });
+  m.addLayer({ id: 'lm-veh', type: 'circle', source: 'lm-veh', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 13, 7, 15, 11], 'circle-color': ['get', 'color'], 'circle-opacity': ['get', 'opacity'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-stroke-opacity': ['get', 'opacity'] } });
+  for (const type of [0, 2, 3]) if (!m.hasImage(`wayli-arrow-${type}`)) m.addImage(`wayli-arrow-${type}`, arrowImage(typeColor(type)), { pixelRatio: 2 });
+  m.addLayer({ id: 'lm-veh-dir', type: 'symbol', source: 'lm-veh', filter: ['>', ['get', 'bearing'], -1], layout: { 'icon-image': ['concat', 'wayli-arrow-', ['to-string', ['get', 'type']]], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.55, 15, 1], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': [0, -17], 'icon-allow-overlap': true, 'icon-ignore-placement': true }, paint: { 'icon-opacity': ['get', 'opacity'] } });
+  m.addLayer({ id: 'lm-veh-label', type: 'symbol', source: 'lm-veh', minzoom: 13.5, layout: { 'text-field': ['get', 'line'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 9, 16, 12], 'text-allow-overlap': true, 'text-ignore-placement': true, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#ffffff', 'text-opacity': ['get', 'opacity'] } });
+  m.on('click', 'lm-veh', (e) => { if (e.features && e.features[0]) selectVehicle(e.features[0].properties, e.features[0].geometry.coordinates); });
+  m.on('click', 'lm-stops', (e) => { if (e.features && e.features[0] && !m.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) stopPopup(m, e.features[0].geometry.coordinates, +e.features[0].properties.stop); });
+  for (const layer of ['lm-veh', 'lm-stops']) { m.on('mouseenter', layer, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', layer, () => { m.getCanvas().style.cursor = ''; }); }
+}
+/** Switch the basemap (settings, or the phone's dark mode): a full reload of the style, so style.load re-adds our layers. */
+async function applyMapStyle() {
+  await styleReady();
+  if (!mainMap) return;
+  const st = mapStyle();
+  if (st === currentStyle) return;
+  currentStyle = st; mapStyled = false; lmStops = false;
+  mainMap.setStyle(st, { diff: false });
+}
+const mapOf = {};   // panel id (or 'screen-<name>') -> async function (token) drawing that panel's content on the map
+let drawnFor = null, drawSeq = 0;
+const stale = (seq) => seq !== drawSeq;
+/** Draw what the panel on top wants on the map; nothing when it wants nothing. */
+function redrawMap(force = false) {
+  const key = topPanel() || 'screen-' + screen;
+  if (!force && key === drawnFor) return;
+  drawnFor = key;
+  const seq = ++drawSeq;
+  const m = mainMap;
+  if (!m || !mapStyled) return;
+  clearMap(m);
+  const fn = mapOf[key];
+  if (fn) fn(seq);
+}
+function clearMap(m) {
+  for (const arr of [journeyMarkers, liveMarkers, lineVeh, followVehicle]) for (const mk of arr.splice(0)) mk.remove();
+  if (meMarker) { meMarker.remove(); meMarker = null; }
+  for (const src of ['journey', 'stops', 'context', 'context-stops']) if (m.getSource(src)) m.getSource(src).setData(EMPTY);
+}
+/** Fit bounds into the part of the map the sheet and the top bar leave visible. */
+function fitMap(b, maxZoom) {
+  const m = mainMap;
+  if (!m || !b || b.isEmpty()) return;
+  const top = topPad();
+  const bottom = Math.min(sheet.px(sheet.state) + 20, innerHeight - top - 120);
+  m.fitBounds(b, { padding: { top, bottom, left: 24, right: 24 }, duration: 0, maxZoom });
+}
+const topPad = () => { const r = document.querySelector('.topbar').getBoundingClientRect(); return Math.round(r.bottom + 12); };
 const legColor = (l) => l.type === 'ride' ? (l.routeType === 2 ? '#1f5fa8' : l.routeType === 0 ? '#8a3fb0' : '#2a7d4f') : (l.mode === 'bike' ? '#1f5fa8' : '#2b3036');
 const EMPTY = { type: 'FeatureCollection', features: [] };
 /** The map's sources and layers for a journey, created once, bottom to top: the faded whole lines, then the journey. */
@@ -649,7 +782,7 @@ function ensureJourneyLayers(m) {
   m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 12, paint: { 'circle-radius': 3.5, 'circle-color': '#ffffff', 'circle-stroke-color': '#444', 'circle-stroke-width': 1.5 } });
-  wireStopLayers(m, ['journey-stops', 'context-stops'], null);
+  wireStopLayers(m, ['journey-stops', 'context-stops']);
 }
 /** The whole line of every ride, faded, with all its stops: where the bus comes from and where it goes on. */
 async function drawContext(m, j) {
@@ -721,14 +854,14 @@ function vehiclePopup(m, lngLat, v) {
   });
 }
 /** A stop's bubble: name, its lines, and departures / from here / to here. */
-async function stopPopup(m, lngLat, stop, closeOverlayFirst) {
+async function stopPopup(m, lngLat, stop) {
   let info;
   try { info = await call('stopInfo', { stop }); } catch (e) { return; }
   const html = `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
     `<div class="chips">${info.lines.slice(0, 10).map((l) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}">${esc(lineText(l.label))}</span>`).join('')}</div>` +
     `<div class="row"><button type="button" class="ghost" data-act="deps">${t('popDeps')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
-    const go = (side) => { if (popup) popup.remove(); setPlace(side, stopPlace(info)); if (closeOverlayFirst) nav.close(closeOverlayFirst); showScreen('plan'); };
+    const go = (side) => { if (popup) popup.remove(); if (side === 'to') planTo(stopPlace(info)); else { nav.closeAll(); setPlace('from', stopPlace(info)); showScreen('plan'); sheet.set('half'); } };
     el.querySelector('[data-act="deps"]').addEventListener('click', () => { if (popup) popup.remove(); openStop(stop); });
     el.querySelector('[data-act="from"]').addEventListener('click', () => go('from'));
     el.querySelector('[data-act="to"]').addEventListener('click', () => go('to'));
@@ -736,9 +869,9 @@ async function stopPopup(m, lngLat, stop, closeOverlayFirst) {
   });
 }
 /** Stop dots on a journey or line map answer a tap with the stop's bubble. */
-function wireStopLayers(m, layers, closeOverlayFirst) {
+function wireStopLayers(m, layers) {
   for (const layer of layers) {
-    m.on('click', layer, (e) => { const f = e.features && e.features[0]; if (f && f.properties.stop != null && f.properties.stop !== '') stopPopup(m, f.geometry.coordinates, +f.properties.stop, closeOverlayFirst); });
+    m.on('click', layer, (e) => { const f = e.features && e.features[0]; if (f && f.properties.stop != null && f.properties.stop !== '') stopPopup(m, f.geometry.coordinates, +f.properties.stop); });
     m.on('mouseenter', layer, () => { m.getCanvas().style.cursor = 'pointer'; });
     m.on('mouseleave', layer, () => { m.getCanvas().style.cursor = ''; });
   }
@@ -774,8 +907,7 @@ function vehicleMarker(m, markers, v, label) {
 }
 
 // ---------------------------------------------------------------- journey detail
-let map = null, journeyMarkers = [], liveMarkers = [], detailSeq = 0;
-function ensureMap() { if (!map) map = makeMap('map', [32.08, 34.78], 10); return map; }
+let journeyMarkers = [], liveMarkers = [], detailSeq = 0;
 const tripStopsCached = (trip) => { if (!tsCache.has(trip)) tsCache.set(trip, call('tripStops', { trip })); return tsCache.get(trip); };
 const liveOn = () => settings.get().live && navigator.onLine !== false;
 function liveBadge(at) {
@@ -798,10 +930,20 @@ async function withCourses(j) {
 function openDetail(j, q, bikeOnly = false) {
   const my = ++detailSeq;
   try { window.wayliDebug = { ...(window.wayliDebug || {}), journey: j }; } catch (e) {}
+  const legs = $('detailLegs');
+  mapOf.detail = async (seq) => {
+    const m = await mapReady();
+    if (!m || my !== detailSeq || stale(seq)) return;
+    if (!bikeOnly) await withCourses(j);
+    if (my !== detailSeq || stale(seq)) return;
+    const b = drawJourney(m, j, journeyMarkers);
+    for (const mk of liveMarkers.splice(0)) mk.remove();
+    fitMap(b, 16);
+    if (!bikeOnly) liveForJourney(j, q.day, legs, my);
+  };
   showOverlay('detail');
   $('detailTitle').textContent = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '') : `${fmt(j.depart)} → ${fmt(j.arrive)} · ${dur(j.arrive - j.depart)}`;
   $('detailNote').textContent = '';
-  const legs = $('detailLegs');
   legs.innerHTML = '';
   for (const l of j.legs) {
     const el = document.createElement('div');
@@ -830,20 +972,6 @@ function openDetail(j, q, bikeOnly = false) {
   $('detailStart').hidden = bikeOnly;
   $('detailStart').onclick = () => startTrip(j, q);
   $('detailShare').onclick = () => shareJourney(j, q, bikeOnly);
-  requestAnimationFrame(async () => {
-    await styleReady();
-    const m = ensureMap();
-    if (!m) return;
-    m.resize();
-    if (!bikeOnly) await withCourses(j);
-    if (my !== detailSeq) return;
-    whenStyled(m, () => {
-      const b = drawJourney(m, j, journeyMarkers);
-      for (const mk of liveMarkers.splice(0)) mk.remove();
-      if (!b.isEmpty()) m.fitBounds(b, { padding: 36, duration: 0, maxZoom: 16 });
-      if (!bikeOnly) liveForJourney(j, q.day, legs, my);
-    });
-  });
 }
 /** Live badges on the ride legs of a journey happening around now; every vehicle of those lines on the map. */
 async function liveForJourney(j, day, container, seq) {
@@ -858,7 +986,7 @@ async function liveForJourney(j, day, container, seq) {
       if (seq !== detailSeq) return;
       const statuses = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
       if (seq !== detailSeq) return;
-      if (map) lineVehicleMarkers(map, liveMarkers, vs, statuses, l.routeType, l.trip, { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route });
+      if (mainMap && drawnFor === 'detail') lineVehicleMarkers(mainMap, liveMarkers, vs, statuses, l.routeType, l.trip, { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route });
       const v = live.matchTrip(vs, l.routeId, l.firstDep, day);
       if (!v) { if (badge) badge.textContent = t('liveNoVehicle'); return; }
       const ts = await tripStopsCached(l.trip);
@@ -894,9 +1022,9 @@ $('detailBack').addEventListener('click', () => nav.close('detail'));
 let lastPos = null;
 (async () => {
   try {
-    if (!navigator.permissions || !navigator.geolocation) return;
-    const st = await navigator.permissions.query({ name: 'geolocation' });
-    if (st.state === 'granted') lastPos = await getPosition();
+    let known = false; try { known = !!localStorage.getItem('wayli-geo'); } catch (e) {}
+    if (!known && navigator.permissions && navigator.geolocation) { const st = await navigator.permissions.query({ name: 'geolocation' }); known = st.state === 'granted'; }
+    if (known) lastPos = await getPosition();
   } catch (e) { /* no location, no problem */ }
 })();
 $('nearbyRefresh').addEventListener('click', loadNearby);
@@ -925,6 +1053,13 @@ async function openStop(stop) {
   const my = ++stopSeq;
   const info = await call('stopInfo', { stop });
   currentStop = info;
+  mapOf.stopDetail = async (seq) => {
+    const m = await mapReady();
+    if (!m || my !== stopSeq || stale(seq)) return;
+    const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = 'var(--accent)';
+    journeyMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([info.lon, info.lat]).addTo(m));
+    m.easeTo({ center: [info.lon, info.lat], zoom: Math.max(m.getZoom(), 15), offset: [0, -Math.round(sheet.px('half') / 2) + 30], duration: 500 });
+  };
   showOverlay('stopDetail');
   $('stopTitle').textContent = info.name;
   $('stopMeta').textContent = `${info.city || ''}${info.code ? ' · ' + info.code : ''}`;
@@ -950,7 +1085,7 @@ async function openStop(stop) {
   clearInterval(stopTimer);
   if (isNow) {
     liveForStop(info, deps, day, my);
-    stopTimer = setInterval(() => { if ($('stopDetail').hidden) clearInterval(stopTimer); else liveForStop(info, deps, day, my); }, 45000);
+    stopTimer = setInterval(() => { if (!isOpen('stopDetail')) clearInterval(stopTimer); else liveForStop(info, deps, day, my); }, 45000);
   }
 }
 function inText(sec, day) { const n = minutesUntil(sec, day); return n <= 0 ? t('nowDep') : n > 120 ? '' : t('inMin', { n }); }
@@ -992,63 +1127,33 @@ async function liveForStop(info, deps, day, seq) {
 $('stopLive').addEventListener('click', () => { if (currentStop) openStop(currentStop.stop); });
 $('stopBack').addEventListener('click', () => nav.close('stopDetail'));
 const stopPlace = (s) => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
-$('stopFrom').addEventListener('click', () => { if (!currentStop) return; setPlace('from', stopPlace(currentStop)); nav.close('stopDetail'); showScreen('plan'); });
-$('stopTo').addEventListener('click', () => { if (!currentStop) return; setPlace('to', stopPlace(currentStop)); nav.close('stopDetail'); showScreen('plan'); });
+$('stopFrom').addEventListener('click', () => { if (!currentStop) return; const p = stopPlace(currentStop); nav.closeAll(); setPlace('from', p); showScreen('plan'); sheet.set('half'); });
+$('stopTo').addEventListener('click', () => { if (currentStop) planTo(stopPlace(currentStop)); });
 
-// ---- the live map: every vehicle reporting in view, stops when zoomed in
-let lmap = null, lmTimer = 0, lmMove = 0, lmSeq = 0, lmStops = false;
+// ---- live vehicles on the map: every vehicle reporting in view, stops when zoomed in
+let lmTimer = 0, lmMove = 0, lmSeq = 0, lmStops = false;
 const lmLabels = new Map();
 const typeColor = (type) => (type === 2 ? '#1f5fa8' : type === 0 ? '#8a3fb0' : '#2a7d4f');
-function openLiveMap() {
-  showOverlay('liveMap');
-  $('liveMapNote').textContent = '';
-  requestAnimationFrame(async () => {
-    await styleReady();
-    const start = lastPos || place.from || place.to || { lat: 32.08, lon: 34.78 };
-    if (!lmap) {
-      lmap = makeMap('liveMapEl', [start.lat, start.lon], lastPos ? 14.5 : 12);
-      if (!lmap) return;
-      lmap.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true }), lang === 'he' ? 'top-left' : 'top-right');
-      whenStyled(lmap, () => {
-        const empty = { type: 'FeatureCollection', features: [] };
-        lmap.addSource('lm-stops', { type: 'geojson', data: empty });
-        lmap.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
-        lmap.addSource('lm-veh', { type: 'geojson', data: empty });
-        lmap.addLayer({ id: 'lm-veh', type: 'circle', source: 'lm-veh', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 13, 7, 15, 11], 'circle-color': ['get', 'color'], 'circle-opacity': ['get', 'opacity'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-stroke-opacity': ['get', 'opacity'] } });
-        for (const type of [0, 2, 3]) lmap.addImage(`wayli-arrow-${type}`, arrowImage(typeColor(type)), { pixelRatio: 2 });
-        lmap.addLayer({ id: 'lm-veh-dir', type: 'symbol', source: 'lm-veh', filter: ['>', ['get', 'bearing'], -1], layout: { 'icon-image': ['concat', 'wayli-arrow-', ['to-string', ['get', 'type']]], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.55, 15, 1], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': [0, -17], 'icon-allow-overlap': true, 'icon-ignore-placement': true }, paint: { 'icon-opacity': ['get', 'opacity'] } });
-        lmap.addLayer({ id: 'lm-veh-label', type: 'symbol', source: 'lm-veh', minzoom: 13.5, layout: { 'text-field': ['get', 'line'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 9, 16, 12], 'text-allow-overlap': true, 'text-ignore-placement': true, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': '#ffffff', 'text-opacity': ['get', 'opacity'] } });
-        lmap.on('click', 'lm-veh', (e) => { if (e.features && e.features[0]) selectVehicle(e.features[0].properties, e.features[0].geometry.coordinates); });
-        lmap.on('click', 'lm-stops', (e) => { if (e.features && e.features[0] && !lmap.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) stopPopup(lmap, e.features[0].geometry.coordinates, +e.features[0].properties.stop, 'liveMap'); });
-        try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMap: lmap }; } catch (e) {}
-        for (const layer of ['lm-veh', 'lm-stops']) { lmap.on('mouseenter', layer, () => { lmap.getCanvas().style.cursor = 'pointer'; }); lmap.on('mouseleave', layer, () => { lmap.getCanvas().style.cursor = ''; }); }
-        loadStopsGeo();
-        refreshLiveMap();
-      });
-      lmap.on('moveend', () => { clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
-    } else { lmap.resize(); refreshLiveMap(); }
-    clearInterval(lmTimer);
-    lmTimer = setInterval(refreshLiveMap, 20000);
-  });
-}
 async function loadStopsGeo() {
-  if (lmStops || !ttReady || !lmap) return;
-  try { const geo = await call('stopsGeo'); if (lmap && lmap.getSource('lm-stops')) { lmap.getSource('lm-stops').setData(geo); lmStops = true; } } catch (e) { /* stops are a bonus */ }
+  if (lmStops || !ttReady || !mainMap || !mapStyled) return;
+  try { const geo = await call('stopsGeo'); if (mainMap && mainMap.getSource('lm-stops')) { mainMap.getSource('lm-stops').setData(geo); lmStops = true; } } catch (e) { /* stops are a bonus */ }
 }
 async function refreshLiveMap() {
-  if (!lmap || $('liveMap').hidden) return;
-  if (!liveOn()) { $('liveMapNote').textContent = t('liveOff'); return; }
-  if (lmap.getZoom() < 10) { $('liveMapNote').textContent = t('liveMapZoom'); return; }
+  const m = mainMap;
+  if (!m || !mapStyled || document.hidden || sheet.state === 'full') return;
+  if (isOpen('picker')) { $('liveNote').textContent = ''; return; }
+  if (!liveOn()) { $('liveNote').textContent = ''; m.getSource('lm-veh').setData(EMPTY); return; }
+  if (m.getZoom() < 10) { $('liveNote').textContent = t('liveMapZoom'); m.getSource('lm-veh').setData(EMPTY); return; }
   const my = ++lmSeq;
-  const b = lmap.getBounds();
+  const b = m.getBounds();
   try {
     const vs = await live.vehiclesInBounds({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
-    if (my !== lmSeq || !lmap) return;
+    if (my !== lmSeq || !mainMap || !mapStyled) return;
     const need = Array.from(new Set(vs.map((v) => String(v.lineRef)).filter((id) => !lmLabels.has(id))));
     if (need.length && ttReady) {
       const labels = await call('routeLabels', { ids: need });
       for (const id of need) lmLabels.set(id, labels[id] || null);
-      if (my !== lmSeq || !lmap) return;
+      if (my !== lmSeq || !mainMap || !mapStyled) return;
     }
     const now = Date.now();
     const features = vs.map((v) => {
@@ -1058,13 +1163,14 @@ async function refreshLiveMap() {
         properties: { line: lb ? lineText(lb.line) : '?', type: lb ? lb.type : 3, color: typeColor(lb ? lb.type : 3), opacity: age > 300 ? 0.55 : 1, bearing: heading(v),
           headsign: lb ? lb.headsign : '', agency: lb ? lb.agency : '', lineRef: v.lineRef, start: v.scheduledStart.getTime(), seen: v.recordedAt.getTime(), velocity: v.velocity || 0 } };
     });
-    lmap.getSource('lm-veh').setData({ type: 'FeatureCollection', features });
+    m.getSource('lm-veh').setData({ type: 'FeatureCollection', features });
     const nw = live.newest(vs);
     const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
-    $('liveMapNote').textContent = features.length ? t('liveMapCount', { n: features.length, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone');
+    $('liveNote').textContent = features.length ? t('liveMapCount', { n: features.length, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone');
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch (e) {}
-  } catch (e) { if (my === lmSeq) $('liveMapNote').textContent = t('liveFail'); }
+  } catch (e) { if (my === lmSeq) $('liveNote').textContent = t('liveFail'); }
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLiveMap(); });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 const heading = (v) => (v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1);
 /** A small upward triangle in a colour, with a white edge, drawn at 2x for crisp rotation. */
@@ -1081,46 +1187,27 @@ async function selectVehicle(p, coords) {
   // which trip it runs and how late: one worker call
   let st = { trip: -1 };
   try { st = (await call('vehiclesStatus', { vehicles: [{ lineRef: p.lineRef, scheduledStart: +p.start, lat: coords[1], lon: coords[0], recordedAt: +p.seen }] }))[0] || st; } catch (e) { /* schedule only */ }
-  vehiclePopup(lmap, coords, { line: st.line || (lb ? lb.line : '?'), routeType: st.routeType ?? (lb ? lb.type : 3), headsign: st.headsign || (lb ? lb.headsign : ''), agency: st.agency || (lb ? lb.agency : ''), delay: st.delay, stale: !!st.stale, seen: new Date(+p.seen), velocity: +p.velocity, trip: st.trip, route: st.route ?? (lb ? lb.route : null) });
+  vehiclePopup(mainMap, coords, { line: st.line || (lb ? lb.line : '?'), routeType: st.routeType ?? (lb ? lb.type : 3), headsign: st.headsign || (lb ? lb.headsign : ''), agency: st.agency || (lb ? lb.agency : ''), delay: st.delay, stale: !!st.stale, seen: new Date(+p.seen), velocity: +p.velocity, trip: st.trip, route: st.route ?? (lb ? lb.route : null) });
 }
-$('nearbyMap').addEventListener('click', openLiveMap);
-$('liveMapBack').addEventListener('click', () => nav.close('liveMap'));
 
-// ---- lines: search by number, and a line's page (course, stops, vehicles now)
-{
-  const input = $('lineQ'), drop = $('lineDrop');
-  let timer = 0, seq = 0;
-  input.addEventListener('input', () => {
-    clearTimeout(timer);
-    const q = input.value.trim();
-    if (!q || !ttReady) { drop.hidden = true; return; }
-    timer = setTimeout(async () => {
-      const my = ++seq;
-      const rows = await call('searchLines', { q, limit: 20 });
-      if (my !== seq) return;
-      drop.innerHTML = '';
-      for (const r of rows) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'line';
-        b.innerHTML = `<span class="chip t${r.routeType}">${esc(lineText(r.line))}</span><span class="txt">${esc(t('toward', { headsign: r.headsign }))}<small> · ${esc(r.agency)} · ${t('tripsToday', { n: r.trips })}</small></span>`;
-        b.addEventListener('click', () => { drop.hidden = true; input.value = lineText(r.line); openLine(r.route); });
-        drop.appendChild(b);
-      }
-      if (!rows.length) { const n = document.createElement('button'); n.type = 'button'; n.disabled = true; n.textContent = t('lineNoMatch'); drop.appendChild(n); }
-      drop.hidden = false;
-    }, 120);
-  });
-  input.addEventListener('focus', () => { if (drop.children.length && input.value.trim()) drop.hidden = false; });
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const f = drop.querySelector('button:not(:disabled)'); if (f) f.click(); } });
-  document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input) drop.hidden = true; });
-}
-let lineMap = null, lineMarkers = [], lineVeh = [], lineTimer = 0, lineSeq = 0, lineCur = null;
-async function openLine(route, replace = false) {
+// ---- a line's page (course, stops, vehicles now); the search by number is in the top bar
+let lineVeh = [], lineTimer = 0, lineSeq = 0, lineCur = null;
+async function openLine(route) {
   const my = ++lineSeq;
   let info;
   try { info = await call('lineInfo', { route }); } catch (e) { toast(t('liveFail')); return; }
   if (my !== lineSeq) return;
   lineCur = info;
-  if (!replace) showOverlay('lineDetail');
+  mapOf.lineDetail = async (seq) => {
+    const m = await mapReady();
+    if (!m || my !== lineSeq || stale(seq)) return;
+    const b = drawJourney(m, { legs: [{ type: 'ride', routeType: info.routeType, path: info.path, pattern: null }] }, journeyMarkers);
+    // every stop of the line as a dot
+    m.getSource('stops').setData({ type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });
+    fitMap(b, 15);
+    lineLive();
+  };
+  showOverlay('lineDetail');
   $('lineTitle').textContent = `${t('lineTitle', { line: lineText(info.line) })} · ${t('toward', { headsign: info.headsign })}`;
   $('lineMeta').textContent = `${info.agency} · ${t('tripsToday', { n: info.trips })} · ${fmtPlus(info.first)}–${fmtPlus(info.last)} · ${t('stopsCount', { n: info.stops.length })}`;
   $('lineLive').hidden = true;
@@ -1128,43 +1215,27 @@ async function openLine(route, replace = false) {
   dirs.innerHTML = '';
   for (const o of info.others) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn'; b.textContent = `↔ ${t('otherDir', { headsign: o.headsign })}`;
-    b.addEventListener('click', () => openLine(o.route, true));
+    b.addEventListener('click', () => openLine(o.route));
     dirs.appendChild(b);
   }
   const box = $('lineStops');
   box.innerHTML = info.stops.map((st, i) => `<div class="linerow" data-i="${i}"><span class="idx">${i + 1}</span><span class="name">${esc(st.name)}<small class="muted"> ${esc(st.city || '')}</small></span></div>`).join('');
   for (const row of box.querySelectorAll('.linerow')) row.addEventListener('click', () => openStop(info.stops[+row.dataset.i].stop));
-  requestAnimationFrame(async () => {
-    await styleReady();
-    if (my !== lineSeq) return;
-    if (!lineMap) lineMap = makeMap('lineMap', [32.08, 34.78], 11);
-    if (!lineMap) return;
-    lineMap.resize();
-    whenStyled(lineMap, () => {
-      if (my !== lineSeq) return;
-      const b = drawJourney(lineMap, { legs: [{ type: 'ride', routeType: info.routeType, path: info.path, pattern: null }] }, lineMarkers);
-      // every stop of the line as a dot
-      const dots = { type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) };
-      lineMap.getSource('stops').setData(dots);
-      if (!b.isEmpty()) lineMap.fitBounds(b, { padding: 30, duration: 0, maxZoom: 15 });
-    });
-  });
   clearInterval(lineTimer);
   lineTimer = setInterval(lineLive, 20000);
-  lineLive();
 }
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive() {
   const info = lineCur;
-  if (!info || $('lineDetail').hidden || !liveOn() || info.routeId == null) return;
+  if (!info || !isOpen('lineDetail') || !liveOn() || info.routeId == null) return;
   const my = lineSeq;
   try {
     const vs = await live.vehiclesByLine(info.routeId);
-    if (my !== lineSeq || !lineMap) return;
+    if (my !== lineSeq) return;
     const st = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
-    if (my !== lineSeq || !lineMap) return;
+    if (my !== lineSeq) return;
     for (const mk of lineVeh.splice(0)) mk.remove();
-    lineVehicleMarkers(lineMap, lineVeh, vs, st, info.routeType, null, { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route });
+    if (mainMap && drawnFor === 'lineDetail') lineVehicleMarkers(mainMap, lineVeh, vs, st, info.routeType, null, { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route });
     const nw = live.newest(vs);
     $('lineLive').textContent = vs.length ? `${t('vehiclesOnLine', { n: vs.length })} · ${nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}` : t('noLineVehicles');
     $('lineLive').className = 'livebadge ' + (vs.length ? 'ok' : '');
@@ -1199,11 +1270,15 @@ $('tripBack').addEventListener('click', () => nav.close('tripDetail'));
 function tripKey(q) { return `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`; }
 function updateStar(id, key, kind) { const on = key && favs.has(kind, key); $(id).textContent = on ? '★' : '☆'; $(id).classList.toggle('on', on); }
 async function planTo(p) {
+  nav.closeAll();
   showScreen('plan');
-  $('toQ').value = t('locating');
-  try { const pos = await getPosition(); setPlace('from', myLocation(pos)); } catch (e) { $('fromQ').value = ''; place.from = null; }
-  setPlace('to', p); $('nowBtn').click();
-  if (place.from) plan(); else showPlanError(t('noLocation'));
+  setPlace('to', p);
+  $('results').innerHTML = `<div class="empty">${t('locating')}</div>`; $('recentBox').hidden = true;
+  sheet.set('half');
+  $('fromQ').value = t('locating');
+  try { const pos = await getPosition(); setPlace('from', myLocation(pos)); } catch (e) { if (!place.from || place.from.transient) { $('fromQ').value = ''; place.from = null; } else $('fromQ').value = place.from.name; }
+  $('nowBtn').click();
+  if (place.from) plan(); else { $('results').innerHTML = ''; showPlanError(t('noLocation')); $('toQ').focus(); }
 }
 function renderSaved() {
   const sp = savedPlaces.get();
@@ -1240,10 +1315,11 @@ function renderSaved() {
     const d = document.createElement('div');
     d.className = 'journey';
     d.innerHTML = `<div class="top"><span class="times">${esc(v.from.name)} → ${esc(v.to.name)}</span></div><div class="sub">${v.bike !== 'none' ? '🚲 ' : ''}${esc(t(v.bike === 'along' ? 'bikeAlong' : v.bike === 'park' ? 'bikePark' : 'bikeNone'))}</div>`;
-    d.addEventListener('click', () => { applyQuery({ from: v.from, to: v.to, bike: v.bike, folding: v.folding }); $('nowBtn').click(); showScreen('plan'); plan(); });
+    d.addEventListener('click', () => { applyQuery({ from: v.from, to: v.to, bike: v.bike, folding: v.folding }); $('nowBtn').click(); nav.closeAll(); showScreen('plan'); plan(); });
     tb.appendChild(d);
   }
   renderStops($('favStops'), Object.values(stops), false);
+  renderPeek();
 }
 
 // ---------------------------------------------------------------- settings
@@ -1254,13 +1330,13 @@ function renderSettings() {
   $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
 }
 for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
-for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); dropMaps(); styleReady(); renderSettings(); });
+for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); renderSettings(); });
 for (const b of $('setWalk').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ maxWalk: +b.dataset.v }); renderSettings(); });
 $('setLive').addEventListener('change', () => settings.set({ live: $('setLive').checked }));
 $('setNotify').addEventListener('change', async () => { settings.set({ notify: $('setNotify').checked }); if ($('setNotify').checked) await requestAlertPermission(); });
 $('setSound').addEventListener('change', () => settings.set({ sound: $('setSound').checked }));
 $('testAlert').addEventListener('click', async () => { ensureAudio(); await requestAlertPermission(); alertUser(t('alertSoon'), t('testAlertMsg')); });
-$('clearHistory').addEventListener('click', () => { recentPlaces.clear(); recentTrips.clear(); lastSearch.clear(); renderRecent(); toast(t('historyCleared')); });
+$('clearHistory').addEventListener('click', () => { recentPlaces.clear(); recentTrips.clear(); lastSearch.clear(); renderRecent(); renderPeek(); toast(t('historyCleared')); });
 
 // ---- alerts: vibration, a beep and a notification
 let audio = null;
@@ -1295,7 +1371,7 @@ function alertUser(title, body) {
 }
 
 // ---------------------------------------------------------------- follow mode: "start a trip"
-let fol = null, followMap = null, followMarkers = [], followVehicle = [], meMarker = null;
+let fol = null, followVehicle = [], meMarker = null;
 const tripStale = (a) => live.nowOn(a.day) > a.journey.arrive + 2700 || Date.now() - (a.startedAt || 0) > 12 * 3600e3;
 function startTrip(j, q) {
   const day = q.day;
@@ -1304,7 +1380,7 @@ function startTrip(j, q) {
   const a = { journey: { ...j, to: q.to.lat != null ? { name: q.to.name, lat: q.to.lat, lon: q.to.lon } : null }, q: { from: q.from, to: q.to, bike: q.bike, folding: q.folding }, day, state: initialState(), view: 'follow', startedAt: Date.now() };
   activeTrip.set(a);
   requestAlertPermission();
-  nav.close('detail');
+  if (!nav.swap('detail', 'follow')) nav.closeAll();
   openFollow(a);
 }
 function openFollow(a) {
@@ -1312,7 +1388,7 @@ function openFollow(a) {
   if (!fol) {
     fol = { a, pos: null, watch: null, timer: 0, liveTimer: 0, wake: null, fitted: false, liveEst: null };
     if (navigator.geolocation) {
-      fol.watch = navigator.geolocation.watchPosition((p) => { fol.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() }; lastPos = { lat: fol.pos.lat, lon: fol.pos.lon }; stepFollow(); },
+      fol.watch = navigator.geolocation.watchPosition((p) => { fol.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() }; notePos(fol.pos.lat, fol.pos.lon); stepFollow(); },
         () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
     }
     fol.timer = setInterval(stepFollow, 5000);
@@ -1320,16 +1396,17 @@ function openFollow(a) {
     requestWake();
   }
   a.view = 'follow'; activeTrip.set(a);
+  mapOf.follow = async (seq) => {
+    const m = await mapReady();
+    if (!m || !fol || fol.a !== a || stale(seq)) return;
+    await withCourses(a.journey);
+    if (!fol || fol.a !== a || stale(seq)) return;
+    fitMap(drawJourney(m, a.journey, journeyMarkers), 16);
+    stepFollow(); followLive();
+  };
   showOverlay('follow');
   $('resumeBar').hidden = true;
-  requestAnimationFrame(async () => {
-    await styleReady();
-    await withCourses(a.journey);
-    if (!fol || fol.a !== a) return;
-    if (!followMap) followMap = makeMap('followMap', [32.08, 34.78], 12);
-    if (followMap) { followMap.resize(); whenStyled(followMap, () => { const b = drawJourney(followMap, a.journey, followMarkers); if (!fol.fitted && !b.isEmpty()) { followMap.fitBounds(b, { padding: 40, duration: 0, maxZoom: 16 }); fol.fitted = true; } }); }
-    stepFollow(); followLive();
-  });
+  stepFollow();
 }
 async function requestWake() {
   try { if (fol && navigator.wakeLock && document.visibilityState === 'visible') fol.wake = await navigator.wakeLock.request('screen'); } catch (e) {}
@@ -1399,8 +1476,8 @@ function renderFollow() {
     nx.appendChild(el);
   });
   // me on the map
-  if (followMap && fol.pos) {
-    if (!meMarker) { const el = document.createElement('div'); el.className = 'wayli-me'; meMarker = new maplibregl.Marker({ element: el }).setLngLat([fol.pos.lon, fol.pos.lat]).addTo(followMap); }
+  if (mainMap && mapStyled && drawnFor === 'follow' && fol.pos) {
+    if (!meMarker) { const el = document.createElement('div'); el.className = 'wayli-me'; meMarker = new maplibregl.Marker({ element: el }).setLngLat([fol.pos.lon, fol.pos.lat]).addTo(mainMap); }
     else meMarker.setLngLat([fol.pos.lon, fol.pos.lat]);
   }
   if (a.state.done) finishFollow();
@@ -1417,7 +1494,7 @@ async function followLive() {
     const statuses = vs.length ? await call('vehiclesStatus', { vehicles: vehiclesForWorker(vs) }) : [];
     if (!fol) return;
     for (const mk of followVehicle.splice(0)) mk.remove();
-    if (followMap) lineVehicleMarkers(followMap, followVehicle, vs, statuses, leg.routeType, leg.trip, { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route });
+    if (mainMap && drawnFor === 'follow') lineVehicleMarkers(mainMap, followVehicle, vs, statuses, leg.routeType, leg.trip, { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route });
     const v = live.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
     if (!v) { fol.liveEst = null; $('followLive').hidden = true; renderFollow(); return; }
     const ts = await tripStopsCached(leg.trip);
@@ -1438,7 +1515,7 @@ $('followSkip').addEventListener('click', () => {
   else { s.step++; s.onBoard = false; s.rideIdx = 0; }
   activeTrip.set(a); renderFollow();
 });
-function finishFollow() { setTimeout(() => { if (fol && fol.a.state.done) { closeFollow(true); toast(t('arrived'), 4000); } }, 15000); }
+function finishFollow() { setTimeout(() => { if (fol && fol.a.state.done) { closeFollow(true); nav.close('follow'); toast(t('arrived'), 4000); } }, 15000); }
 function closeFollow(end) {
   if (fol) {
     if (fol.watch != null && navigator.geolocation) navigator.geolocation.clearWatch(fol.watch);
@@ -1449,10 +1526,10 @@ function closeFollow(end) {
   }
   for (const mk of followVehicle.splice(0)) mk.remove();
   if (meMarker) { meMarker.remove(); meMarker = null; }
-  if (!$('follow').hidden) { $('follow').hidden = true; nav.stack = nav.stack.filter((e) => !(e.kind === 'overlay' && e.id === 'follow')); }
+  delete mapOf.follow;
   updateResumeBar();
 }
-$('followEnd').addEventListener('click', () => { closeFollow(true); toast(t('tripEnded')); });
+$('followEnd').addEventListener('click', () => { closeFollow(true); nav.close('follow'); toast(t('tripEnded')); });
 $('followHide').addEventListener('click', () => nav.close('follow'));
 function updateResumeBar() {
   const a = activeTrip.get();
@@ -1462,7 +1539,7 @@ function updateResumeBar() {
   $('resumeText').textContent = `${ride ? lineText(ride.line) + ' · ' : ''}${a.q.to.name}`;
   bar.hidden = false;
 }
-$('resumeBar').addEventListener('click', () => { const a = activeTrip.get(); if (a) openFollow(a); });
+$('resumeBar').addEventListener('click', () => { const a = activeTrip.get(); if (a) { nav.closeAll(); openFollow(a); } });
 
 // ---------------------------------------------------------------- screens and the back button
 // Every overlay and every tab change is a history entry, so the phone's back button (or the browser's)
@@ -1470,31 +1547,56 @@ $('resumeBar').addEventListener('click', () => { const a = activeTrip.get(); if 
 // in-app button goes through history too, so both paths look the same.
 const nav = {
   stack: [],   // entries: {kind: 'overlay', id} or {kind: 'tab', from}
-  push(entry) { this.stack.push(entry); history.pushState({ wayli: this.stack.length }, ''); },
+  push(entry) { this.stack.push(entry); try { history.pushState({ wayli: this.stack.length }, ''); } catch (e) {} },
   /** Undo the top entry (called from popstate, or to close programmatically). */
   undo(entry) {
     if (entry.kind === 'overlay') hideOverlay(entry.id);
     else if (entry.kind === 'tab') showScreen(entry.from, false);
   },
-  /** Close the given overlay: through history if it is the top entry, else directly. */
+  /** Close the given overlay now; history steps back one entry to match (its popstate then finds nothing left to undo). */
   close(id) {
-    const top = this.stack[this.stack.length - 1];
-    if (top && top.kind === 'overlay' && top.id === id) history.back();
-    else { this.stack = this.stack.filter((e) => !(e.kind === 'overlay' && e.id === id)); hideOverlay(id); }
+    const i = this.stack.findIndex((e) => e.kind === 'overlay' && e.id === id);
+    if (i < 0) return;
+    this.stack.splice(i, 1);
+    hideOverlay(id);
+    try { history.back(); } catch (e) {}
+  },
+  /** Replace one open overlay by another in place (the trip detail becomes the trip being followed). */
+  swap(oldId, newId) {
+    const i = this.stack.findIndex((e) => e.kind === 'overlay' && e.id === oldId);
+    if (i < 0) return false;
+    this.stack[i] = { kind: 'overlay', id: newId };
+    if (popup) { popup.remove(); popup = null; }
+    if (OVERLAY_CLOSE[oldId]) OVERLAY_CLOSE[oldId]();
+    renderPanels();
+    return true;
+  },
+  /** Close every panel and return to the base screen (the history catches up on its own). */
+  closeAll() {
+    const old = this.stack;
+    if (!old.length) return;
+    this.stack = [];
+    const base = old.find((e) => e.kind === 'tab');
+    if (base) screen = base.from;
+    for (const e of old) if (e.kind === 'overlay') hideOverlay(e.id);
+    renderPanels();
+    try { history.go(-old.length); } catch (e) {}
   },
 };
-const OVERLAY_CLOSE = { detail: () => { detailSeq++; }, stopDetail: () => { clearInterval(stopTimer); stopSeq++; }, liveMap: () => { clearInterval(lmTimer); lmSeq++; }, lineDetail: () => { clearInterval(lineTimer); lineSeq++; lineCur = null; },
-  picker: () => { const r = pickResolve; pickResolve = null; if (r) r(null); }, chooser: () => { const r = chooserResolve; chooserResolve = null; if (r) r(null); }, follow: () => { if (fol) closeFollow(false); } };
+const isOpen = (id) => nav.stack.some((e) => e.kind === 'overlay' && e.id === id);
+const topPanel = () => { for (let i = nav.stack.length - 1; i >= 0; i--) if (nav.stack[i].kind === 'overlay') return nav.stack[i].id; return null; };
+const OVERLAY_CLOSE = { detail: () => { detailSeq++; delete mapOf.detail; }, stopDetail: () => { clearInterval(stopTimer); stopSeq++; delete mapOf.stopDetail; }, lineDetail: () => { clearInterval(lineTimer); lineSeq++; lineCur = null; delete mapOf.lineDetail; },
+  picker: () => { const r = pickResolve; pickResolve = null; if (r) r(null); }, chooser: () => { const r = chooserResolve; chooserResolve = null; if (r) r(null); }, follow: () => { if (fol) closeFollow(false); delete mapOf.follow; } };
+const PANEL_EL = { picker: 'pickbar' };
 function showOverlay(id) {
-  if (!$(id).hidden) return;
-  $(id).hidden = false;
+  if (isOpen(id)) { redrawMap(true); return; }
   nav.push({ kind: 'overlay', id });
+  renderPanels();
 }
 function hideOverlay(id) {
-  if ($(id).hidden) return;
-  $(id).hidden = true;
   if (popup) { popup.remove(); popup = null; }
   if (OVERLAY_CLOSE[id]) OVERLAY_CLOSE[id]();
+  renderPanels();
 }
 window.addEventListener('popstate', (e) => {
   const depth = e.state && e.state.wayli ? e.state.wayli : 0;
@@ -1502,14 +1604,65 @@ window.addEventListener('popstate', (e) => {
 });
 try { history.replaceState({ wayli: 0 }, ''); } catch (e) {}
 let screen = 'plan';
+/** How open the sheet is when a panel or screen comes up. */
+const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || place.from || place.to || $('fromQ').value || $('toQ').value ? 'half' : 'peek'), 'screen-nearby': 'full', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
+/** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
+function renderPanels() {
+  const top = topPanel();
+  const picking = top === 'picker';
+  $('crosshair').hidden = !picking; $('pickbar').hidden = !picking;
+  document.querySelector('.topbar').hidden = picking;
+  $('sheet').hidden = picking;
+  const key = top || 'screen-' + screen;
+  const show = picking ? null : (PANEL_EL[key] || key);
+  for (const el of document.querySelectorAll('#sheetBody > .screen, #sheetBody > .detail')) el.hidden = el.id !== show;
+  if (!picking) { const st = SHEET_FOR[key]; sheet.set(typeof st === 'function' ? st() : st || 'half'); }
+  redrawMap();
+}
 function showScreen(name, record = true) {
   if (record && name !== screen) nav.push({ kind: 'tab', from: screen });
   screen = name;
-  for (const s of document.querySelectorAll('.screen')) s.hidden = s.id !== 'screen-' + name;
-  for (const b of document.querySelectorAll('nav.tabs button')) b.setAttribute('aria-selected', String(b.dataset.screen === name));
+  renderPanels();
   if (name === 'nearby' && ttReady && !$('nearbyList').querySelector('.stop')) loadNearby();
   if (name === 'plan') $('recentBox').hidden = !!$('results').children.length;
 }
-for (const b of document.querySelectorAll('nav.tabs button')) b.addEventListener('click', () => showScreen(b.dataset.screen));
+// ---- the bottom sheet: peek (a strip), half, or full; dragged by its handle, tapped to cycle
+const sheet = {
+  state: 'peek',
+  px(st) { return st === 'peek' ? 118 : st === 'half' ? Math.round(innerHeight * 0.46) : Math.max(200, innerHeight - topPad() + 4); },
+  set(st) {
+    const prev = this.state;
+    this.state = st;
+    $('sheet').dataset.state = st;
+    document.documentElement.style.setProperty('--sheet-h', this.px(st) + 'px');
+    if (prev === 'full' && st !== 'full') refreshLiveMap();
+    if (st !== prev && mainMap && (st === 'peek' || prev === 'peek')) $('sheetBody').scrollTop = 0;
+  },
+  toggle() { this.set(this.state === 'peek' ? 'half' : this.state === 'half' ? 'full' : 'peek'); },
+};
+{
+  const h = $('sheetHandle'), el = $('sheet');
+  let startY = 0, startH = 0, moved = false, dragging = false;
+  h.addEventListener('pointerdown', (e) => { dragging = true; startY = e.clientY; startH = el.getBoundingClientRect().height; moved = false; el.classList.add('dragging'); try { h.setPointerCapture(e.pointerId); } catch (x) {} });
+  h.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dy = startY - e.clientY;
+    if (Math.abs(dy) > 4) moved = true;
+    el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)) + 'px';
+  });
+  const end = () => {
+    if (!dragging) return;
+    dragging = false; el.classList.remove('dragging');
+    const hh = el.getBoundingClientRect().height;
+    el.style.height = '';
+    if (!moved) { sheet.toggle(); return; }
+    let best = 'peek';
+    for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
+    sheet.set(best);
+  };
+  h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
+  window.addEventListener('resize', () => sheet.set(sheet.state));
+}
+sheet.set('peek');
 
 init().catch((e) => setStatus(t('loadFail', { msg: e.message }), true));

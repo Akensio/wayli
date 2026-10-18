@@ -62,7 +62,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `app/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
 | `app/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
 | `pipeline/places.py`, `app/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |
-| `app/index.html`, `app/app.js`, `app/worker.js`, `app/sw.js`, `app/styles.css` | The app: shell, UI, data worker, service worker, styles. Hebrew/RTL first, English toggle, no framework, no build step. |
+| `app/index.html`, `app/app.js`, `app/worker.js`, `app/sw.js`, `app/styles.css` | The app: shell (one map, a top search bar, a bottom sheet of panels), UI, data worker, service worker, styles. Hebrew/RTL first, English toggle, no framework, no build step. |
 | `app/live.js`, `app/follow.js`, `app/store.js` | Real-time client (Hasadna Open Bus, delay estimate, Israel-time helpers); trip-following state machine (pure, testable in Node); on-device store (settings, history, saved places, trip in progress). |
 | `app/darkmap.js` | The dark basemap: OpenFreeMap's Liberty style recoloured by role at runtime. |
 | `app/feasibility.html` | The routing test page (older harness). `app/bench.mjs` times the router in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` builds the artifact variant. |
@@ -75,13 +75,16 @@ relay, reports and push). Create it when the work starts.
 
 ## Current state
 
-2026-10-17: v0.2 is on `main` and live at https://akensio.github.io/wayli/,
+2026-10-18: v0.3 is on `main` and live at https://akensio.github.io/wayli/,
 rebuilt nightly by the workflow. Gadi normally merges session branches into
-`main` himself (squash); he allowed a direct push of `main` for v0.2. The
-app plans (depart/arrive-by, grouped results, countdowns), remembers
-(history, saved places, last search), follows a trip with get-off alerts
-and resumes it, shows live times from Hasadna's Open Bus data (no key, no
-relay; v0.2.1 adds the live map and live-aware planning: delayed trips are
-shifted before routing), shares trips, and has settings. Next: crowd reports, line pages,
-stop-name translations and Arabic, elevation, measuring live-data
-freshness in daily use, a fallback relay only if Hasadna proves unreliable.
+`main` himself (squash); for this effort he allowed direct pushes of `main`
+(fast-forward from the session branch). The app is map first (one map with
+the live vehicles under a search bar and a bottom sheet), plans
+(depart/arrive-by, grouped results, countdowns, live delays shifted before
+routing), remembers (history, saved places, last search), follows a trip
+with get-off alerts and resumes it, shows live times from Hasadna's Open
+Bus data (no key, no relay), has line pages and bubbles on the map, shares
+trips, and has settings. Next: re-planning while following a trip when
+delays make another way faster, crowd reports, stop-name translations and
+Arabic, elevation, measuring live-data freshness in daily use, a fallback
+relay only if Hasadna proves unreliable.
