@@ -151,13 +151,16 @@ reporting in view with its line number and heading, the stops when zoomed
 in, the rider's position (MapLibre's locate control, started on its own once
 location was allowed before), and whatever the open panel is about. Over it,
 a floating top bar that is the planner: a menu button, the destination
-field (places, addresses and line numbers; its quick menu offers my
-location, a point on the map, saved and recent places), the language
-toggle, and, once a place is set, a second row with the origin field
-(empty means my location) and a swap button, then a row of two chips for
-the options (when; bicycle) whose details open in a card hanging off the
-bar. A destination plans at once; changing either field plans again;
-nothing of the planner sits in the sheet. A bottom sheet with three heights (a
+field (tagged "to"; places, addresses and line numbers; its quick menu
+offers my location, a point on the map, saved and recent places), the
+language toggle, and, once a place is set, a second row with the origin
+field (tagged "from"; empty means my location) and a swap button, then a
+row with two chips for the options (when, reading "now" until a time or
+"arrive by" is set; bicycle) whose details open in a card hanging off the
+bar, and a Go button. A destination plans at once; changing either field
+plans again; nothing of the planner sits in the sheet. A plan is a history
+entry: the back button (or the ✕ in the destination field) clears both
+fields and the results and drops the sheet to its strip. A bottom sheet with three heights (a
 strip, about half the screen, nearly full) carries every panel: the plan
 screen (results and recent searches only), nearby, saved, settings,
 and the panels for a journey, a stop, a trip's stops, a line, the place

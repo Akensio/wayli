@@ -22,16 +22,17 @@
 <div class="topbar" id="topbar">
   <div class="trow">
     <button type="button" class="iconbtn" id="menuBtn" title="תפריט">☰</button>
-    <div class="field search">
-      <span class="icon">⌕</span>
+    <div class="field search tagged">
+      <span class="tag" data-t="tagTo">אל</span>
       <input type="text" id="toQ" placeholder="לאן? (מקום, כתובת או מספר קו)" autocomplete="off" enterkeyhint="search">
+      <button type="button" class="clearbtn" id="toClear" hidden aria-label="נקה">✕</button>
       <div class="dropdown" id="toDrop" hidden></div>
     </div>
     <button type="button" class="iconbtn lang" id="langBtn">EN</button>
   </div>
   <div class="trow origin" id="fromRow" hidden>
-    <div class="field search">
-      <span class="icon">●</span>
+    <div class="field search tagged">
+      <span class="tag" data-t="tagFrom">מ־</span>
       <input type="text" id="fromQ" placeholder="מאיפה? (ריק = המיקום שלי)" autocomplete="off" enterkeyhint="search">
       <div class="dropdown" id="fromDrop" hidden></div>
     </div>
@@ -40,6 +41,7 @@
   <div class="trow opts" id="optRow" hidden>
     <button type="button" class="chipbtn" id="optTime"></button>
     <button type="button" class="chipbtn" id="optBike"></button>
+    <button type="button" class="primary slim go" id="goBtn" data-t="go">תכנון</button>
   </div>
   <div class="optpanel" id="formBody" hidden>
     <div class="row">

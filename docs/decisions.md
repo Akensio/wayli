@@ -229,3 +229,7 @@ so they are not re-litigated.
   number, plus; the number can be typed). A slider was tried first and
   rejected by Gadi at once: an exact value among forty is not a slider's
   job on a phone.
+- 2026-10-18 Gadi: label the two rows (to / from), start clean and let
+  back clear the fields, a clear Go button on top, and the clock reads
+  "now" unless he sets a time. All four done; a plan is a history entry
+  so back clears it.

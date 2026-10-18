@@ -16,7 +16,7 @@ const STR = {
     back: 'חזרה', fromHere: 'מכאן', toHere: 'לכאן', nextDeps: 'היציאות הבאות', fromQ: 'מאיפה? (ריק = המיקום שלי)', toQ: 'לאן?', myLoc: 'המיקום שלי',
     loadingTT: 'טוען לוח זמנים', loadingST: 'טוען רשת רחובות (לאופניים ולהליכה מדויקת)', loadingPL: 'טוען כתובות ומקומות', unpacking: 'פורס…', ready: 'מוכן. {trips} נסיעות ליום {date}.',
     kindStop: 'תחנה', kindAddress: 'כתובת', kindStreet: 'רחוב', kindCity: 'עיר', kindPoi: 'מקום', approxNo: 'הקרוב ביותר: {n}', placesPending: 'כתובות ומקומות עדיין נטענים…', noMatch: 'לא נמצא. נסו שם תחנה, רחוב ומספר, או עיר.',
-    pickTitle: 'בחירה במפה', pickHint: 'הזיזו את המפה כך שהסמן יהיה על המקום', choose: 'בחירה', cancel: 'ביטול', nearName: 'ליד {name}', pointName: 'נקודה במפה',
+    tagTo: 'אל', tagFrom: 'מ־', go: 'תכנון', pickTitle: 'בחירה במפה', pickHint: 'הזיזו את המפה כך שהסמן יהיה על המקום', choose: 'בחירה', cancel: 'ביטול', nearName: 'ליד {name}', pointName: 'נקודה במפה',
     btnLoc: '📍 המיקום שלי', btnMap: '🗺️ בחירה במפה', build: 'גרסה {v}', updated: 'גרסה חדשה נטענה.',
     readyStreets: 'רשת הרחובות נטענה.', loadFail: 'הטעינה נכשלה: {msg}', planning: 'מחשב…', noJourney: 'לא נמצא מסלול עד 3 החלפות בחלון הזמן הזה.',
     noOriginStops: 'אין תחנה במרחק הליכה מנקודת המוצא.', noDestStops: 'אין תחנה במרחק הליכה מהיעד.', pickBoth: 'בחרו מאיפה ולאן.',
@@ -53,7 +53,7 @@ const STR = {
     back: 'Back', fromHere: 'From here', toHere: 'To here', nextDeps: 'Next departures', fromQ: 'From? (empty = my location)', toQ: 'To?', myLoc: 'My location',
     loadingTT: 'Loading the timetable', loadingST: 'Loading the street network (bikes and exact walking)', loadingPL: 'Loading addresses and places', unpacking: 'unpacking…', ready: 'Ready. {trips} trips on {date}.',
     kindStop: 'stop', kindAddress: 'address', kindStreet: 'street', kindCity: 'city', kindPoi: 'place', approxNo: 'nearest: {n}', placesPending: 'Addresses and places are still loading…', noMatch: 'No match. Try a stop name, a street and number, or a city.',
-    pickTitle: 'Pick on the map', pickHint: 'Move the map so the marker is on the place', choose: 'Choose', cancel: 'Cancel', nearName: 'near {name}', pointName: 'Point on the map',
+    tagTo: 'To', tagFrom: 'From', go: 'Go', pickTitle: 'Pick on the map', pickHint: 'Move the map so the marker is on the place', choose: 'Choose', cancel: 'Cancel', nearName: 'near {name}', pointName: 'Point on the map',
     btnLoc: '📍 My location', btnMap: '🗺️ Pick on the map', build: 'build {v}', updated: 'A new version has loaded.',
     readyStreets: 'Street network loaded.', loadFail: 'Loading failed: {msg}', planning: 'Planning…', noJourney: 'No journey with up to 3 transfers in this time window.',
     noOriginStops: 'No stop within walking distance of the origin.', noDestStops: 'No stop within walking distance of the destination.', pickBoth: 'Pick both the origin and the destination.',
@@ -177,7 +177,7 @@ function atSeconds() {
   if ($('day').value === svc.day && svc.lateNight && h < 3) sec += 86400;
   return sec;
 }
-function setAt(sec) { $('at').value = fmt(Math.max(0, Math.min(sec, 86400 * 2 - 60))); }
+function setAt(sec) { $('at').value = fmt(Math.max(0, Math.min(sec, 86400 * 2 - 60))); timeTouched = true; }
 function setDefaultTime() {
   const svc = live.serviceDay();
   $('at').value = $('day').value === svc.day ? fmt(svc.seconds) : '08:00';
@@ -307,14 +307,18 @@ async function init() {
   loadShapes();
 }
 $('day').addEventListener('change', () => { loadDay($('day').value).catch((e) => setStatus(t('loadFail', { msg: e.message }), true)); setDefaultTime(); });
+let timeTouched = false;   // the rider set a day, a time or "arrive by"; until then every plan is from now
 $('nowBtn').addEventListener('click', () => {
   if (manifest) $('day').value = startDay();
   setDefaultTime(); setTimeMode('depart');
+  timeTouched = false;
+  renderOptionChips();
   if (dayInfo && dayInfo.date !== $('day').value) $('day').dispatchEvent(new Event('change'));
 });
+for (const id of ['at', 'day']) $(id).addEventListener('input', () => { timeTouched = true; });
 function setTimeMode(mode) { for (const o of $('timeMode').querySelectorAll('button')) o.setAttribute('aria-pressed', String(o.dataset.mode === mode)); }
 const timeMode = () => $('timeMode').querySelector('[aria-pressed="true"]').dataset.mode;
-for (const b of $('timeMode').querySelectorAll('button')) b.addEventListener('click', () => setTimeMode(b.dataset.mode));
+for (const b of $('timeMode').querySelectorAll('button')) b.addEventListener('click', () => { setTimeMode(b.dataset.mode); timeTouched = true; });
 
 // ---------------------------------------------------------------- places and search
 const place = { from: null, to: null };   // {name, stops:[...], lat, lon} or {name, lat, lon}
@@ -423,6 +427,21 @@ attachSearch($('fromQ'), $('fromDrop'), (p, typing) => {
 }, { actions: true });
 const myLocation = (pos) => ({ name: t('myLoc'), lat: pos.lat, lon: pos.lon, transient: true });
 for (const id of ['toQ', 'fromQ']) $(id).addEventListener('focus', () => { $('menu').hidden = true; });
+$('toQ').addEventListener('input', () => { $('toClear').hidden = !$('toQ').value; });
+$('goBtn').addEventListener('click', () => {
+  if (!place.to) { $('toQ').focus(); return; }
+  if (place.from && !place.from.transient) { nav.closeAll(); showScreen('plan'); plan(); } else planTo(place.to);
+});
+$('toClear').addEventListener('click', () => nav.close('plan'));
+/** Back to a clean bar: no places, no results, the sheet down to its strip. */
+function clearPlan() {
+  place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = '';
+  lastResult = null; lastQuery = null; lastSearch.clear();
+  $('results').innerHTML = ''; showPlanError('');
+  setOptions(false); $('nowBtn').click();
+  updateFromRow(); renderOptionChips(); renderRecent();
+  applyLiveShow(); renderPanels();
+}
 // the menu under the ☰ button
 $('menuBtn').addEventListener('click', (e) => { e.stopPropagation(); $('menu').hidden = !$('menu').hidden; });
 document.addEventListener('click', (e) => { if (!$('menu').contains(e.target) && e.target !== $('menuBtn')) $('menu').hidden = true; });
@@ -505,6 +524,7 @@ function applyQuery(q) {
   if (q.day && manifest && manifest.days.some((d) => d.date === q.day)) $('day').value = q.day;
   if (q.at) $('at').value = q.at;
   setTimeMode(q.arriveBy ? 'arrive' : 'depart');
+  timeTouched = !!(q.at || q.arriveBy);
   renderOptionChips();
 }
 function parseShared(params) {
@@ -517,6 +537,8 @@ async function plan(opts = {}) {
   showPlanError('');
   if (!place.from || !place.to) { showPlanError(t('pickBoth')); return; }
   if (!ttReady) return;
+  if (!timeTouched) { setDefaultTime(); if (manifest && $('day').value !== startDay() && manifest.days.some((d) => d.date === startDay())) { $('day').value = startDay(); } }
+  if (!nav.stack.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' });   // the back button clears the plan
   const day = $('day').value;
   const weekday = dateOf(day).getDay() <= 4;
   const bike = bikeChoice(), folding = $('folding').checked, arriveBy = timeMode() === 'arrive';
@@ -581,7 +603,8 @@ function journeyCard(j, q, alts, options) {
 function setOptions(open) { $('formBody').hidden = !open; $('topbar').classList.toggle('open', open); layoutTop(); }
 function renderOptionChips() {
   const bike = bikeChoice(), day = $('day').value;
-  $('optTime').textContent = `🕒 ${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? dayLabel(day).split(' · ')[0] : ''} ${$('at').value}`;
+  $('optTime').textContent = timeTouched ? `🕒 ${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? dayLabel(day).split(' · ')[0] : ''} ${$('at').value}` : `🕒 ${t('now')}`;
+  $('toClear').hidden = !$('toQ').value;
   $('optBike').textContent = `🚲 ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
 }
 for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => setOptions($('formBody').hidden));
@@ -1760,13 +1783,14 @@ const nav = {
   undo(entry) {
     if (entry.kind === 'overlay') hideOverlay(entry.id);
     else if (entry.kind === 'tab') showScreen(entry.from, false);
+    else if (entry.kind === 'plan') clearPlan();
   },
-  /** Close the given overlay now; history steps back one entry to match (its popstate then finds nothing left to undo). */
+  /** Close the given overlay (or the plan) now; history steps back one entry to match (its popstate then finds nothing left to undo). */
   close(id) {
-    const i = this.stack.findIndex((e) => e.kind === 'overlay' && e.id === id);
-    if (i < 0) return;
-    this.stack.splice(i, 1);
-    hideOverlay(id);
+    const i = this.stack.findIndex((e) => (e.kind === 'overlay' && e.id === id) || (e.kind === 'plan' && id === 'plan'));
+    if (i < 0) { if (id === 'plan') clearPlan(); return; }
+    const [entry] = this.stack.splice(i, 1);
+    if (entry.kind === 'plan') clearPlan(); else hideOverlay(id);
     try { history.back(); } catch (e) {}
   },
   /** Replace one open overlay by another in place (the trip detail becomes the trip being followed). */
