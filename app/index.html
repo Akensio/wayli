@@ -37,6 +37,31 @@
     </div>
     <button type="button" class="iconbtn small" id="swap" title="החלף">⇅</button>
   </div>
+  <div class="trow opts" id="optRow" hidden>
+    <button type="button" class="chipbtn" id="optTime"></button>
+    <button type="button" class="chipbtn" id="optBike"></button>
+  </div>
+  <div class="optpanel" id="formBody" hidden>
+    <div class="row">
+      <div class="seg small" id="timeMode">
+        <button type="button" data-mode="depart" aria-pressed="true" data-t="departAt">יציאה</button>
+        <button type="button" data-mode="arrive" aria-pressed="false" data-t="arriveBy">הגעה עד</button>
+      </div>
+      <select id="day"></select>
+      <input type="time" id="at">
+      <button type="button" class="swap" id="nowBtn" data-t="now">עכשיו</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <span class="muted" data-t="bike">אופניים</span>
+      <div class="seg" id="bikeMode">
+        <button type="button" data-mode="none" aria-pressed="true" data-t="bikeNone">בלי</button>
+        <button type="button" data-mode="park" aria-pressed="false" data-t="bikePark">עד התחנה</button>
+        <button type="button" data-mode="along" aria-pressed="false" data-t="bikeAlong">לוקח/ת איתי</button>
+      </div>
+      <label class="check"><input type="checkbox" id="folding"> <span data-t="folding">מתקפלים</span></label>
+    </div>
+    <button type="button" class="primary slim" id="planBtn" data-t="plan">תכנון מסלול</button>
+  </div>
 </div>
 <div class="menu" id="menu" hidden>
   <button type="button" data-screen="plan"><span class="ic">🧭</span><span data-t="tabPlan">מסלול</span></button>
@@ -63,31 +88,7 @@
 
   <section class="screen" id="screen-plan">
     <div class="peekrow" id="peekRow"></div>
-    <div class="card options" id="formCard">
-      <div class="optrow"><button type="button" class="chipbtn" id="optTime"></button><button type="button" class="chipbtn" id="optBike"></button></div>
-      <div class="error-box" id="planError" hidden></div>
-      <div id="formBody" hidden>
-      <div class="row">
-        <div class="seg small" id="timeMode">
-          <button type="button" data-mode="depart" aria-pressed="true" data-t="departAt">יציאה</button>
-          <button type="button" data-mode="arrive" aria-pressed="false" data-t="arriveBy">הגעה עד</button>
-        </div>
-        <select id="day"></select>
-        <input type="time" id="at">
-        <button type="button" class="swap" id="nowBtn" data-t="now">עכשיו</button>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <span class="muted" data-t="bike">אופניים</span>
-        <div class="seg" id="bikeMode">
-          <button type="button" data-mode="none" aria-pressed="true" data-t="bikeNone">בלי</button>
-          <button type="button" data-mode="park" aria-pressed="false" data-t="bikePark">עד התחנה</button>
-          <button type="button" data-mode="along" aria-pressed="false" data-t="bikeAlong">לוקח/ת איתי</button>
-        </div>
-        <label class="check"><input type="checkbox" id="folding"> <span data-t="folding">מתקפלים</span></label>
-      </div>
-      <button type="button" class="primary" id="planBtn" data-t="plan">תכנון מסלול</button>
-      </div>
-    </div>
+    <div class="error-box" id="planError" hidden></div>
     <div id="results"></div>
     <div id="recentBox"></div>
   </section>
@@ -115,7 +116,7 @@
       <h2 class="sec" style="margin-top:0" data-t="settings">הגדרות</h2>
       <div class="setrow"><span data-t="setLang">שפה</span><div class="seg small" id="setLang"><button type="button" data-v="he">עברית</button><button type="button" data-v="en">English</button></div></div>
       <div class="setrow"><span data-t="setMap">מפה במצב כהה</span><div class="seg small" id="setMap"><button type="button" data-v="auto" data-t="mapLight">בהירה</button><button type="button" data-v="dark" data-t="mapDark">כהה</button></div></div>
-      <div class="setrow"><span data-t="setWalk">הליכה מרבית לתחנה</span><div class="seg small" id="setWalk"><button type="button" data-v="10">10</button><button type="button" data-v="15">15</button><button type="button" data-v="20">20</button><button type="button" data-v="30">30</button></div></div>
+      <div class="setrow walk"><span><span data-t="setWalk">הליכה מרבית לתחנה</span> <b id="setWalkVal"></b></span><input type="range" id="setWalk" min="3" max="45" step="1"></div>
       <label class="setrow check"><span data-t="setLive">זמני אמת</span><input type="checkbox" id="setLive"></label>
       <div class="muted" data-t="liveNote">זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.</div>
       <label class="setrow check"><span data-t="setNotify">התראות בנסיעה (לרדת בתחנה)</span><input type="checkbox" id="setNotify"></label>

@@ -406,9 +406,27 @@ const ops = {
   /** The trip a reported vehicle is running: route id and scheduled start (ISO or ms). */
   tripFor({ routeId, scheduledStart }) { return tripFor(routeId, secondsOn(new Date(scheduledStart), tt.header.date)); },
   /** Every stop of the day as GeoJSON, for the live map. */
+  /** Every stop as a point with its kind: rail, lrt (light rail), station (a bus station: a parent with
+   *  platforms), platform (a stop inside a station, with the station's kind in `st`), or bus. A station is one
+   *  feature at the centre of its platforms, its first platform standing for it in taps. */
   stopsGeo() {
+    const rail = railStops();
+    const lrt = new Uint8Array(tt.stops.length);
+    for (let p = 0; p < tt.patRoute.length; p++) if (tt.routes[tt.patRoute[p]][3] === 0) for (let i = tt.patStopsOff[p]; i < tt.patStopsOff[p + 1]; i++) lrt[tt.patStops[i]] = 1;
+    const kindOf = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
     const features = [];
-    for (let s = 0; s < tt.stops.length; s++) features.push({ type: 'Feature', properties: { stop: s, name: tt.stops[s][1] }, geometry: { type: 'Point', coordinates: [tt.stopLon[s], tt.stopLat[s]] } });
+    const stKind = new Map();
+    for (const [p, members] of tt.stationStops) {
+      let la = 0, lo = 0, k = 'station';
+      for (const s of members) { la += tt.stopLat[s]; lo += tt.stopLon[s]; const ks = kindOf(s); if (ks === 'rail' || (ks === 'lrt' && k === 'station')) k = ks; }
+      if (k === 'station' && members.length < 3) continue;   // a pair of opposite bus stops the feed groups is not a bus station
+      stKind.set(p, k);
+      features.push({ type: 'Feature', properties: { stop: members[0], station: p, name: (tt.stations[p] && tt.stations[p][1]) || tt.stops[members[0]][1], kind: k }, geometry: { type: 'Point', coordinates: [lo / members.length, la / members.length] } });
+    }
+    for (let s = 0; s < tt.stops.length; s++) {
+      const p = tt.stopParent[s];
+      features.push({ type: 'Feature', properties: p >= 0 && stKind.has(p) ? { stop: s, name: tt.stops[s][1], kind: 'platform', st: stKind.get(p) } : { stop: s, name: tt.stops[s][1], kind: kindOf(s) }, geometry: { type: 'Point', coordinates: [tt.stopLon[s], tt.stopLat[s]] } });
+    }
     return { type: 'FeatureCollection', features };
   },
   /** One trip's every stop with times, plus what identifies it in real-time data. */
@@ -446,7 +464,13 @@ const ops = {
     out.sort((a, b) => a.distance - b.distance);
     return out.slice(0, limit).map((o) => ({ ...o, lines: linesAt(o.stop) }));
   },
-  stopInfo({ stop }) { return { ...stopOut(stop), lines: linesAt(stop, 30) }; },
+  /** A stop's lines; for a station (parent index), the lines of all its platforms under the station's name. */
+  stopInfo({ stop, station = -1 }) {
+    if (station < 0) return { ...stopOut(stop), lines: linesAt(stop, 30) };
+    const seen = new Map();
+    for (const s of tt.stationStops.get(station) || [stop]) for (const l of linesAt(s, 40)) if (!seen.has(l.label)) seen.set(l.label, l);
+    return { ...stopOut(stop), name: (tt.stations[station] && tt.stations[station][1]) || tt.stops[stop][1], code: '', lines: Array.from(seen.values()).slice(0, 30) };
+  },
   /** The GTFS route ids of the lines serving stops within `radius` m of a point: what can be taken from there. */
   nearbyRoutes({ lat, lon, radius = 500 }) {
     const ids = new Set();

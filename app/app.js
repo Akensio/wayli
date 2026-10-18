@@ -29,7 +29,7 @@ const STR = {
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
     dayFmt: ['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], today: 'היום', tomorrow: 'מחר', tonight: 'הלילה',
     offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מפה במצב כהה', mapLight: 'בהירה', mapDark: 'כהה',
-    setWalk: 'הליכה מרבית לתחנה (דק\')', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', clearHistory: 'מחיקת היסטוריה',
+    setWalk: 'הליכה מרבית לתחנה:', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
     startTrip: '▶ התחלת נסיעה', share: 'שיתוף', endTrip: 'סיום', nextStep: 'השלב הבא ›', home: 'בית', work: 'עבודה', notSet: 'לא הוגדר. לחצו כדי לבחור.', change: 'שינוי', addPlace: '+ מקום שמור', remove: 'הסרה',
     recentTitle: 'חיפושים אחרונים', planAgain: 'חישוב מחדש מעכשיו', resultsFrom: 'תוצאות מ-{time}', leaveIn: 'יוצאים בעוד {n} דק\'', leaveNow: 'יוצאים עכשיו', departed: 'יצא', earlier: '‹ מוקדם יותר', later: 'מאוחר יותר ›',
@@ -66,7 +66,7 @@ const STR = {
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
     dayFmt: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], today: 'Today', tomorrow: 'Tomorrow', tonight: 'Tonight',
     offline: 'offline', resume: 'Resume', departAt: 'Depart', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map in dark mode', mapLight: 'Light', mapDark: 'Dark',
-    setWalk: 'Longest walk to a stop (min)', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', clearHistory: 'Clear history',
+    setWalk: 'Longest walk to a stop:', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone sends their server the line numbers and the area you are looking at. Nothing else.',
     startTrip: '▶ Start trip', share: 'Share', endTrip: 'End', nextStep: 'Next step ›', home: 'Home', work: 'Work', notSet: 'Not set. Tap to choose.', change: 'Change', addPlace: '+ Saved place', remove: 'Remove',
     recentTitle: 'Recent searches', planAgain: 'Plan again from now', resultsFrom: 'Results from {time}', leaveIn: 'Leave in {n} min', leaveNow: 'Leave now', departed: 'departed', earlier: '‹ Earlier', later: 'Later ›',
@@ -320,7 +320,7 @@ for (const b of $('timeMode').querySelectorAll('button')) b.addEventListener('cl
 const place = { from: null, to: null };   // {name, stops:[...], lat, lon} or {name, lat, lon}
 function describePlace(p) { return p ? p.name + (p.platforms > 1 ? ` (${t('platforms', { n: p.platforms })})` : '') : ''; }
 function setPlace(side, p) { place[side] = p; $(side + 'Q').value = p ? p.name : ''; updateFromRow(); }
-function updateFromRow() { $('fromRow').hidden = !(place.to || place.from); layoutTop(); }
+function updateFromRow() { const on = !!(place.to || place.from); $('fromRow').hidden = !on; $('optRow').hidden = !on; if (!on) setOptions(false); layoutTop(); }
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
 function layoutTop() { const r = $('topbar').getBoundingClientRect(); document.documentElement.style.setProperty('--top-h', `${Math.round(r.bottom + 6)}px`); }
 window.addEventListener('resize', layoutTop);
@@ -578,13 +578,13 @@ function journeyCard(j, q, alts, options) {
   return d;
 }
 /** The options as two chips (when; bicycle); the details open under them on a tap and close after planning. */
-function setOptions(open) { $('formBody').hidden = !open; $('formCard').classList.toggle('open', open); }
+function setOptions(open) { $('formBody').hidden = !open; $('topbar').classList.toggle('open', open); layoutTop(); }
 function renderOptionChips() {
   const bike = bikeChoice(), day = $('day').value;
   $('optTime').textContent = `🕒 ${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? dayLabel(day).split(' · ')[0] : ''} ${$('at').value}`;
   $('optBike').textContent = `🚲 ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
 }
-for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => { setOptions($('formBody').hidden); if (!$('formBody').hidden) $('sheetBody').scrollTop = 0; });
+for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => setOptions($('formBody').hidden));
 for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at')]) { el.addEventListener('click', renderOptionChips); el.addEventListener('change', renderOptionChips); }
 function renderResults(r, q, resultsAt = null) {
   const box = $('results');
@@ -738,15 +738,17 @@ async function initMap() {
 function setupMapLayers(m) {
   if (m.getSource('lm-veh')) return;
   m.addSource('lm-stops', { type: 'geojson', data: EMPTY });
-  m.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, paint: { 'circle-radius': 4, 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
+  m.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, filter: ['in', ['get', 'kind'], ['literal', ['bus', 'platform']]], paint: { 'circle-radius': ['case', ['==', ['get', 'kind'], 'platform'], 3, 4], 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
+  for (const k of ['rail', 'lrt', 'station']) if (!m.hasImage('wayli-st-' + k)) m.addImage('wayli-st-' + k, stationImage(k), { pixelRatio: 2 });
+  m.addLayer({ id: 'lm-stations', type: 'symbol', source: 'lm-stops', minzoom: 11, filter: ['in', ['get', 'kind'], ['literal', ['rail', 'lrt', 'station']]], layout: { 'icon-image': ['concat', 'wayli-st-', ['get', 'kind']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 15, 1], 'icon-allow-overlap': true } });
   ensureJourneyLayers(m);
   m.addSource('lm-veh', { type: 'geojson', data: EMPTY });
   m.addLayer({ id: 'lm-veh', type: 'circle', source: 'lm-veh', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 13, 7, 15, 11], 'circle-color': ['get', 'color'], 'circle-opacity': ['get', 'opacity'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-stroke-opacity': ['get', 'opacity'] } });
   m.addLayer({ id: 'lm-veh-dir', type: 'symbol', source: 'lm-veh', filter: ['>', ['get', 'bearing'], -1], layout: { 'icon-image': ['concat', 'wayli-arrow-', ['get', 'ckey']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.55, 15, 1], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': [0, -17], 'icon-allow-overlap': true, 'icon-ignore-placement': true }, paint: { 'icon-opacity': ['get', 'opacity'] } });
   m.addLayer({ id: 'lm-veh-label', type: 'symbol', source: 'lm-veh', minzoom: 13.5, layout: { 'text-field': ['get', 'line'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 9, 16, 12], 'text-allow-overlap': true, 'text-ignore-placement': true, 'text-font': ['Noto Sans Bold'] }, paint: { 'text-color': ['get', 'tcol'], 'text-opacity': ['get', 'opacity'] } });
   m.on('click', 'lm-veh', (e) => { if (e.features && e.features[0]) selectVehicle(e.features[0].properties, e.features[0].geometry.coordinates); });
-  m.on('click', 'lm-stops', (e) => { if (e.features && e.features[0] && !m.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) stopPopup(m, e.features[0].geometry.coordinates, +e.features[0].properties.stop); });
-  for (const layer of ['lm-veh', 'lm-stops']) { m.on('mouseenter', layer, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', layer, () => { m.getCanvas().style.cursor = ''; }); }
+  for (const layer of ['lm-stops', 'lm-stations']) m.on('click', layer, (e) => { const f = e.features && e.features[0]; if (f && !m.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length) stopPopup(m, f.geometry.coordinates, +f.properties.stop, f.properties.station); });
+  for (const layer of ['lm-veh', 'lm-stops', 'lm-stations']) { m.on('mouseenter', layer, () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', layer, () => { m.getCanvas().style.cursor = ''; }); }
 }
 /** Switch the basemap (settings, or the phone's dark mode): a full reload of the style, so style.load re-adds our layers. */
 async function applyMapStyle() {
@@ -858,7 +860,10 @@ function ensureJourneyLayers(m) {
   m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 12, paint: { 'circle-radius': 3.5, 'circle-color': '#ffffff', 'circle-stroke-color': '#444', 'circle-stroke-width': 1.5 } });
-  wireStopLayers(m, ['journey-stops', 'context-stops']);
+  // stations along a line or a journey get their badge over the dot
+  for (const k of ['rail', 'lrt', 'station']) if (!m.hasImage('wayli-st-' + k)) m.addImage('wayli-st-' + k, stationImage(k), { pixelRatio: 2 });
+  for (const [id, src] of [['context-stations', 'context-stops'], ['journey-stations', 'stops']]) m.addLayer({ id, type: 'symbol', source: src, minzoom: 10, filter: ['has', 'kind'], layout: { 'icon-image': ['concat', 'wayli-st-', ['get', 'kind']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 15, 1], 'icon-allow-overlap': true } });
+  wireStopLayers(m, ['journey-stops', 'context-stops', 'journey-stations', 'context-stations']);
 }
 /** The whole line of every ride, faded, with all its stops: where the bus comes from and where it goes on. */
 async function drawContext(m, j, focus = -1) {
@@ -871,7 +876,7 @@ async function drawContext(m, j, focus = -1) {
     courses.forEach((c, i) => {
       const color = legColor(rides[i]);
       if (c.path && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: c.path.map((q) => [q[1], q[0]]) } });
-      for (const st of c.stops) dots.push({ type: 'Feature', properties: { color, name: st[2], stop: st[3] }, geometry: { type: 'Point', coordinates: [st[1], st[0]] } });
+      for (const st of c.stops) dots.push({ type: 'Feature', properties: { color, name: st[2], stop: st[3], ...stopKindProp(st[3]) }, geometry: { type: 'Point', coordinates: [st[1], st[0]] } });
     });
     m.getSource('context').setData({ type: 'FeatureCollection', features: lines });
     m.getSource('context-stops').setData({ type: 'FeatureCollection', features: dots });
@@ -896,7 +901,7 @@ function drawJourney(m, j, markers, focus = -1) {
       }
       // the stops between boarding and alighting: from the leg's stop list (the path itself follows the road now)
       const between = l.stopsAlong ? l.stopsAlong.slice(1, -1).map((st) => ({ c: [st.lon, st.lat], stop: st.stop })) : (l.pathKind === 'stops' ? coords.slice(1, -1).map((c) => ({ c, stop: '' })) : []);
-      for (const b of between) dots.push({ type: 'Feature', properties: { stop: b.stop }, geometry: { type: 'Point', coordinates: b.c } });
+      for (const b of between) dots.push({ type: 'Feature', properties: { stop: b.stop, ...stopKindProp(b.stop) }, geometry: { type: 'Point', coordinates: b.c } });
     }
   }
   m.getSource('journey').setData({ type: 'FeatureCollection', features });
@@ -931,9 +936,9 @@ function vehiclePopup(m, lngLat, v) {
   });
 }
 /** A stop's bubble: name, its lines, and departures / from here / to here. */
-async function stopPopup(m, lngLat, stop) {
+async function stopPopup(m, lngLat, stop, station) {
   let info;
-  try { info = await call('stopInfo', { stop }); } catch (e) { return; }
+  try { info = await call('stopInfo', { stop, station: station != null && station !== '' ? +station : -1 }); } catch (e) { return; }
   const html = `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
     `<div class="chips">${info.lines.slice(0, 10).map((l) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${esc(lineText(l.label))}</span>`).join('')}</div>` +
     `<div class="row"><button type="button" class="ghost" data-act="deps">${t('popDeps')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
@@ -1226,7 +1231,12 @@ const lmLabels = new Map();
 const typeColor = (type) => routeColor(type, null);
 async function loadStopsGeo() {
   if (lmStops || !ttReady || !mainMap || !mapStyled) return;
-  try { const geo = await call('stopsGeo'); if (mainMap && mainMap.getSource('lm-stops')) { mainMap.getSource('lm-stops').setData(geo); lmStops = true; } } catch (e) { /* stops are a bonus */ }
+  try {
+    const geo = await call('stopsGeo');
+    stopKinds.clear();
+    for (const f of geo.features) { const p = f.properties; if (p.kind === 'platform') stopKinds.set(p.stop, p.st); else if (p.kind !== 'bus' && p.station == null) stopKinds.set(p.stop, p.kind); }
+    if (mainMap && mainMap.getSource('lm-stops')) { mainMap.getSource('lm-stops').setData(geo); lmStops = true; }
+  } catch (e) { /* stops are a bonus */ }
 }
 async function refreshLiveMap() {
   const m = mainMap;
@@ -1267,6 +1277,19 @@ async function refreshLiveMap() {
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLiveMap(); });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 const heading = (v) => (v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1);
+const stopKinds = new Map();   // stop -> 'rail' | 'lrt' | 'station' for stops that are, or belong to, a station
+const stopKindProp = (stop) => (stopKinds.has(stop) ? { kind: stopKinds.get(stop) } : {});
+/** A station badge: a white disc with a coloured ring and the mode's glyph, drawn at 2x. */
+function stationImage(kind) {
+  const size = 44, c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2 - 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff'; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = kind === 'rail' ? TRAIN_COLOR : kind === 'lrt' ? LRT_COLOR : BUS_DEFAULT; ctx.stroke();
+  ctx.font = '22px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(kind === 'rail' ? '🚆' : kind === 'lrt' ? '🚊' : '🚌', size / 2, size / 2 + 1);
+  return ctx.getImageData(0, 0, size, size);
+}
 /** A small upward triangle in a colour, with a white edge, drawn at 2x for crisp rotation. */
 function arrowImage(color) {
   const size = 36, c = document.createElement('canvas'); c.width = c.height = size;
@@ -1297,7 +1320,7 @@ async function openLine(route) {
     if (!m || my !== lineSeq || stale(seq)) return;
     const b = drawJourney(m, { legs: [{ type: 'ride', routeType: info.routeType, path: info.path, pattern: null }] }, journeyMarkers);
     // every stop of the line as a dot
-    m.getSource('stops').setData({ type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });
+    m.getSource('stops').setData({ type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop, ...stopKindProp(st.stop) }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });
     fitMap(b, 15);
     lineLive();
   };
@@ -1420,12 +1443,14 @@ function renderSaved() {
 function renderSettings() {
   const s = settings.get();
   const seg = (id, v) => { for (const b of $(id).querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); };
-  seg('setLang', lang); seg('setMap', s.map); seg('setWalk', s.maxWalk);
+  seg('setLang', lang); seg('setMap', s.map);
+  $('setWalk').value = s.maxWalk; $('setWalkVal').textContent = `${s.maxWalk} ${t('min')}`;
   $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
 }
 for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
 for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); renderSettings(); });
-for (const b of $('setWalk').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ maxWalk: +b.dataset.v }); renderSettings(); });
+$('setWalk').addEventListener('input', () => { $('setWalkVal').textContent = `${$('setWalk').value} ${t('min')}`; });
+$('setWalk').addEventListener('change', () => { settings.set({ maxWalk: +$('setWalk').value }); renderSettings(); });
 $('setLive').addEventListener('change', () => settings.set({ live: $('setLive').checked }));
 $('setNotify').addEventListener('change', async () => { settings.set({ notify: $('setNotify').checked }); if ($('setNotify').checked) await requestAlertPermission(); });
 $('setSound').addEventListener('change', () => settings.set({ sound: $('setSound').checked }));

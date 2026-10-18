@@ -219,3 +219,12 @@ so they are not re-litigated.
   two minutes. Rejected: a separate app-only workflow (two deploy paths
   to keep consistent) and committing the compiled data (100 MB a day in
   git).
+- 2026-10-18 Gadi: the planner must not sit below the map at all ("stop
+  reusing that element"). The options moved into the top bar as a third
+  row of chips (when; bicycle) with their details in a card hanging off
+  the bar; the sheet's plan screen is results and recent searches only.
+- 2026-10-18 Gadi: station dots need icons; the longest walk needs a finer
+  setting. Stations (rail, light rail, bus stations) are badges with the
+  mode's glyph, one per station; the walk is a slider by the minute.
+  Rejected for the walk: a number field (fiddly on a phone) and more
+  preset buttons (still coarse).

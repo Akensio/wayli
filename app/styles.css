@@ -119,6 +119,9 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .stopsrow .veh { color: var(--ok); font-size: 12px; }
 .settings .setrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .settings .setrow:last-of-type { border-bottom: 0; }
+.settings .setrow.walk { flex-wrap: wrap; }
+.settings .setrow.walk input[type=range] { flex: 1 1 100%; accent-color: var(--accent); margin: 4px 0 2px; }
+.settings .setrow.walk b { color: var(--accent-text); font-variant-numeric: tabular-nums; }
 .settings label.setrow input { width: 22px; height: 22px; }
 .settings .muted { margin: -2px 0 6px; line-height: 1.4; }
 .saved-row { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
@@ -256,12 +259,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .detail .actions { padding: 0 0 6px; }
 .detail .center { padding: 4px 0 0; }
 .topbar[hidden] { display: none; }
-/* the options: one row of chips (when and with what), the details only when a chip is tapped */
-.card.options { padding: 8px 10px; }
-.optrow { display: flex; gap: 6px; flex-wrap: wrap; }
-.card.options.open .optrow .chipbtn { background: var(--ink); color: var(--bg); }
-#formBody { margin-top: 10px; }
-#formBody[hidden] { display: none; }
+/* the options in the top bar: two chips under the origin (when; bicycle); their details in a card hanging off the bar */
+.topbar .trow.opts { padding-inline-start: 54px; gap: 6px; }
+.topbar .trow.opts .chipbtn { background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-weight: 600; }
+.topbar.open .trow.opts .chipbtn { background: var(--ink); color: var(--bg); }
+.optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; }
+.optpanel[hidden] { display: none; }
+.optpanel .primary { margin-top: 10px; }
 .peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
 .peekrow::-webkit-scrollbar { display: none; }
 .peekrow .chipbtn { flex: none; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }

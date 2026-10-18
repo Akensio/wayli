@@ -154,12 +154,12 @@ a floating top bar that is the planner: a menu button, the destination
 field (places, addresses and line numbers; its quick menu offers my
 location, a point on the map, saved and recent places), the language
 toggle, and, once a place is set, a second row with the origin field
-(empty means my location) and a swap button. A destination plans at once;
-changing either field plans again. A bottom sheet with three heights (a
+(empty means my location) and a swap button, then a row of two chips for
+the options (when; bicycle) whose details open in a card hanging off the
+bar. A destination plans at once; changing either field plans again;
+nothing of the planner sits in the sheet. A bottom sheet with three heights (a
 strip, about half the screen, nearly full) carries every panel: the plan
-screen (two chips for the options, when and by bicycle, that open the
-details only when tapped; the results; recent searches), nearby, saved,
-settings,
+screen (results and recent searches only), nearby, saved, settings,
 and the panels for a journey, a stop, a trip's stops, a line, the place
 chooser and the trip being followed. The sheet is dragged by its
 handle or tapped to cycle; a tap on empty map collapses it. Picking a point
@@ -187,7 +187,7 @@ search box lists saved and recent places when empty. Depart-at or arrive-by
 (a two-hour window ending at the target, latest departure first); day
 picker over the published service days, with "tonight" until 03:00 since a
 service day runs past midnight; bicycle choice; the longest walk to a stop
-is a setting (10 to 30 minutes). Results come back grouped: journeys that
+is a setting (a slider, 3 to 45 minutes by the minute). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
 ("also at 08:17, 08:32") and the alternative lines of a leg shown together
 ("5 / 18"); "leave in 4 min" counts down and departed options grey out;
@@ -402,7 +402,13 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   note says which); hidden while a journey, a line or a followed trip
   draws its own vehicles with their delays. A vehicle whose last report is
   more than five minutes behind the newest report of the feed is not drawn
-  at all (the feed lags as a whole; a single stale vehicle is noise). A tap on any vehicle, on any map, opens a bubble
+  at all (the feed lags as a whole; a single stale vehicle is noise).
+  Stops carry a kind: railway stations, light rail stops and bus stations
+  (a parent with platforms) are badges with the mode's glyph from zoom 11,
+  one per station at the centre of its platforms (a tap shows the lines of
+  all its platforms); ordinary stops and platforms are the small circles
+  from zoom 14. The same badges mark stations along a drawn line or
+  journey. A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
   buttons to its trip's stops and its line page; a tap on any stop dot opens
   a bubble with the stop's lines and departures / from here / to here. No
