@@ -398,3 +398,8 @@ so they are not re-litigated.
   strip scrolls by script; pull-to-refresh is the app's own circle on the
   bar and the collapsed sheet. Rejected: more touch-action tuning (three
   rounds spent).
+- 2026-10-19 Gadi: the bluish flash on tapped buttons (the browser's tap
+  highlight) goes; feedback of our own instead: press-down, tint, ripple.
+- 2026-10-19 Gadi: the friend's "add to home screen" was Chrome on iPhone.
+  Covered by the iPhone row (same user agent family), but the hint named
+  Safari; it now names the browser in hand and where its share button is.

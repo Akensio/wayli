@@ -238,9 +238,14 @@ sheet say `touch-action: none` and the sheet reads every touch itself: up
 opens it, down refreshes, sideways on the chip strip scrolls the strip by
 script with a small fling (the browser never claims a gesture there, which
 is what made starts on the strip feel stuck). The drawer also has "reload
-the app". On iPhones, which never fire the install prompt, the
-settings row "add to home screen" shows Safari's own way (Share, then Add
-to Home Screen); the page carries the Apple meta tags and touch icon.
+the app". On iPhones, which never fire the install prompt in any
+browser (all of them are WebKit), the settings row "add to home screen"
+explains the way of the browser in hand: Safari's share button at the
+bottom, Chrome's by the address bar, Firefox's and Edge's in their menu,
+then Add to Home Screen; the page carries the Apple meta tags and touch
+icon. Touch feedback is the app's own: the browser's tap highlight is off,
+buttons press down a little, rows and cards tint, and a soft ripple spreads
+from the finger on anything tappable.
 
 Checks: `npx --yes eslint@9 app/*.js` (eslint.config.mjs at the root, the
 no-undef rule) runs in the deploy workflow before the build.

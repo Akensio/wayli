@@ -80,7 +80,7 @@ const STR = {
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
     dayFmt: ['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], today: 'היום', tomorrow: 'מחר', tonight: 'הלילה',
     offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מראה המפה', setTheme: 'מראה התפריטים', mapLight: 'בהיר', mapDark: 'כהה', mapSystem: 'כמו המכשיר', grpGeneral: 'כללי', grpPlan: 'תכנון', grpLive: 'זמן אמת והתראות', grpApp: 'האפליקציה', grpAbout: 'על Wayli', menuNote: 'בלי חשבון. הכול נשאר בטלפון.', setWalkHint: 'דקות, לכל היותר, לתחנה הראשונה ומהאחרונה',
-    setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', iosInstall: 'ב-Safari: לחצו על כפתור השיתוף (ריבוע עם חץ למעלה) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', reload: 'רענון האפליקציה', clearHistory: 'מחיקת היסטוריה',
+    setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', iosInstall: 'ב-{browser}: לחצו על כפתור השיתוף ({where}) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', shareBottom: 'ריבוע עם חץ למעלה, בתחתית המסך', shareAddr: 'ריבוע עם חץ למעלה, ליד שורת הכתובת', shareMenu: 'בתפריט הדפדפן', reload: 'רענון האפליקציה', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
     startTrip: 'התחלת נסיעה', share: 'שיתוף', endTrip: 'סיום', nextStep: 'השלב הבא ›', home: 'בית', work: 'עבודה', notSet: 'לא הוגדר. לחצו כדי לבחור.', change: 'שינוי', addPlace: '+ מקום שמור', remove: 'הסרה',
     recentTitle: 'חיפושים אחרונים', planAgain: 'חישוב מחדש מעכשיו', resultsFrom: 'תוצאות מ-{time}', leaveIn: 'יוצאים בעוד {n} דק\'', leaveNow: 'יוצאים עכשיו', departed: 'יצא', goneTitle: 'יצאו לפני רגע · כבר בנסיעה?', goneHint: 'כבר בנסיעה? {n} נסיעות יצאו לפני רגע', goneHint1: 'כבר בנסיעה? נסיעה אחת יצאה לפני רגע', leftAgo: 'יצא לפני {n} דק\'', aboard: 'אני בפנים', earlier: '‹ מוקדם יותר', later: 'מאוחר יותר ›',
@@ -117,7 +117,7 @@ const STR = {
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
     dayFmt: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], today: 'Today', tomorrow: 'Tomorrow', tonight: 'Tonight',
     offline: 'offline', resume: 'Resume', departAt: 'Depart', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map look', setTheme: 'Menus look', mapLight: 'Light', mapDark: 'Dark', mapSystem: 'Device', grpGeneral: 'General', grpPlan: 'Planning', grpLive: 'Live times and alerts', grpApp: 'The app', grpAbout: 'About Wayli', menuNote: 'No account. Everything stays on your phone.', setWalkHint: 'minutes at most, to the first stop and from the last',
-    setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', iosInstall: 'In Safari: tap the Share button (the square with an arrow) and then "Add to Home Screen". The app then opens full screen, without the browser bar.', reload: 'Reload the app', clearHistory: 'Clear history',
+    setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', iosInstall: 'In {browser}: tap the Share button ({where}) and then "Add to Home Screen". The app then opens full screen, without the browser bar.', shareBottom: 'the square with an arrow, at the bottom of the screen', shareAddr: 'the square with an arrow, next to the address bar', shareMenu: 'in the browser menu', reload: 'Reload the app', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone sends their server the line numbers and the area you are looking at. Nothing else.',
     startTrip: 'Start trip', share: 'Share', endTrip: 'End', nextStep: 'Next step ›', home: 'Home', work: 'Work', notSet: 'Not set. Tap to choose.', change: 'Change', addPlace: '+ Saved place', remove: 'Remove',
     recentTitle: 'Recent searches', planAgain: 'Plan again from now', resultsFrom: 'Results from {time}', leaveIn: 'Leave in {n} min', leaveNow: 'Leave now', departed: 'departed', goneTitle: 'Just left · already riding?', goneHint: 'Already riding? {n} rides just left', goneHint1: 'Already riding? One ride just left', leftAgo: 'left {n} min ago', aboard: 'I\'m on it', earlier: '‹ Earlier', later: 'Later ›',
@@ -313,7 +313,12 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); inst
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = navigator.standalone === true || (matchMedia('(display-mode: standalone)').matches);
 if (isIOS && !standalone) $('installBtn').hidden = false;
-$('installBtn').addEventListener('click', async () => { if (!installPrompt) { $('installHint').hidden = !$('installHint').hidden; return; } installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; $('installBtn').hidden = true; });
+/** The install hint for the browser in hand: Safari's share button sits at the bottom, Chrome's by the address bar. */
+function iosInstallHint() {
+  const ua = navigator.userAgent, chrome = /CriOS/.test(ua), firefox = /FxiOS/.test(ua), edge = /EdgiOS/.test(ua);
+  return t('iosInstall', { browser: chrome ? 'Chrome' : firefox ? 'Firefox' : edge ? 'Edge' : 'Safari', where: chrome ? t('shareAddr') : firefox || edge ? t('shareMenu') : t('shareBottom') });
+}
+$('installBtn').addEventListener('click', async () => { if (!installPrompt) { $('installHint').textContent = iosInstallHint(); $('installHint').hidden = !$('installHint').hidden; return; } installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; $('installBtn').hidden = true; });
 const updateOnline = () => { $('offline').hidden = navigator.onLine !== false; };
 window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline);
 
@@ -2105,6 +2110,18 @@ function showScreen(name, record = true) {
   if (name === 'nearby' && ttReady && !$('nearbyList').querySelector('.stop')) loadNearby();
   if (name === 'plan') $('recentBox').hidden = !!$('results').children.length;
 }
+// ---- touch feedback: a ripple from the finger on anything tappable (the browser's blue flash is turned off in CSS)
+document.addEventListener('pointerdown', (e) => {
+  if (e.button) return;
+  const host = e.target.closest('button:not(.handle):not(.maplibregl-ctrl-compass):not(.maplibregl-ctrl-geolocate), .chipbtn, .journey, .item.act, .drawer > button, .recent, .saved-row, .stop, .gone .txt, .opt');
+  if (!host || host.disabled) return;
+  const r = host.getBoundingClientRect(), size = Math.max(r.width, r.height) * 2;
+  host.classList.add('rippling');
+  const dot = document.createElement('span'); dot.className = 'ripple';
+  dot.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px`;
+  host.appendChild(dot);
+  dot.addEventListener('animationend', () => { dot.remove(); if (!host.querySelector('.ripple')) host.classList.remove('rippling'); }, { once: true });
+}, { passive: true });
 // ---- pull to refresh, ours: the browser's needs a page that scrolls, and this one never does. A pull down on the
 // bar or on the collapsed sheet shows a circle that follows the finger and turns on past 72 px; letting go then
 // reloads (the service worker serves the new build). Works the same in Chrome, Safari and the installed app.
