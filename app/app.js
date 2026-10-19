@@ -415,8 +415,8 @@ let barOpen = false;   // the rider is editing: both rows and the options show
  *  summary box of to, from, time and bike once a plan is made; a tap on the summary reopens the rows. */
 function updateFromRow() {
   const has = !!(place.to || (place.from && !place.from.auto)), edit = barOpen, sum = !barOpen && has;
-  $('fromRow').hidden = !edit; $('optRow').hidden = !edit; $('toClear').hidden = !edit;
-  $('toRow').hidden = sum; $('sumRow').hidden = !sum;
+  $('fromRow').hidden = !edit; $('optRow').hidden = !edit; $('barBack').hidden = !edit; $('swap').hidden = !edit;
+  $('pair').hidden = sum; $('toRow').hidden = sum; $('sumRow').hidden = !sum;
   $('topbar').classList.toggle('two', edit);
   if (!edit) setOptions(false);
   if (sum) renderSummary();
@@ -565,7 +565,9 @@ $('goBtn').addEventListener('click', () => {
   if (!place.to) { $('toQ').focus(); return; }
   if (place.from && !place.from.transient) { nav.closeAll(); showScreen('plan'); plan(); } else planTo(place.to);
 });
-for (const id of ['toClear', 'sumClear']) $(id).addEventListener('click', () => { if (nav.stack.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); });
+$('sumClear').addEventListener('click', () => { if (nav.stack.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); });
+// back from editing: to the summary of the plan that is shown, else to the plain pill
+$('barBack').addEventListener('click', () => { for (const id of ['toQ', 'fromQ']) $(id).blur(); if (lastResult && lastQuery) { setPlace('to', lastQuery.to); setPlace('from', lastQuery.from); foldBar(); } else clearPlan(); });
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 function clearPlan() {
   place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = ''; barOpen = false;

@@ -472,3 +472,10 @@ so they are not re-litigated.
   while the box has text and focus, it clears the text, keeps the keyboard
   and brings the recents list back. The round X beside the To box still
   clears the whole plan.
+- 2026-10-19 Gadi: the search pill jumps down when the From row opens above
+  it, and the X and swap placement "is weird". The pill (and the summary
+  box) now sit one row lower at rest, so opening the From row above them
+  moves nothing; while editing, a back arrow starts the From row and the
+  swap sits at the end, centred between the two rows, as in Google Maps.
+  Back returns to the summary when a plan is shown, else to the plain pill;
+  clearing a plan is the summary's X.

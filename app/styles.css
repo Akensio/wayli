@@ -280,8 +280,17 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); inset-inline: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
 .topbar .trow { display: flex; gap: 8px; align-items: center; }
 .topbar .trow[hidden] { display: none; }
-/* while editing, the origin row sits above the destination row (the pill the rider tapped); the user button hides */
-#fromRow { order: 0; } #toRow, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
+/* The pair of rows: the origin above the destination while editing, the pill the rider tapped staying where it was
+   (at rest it already sits a row lower, leaving the origin its place); a back arrow starts the origin row and the
+   swap sits between the two rows at the end; the user button hides */
+.pair { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.pair[hidden] { display: none; }
+.topbar:not(.two) .pair, .topbar:not(.two) #sumRow { margin-top: 52px; }
+.topbar.two .pair .trow { padding-inline-start: 48px; padding-inline-end: 48px; }
+.pair #barBack { position: absolute; inset-inline-start: 0; top: 3px; }
+.pair #swap { position: absolute; inset-inline-end: 0; top: 50%; transform: translateY(-50%); }
+.pair #barBack[hidden], .pair #swap[hidden] { display: none; }
+#pair, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
 .topbar.two .userbtn { display: none; }
 .iconbtn.small { width: 40px; height: 40px; font-size: 18px; }
 .topbar .field { flex: 1; margin: 0; }
