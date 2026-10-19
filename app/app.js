@@ -3,7 +3,7 @@
 import { settings, recentPlaces, recentTrips, savedPlaces, favs, lastSearch, activeTrip } from './store.js';
 import * as live from './live.js';
 import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney } from './follow.js';
-import { styledLiberty } from './mapstyle.js';
+import { styledLiberty, PALETTES } from './mapstyle.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -989,7 +989,8 @@ function applyTheme() {
   const th = settings.get().theme || 'system';
   if (th === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = th;
   // the installed app's status bar continues the map: the map's ground colour, light or dark, not a coloured app bar
-  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = wantDarkMap() ? '#141210' : '#f8f4f0';
+  // Android keeps the status bar as a strip of one colour, so it takes the map's exact ground colour (iPhone draws the map under it)
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = PALETTES[wantDarkMap() ? 'dark' : 'light'].land;
 }
 applyTheme();
 const styles = {}, styleLoading = {};

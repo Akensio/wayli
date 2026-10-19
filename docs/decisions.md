@@ -561,3 +561,9 @@ so they are not re-litigated.
   than yellow. Motorways, water, parks, casings and labels now take a tint
   of the brand colour (#12998b) in both modes; land, streets and buildings
   stay neutral so the transit lines keep the strongest colour on the map.
+- 2026-10-20 Gadi, installed app: "the map doesn't continue all the way to
+  the top". On Android it cannot: Chrome keeps the status bar as a strip of
+  one colour and no web app draws under it (only display "fullscreen"
+  removes it, taking the clock with it). The strip now takes the exact
+  ground colour of the current palette, so it continues the map's ground;
+  on iPhone the status bar is translucent and the map runs under it.
