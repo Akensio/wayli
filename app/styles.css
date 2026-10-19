@@ -240,14 +240,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); inset-inline: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
 .topbar .trow { display: flex; gap: 8px; align-items: center; }
 .topbar .trow[hidden] { display: none; }
-.topbar .trow.origin { padding-inline-start: 36px; }
-.topbar .trow.origin .field input[type=text] { height: 40px; font-size: 15px; }
+/* while editing, the origin row sits above the destination row (the pill the rider tapped); the user button hides */
+#fromRow { order: 0; } #toRow, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
+.topbar.two .userbtn { display: none; }
 .iconbtn.small { width: 40px; height: 40px; font-size: 18px; }
 .topbar .field { flex: 1; margin: 0; }
-.topbar .field input[type=text] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 46px; font-size: 16px; }
+.topbar .field input[type=text] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 44px; font-size: 16px; }
 .field.tagged input[type=text] { padding-inline-start: 66px; }
-.field.withuser input[type=text] { padding-inline-start: 102px; }
-.field.withuser .tag { inset-inline-start: 46px; }
 .topbar:not(.two) .field.withuser .tag { display: none; }
 .topbar:not(.two) .field.withuser input[type=text] { padding-inline-start: 50px; }
 /* the summary box: one pill with to, from, time and bike once a plan is made; a tap reopens the rows */
@@ -305,6 +304,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .resume .ic { font-size: 18px; } .resume .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .resume .go { font-weight: 700; color: var(--accent); }
 .livenote { position: fixed; left: 10px; bottom: calc(var(--sheet-h) + 10px); z-index: 15; font-size: 11px; color: var(--ink-2); background: var(--surface); border-radius: 10px; padding: 3px 8px; box-shadow: 0 2px 8px rgba(0,0,0,.15); transition: bottom .25s; max-width: 70vw; }
 .livenote:empty { display: none; }
+.livenote.lag { color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + 6px) !important; transition: bottom .25s; }
 .maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right { top: var(--top-h) !important; }
 .maplibregl-ctrl-group.wayli-hidden { display: none; }

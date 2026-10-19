@@ -165,9 +165,11 @@ settings. A destination plans at once; changing either field
 plans again; nothing of the planner sits in the sheet. A plan is a history
 entry: the back button (or the ✕ in the destination field) clears both
 fields and the results and drops the sheet to its strip. The bar has three
-states: the prompt pill when nothing is chosen; the two rows with the time
-and bike chips and the Go button while editing (a focus on either field
-opens them); and, once a plan is made, one summary box (to, then from, time
+states: the prompt pill when nothing is chosen; while editing (a focus on
+either field opens it), the origin row above the destination row, then the
+time and bike chips and the Go button, with the origin prefilled as "my
+location" (resolved when the plan is made; typing or the menu replaces it)
+and the user button out of the way; and, once a plan is made, one summary box (to, then from, time
 and bike on a second line) that a tap reopens into the rows and a map tap
 folds back. The suggestion list while typing hangs below all the rows, so
 it never covers the other field. A bottom sheet with three heights (a
@@ -442,7 +444,10 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   note says which); hidden while a journey, a line or a followed trip
   draws its own vehicles with their delays. A vehicle whose last report is
   more than five minutes behind the newest report of the feed is not drawn
-  at all (the feed lags as a whole; a single stale vehicle is noise).
+  at all (the feed lags as a whole; a single stale vehicle is noise). When
+  the whole feed is four or more minutes behind the clock, every dot is
+  drawn faded, the note says how old the data is and that the source is
+  behind, and a vehicle's bubble gives the age next to the report time.
   Stops carry a kind: railway stations, light rail stops and bus stations
   (a parent with platforms) are badges with the mode's glyph from zoom 11,
   one per station at the centre of its platforms (a tap shows the lines of
@@ -477,11 +482,17 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   next to the live one. A leg's identity for later matching (its first
   departure) is always the scheduled one, read from the stored start and
   deltas, never the shifted arrays.
-- Freshness: Hasadna's ingestion sometimes lags by 20 minutes and backfills
-  old snapshots, so queries look back half an hour, sort by recorded time
-  (not id), and every screen shows how old the newest report is; a report
-  older than four minutes is marked with "?", and one more than five
-  minutes behind the feed's newest report is left off the map.
+- Freshness: Hasadna's ingestion lags, by 14 to 20 minutes in the morning
+  rush on 2026-10-18 and 2026-10-19 (measured against the clock: at 07:58
+  the newest ingested snapshot was 07:41), and backfills old snapshots, so
+  queries look back half an hour, sort by recorded time (not id), and every
+  screen shows how old the newest report is; a report older than four
+  minutes is marked with "?", one more than five minutes behind the feed's
+  newest report is left off the map, and when the feed as a whole is four
+  or more minutes behind, the map says so and fades the dots. The lag is
+  the pipeline's, not ours: the newest rows come first in every query. A
+  position fifteen minutes old says little about where the bus is now; the
+  delay it reports is still worth more than the timetable alone.
 - Privacy: while on, the phone sends Hasadna the line numbers and the area
   it looks at, and Hasadna sees its IP, as any website does. The settings
   screen says exactly this, and one switch turns live times off.

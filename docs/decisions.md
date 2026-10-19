@@ -283,3 +283,17 @@ so they are not re-litigated.
   rather than under the field being typed in; he was unsure. Recommended and
   done: it never hides the other field and the list does not jump between
   rows; one CSS rule to undo.
+- 2026-10-19 Gadi: "why is everything reported 15 min ago and still on the
+  map?" Measured: Hasadna's pipeline was 14-16 minutes behind the clock at
+  08:00 (20 on the 18th); our queries take the newest rows, so the dots are
+  the latest known positions. Decided: keep showing them (a delay seen
+  fifteen minutes ago still beats the timetable) but never as if live: when
+  the feed is four or more minutes behind, the dots fade, the note says
+  "the source is behind" and the bubble gives the age. Rejected for now:
+  hiding them (an empty map hides the lag too) and extrapolating positions
+  along the route (guesswork drawn as fact). An own SIRI poller would need
+  a Ministry key and a server, which the minimal-infrastructure rule
+  reserves for when Hasadna proves unreliable; this is the first evidence.
+- 2026-10-19 Gadi: when the bar opens, the "from" row goes above the "to"
+  row, and "from" starts filled with "my location". Done; the location is
+  resolved when the plan is made, so an empty-handed open costs no GPS fix.

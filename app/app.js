@@ -90,7 +90,7 @@ const STR = {
     getOffNext: 'לרדת בתחנה הבאה!', getOffNow: 'לרדת כאן: {name}', arrived: 'הגעתם ליעד 🎉', arrivesAt: 'הגעה ב-{time}', boarded: 'עלינו על קו {line}', tripOver: 'הנסיעה הזאת כבר הסתיימה.', tripEnded: 'הנסיעה הסתיימה.',
     alertSoon: 'עוד תחנה אחת', alertSoonBody: 'יורדים ב{name}', alertOff: 'לרדת כאן', alertArrived: 'הגעתם', testAlertMsg: 'כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.', alertPermNo: 'התראות חסומות לאתר; יישארו רטט וצליל.',
     gpsNo: 'אין מיקום, מתקדם לפי השעון', gpsOk: 'מיקום {acc} מ\'', followTitle: '{line} ← {to}', walkTitle: 'הליכה ← {to}', copied: 'הקישור הועתק', walkToDest: 'הליכה {min} דק\' אל היעד: {name}',
-    agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveOnlyLines: 'רק קווי החיפוש', liveNearLines: 'קווי התחנות שלידי', legHint: 'לחיצה על נסיעה מציגה רק את הקו שלה במפה', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
+    agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveOnlyLines: 'רק קווי החיפוש', liveNearLines: 'קווי התחנות שלידי', legHint: 'לחיצה על נסיעה מציגה רק את הקו שלה במפה', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', feedBehind: 'המקור מפגר', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
     stopsCount: '{n} תחנות', popStops: 'התחנות', popLine: 'הקו', popDeps: 'יציאות', lineSearch: 'חיפוש קו לפי מספר', lineTitle: 'קו {line}', tripsToday: '{n} נסיעות היום', lineNoMatch: 'אין קו כזה היום', vehiclesOnLine: '{n} בשידור', otherDir: 'לכיוון {headsign}', noLineVehicles: 'אין רכב בשידור בקו',
     fasterWay: 'יש דרך מהירה יותר', altGetOff: 'לרדת ב{stop}', altInstead: 'במקום קו {line}', altThen: 'קו {line} לכיוון {headsign} ב-{time}', altArrive: 'הגעה ב-{time}, {n} דק\' קודם', switchRoute: 'מעבר למסלול הזה', keepRoute: 'להישאר', routeSwitched: 'המסלול הוחלף',
     chooseHome: 'איפה הבית?', chooseWork: 'איפה העבודה?', choosePlace: 'מקום לשמירה', savePlace: 'שמירה', unsavePlace: 'הסרה מהשמורים', fromMyLoc: 'מהמיקום שלי', historyCleared: 'ההיסטוריה נמחקה', walkOnly: 'הליכה כל הדרך: {min} דק\'',
@@ -127,7 +127,7 @@ const STR = {
     getOffNext: 'Get off at the next stop!', getOffNow: 'Get off here: {name}', arrived: 'You have arrived 🎉', arrivesAt: 'arrives at {time}', boarded: 'On line {line}', tripOver: 'This trip is already over.', tripEnded: 'Trip ended.',
     alertSoon: 'One more stop', alertSoonBody: 'Get off at {name}', alertOff: 'Get off here', alertArrived: 'You have arrived', testAlertMsg: 'This is what an alert looks like. If none showed, allow notifications for this site.', alertPermNo: 'Notifications are blocked for this site; vibration and sound remain.',
     gpsNo: 'no position, following the clock', gpsOk: 'position ±{acc} m', followTitle: '{line} → {to}', walkTitle: 'Walk → {to}', copied: 'Link copied', walkToDest: 'walk {min} min to the destination: {name}',
-    agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveOnlyLines: 'only the lines of this search', liveNearLines: 'lines of the stops near me', legHint: 'Tap a ride to see only its line on the map', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
+    agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveOnlyLines: 'only the lines of this search', liveNearLines: 'lines of the stops near me', legHint: 'Tap a ride to see only its line on the map', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', feedBehind: 'the source is behind', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
     stopsCount: '{n} stops', popStops: 'Stops', popLine: 'Line', popDeps: 'Departures', lineSearch: 'Search a line by number', lineTitle: 'Line {line}', tripsToday: '{n} trips today', lineNoMatch: 'No such line today', vehiclesOnLine: '{n} reporting', otherDir: 'towards {headsign}', noLineVehicles: 'No vehicle of this line reporting',
     fasterWay: 'There is a faster way', altGetOff: 'Get off at {stop}', altInstead: 'Instead of line {line}', altThen: 'line {line} towards {headsign} at {time}', altArrive: 'arrive at {time}, {n} min earlier', switchRoute: 'Switch to it', keepRoute: 'Keep mine', routeSwitched: 'Route switched',
     chooseHome: 'Where is home?', chooseWork: 'Where is work?', choosePlace: 'Place to save', savePlace: 'Save', unsavePlace: 'Remove from saved', fromMyLoc: 'from my location', historyCleared: 'History cleared', walkOnly: 'Walk all the way: {min} min',
@@ -376,7 +376,7 @@ let barOpen = false;   // the rider is editing: both rows and the options show
 /** Three states of the bar: the prompt pill (nothing chosen), the two rows with options (editing), and one
  *  summary box of to, from, time and bike once a plan is made; a tap on the summary reopens the rows. */
 function updateFromRow() {
-  const has = !!(place.to || place.from), edit = barOpen, sum = !barOpen && has;
+  const has = !!(place.to || (place.from && !place.from.auto)), edit = barOpen, sum = !barOpen && has;
   $('fromRow').hidden = !edit; $('optRow').hidden = !edit; $('toClear').hidden = !edit;
   $('toRow').hidden = sum; $('sumRow').hidden = !sum;
   $('topbar').classList.toggle('two', edit);
@@ -389,7 +389,13 @@ function renderSummary() {
   $('sumTo').innerHTML = `<span class="tag">${t('tagTo')}</span>${esc(to)}`;
   $('sumMeta').innerHTML = `<span class="tag">${t('tagFrom')}</span>${esc(from)}<span class="sep">·</span>${$('optTime').innerHTML}<span class="sep">·</span>${$('optBike').innerHTML}`;
 }
-function openBar() { if (!barOpen) { barOpen = true; updateFromRow(); } }
+function openBar() {
+  if (barOpen) return;
+  barOpen = true;
+  // the origin starts as "my location" (resolved when the plan is made); typing or the menu replaces it
+  if (!place.from) setPlace('from', { name: t('myLoc'), transient: true, auto: true });
+  updateFromRow();
+}
 function foldBar() { if (barOpen) { barOpen = false; updateFromRow(); } }
 $('sumEdit').addEventListener('click', () => { barOpen = true; updateFromRow(); });
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
@@ -610,6 +616,12 @@ async function plan(opts = {}) {
   showPlanError('');
   if (!place.from || !place.to) { showPlanError(t('pickBoth')); return; }
   if (!ttReady) return;
+  for (const side of ['from', 'to']) {   // "my location" is resolved now, not when it was chosen
+    if (place[side].transient && place[side].lat == null) {
+      $(side + 'Q').value = t('locating');
+      try { setPlace(side, myLocation(await getPosition())); } catch (e) { $(side + 'Q').value = t('myLoc'); showPlanError(t('noLocation')); return; }
+    }
+  }
   if (!timeTouched) { setDefaultTime(); if (manifest && $('day').value !== startDay() && manifest.days.some((d) => d.date === startDay())) { $('day').value = startDay(); } }
   if (!nav.stack.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' });   // the back button clears the plan
   const day = $('day').value;
@@ -1079,7 +1091,7 @@ function vehiclePopup(m, lngLat, v) {
   const d = v.delay != null ? live.delayMinutes(v.delay) : null;
   const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
   const html = `<div class="pop"><div class="row"><span class="chip t${v.routeType}"${chipStyle(v.routeType, v.agency)}>${esc(lineText(v.line))}</span><b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
-    `<div class="muted">${v.agency ? esc(v.agency) + ' · ' : ''}${t('seenAgo', { time: clock(v.seen) })}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
+    `<div class="muted">${v.agency ? esc(v.agency) + ' · ' : ''}${t('seenAgo', { time: clock(v.seen) })}${Date.now() - new Date(v.seen).getTime() >= 180e3 ? ` (${t('agoMin', { n: Math.round((Date.now() - new Date(v.seen).getTime()) / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
     (d == null ? '' : `<div><span class="live ${d >= 3 ? 'late' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
     `<div class="row"><button type="button" class="ghost" data-act="trip" ${v.trip >= 0 ? '' : 'disabled'}>${t('popStops')}</button><button type="button" class="ghost" data-act="line" ${v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
@@ -1411,11 +1423,12 @@ async function refreshLiveMap() {
     }
     const now = Date.now();
     const nwAll = live.newest(vs);
+    const feedLag = nwAll ? (now - nwAll.getTime()) / 60000 : 0;   // minutes the whole feed is behind the clock
     const features = vs.filter((v) => live.isFresh(v)).map((v) => {
       const lb = lmLabels.get(String(v.lineRef));
       const age = nwAll ? (nwAll.getTime() - v.recordedAt.getTime()) / 1000 : 0;   // behind the feed, not the clock
       return { type: 'Feature', geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
-        properties: { line: lb ? lineText(lb.line) : '?', type: lb ? lb.type : 3, color: routeColor(lb ? lb.type : 3, lb && lb.agency), ckey: routeColor(lb ? lb.type : 3, lb && lb.agency).slice(1), tcol: textOn(routeColor(lb ? lb.type : 3, lb && lb.agency)), opacity: age > 120 ? 0.55 : 1, bearing: heading(v),
+        properties: { line: lb ? lineText(lb.line) : '?', type: lb ? lb.type : 3, color: routeColor(lb ? lb.type : 3, lb && lb.agency), ckey: routeColor(lb ? lb.type : 3, lb && lb.agency).slice(1), tcol: textOn(routeColor(lb ? lb.type : 3, lb && lb.agency)), opacity: feedLag >= 4 ? 0.4 : age > 120 ? 0.55 : 1, bearing: heading(v),
           headsign: lb ? lb.headsign : '', agency: lb ? lb.agency : '', lineRef: v.lineRef, ref: String(v.lineRef), start: v.scheduledStart.getTime(), seen: v.recordedAt.getTime(), velocity: v.velocity || 0 } };
     });
     for (const ck of new Set(features.map((f) => f.properties.ckey))) if (!m.hasImage('wayli-arrow-' + ck)) m.addImage('wayli-arrow-' + ck, arrowImage('#' + ck), { pixelRatio: 2 });
@@ -1424,7 +1437,8 @@ async function refreshLiveMap() {
     const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
     const shown = Array.isArray(liveShow) ? features.filter((f) => liveShow.includes(f.properties.ref)).length : features.length;
     const why = !Array.isArray(liveShow) ? '' : nearRoutes && liveShow === nearRoutes.ids ? ' · ' + t('liveNearLines') : ' · ' + t('liveOnlyLines');
-    $('liveNote').textContent = (shown ? t('liveMapCount', { n: shown, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone')) + why;
+    $('liveNote').textContent = (shown ? t('liveMapCount', { n: shown, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone')) + (shown && ageMin >= 4 ? ' · ' + t('feedBehind') : '') + why;
+    $('liveNote').classList.toggle('lag', !!shown && ageMin >= 4);
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch (e) {}
   } catch (e) { if (my === lmSeq) $('liveNote').textContent = t('liveFail'); }
 }
