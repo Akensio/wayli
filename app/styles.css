@@ -358,7 +358,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
 /* collapsed, a pull down anywhere on the sheet is the browser's pull-to-refresh: the gesture may chain to the page
    (no overscroll containment, no touch-action: none); a pull up is still the sheet's, through touch events */
-.sheet[data-state="peek"], .sheet[data-state="peek"] .handle { touch-action: pan-y; }
+.sheet[data-state="peek"], .sheet[data-state="peek"] .handle { touch-action: pan-y; touch-action: pan-up; }   /* pan-up: Chrome owns only the finger-down swipe (measured 2026-10-19); Safari keeps pan-y */
 .sheet[data-state="peek"] .sheet-body { overscroll-behavior: auto; }
 .sheet[data-state="full"] .sheet-body { scroll-padding-top: 0; }
 .handle span { width: 56px; height: 6px; border-radius: 3px; background: var(--line); }
@@ -380,7 +380,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; }
 .optpanel[hidden] { display: none; }
 .optpanel .primary { margin-top: 10px; }
-.peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; touch-action: pan-x pan-y; }
+.peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; touch-action: pan-x pan-y; touch-action: pan-x pan-up; }
 .peekrow::-webkit-scrollbar { display: none; }
 .peekrow .chipbtn { flex: none; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 .chipbtn.accent { background: var(--accent); color: var(--accent-ink); font-weight: 600; }

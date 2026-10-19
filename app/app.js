@@ -2142,8 +2142,8 @@ const sheet = {
   /** Where a drag lands: a flick (over 0.6 px/ms at release) goes all the way in its direction; otherwise the
    *  nearest size, or one step in its direction after a short pull. `v` is the finger's speed, down positive. */
   const settle = (hh, fromH, fromState, v = 0) => {
-    if (Math.abs(v) >= 0.6) { sheet.set(v < 0 ? 'full' : 'peek'); return; }
     const dy = hh - fromH;
+    if (Math.abs(v) >= 0.6 && Math.abs(dy) >= 30) { sheet.set(v < 0 ? 'full' : 'peek'); return; }   // a flick, after real travel
     let best = 'peek';
     for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
     if (best === fromState && Math.abs(dy) > 40) best = ORDER[Math.max(0, Math.min(2, ORDER.indexOf(fromState) + (dy > 0 ? 1 : -1)))];

@@ -375,3 +375,8 @@ so they are not re-litigated.
   body's overscroll containment stopped the gesture from chaining to the
   page even when collapsed, and the handle said touch-action none. Lifted
   for the collapsed sheet; the pull up there moved to touch events.
+- 2026-10-19 Gadi: after the pull-to-refresh fix, pulling the sheet up got
+  "stuckish and inconsistent". Cause: `pan-y` let Chrome claim the upward
+  drag too (nothing scrolls, but the gesture is taken and touch events are
+  throttled), and a tiny quick nudge counted as a flick. Now `pan-up`, which
+  hands Chrome only the finger-down swipe, and a flick needs 30 px of travel.
