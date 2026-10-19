@@ -591,3 +591,11 @@ so they are not re-litigated.
   the open one now); bus stops on the map are small and some seem missing
   (the dots and badges are a third larger, badges never yield to labels; a
   stop without service that day is still left off, by design).
+- 2026-10-20 Gadi: "we lost the ability to clear an active search": the
+  user button, moved to the pill's end, covered the summary box's clear X.
+  In the summary the user sits at the start and the X at the end. And the
+  search-mode motion "still not as smooth as I imagine": the pills changed
+  width when the side buttons appeared, a layout animation the browser
+  cannot keep smooth while the keyboard rises. The pills now keep their
+  width: the back arrow sits inside the origin pill, the swap floats over
+  the pills' end between the rows, and only transforms and opacity animate.

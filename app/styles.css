@@ -284,6 +284,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 /* the shell appears once the app booted (icons in place), in one fade, not piece by piece */
 body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating, body:not(.booted) .livenote, body:not(.booted) .maplibregl-ctrl-bottom-right { opacity: 0; }
 #topbar, .floating, .livenote { transition: opacity .3s ease; }
+#fromRow, #optRow, #sumRow, .pair #barBack, .pair #swap, .topbar .dropdown { will-change: transform, opacity; }
 :root { --sheet-h: 118px; --sheet-full: 100vh; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); --sab: env(safe-area-inset-bottom, 0px); }
 .topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); inset-inline: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
 .topbar .trow { display: flex; gap: 8px; align-items: center; }
@@ -316,9 +317,14 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .applogo { position: absolute; inset-inline-start: 7px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
 .applogo img { width: 100%; height: 100%; display: block; border-radius: 50%; }
 .topbar.two .applogo, .field:has(.fieldx:not([hidden])) .userbtn { display: none; }
-.topbar.two .pair .trow { padding-inline-start: 48px; padding-inline-end: 48px; }
-.pair #barBack { position: absolute; inset-inline-start: 0; top: 3px; z-index: 2; }
-.pair #swap { position: absolute; inset-inline-end: 0; top: 50%; transform: translateY(-50%); z-index: 2; }
+/* the pills keep their width in search mode (nothing re-lays out, so the motion stays smooth): the back arrow sits
+   inside the origin pill at its start, the swap floats over the pills' end between the two rows */
+.pair #barBack { position: absolute; inset-inline-start: 5px; top: 5px; width: 36px; height: 36px; z-index: 2; box-shadow: none; background: color-mix(in srgb, var(--ink) 7%, var(--surface)); }
+.pair #barBack .i { width: 20px; height: 20px; }
+.topbar.two #fromRow .tag { inset-inline-start: 48px; }
+.topbar.two #fromRow input[type=text] { padding-inline-start: 106px; }
+.pair #swap { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 3; }
+.topbar.two .pair .fieldx { inset-inline-end: 50px; }   /* the clear x keeps clear of the swap */
 .pair #barBack[hidden], .pair #swap[hidden] { display: none; }
 #pair, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
 .topbar.two .userbtn { display: none; }
@@ -334,6 +340,7 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .sumtxt .l1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sumtxt .l2 { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
 .sumtxt .l2 .i { width: 14px; height: 14px; } .sumtxt .sep { color: var(--line); padding: 0 1px; }
+.sumbox .userbtn { inset-inline-start: 5px; inset-inline-end: auto; }   /* the summary: the user at its start, its clear x at its end */
 .sumbox .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
 .sumbox .tag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-inline-end: 6px; vertical-align: 1px; }
 .sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
