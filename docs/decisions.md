@@ -506,3 +506,18 @@ so they are not re-litigated.
 - 2026-10-19 Gadi: home and work need a choose-on-map option. The chooser
   had it as a chip under the box; it is now also a row in the list that
   opens with the box, like the To box's own.
+- 2026-10-20 Gadi: the municipal weekend (Shabbat) buses are missing.
+  Verified: the MOT feed (and so Hasadna's mirror) carries only
+  state-licensed operators; "Naim BeSofash" (Tel Aviv-led, 12 authorities,
+  18 lines 705-729, free) and Ramat Gan's "Sababus" are absent, their
+  numbers collide with real MOT lines, and MOT's own displays cannot show
+  them (https://busofash.co.il/?post_type=qa). No SIRI for them either.
+  What exists openly: Tel Aviv's GIS layers behind the official map, lines
+  (https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer/992)
+  and stops with MOT stop codes (.../993), and the line pages with stop
+  lists; no timetable, no frequencies anywhere public (the site says
+  "varying frequency", Fri 16:30-02:00, Sat 09:00-17:30). HopOn and Moovit
+  get a private schedule. Not built yet: a frequency-based estimate would
+  mean inventing headways; Gadi decides between asking the municipality or
+  HopOn for the schedule file, estimated headways labelled as such, or
+  showing the lines on the map without times.
