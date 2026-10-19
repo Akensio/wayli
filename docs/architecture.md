@@ -173,7 +173,9 @@ and the user button out of the way; and, once a plan is made, one summary box (t
 and bike on a second line) that a tap reopens into the rows and a map tap
 folds back. The suggestion list while typing hangs below all the rows, so
 it never covers the other field. A bottom sheet with three heights (a
-strip, about half the screen, nearly full) carries every panel: the plan
+strip, about half the screen, nearly full; it is always its full height
+and slides by a composited transform, so the slide and the snap run on the
+GPU while only the body's height is set per state) carries every panel: the plan
 screen (results and recent searches only), nearby, saved, settings,
 and the panels for a journey, a stop, a trip's stops, a line, the place
 chooser and the trip being followed. Settings, saved and the place chooser

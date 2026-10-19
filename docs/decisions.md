@@ -403,3 +403,7 @@ so they are not re-litigated.
 - 2026-10-19 Gadi: the friend's "add to home screen" was Chrome on iPhone.
   Covered by the iPhone row (same user agent family), but the hint named
   Safari; it now names the browser in hand and where its share button is.
+- 2026-10-19 Gadi: the sheet's slide is not smooth, "how many hacks did we
+  add?" Five gesture layers, but the stutter was the oldest piece: the sheet
+  moved by animating its height, a layout on the main thread every frame.
+  It now slides by a transform (composited); the gesture rules stay.

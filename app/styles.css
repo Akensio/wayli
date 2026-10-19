@@ -269,7 +269,7 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 html, body { height: 100%; overflow: hidden; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font); position: relative; }
 #mainMap { position: fixed; inset: 0; background: var(--chip); }
-:root { --sheet-h: 118px; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); }
+:root { --sheet-h: 118px; --sheet-full: 100vh; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); }
 .topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); inset-inline: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
 .topbar .trow { display: flex; gap: 8px; align-items: center; }
 .topbar .trow[hidden] { display: none; }
@@ -340,7 +340,8 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .livenote.lag { color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + 6px) !important; transition: bottom .25s; }
 /* pages: a map-less screen takes the whole screen; the sheet is the page, with a header of its own */
-body.page .sheet { height: 100% !important; border-radius: 0; box-shadow: none; transition: none; }
+body.page .sheet { height: 100% !important; transform: none !important; border-radius: 0; box-shadow: none; transition: none; }
+body.page .sheet-body { flex: 1; height: auto !important; }
 body.page #topbar, body.page .floating, body.page .livenote, body.page .handle, body.page .maplibregl-ctrl-bottom-right, body.page .maplibregl-ctrl-bottom-left { display: none !important; }
 .pagehead { display: none; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px; border-bottom: 1px solid var(--line); flex: none; }
 body.page .pagehead { display: flex; }
@@ -365,7 +366,8 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .pickbar[hidden] { display: none; }
 .pickname { font-weight: 600; margin: 4px 0 8px; min-height: 22px; }
 .pickbar .row .primary { flex: 1; margin: 0; }
-.sheet { position: fixed; inset-inline: 0; bottom: 0; height: var(--sheet-h); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); z-index: 20; display: flex; flex-direction: column; transition: height .25s ease; }
+/* always its full height, slid down by a transform so that only --sheet-h shows; the slide is composited */
+.sheet { position: fixed; inset-inline: 0; bottom: 0; height: var(--sheet-full); transform: translateY(calc(var(--sheet-full) - var(--sheet-h))); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); z-index: 20; display: flex; flex-direction: column; transition: transform .28s cubic-bezier(.2,.8,.2,1); will-change: transform; }
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
 .handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
@@ -382,7 +384,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 @keyframes ptrspin { to { transform: rotate(360deg); } }
 .sheet[data-state="full"] .sheet-body { scroll-padding-top: 0; }
 .handle span { width: 56px; height: 6px; border-radius: 3px; background: var(--line); }
-.sheet-body { flex: 1; overflow: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.sheet-body { flex: none; height: calc(var(--sheet-h) - 36px); overflow: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .sheet[data-state="peek"] .sheet-body { overflow: hidden; }
 .screen[hidden] { display: none; }
 .detail { display: block; }

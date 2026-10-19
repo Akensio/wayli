@@ -409,7 +409,13 @@ function openBar() {
 function foldBar() { if (barOpen) { barOpen = false; updateFromRow(); } }
 $('sumEdit').addEventListener('click', () => { barOpen = true; updateFromRow(); });
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
-function layoutTop() { const r = $('topbar').getBoundingClientRect(); document.documentElement.style.setProperty('--top-h', `${Math.round(r.bottom + 6)}px`); }
+/** The sheet's full size: the screen under the bar. */
+const fullSheetPx = () => Math.max(200, innerHeight - topPad() + 4);
+function layoutTop() {
+  const r = $('topbar').getBoundingClientRect();
+  document.documentElement.style.setProperty('--top-h', `${Math.round(r.bottom + 6)}px`);
+  document.documentElement.style.setProperty('--sheet-full', `${fullSheetPx()}px`);   // the sheet is always this tall; its slide uses it
+}
 window.addEventListener('resize', layoutTop);
 const fromResult = (g) => g.kind === 'stop' ? g : { name: g.city && g.kind !== 'city' ? `${g.name}, ${g.city}` : g.name, lat: g.lat, lon: g.lon };
 
@@ -2157,15 +2163,27 @@ const pullRefresh = (() => {
   bar.addEventListener('touchend', end); bar.addEventListener('touchcancel', end);
 }
 // ---- the bottom sheet: peek (a strip), half, or full; dragged by its handle, tapped to cycle
+// The sheet is always as tall as its full size and slides by a transform (composited: no layout per frame, the
+// snap animates on the GPU); `--sheet-h` is the visible part, which the body's height and the map's buttons follow.
 const sheet = {
   state: 'peek',
-  px(st) { return st === 'peek' ? 118 : st === 'half' ? Math.round(innerHeight * 0.46) : Math.max(200, innerHeight - topPad() + 4); },
+  dragH: null,   // the visible height while a finger drags it, else null
+  px(st) { return st === 'peek' ? 118 : st === 'half' ? Math.round(innerHeight * 0.46) : fullSheetPx(); },
+  visible() { return this.dragH != null ? this.dragH : this.px(this.state); },
+  /** Follow the finger: slide to a visible height without changing the state. */
+  drag(h) {
+    this.dragH = h;
+    $('sheet').style.transform = `translateY(${Math.round(this.px('full') - h)}px)`;
+    $('sheetBody').style.height = `${Math.max(0, h - 36)}px`;
+  },
+  dragEnd() { this.dragH = null; $('sheet').style.transform = ''; $('sheetBody').style.height = ''; },
   set(st) {
     const prev = this.state;
     this.state = st;
     $('sheet').dataset.state = st;
     document.body.classList.toggle('sheet-full', st === 'full');
     document.documentElement.style.setProperty('--sheet-h', this.px(st) + 'px');
+    document.documentElement.style.setProperty('--sheet-full', this.px('full') + 'px');
     if (prev === 'full' && st !== 'full') refreshLiveMap();
     if (st !== prev && mainMap && (st === 'peek' || prev === 'peek')) $('sheetBody').scrollTop = 0;
   },
@@ -2189,7 +2207,7 @@ const sheet = {
     if (e.pointerType === 'touch' && sheet.state === 'peek') return;   // a finger on the collapsed sheet: the touch handler below
     // the body scrolls when half or fully open (a finger there is the touch handler's, at the scroll edges); the handle and the top always drag
     if (!onHandle && (e.target.closest('input, select, textarea') || ((sheet.state === 'full' || (sheet.state === 'half' && e.pointerType === 'touch')) && !nearTop))) return;
-    dragging = true; startX = e.clientX; startY = e.clientY; startH = el.getBoundingClientRect().height; startState = sheet.state; moved = false; trail = [{ t: performance.now(), y: e.clientY }];
+    dragging = true; startX = e.clientX; startY = e.clientY; startH = sheet.visible(); startState = sheet.state; moved = false; trail = [{ t: performance.now(), y: e.clientY }];
   });
   el.addEventListener('pointermove', (e) => {
     if (!dragging) return;
@@ -2200,7 +2218,7 @@ const sheet = {
       moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch (x) {}
     }
     trail.push({ t: performance.now(), y: e.clientY }); if (trail.length > 8) trail.shift();
-    el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)) + 'px';
+    sheet.drag(Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)));
   });
   /** Where a drag lands. The nearest size to where it was let go; a short pull (40 px) or a quick one (0.5 px/ms)
    *  steps one size in its direction instead of falling back; only a long drag past the midpoint opens or closes
@@ -2221,8 +2239,8 @@ const sheet = {
   const end = (e) => {
     if (!dragging) return;
     dragging = false; el.classList.remove('dragging');
-    const hh = el.getBoundingClientRect().height;
-    el.style.height = '';
+    const hh = sheet.visible();
+    sheet.dragEnd();
     if (!moved) return;   // a tap: the handle's click handler cycles the sizes
     swallow = true; setTimeout(() => { swallow = false; }, 60);
     settle(hh, startH, startState, speed());
@@ -2239,7 +2257,7 @@ const sheet = {
     el.addEventListener('touchstart', (e) => {
       pOn = false;
       if (sheet.state !== 'peek' || e.touches.length !== 1 || document.body.classList.contains('page') || e.target.closest('input, select, textarea')) return;
-      pOn = true; pMode = ''; pX = lastX = e.touches[0].clientX; pY = e.touches[0].clientY; pH = el.getBoundingClientRect().height; pStrip = !!e.target.closest('.peekrow');
+      pOn = true; pMode = ''; pX = lastX = e.touches[0].clientX; pY = e.touches[0].clientY; pH = sheet.visible(); pStrip = !!e.target.closest('.peekrow');
       trail = [{ t: performance.now(), y: pY }]; xTrail = [{ t: performance.now(), x: pX }];
     }, { passive: true });
     el.addEventListener('touchmove', (e) => {
@@ -2253,7 +2271,7 @@ const sheet = {
       }
       if (pMode === 'scroll') { strip.scrollBy({ left: -(x - lastX) }); xTrail.push({ t: performance.now(), x }); if (xTrail.length > 8) xTrail.shift(); }
       else if (pMode === 'refresh') pullRefresh.move(-up - 6);
-      else { trail.push({ t: performance.now(), y }); if (trail.length > 8) trail.shift(); el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), pH + up)) + 'px'; }
+      else { trail.push({ t: performance.now(), y }); if (trail.length > 8) trail.shift(); sheet.drag(Math.max(sheet.px('peek'), Math.min(sheet.px('full'), pH + up))); }
       lastX = x;
     }, { passive: true });
     const pEnd = () => {
@@ -2270,8 +2288,8 @@ const sheet = {
         return;
       }
       el.classList.remove('dragging');
-      const hh = el.getBoundingClientRect().height;
-      el.style.height = '';
+      const hh = sheet.visible();
+      sheet.dragEnd();
       settle(hh, pH, 'peek', speed());
     };
     el.addEventListener('touchend', pEnd); el.addEventListener('touchcancel', pEnd);
@@ -2285,7 +2303,7 @@ const sheet = {
     body.addEventListener('touchstart', (e) => {
       tOn = false;
       if (sheet.state === 'peek' || dragging || e.touches.length !== 1 || document.body.classList.contains('page')) return;
-      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = el.getBoundingClientRect().height; tState = sheet.state;
+      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = sheet.visible(); tState = sheet.state;
       tTop = body.scrollTop <= 0; tBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 2;
       trail = [{ t: performance.now(), y: tY }];
     }, { passive: true });
@@ -2298,15 +2316,15 @@ const sheet = {
         tMoved = true; el.classList.add('dragging');
       }
       trail.push({ t: performance.now(), y: e.touches[0].clientY }); if (trail.length > 8) trail.shift();
-      el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), tH - down)) + 'px';
+      sheet.drag(Math.max(sheet.px('peek'), Math.min(sheet.px('full'), tH - down)));
     }, { passive: true });
     const tEnd = () => {
       if (!tOn) return;
       tOn = false;
       if (!tMoved) return;
       el.classList.remove('dragging');
-      const hh = el.getBoundingClientRect().height;
-      el.style.height = '';
+      const hh = sheet.visible();
+      sheet.dragEnd();
       settle(hh, tH, tState, speed());
     };
     body.addEventListener('touchend', tEnd); body.addEventListener('touchcancel', tEnd);
