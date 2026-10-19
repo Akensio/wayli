@@ -1,5 +1,6 @@
 // Wayli: offline address book (streets, house numbers, cities, notable places) from pipeline/places.py.
-// Free-text search that understands "הורדים 4, גבעתיים", "דיזנגוף סנטר", "חיפה".
+// Free-text search that understands "הורדים 4, גבעתיים", "דיזנגוף סנטר", "חיפה", and the same typed in
+// Latin letters ("Havradim 4 givatayim", "Dizengoff Center", "Haifa").
 
 const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
 const PUNCT = /[.'"״׳`/()\-,:]+/g;
@@ -49,6 +50,8 @@ export function parsePlaces(ab) {
   pl.streetWords = pl.streets.map((s) => words(s[0]));
   pl.streetCity = pl.streets.map((s) => norm(s[1]));
   pl.cityNorm = pl.cities.map((c) => norm(c[0]));
+  pl.cityEnNorm = pl.cities.map((c) => norm(c[3] || ''));
+  pl.cityEnByHe = new Map(pl.cities.filter((c) => c[3]).map((c) => [c[0], c[3]]));
   pl.poiWords = pl.pois.map((p) => words(p[0]));
   pl.poiCity = pl.pois.map((p) => norm(p[2]));
   return pl;
@@ -68,28 +71,108 @@ const KIND_HE = {
 };
 export function kindLabel(kind, lang = 'he') { return lang === 'he' ? (KIND_HE[kind] || 'מקום') : kind.split('=')[1].replace(/_/g, ' '); }
 
+// ---------------------------------------------------------------- names typed in Latin letters
+// Streets and places carry OpenStreetMap's English name beside the Hebrew; cities the feed's. Where there is
+// none, or the rider spells it their own way (Havradim, HaVradim, Ha-Vradim), both scripts reduce to a
+// consonant skeleton: vowels dropped, letters that sound alike merged, doubled letters collapsed.
+const LATIN_STOP = new Set(['street', 'st', 'road', 'rd', 'boulevard', 'blvd', 'avenue', 'ave', 'alley', 'lane', 'way', 'square', 'sq',
+  'rehov', 'rechov', 'sderot', 'sd', 'derech', 'derekh', 'kikar', 'simtat', 'the']);
+export const isLatin = (w) => /[a-z]/.test(w);
+/** The words of an English name, lower case, without the street-type words. */
+export function wordsEn(s) { return norm(s).split(' ').filter((w) => w && !LATIN_STOP.has(w)); }
+const HEB_SK = { 'ב': 'v', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'V', 'ז': 'z', 'ח': 'h', 'ט': 't', 'כ': 'K', 'ך': 'K', 'ל': 'l', 'מ': 'm', 'ם': 'm',
+  'נ': 'n', 'ן': 'n', 'ס': 's', 'פ': 'p', 'ף': 'p', 'צ': 'z', 'ץ': 'z', 'ק': 'k', 'ר': 'r', 'ש': 's', 'ת': 't' };   // א ע י: dropped
+const squash = (s) => s.replace(/(.)\1+/g, '$1');
+/** 'hVrdm' -> ['hvrdm', 'hrdm'] (V: ו, a consonant or a vowel), 'mKl' -> ['mkl', 'mhl'] (K: כ, k or kh). */
+function expand(s) {
+  let out = [''];
+  for (const c of s) {
+    const alts = c === 'V' ? ['v', ''] : c === 'K' ? ['k', 'h'] : [c];
+    const next = [];
+    for (const o of out) for (const a of alts) next.push(o + a);
+    out = next.length > 16 ? next.slice(0, 16) : next;
+  }
+  return [...new Set(out.map(squash))].filter(Boolean);
+}
+export function skelHe(word) {
+  const chars = [...word];
+  let s = '';
+  chars.forEach((c, i) => {
+    if (c === 'ה' && i === chars.length - 1 && chars.length > 1) return;   // a final ה is a vowel
+    s += HEB_SK[c] ?? (/\d/.test(c) ? c : '');
+  });
+  return expand(s);
+}
+export function skelLatin(word) {
+  const w = word.toLowerCase();
+  let s = w.replace(/sch/g, 's').replace(/sh/g, 's').replace(/tch/g, 'z').replace(/ch|kh/g, 'h').replace(/ts|tz/g, 'z').replace(/th/g, 't')
+    .replace(/ph/g, 'p').replace(/ck/g, 'k').replace(/[qc]/g, 'k').replace(/x/g, 'ks').replace(/[bw]/g, 'v').replace(/f/g, 'p').replace(/j/g, 'J');
+  const bases = [];
+  const vowelH = /[aeiouy]h$/.test(w);   // "Tikvah": a bare final h after a vowel is a vowel (ה) or a consonant (ח); "Petach" is ח
+  for (const b of vowelH ? [s, s.slice(0, -1)] : [s]) {
+    const c = b.replace(/[aeiouy]/g, '').replace(/[^a-z0-9J]/g, '');
+    if (c.includes('J')) bases.push(c.replace(/J/g, 'z'), c.replace(/J/g, 'g')); else bases.push(c);   // ז' and ג' are both j
+  }
+  const out = [];
+  for (const b of bases) {
+    out.push(squash(b));
+    if (w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1)));   // "HaVradim": the article, which Hebrew matching drops
+  }
+  return [...new Set(out)].filter(Boolean);
+}
+/** The query's words with what each can match: Hebrew words as they are, Latin words by English name or skeleton. */
+const queryWords = (words) => words.map((w) => ({ w, latin: isLatin(w), sk: isLatin(w) ? skelLatin(w) : null }));
+/** English names and skeletons of every street, place and city, built on the first Latin query. */
+function ensureLatin(pl) {
+  if (pl.streetSk) return;
+  pl.streetEn = pl.streets.map((s) => wordsEn(s[4] || ''));
+  pl.streetSk = pl.streetWords.map((ws) => ws.map(skelHe));
+  pl.poiEn = pl.pois.map((p) => wordsEn(p[5] || ''));
+  pl.poiSk = pl.poiWords.map((ws) => ws.map(skelHe));
+  pl.citySk = pl.cities.map((c) => words(c[0]).map(skelHe));
+  pl.cityEnWords = pl.cities.map((c) => wordsEn(c[3] || ''));
+}
+
+function wordScore(q, w, i, firstWordNames) {
+  if (w === q) return q.length < 2 ? 1 : !firstWordNames ? 4 : i === 0 ? 5 : 3;
+  if (q.length >= 2 && w.startsWith(q)) return i === 0 ? 2.5 : 2;
+  if (q.length >= 3 && w.includes(q)) return 1;
+  return 0;
+}
+function skelScore(qv, wv, i, firstWordNames) {
+  let best = 0;
+  for (const a of qv) for (const b of wv) {
+    if (a === b) best = Math.max(best, a.length < 2 ? 0.5 : !firstWordNames ? 3.5 : i === 0 ? 4.5 : 2.5);
+    else if (a.length >= 2 && b.startsWith(a)) best = Math.max(best, i === 0 ? 2.2 : 1.8);
+  }
+  return best;
+}
 /**
- * Does every query word prefix-match a word of the name? Returns a score, or 0. A street is named by its
+ * Does every query word match a word of the name? Returns a score, or 0. A street is named by its
  * first word, so an exact match there counts most; a place's words count alike (מרכז עזריאלי, קניון עזריאלי).
- * A name typed in full beats partial matches.
+ * A name typed in full beats partial matches. A Latin word matches the English name, or the skeleton of the
+ * Hebrew one (a little lower, so a spelled-out English name wins over a sound-alike).
  */
-function matchWords(qWords, nameWords, firstWordNames = true) {
-  let score = 0, exact = 0;
-  for (const q of qWords) {
+function matchEntry(qs, he, en, sk, firstWordNames = true) {
+  let score = 0, exact = 0, latin = false;
+  for (const q of qs) {
     let best = 0;
-    for (let i = 0; i < nameWords.length; i++) {
-      const w = nameWords[i];
-      if (w === q) { best = Math.max(best, q.length < 2 ? 1 : !firstWordNames ? 4 : i === 0 ? 5 : 3); }
-      else if (q.length >= 2 && w.startsWith(q)) { best = Math.max(best, i === 0 ? 2.5 : 2); }
-      else if (q.length >= 3 && w.includes(q)) { best = Math.max(best, 1); }
+    if (!q.latin) { for (let i = 0; i < he.length; i++) best = Math.max(best, wordScore(q.w, he[i], i, firstWordNames)); }
+    else {
+      latin = true;
+      if (en) for (let i = 0; i < en.length; i++) best = Math.max(best, wordScore(q.w, en[i], i, firstWordNames));
+      if (sk) for (let i = 0; i < sk.length; i++) best = Math.max(best, skelScore(q.sk, sk[i], i, firstWordNames));
     }
     if (!best) return 0;
     if (best >= 3) exact++;
     score += best;
   }
-  if (exact === qWords.length && qWords.length === nameWords.length) score += 1;
-  return score - nameWords.length * 0.05;
+  const n = latin && en && en.length ? en.length : he.length;
+  if (exact === qs.length && qs.length === n) score += 1;
+  return score - n * 0.05;
 }
+const sameSkel = (a, b) => a.length === b.length && a.every((qa, i) => qa.some((x) => b[i].includes(x)));
+const prefixSkel = (a, b) => a.length <= b.length && a.every((qa, i) => qa.some((x) => b[i].includes(x)));   // "tel aviv" for תל אביב יפו
 
 /**
  * Parse free text: words, an optional house number, an optional city (after a comma, or trailing words naming a city).
@@ -101,17 +184,25 @@ export function parseQuery(pl, text) {
   let number = null, suffix = '';
   const rest = [];
   for (const t of toks) {
-    const m = t.match(/^(\d{1,5})([א-ת]?)$/);
+    const m = t.match(/^(\d{1,5})([א-תa-z]?)$/);
     if (m && number === null) { number = Number(m[1]); suffix = m[2]; } else rest.push(t);
   }
+  if (isLatin(main) || isLatin(cityText)) ensureLatin(pl);
   const findCity = (text) => {
     const t = CITY_ALIASES[text] || text;
     let ci = pl.cityNorm.indexOf(t);
-    if (ci < 0 && t.length >= 3) ci = pl.cityNorm.findIndex((c) => c.startsWith(t + ' ') || c === t);
+    if (ci < 0) ci = pl.cityEnNorm.indexOf(t);
+    if (ci < 0 && t.length >= 3) ci = pl.cityNorm.findIndex((c, i) => c.startsWith(t + ' ') || pl.cityEnNorm[i].startsWith(t + ' '));
+    if (ci < 0 && isLatin(t)) { const sk = t.split(' ').map(skelLatin); ci = pl.citySk.findIndex((cs) => prefixSkel(sk, cs)); }   // Givatayim, Petach Tikvah
     return ci;
   };
-  // trailing words that name a city, when no comma was used (longest match first)
   let cityIdx = -1;
+  // the whole text names a city ("petach tikva", "tel aviv"): nothing else to look for
+  if (!cityText && number === null && rest.length >= 2) {
+    const ci = findCity(rest.join(' '));
+    if (ci >= 0) return { words: [], number, suffix, cityIdx: ci, cityText: rest.join(' ') };
+  }
+  // trailing words that name a city, when no comma was used (longest match first)
   if (!cityText && rest.length >= 2) {
     for (let k = Math.min(3, rest.length - 1); k >= 1; k--) {
       const ci = findCity(rest.slice(-k).join(' '));
@@ -119,13 +210,18 @@ export function parseQuery(pl, text) {
     }
   } else if (cityText) {
     cityIdx = findCity(cityText);
-    if (cityIdx < 0) cityIdx = pl.cityNorm.findIndex((c) => c.startsWith(cityText));
+    if (cityIdx < 0) cityIdx = pl.cityNorm.findIndex((c, i) => c.startsWith(cityText) || pl.cityEnNorm[i].startsWith(cityText));
   }
   return { words: rest.map(canon).filter(Boolean), number, suffix, cityIdx, cityText };
 }
 
+// names as the rider's language wants them: English where the data has it, else Hebrew
+const streetName = (pl, s, lang) => (lang === 'en' && pl.streets[s][4]) || pl.streets[s][0];
+const poiName = (pl, p, lang) => (lang === 'en' && pl.pois[p][5]) || pl.pois[p][0];
+const cityOf = (pl, he, lang) => (lang === 'en' && he && pl.cityEnByHe.get(he)) || he || '';
+
 /** What is at (lat, lon): the nearest house number within 120 m, else a notable place within 150 m, else the nearest street within 400 m. */
-export function reverseGeocode(pl, lat, lon) {
+export function reverseGeocode(pl, lat, lon, lang = 'he') {
   let best = null, bd = 120;
   for (let i = 0; i < pl.addrLat.length; i++) {
     const dlat = (pl.addrLat[i] - lat) * 111000, dlon = (pl.addrLon[i] - lon) * 111000 * Math.cos(lat * Math.PI / 180);
@@ -133,50 +229,58 @@ export function reverseGeocode(pl, lat, lon) {
     if (d < bd) { bd = d; best = i; }
   }
   if (best !== null) {
-    const st = pl.streets[pl.addrStreet[best]];
-    return { kind: 'address', name: `${st[0]} ${pl.addrNumber[best]}${pl.addrSuffix[best] || ''}`, city: st[1], distance: Math.round(bd) };
+    const s = pl.addrStreet[best];
+    return { kind: 'address', name: `${streetName(pl, s, lang)} ${pl.addrNumber[best]}${pl.addrSuffix[best] || ''}`, city: cityOf(pl, pl.streets[s][1], lang), distance: Math.round(bd) };
   }
   let bp = null; bd = 150;
   for (let p = 0; p < pl.pois.length; p++) {
     const d = haversine(lat, lon, pl.pois[p][3], pl.pois[p][4]);
     if (d < bd) { bd = d; bp = p; }
   }
-  if (bp !== null) return { kind: 'poi', name: pl.pois[bp][0], city: pl.pois[bp][2], distance: Math.round(bd) };
+  if (bp !== null) return { kind: 'poi', name: poiName(pl, bp, lang), city: cityOf(pl, pl.pois[bp][2], lang), distance: Math.round(bd) };
   let bs = null; bd = 400;
   for (let s = 0; s < pl.streets.length; s++) {
     const d = haversine(lat, lon, pl.streets[s][2], pl.streets[s][3]);
     if (d < bd) { bd = d; bs = s; }
   }
-  if (bs !== null) return { kind: 'street', name: pl.streets[bs][0], city: pl.streets[bs][1], distance: Math.round(bd) };
+  if (bs !== null) return { kind: 'street', name: streetName(pl, bs, lang), city: cityOf(pl, pl.streets[bs][1], lang), distance: Math.round(bd) };
   return null;
 }
 
-/** Results: [{kind:'address'|'street'|'city'|'poi', name, city, lat, lon, score, approx?}] */
-export function searchPlaces(pl, text, limit = 8, near = null) {
+/** Results: [{kind:'address'|'street'|'city'|'poi', name, city, lat, lon, score, approx?}], named in `lang` where the data allows. */
+export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
   const q = parseQuery(pl, text);
   const out = [];
   const cityName = q.cityIdx >= 0 ? pl.cityNorm[q.cityIdx] : (q.cityText || '');
+  const qs = queryWords(q.words);
+  const latin = qs.some((w) => w.latin);
+  if (latin) ensureLatin(pl);
 
+  const cityRow = (i, score) => { const c = pl.cities[i]; return { kind: 'city', name: (lang === 'en' && c[3]) || c[0], city: '', lat: c[1], lon: c[2], score }; };
+  if (!q.words.length && q.cityIdx >= 0) return [cityRow(q.cityIdx, 15)];   // the whole text named a city
   // a city by itself
   if (q.words.length && q.number === null) {
     const whole = q.words.join(' ');
+    const wsk = latin ? q.words.map((w) => (isLatin(w) ? skelLatin(w) : skelHe(w))) : null;
     pl.cities.forEach((c, i) => {
-      const cw = words(c[0]).join(' ');
+      const cw = latin ? pl.cityEnWords[i].join(' ') : words(c[0]).join(' ');
       const alias = CITY_ALIASES[whole] === norm(c[0]);
-      if (cw === whole || alias) out.push({ kind: 'city', name: c[0], city: '', lat: c[1], lon: c[2], score: 15 });
-      else if (whole.length >= 3 && cw.startsWith(whole + ' ')) out.push({ kind: 'city', name: c[0], city: '', lat: c[1], lon: c[2], score: 14 + proximity(near, c[1], c[2]) / 3 });
-      else if (whole.length >= 2 && cw.startsWith(whole)) out.push({ kind: 'city', name: c[0], city: '', lat: c[1], lon: c[2], score: 2 + proximity(near, c[1], c[2]) / 3 });
+      if (cw === whole || alias) out.push(cityRow(i, 15));
+      else if (cw && whole.length >= 3 && cw.startsWith(whole + ' ')) out.push(cityRow(i, 14 + proximity(near, c[1], c[2]) / 3));
+      else if (wsk && sameSkel(wsk, pl.citySk[i])) out.push(cityRow(i, 7 + proximity(near, c[1], c[2]) / 3));   // sounds like it: below a name that is it
+      else if (cw && whole.length >= 2 && cw.startsWith(whole)) out.push(cityRow(i, 2 + proximity(near, c[1], c[2]) / 3));
     });
   }
-  if (q.words.length) {
+  if (qs.length) {
     // streets (and addresses on them)
     for (let s = 0; s < pl.streets.length; s++) {
-      let score = matchWords(q.words, pl.streetWords[s]);
+      let score = matchEntry(qs, pl.streetWords[s], latin ? pl.streetEn[s] : null, latin ? pl.streetSk[s] : null);
       if (!score) continue;
       const st = pl.streets[s];
       const sc = pl.streetCity[s];
       if (cityName) { if (sc === cityName || (sc && sc.startsWith(cityName))) score += 3; else score -= 2.5; }
       score += proximity(near, st[2], st[3]);
+      const name = streetName(pl, s, lang), city = cityOf(pl, st[1], lang);
       if (q.number !== null) {
         const a0 = pl.addrOff[s], a1 = pl.addrOff[s + 1];
         if (a1 > a0) {
@@ -188,23 +292,23 @@ export function searchPlaces(pl, text, limit = 8, near = null) {
             if (d < nd) { nd = d; nearest = i; }
           }
           const i = exact >= 0 ? exact : nearest;
-          out.push({ kind: 'address', name: `${st[0]} ${q.number}${q.suffix}`, city: st[1], lat: pl.addrLat[i], lon: pl.addrLon[i],
+          out.push({ kind: 'address', name: `${name} ${q.number}${q.suffix}`, city, lat: pl.addrLat[i], lon: pl.addrLon[i],
                      score: score + (exact >= 0 ? 5 : 3), approx: exact < 0 ? pl.addrNumber[i] : null });
         } else {
-          out.push({ kind: 'street', name: st[0], city: st[1], lat: st[2], lon: st[3], score: score + 0.5, noNumbers: true });
+          out.push({ kind: 'street', name, city, lat: st[2], lon: st[3], score: score + 0.5, noNumbers: true });
         }
       } else {
-        out.push({ kind: 'street', name: st[0], city: st[1], lat: st[2], lon: st[3], score });
+        out.push({ kind: 'street', name, city, lat: st[2], lon: st[3], score });
       }
     }
     // notable places
     for (let p = 0; p < pl.pois.length; p++) {
-      let score = matchWords(q.words, pl.poiWords[p], false);
+      let score = matchEntry(qs, pl.poiWords[p], latin ? pl.poiEn[p] : null, latin ? pl.poiSk[p] : null, false);
       if (!score) continue;
       if (cityName) { if (pl.poiCity[p] === cityName) score += 3; else score -= 1.5; }
       const poi = pl.pois[p];
       score += 1 + (IMPORTANT.has(poi[1]) ? 1.5 : 0) + proximity(near, poi[3], poi[4]);
-      out.push({ kind: 'poi', name: poi[0], poiKind: poi[1], city: poi[2], lat: poi[3], lon: poi[4], score });
+      out.push({ kind: 'poi', name: poiName(pl, p, lang), poiKind: poi[1], city: cityOf(pl, poi[2], lang), lat: poi[3], lon: poi[4], score });
     }
   }
   out.sort((a, b) => b.score - a.score || a.name.length - b.name.length);

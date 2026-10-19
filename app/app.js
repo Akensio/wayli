@@ -448,8 +448,9 @@ const fromResult = (g) => g.kind === 'stop' ? g : { name: g.city && g.kind !== '
  * recent places. onPick gets the chosen place.
  */
 function attachSearch(input, drop, onPick, opts = {}) {
-  let timer = 0, seq = 0;
+  let timer = 0, seq = 0, focusedAt = 0;
   const pick = (p) => { onPick(p); drop.hidden = true; };
+  const show = () => { drop.hidden = false; fitDrop(drop); };
   const row = (html, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html; return b; };
   function quickMenu() {
     drop.innerHTML = '';
@@ -475,7 +476,7 @@ function attachSearch(input, drop, onPick, opts = {}) {
       b.addEventListener('click', () => pick(p));
       drop.appendChild(b);
     }
-    drop.hidden = false;
+    show();
   }
   input.addEventListener('input', () => {
     onPick(null, true);
@@ -510,18 +511,27 @@ function attachSearch(input, drop, onPick, opts = {}) {
         drop.appendChild(b);
       }
       if (!results.length && !lines.length) { const n = row(placesLoaded ? t('noMatch') : t('placesPending')); n.disabled = true; drop.appendChild(n); }
-      drop.hidden = false;
+      show();
     }, 150);
   });
-  input.addEventListener('focus', () => { if (!input.value.trim() || opts.actions) { if (opts.actions) input.select(); quickMenu(); } else if (drop.children.length) drop.hidden = false; });
+  input.addEventListener('focus', () => { focusedAt = Date.now(); if (!input.value.trim() || opts.actions) { if (opts.actions) input.select(); quickMenu(); } else if (drop.children.length) show(); });
   input.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     const first = drop.querySelector('button:not(:disabled)');
     if (!drop.hidden && first && input.value.trim()) { first.click(); e.preventDefault(); }
     else if (place.from && place.to) { plan(); e.preventDefault(); }
   });
-  document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input) drop.hidden = true; });
+  // a tap elsewhere closes the list, unless that tap is what focused the box (the clear or go button hands focus here)
+  document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input && Date.now() - focusedAt > 500) drop.hidden = true; });
 }
+/** The list ends above the keyboard (the visual viewport), so it scrolls inside itself instead of panning the page. */
+function fitDrop(drop) {
+  const vv = window.visualViewport;
+  const bottom = vv ? vv.offsetTop + vv.height : innerHeight;
+  const top = drop.getBoundingClientRect().top;
+  drop.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
+}
+if (window.visualViewport) for (const ev of ['resize', 'scroll']) visualViewport.addEventListener(ev, () => document.querySelectorAll('.dropdown:not([hidden])').forEach(fitDrop));
 // The top bar is the planner: the destination field (places and line numbers), and once a place is set,
 // the origin row under it. A destination plans at once, from the origin set or from where you are.
 attachSearch($('toQ'), $('toDrop'), (p, typing) => {

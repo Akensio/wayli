@@ -4,7 +4,9 @@
     python3 -I pipeline/places.py data/osm/israel-and-palestine-latest.osm.pbf --gtfs data/gtfs.zip --out data/places.bin.gz
 
 Streets get their city from the nearest transit stop (the GTFS stop_desc carries
-the city), addresses from their own addr:city when present. Output is the usual
+the city), addresses from their own addr:city when present. Names are Hebrew, with
+the English name beside it where OpenStreetMap has one (name:en; 90% of streets) and,
+for cities, where the feed's translations.txt has one. Output is the usual
 container: u32 header length, JSON header (names), typed-array sections.
 """
 import argparse
@@ -24,7 +26,7 @@ from collections import defaultdict
 import numpy as np
 import osmium
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2   # 2: English names beside the Hebrew (streets, places, cities)
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {
@@ -58,6 +60,32 @@ def hebrew_name(tags):
     return tags.get("name:he") or tags.get("name") or ""
 
 
+def english_name(tags):
+    return (tags.get("name:en") or "").strip()
+
+
+def read_city_translations(zf):
+    """City names in English from the feed's translations.txt (pre-2020 layout: trans_id, lang, translation)."""
+    out = {}
+    if "translations.txt" not in set(zf.namelist()):
+        return out
+    with io.TextIOWrapper(zf.open("translations.txt"), encoding="utf-8-sig", newline="") as f:
+        for r in csv.DictReader(f):
+            if (r.get("lang") or "").strip().upper() == "EN" and r.get("trans_id") and r.get("translation"):
+                out[r["trans_id"].strip()] = r["translation"].strip()
+    return out
+
+
+def format_of(path):
+    """The format version of a compiled address book, or -1."""
+    try:
+        with gzip.open(path, "rb") as f:
+            n = struct.unpack("<I", f.read(4))[0]
+            return int(json.loads(f.read(n).decode()).get("format", -1))
+    except Exception:
+        return -1
+
+
 def split_number(s):
     """'4א' -> (4, 'א'); '12-14' -> (12, '-14'); 'בלי' -> None"""
     m = re.match(r"^\s*(\d{1,5})\s*(.*)$", s)
@@ -69,9 +97,9 @@ def split_number(s):
 class Handler(osmium.SimpleHandler):
     def __init__(self):
         super().__init__()
-        self.streets = []     # (name, lat, lon)
+        self.streets = []     # (name, lat, lon, name_en)
         self.addresses = []   # (street, number, suffix, city, lat, lon)
-        self.pois = []        # (name, kind, lat, lon)
+        self.pois = []        # (name, kind, lat, lon, name_en)
         self.n = 0
 
     def _poi(self, tags):
@@ -94,7 +122,7 @@ class Handler(osmium.SimpleHandler):
         if name:
             kind = self._poi(t)
             if kind:
-                self.pois.append((name, kind, n.location.lat, n.location.lon))
+                self.pois.append((name, kind, n.location.lat, n.location.lon, english_name(t)))
 
     def way(self, w):
         self.n += 1
@@ -112,7 +140,7 @@ class Handler(osmium.SimpleHandler):
         hw = t.get("highway")
         name = hebrew_name(t)
         if hw in STREET_TYPES and name:
-            self.streets.append((name, lat, lon))
+            self.streets.append((name, lat, lon, english_name(t)))
         hn, st = t.get("addr:housenumber"), t.get("addr:street")
         if hn and st:
             num = split_number(hn)
@@ -121,7 +149,7 @@ class Handler(osmium.SimpleHandler):
         if name:
             kind = self._poi(t)
             if kind:
-                self.pois.append((name, kind, lat, lon))
+                self.pois.append((name, kind, lat, lon, english_name(t)))
 
     def area(self, a):
         # multipolygon relations and closed ways: campuses, malls, parks, stations
@@ -145,7 +173,7 @@ class Handler(osmium.SimpleHandler):
             return
         lat, lon = sum(lats) / len(lats), sum(lons) / len(lons)
         if kind:
-            self.pois.append((name, kind, lat, lon))
+            self.pois.append((name, kind, lat, lon, english_name(t)))
         if hn and st:
             num = split_number(hn)
             if num:
@@ -161,15 +189,21 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("pbf")
-    ap.add_argument("--gtfs", required=True, help="GTFS zip, for the city of each stop")
+    ap.add_argument("pbf", nargs="?")
+    ap.add_argument("--gtfs", help="GTFS zip, for the city of each stop and the English city names")
     ap.add_argument("--out", default="data/places.bin.gz")
+    ap.add_argument("--check", default=None, help="exit 0 when this compiled file has the current format, else 1 (for the build)")
     args = ap.parse_args()
+    if args.check:
+        sys.exit(0 if format_of(args.check) == FORMAT_VERSION else 1)
+    if not args.pbf or not args.gtfs:
+        ap.error("pbf and --gtfs are required")
     t0 = time.time()
 
     # stops with cities, as a grid, to give streets a city
     stops = []
     with zipfile.ZipFile(args.gtfs) as zf:
+        city_en = read_city_translations(zf)
         with io.TextIOWrapper(zf.open("stops.txt"), encoding="utf-8-sig", newline="") as f:
             for r in csv.DictReader(f):
                 m = CITY_RE.search(r.get("stop_desc", "") or "")
@@ -206,16 +240,20 @@ def main():
     # streets: group ways by (normalised name, city)
     groups = defaultdict(list)
     display = {}
-    for name, lat, lon in h.streets:
+    display_en = {}
+    for name, lat, lon, en in h.streets:
         city = city_near(lat, lon)
         key = (norm(name), city)
         groups[key].append((lat, lon))
         display.setdefault(key, name)
-    street_list = []   # [name, city, lat, lon]
+        if en:
+            display_en.setdefault(key, en)
+    street_list = []   # [name, city, lat, lon, name_en]
     street_index = {}
     for key, pts in sorted(groups.items()):
         street_index[key] = len(street_list)
-        street_list.append([display[key], key[1], round(sum(p[0] for p in pts) / len(pts), 6), round(sum(p[1] for p in pts) / len(pts), 6)])
+        street_list.append([display[key], key[1], round(sum(p[0] for p in pts) / len(pts), 6), round(sum(p[1] for p in pts) / len(pts), 6), display_en.get(key, "")])
+    log(f"{sum(1 for s in street_list if s[4])} of {len(street_list)} streets have an English name")
     log(f"{len(street_list)} streets after grouping")
 
     # addresses: attach to a street (same name; same city when known, else nearest street of that name)
@@ -233,7 +271,7 @@ def main():
             key = (n, c)
             if key not in street_index:
                 street_index[key] = len(street_list)
-                street_list.append([st, c, round(lat, 6), round(lon, 6)])
+                street_list.append([st, c, round(lat, 6), round(lon, 6), ""])
                 by_name[n].append((c, street_index[key]))
             cands = by_name[n]
         if len(cands) == 1:
@@ -252,12 +290,12 @@ def main():
     # places
     poi_list = []
     seen = set()
-    for name, kind, lat, lon in h.pois:
+    for name, kind, lat, lon, en in h.pois:
         key = (norm(name), kind, round(lat, 3), round(lon, 3))
         if key in seen:
             continue
         seen.add(key)
-        poi_list.append([name, kind, city_near(lat, lon), round(lat, 6), round(lon, 6)])
+        poi_list.append([name, kind, city_near(lat, lon), round(lat, 6), round(lon, 6), en])
     poi_list.sort(key=lambda p: (p[0], p[2]))
 
     sections = []
@@ -281,7 +319,7 @@ def main():
         "counts": {"streets": len(street_list), "addresses": len(addr), "pois": len(poi_list), "cities": len(cities)},
         "sections": sections,
         "streets": street_list,
-        "cities": [[c[0], round(c[1], 6), round(c[2], 6)] for c in cities],
+        "cities": [[c[0], round(c[1], 6), round(c[2], 6), city_en.get(c[0], "")] for c in cities],
         "pois": poi_list,
         "addrSuffix": suffixes,
     }

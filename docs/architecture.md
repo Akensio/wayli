@@ -348,7 +348,14 @@ or with the keyboard's ״ or ''; the same rule normalises stop names. A stop
 matches whether its Hebrew or its English name is typed (both are indexed),
 and every name the worker hands out (results, stop lists, headsigns, the
 map's station labels) is in the app's language, with Hebrew where the feed
-has no translation; the address book is Hebrew only for now. Stops
+has no translation. The address book carries OpenStreetMap's English name
+beside the Hebrew (85% of streets, half the notable places; about 300 KB
+gzipped) and the feed's for cities; a word typed in Latin letters matches the English
+name, or, failing that, the consonant skeleton of the Hebrew one (vowels
+dropped, letters that sound alike merged, doubled letters collapsed, so
+"Havradim", "HaVradim" and "Ha-Vradim" all find הורדים, and "Petach Tikvah"
+finds פתח תקווה), scored a little below a spelled-out English name. Results
+are named in the app's language where the data has the name. Stops
 and places are ranked on one scale in the worker: match strength (a whole
 word over a prefix, a name typed in full over a partial one; a street is
 named by its first word, a place's words count alike), nearness, a point
@@ -426,8 +433,8 @@ next 7 days, and deploys `site/` to GitHub Pages, turning Pages on by itself the
 time (`actions/configure-pages` with `enablement: true`). No server, no cost.
 
 Not yet: crowd reports, elevation, Arabic (the data format carries it, the
-interface does not), the address book in English, line pages beyond a
-trip's stop list, the bike-on-board rules for light rail, fares.
+interface does not), line pages beyond a trip's stop list, the bike-on-board
+rules for light rail, fares.
 
 ## Compact timetable (format 2, built by `pipeline/compile.py`)
 
@@ -454,11 +461,14 @@ little-endian typed arrays the app views in place:
 - header extras: stations, each stop's city (from `stop_desc`), the walk and
   slack parameters the router reads, and `names`: the stop, station and city
   names and the headsigns in other languages (English now; `--langs en,ar`
-  would add Arabic), from the feed's `translations.txt`, which covers 92% of
-  the day's stop names, 97% of its stations, all but a few cities and 92% of
-  headsigns (a headsign is translated piece by piece around the dashes of
-  the MOT "stop-city" convention). A missing translation falls back to
-  Hebrew. English costs about 240 KB gzipped per day.
+  would add Arabic), from the feed's `translations.txt`, which covers 99.6%
+  of stop names, all but a few cities and all but a dozen headsigns (a
+  headsign is translated piece by piece around the dashes of the MOT
+  "stop-city" convention). The feed spells a quote mark three ways (`"` in
+  stops.txt and translations.txt, `''` in routes.txt, `״` elsewhere) and is
+  loose with spaces around a slash, so lookups go through one key. A missing
+  translation falls back to Hebrew. English costs about 240 KB gzipped per
+  day.
 
 Not yet in the format: headsigns per trip, fares.
 Search is done in the app over names and cities (`searchStops`), grouping a

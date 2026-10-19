@@ -71,9 +71,18 @@ def rows(zf, name):
         yield from csv.DictReader(f)
 
 
+QUOTES = re.compile("''|[\"\u05f4]")   # the three spellings of a quote mark in the feed
+
+
+def tkey(s):
+    """The key a name is translated under: the feed spells a quote mark three ways (" in stops.txt and
+    translations.txt, '' in routes.txt, ״ in places) and is loose with spaces around a slash."""
+    return re.sub(r"\s*/\s*", "/", QUOTES.sub('"', s.strip()))
+
+
 def read_translations(zf, langs):
-    """translations.txt -> {lang: {hebrew string: translation}} for the languages asked for (lower-case codes).
-    The MOT feed uses the pre-2020 layout (trans_id, lang, translation); the standard layout (table_name,
+    """translations.txt -> {lang: {tkey(hebrew string): translation}} for the languages asked for (lower-case
+    codes). The MOT feed uses the pre-2020 layout (trans_id, lang, translation); the standard layout (table_name,
     field_name, language, translation, field_value) is read too. A translation equal to the source is dropped."""
     out = {L: {} for L in langs}
     if not langs or "translations.txt" not in set(zf.namelist()):
@@ -84,7 +93,7 @@ def read_translations(zf, langs):
         dst = (r.get("translation") or "").strip()
         src = src.strip()
         if L in out and src and dst and dst != src:
-            out[L][src] = dst
+            out[L][tkey(src)] = dst
     return out
 
 
@@ -92,8 +101,9 @@ def translate(s, d):
     """A name in another language: the whole string when the feed translates it, else piece by piece around
     the dashes of the MOT 'stop-city' convention; the string itself when nothing is known."""
     s = s.strip()
-    if s in d:
-        return d[s]
+    k = tkey(s)
+    if k in d:
+        return d[k]
     if "-" in s:
         a, b = s.rsplit("-", 1)
         ta, tb = translate(a, d), translate(b, d)
@@ -600,7 +610,7 @@ def main():
     names = {}
     for L in langs:
         d = translations[L]
-        tl = lambda s: (d.get(s.strip(), "") if s else "")
+        tl = lambda s: (d.get(tkey(s), "") if s else "")
         cities = {}
         for s in stop_list:
             if s[6] and s[6] not in cities and tl(s[6]):

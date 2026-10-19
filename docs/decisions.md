@@ -432,3 +432,24 @@ so they are not re-litigated.
   Hebrew). Arabic waits for an Arabic interface; the data side is a flag.
   Rejected: a separate names file translated in the app at runtime (one more
   download and a map by stop id for no gain).
+- 2026-10-19 Gadi: "it doesn't find an existing address" (Havradim 4
+  Givatayim, typed in Latin letters) and the from/to boxes were "a mish
+  mash" of English stop names and Hebrew addresses. The address book now
+  carries OpenStreetMap's English names (85% of streets) and the feed's
+  English city names, and a Latin-letter word also matches the consonant
+  skeleton of a Hebrew name, so any spelling finds the street. Rejected:
+  transliterating Hebrew names for display (unvocalised Hebrew gives
+  "hvrdym"); a Hebrew name without an English one stays Hebrew.
+- 2026-10-19 The headsign of line 62 showed in Hebrew in the English app:
+  routes.txt spells a quote mark as '' where translations.txt has ", which
+  hid 652 headsigns and 3,000 stop names from the lookup; one key for all
+  three spellings lifts coverage from 92% to 99.6% of stops.
+- 2026-10-19 Gadi: tapping the search bar did not open the recents and "my
+  location" list; it opened only from the From box. The list did open, and
+  the tap that handed the box focus (the clear button, the Go button) closed
+  it again as a tap outside it. A tap within half a second of the focus no
+  longer closes it.
+- 2026-10-19 Gadi: with the keyboard open the list is taller than the
+  visible screen, so scrolling it pans the page and the from/to boxes slide
+  away. The list now ends above the keyboard (the visual viewport) and
+  scrolls inside itself, without scroll chaining to the page.

@@ -305,7 +305,7 @@ const ops = {
     const hasDigit = /\d/.test(q);
     let places = [];
     if (pl) {
-      places = searchPlaces(pl, q, limit, near).map((r) => ({ kind: r.kind, name: r.name, city: r.city, lat: r.lat, lon: r.lon, approx: r.approx ?? null,
+      places = searchPlaces(pl, q, limit, near, L).map((r) => ({ kind: r.kind, name: r.name, city: r.city, lat: r.lat, lon: r.lon, approx: r.approx ?? null,
         label: r.kind === 'poi' ? kindLabel(r.poiKind, L) : null, score: r.score, rank: r.score + (hasDigit && r.kind === 'address' ? 3 : 0) }));
     }
     const merged = [...stops, ...places].map((r, i) => ({ r, i })).sort((a, b) => b.r.rank - a.r.rank || a.i - b.i).map((x) => x.r);
@@ -442,7 +442,7 @@ const ops = {
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
   reverse({ lat, lon }) {
     if (pl) {
-      const r = reverseGeocode(pl, lat, lon);
+      const r = reverseGeocode(pl, lat, lon, lang);
       if (r) return { name: r.city && r.kind !== 'city' ? `${r.name}, ${r.city}` : r.name, kind: r.kind, distance: r.distance };
     }
     let best = -1, bd = 600;

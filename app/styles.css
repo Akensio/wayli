@@ -47,7 +47,7 @@ button, input, select { font: inherit; }
 .chipbtn { background: var(--chip); border: 0; border-radius: 16px; padding: 7px 12px; cursor: pointer; color: var(--ink); font-size: 13px; min-height: 34px; }
 .chipbtn:active { background: var(--line); }
 .field input[type=text] { padding-inline-end: 12px; }
-.dropdown { position: absolute; z-index: 20; inset-inline: 0; top: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-top: 4px; max-height: 260px; overflow: auto; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.dropdown { position: absolute; z-index: 20; inset-inline: 0; top: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-top: 4px; max-height: 360px; overflow: auto; overscroll-behavior: contain; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
 .dropdown[hidden] { display: none; }
 .dropdown button { display: block; width: 100%; text-align: start; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; color: var(--ink); cursor: pointer; }
 .dropdown button:last-child { border-bottom: 0; }

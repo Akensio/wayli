@@ -50,7 +50,8 @@ jobs:
           restore-keys: osm-
       - name: Street graph, address book and rail graph
         run: |
-          if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ ! -f data/rail.bin.gz ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ]; then
+          if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ ! -f data/rail.bin.gz ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ] \
+             || ! python3 -I pipeline/places.py --check data/places.bin.gz; then   # an address book in an older format is rebuilt too
             # a mirror may answer with an error page instead of the extract: fail on HTTP errors and insist on a real file
             dl() { curl -fsSL --retry 3 --retry-delay 15 -o "$1" "$2" && [ "$(stat -c %s "$1")" -gt 50000000 ]; }
             dl data/osm/israel-and-palestine-latest.osm.pbf https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf \
