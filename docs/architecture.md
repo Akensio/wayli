@@ -183,9 +183,15 @@ strip scrolls the strip instead), and from its handle or its top 96 px
 always; fully open, a finger pulling down with the list at its top folds
 it too (the browser owns vertical gestures in a scrolling list and cancels
 pointer events, but that pull only overscrolls, so touch events drive the
-sheet; a mouse wheel past the top does the same). A short pull of 40 px
-steps one size in its direction, a long one lands where it is let go, and
-a tap on the handle cycles the sizes; a tap on empty map collapses it.
+sheet; a mouse wheel past the top does the same). A flick (the finger
+faster than 1 px/ms at release) goes all the way in its direction, a short
+pull of 40 px steps one size, a long slow one lands where it is let go,
+and a tap on the handle cycles the sizes; a tap on empty map collapses it.
+The map's own buttons (locate, compass) sit in the bottom corner above the
+sheet and fade with the map under a fully open sheet. Tilted, the map gets
+depth: a sky and a haze towards the horizon (MapLibre's sky, pitch up to
+72°), a low side light shading the basemap's extruded buildings; colours
+follow the light or dark style.
 Picking a point
 is a mode of the same map: the sheet and bar give way to a hint and a
 Cancel; a tap drops the pin. The strip at the bottom when nothing is open offers plan, home,
@@ -216,7 +222,12 @@ and cannot take the app's colours.
 
 A plan from now also looks ten minutes back: what left in that time goes
 in a strip of its own above the list ("already left, on board?"), each with
-an "I'm on it" button, for the rider who boarded before opening the app;
+an "I'm on it" button, for the rider who boarded before opening the app.
+The last search is kept with its results for an hour and restored as it
+was (its own origin and time, the strip then holding every ride that has
+left but not arrived) on reopening the app or on tapping its destination
+in the recents, since the rider's "my location" may have moved with the
+vehicle since; "plan again from now" is one tap away;
 starting any journey whose first ride has left begins the follower on
 board that ride (the last ride to have departed), not at the walk to the
 stop, with the position moving it along from there.
@@ -457,7 +468,8 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   them (what can be taken from there; elsewhere on the map, everything in
   view); while results are shown, only the lines of those journeys (the
   note says which); hidden while a journey, a line or a followed trip
-  draws its own vehicles with their delays. A vehicle whose last report is
+  draws its own vehicles (the rider's own carries its minutes late; the
+  others show it in their bubble). A vehicle whose last report is
   more than five minutes behind the newest report of the feed is not drawn
   at all (the feed lags as a whole; a single stale vehicle is noise). When
   the whole feed is four or more minutes behind the clock, every dot is

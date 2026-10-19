@@ -319,7 +319,10 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .livenote:empty { display: none; }
 .livenote.lag { color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + 6px) !important; transition: bottom .25s; }
-.maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right { top: var(--top-h) !important; }
+/* the map's own buttons live in the bottom corner above the sheet, and go with the map under a fully open sheet */
+body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-bottom-left, body.sheet-full .livenote { opacity: 0; pointer-events: none; }
+.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { transition: bottom .25s, opacity .2s; }
+.livenote { max-width: calc(100vw - 80px); }
 .maplibregl-ctrl-group.wayli-hidden { display: none; }
 .maplibregl-ctrl-group button.maplibregl-ctrl-compass { width: 40px; height: 40px; }
 .wayli-pick { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg) translate(6px, -6px); background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }

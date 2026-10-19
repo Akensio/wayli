@@ -323,3 +323,26 @@ so they are not re-litigated.
   wait up to 15 minutes at the walk to the stop). Considered for later: "I'm
   on this one" from a vehicle's bubble on the map, planning the rest of the
   way from that very vehicle.
+- 2026-10-19 Gadi: the strength of the pull should decide midway or all
+  the way. A flick goes all the way; a slow pull steps or lands where let go.
+- 2026-10-19 Gadi: recents that keep the time of the search and "search
+  backwards", because "my location" moves with him once he is on the
+  vehicle. Chosen instead: the last search is restored as it was for an
+  hour (own origin, own time, on-board strip applied), also from its recent
+  chip; a fresh plan is "plan again from now". No backwards search needed.
+- 2026-10-19 Gadi: the locate and compass buttons go in a bottom corner.
+  Bottom-right, above the sheet, hidden with the map under a full sheet.
+- 2026-10-19 Gadi: the +1/+6 on the buses of a journey's map were unclear.
+  They are minutes late per vehicle; now only the vehicle running the
+  rider's ride carries its number, the others show it in their bubble.
+- 2026-10-19 Gadi likes the tilt and rotation; "make it look 3D-like".
+  Done with what MapLibre 4.7 gives for free: a sky and horizon haze when
+  tilted, the pitch limit raised to 72°, a low side light that shades the
+  extruded buildings. Not done: 3D terrain or hillshade (needs elevation
+  tiles, e.g. AWS Terrain Tiles, a few MB per session; flat in Tel Aviv,
+  worth it for Haifa and Jerusalem, Gadi's call).
+- 2026-10-19 bug from a friend on iPhone: "Can't find variable: when" on
+  every plan. A leftover `void when` in the recent-searches renderer read a
+  loop-scoped name; Safari threw it into the plan's error handler, which
+  wiped the results. Removed; an eslint no-undef scan of every module is
+  now part of the checks.

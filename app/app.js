@@ -347,7 +347,7 @@ async function init() {
   $('day').value = start;
   setDefaultTime();
   if (shared) applyQuery(shared);
-  else if (last && last.q && last.q.day === start && Date.now() - last.at < 6 * 3600e3) { applyQuery(last.q); lastResult = last.result; lastQuery = last.q; renderResults(last.result, last.q, last.at); }
+  else if (last && last.q && !last.dismissed && last.q.day === start && Date.now() - last.at < 6 * 3600e3) { applyQuery(last.q); lastResult = last.result; lastQuery = last.q; renderResults(last.result, last.q, last.at); }
   try { await loadDay(start); } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   if (shared) { history.replaceState(null, '', location.pathname); plan(); }
   await loadPlaces();
@@ -508,7 +508,7 @@ for (const id of ['toClear', 'sumClear']) $(id).addEventListener('click', () => 
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 function clearPlan() {
   place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = ''; barOpen = false;
-  lastResult = null; lastQuery = null; lastSearch.clear();
+  lastResult = null; lastQuery = null; { const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true }); }
   $('results').innerHTML = ''; showPlanError('');
   setOptions(false); $('nowBtn').click();
   updateFromRow(); renderOptionChips(); renderRecent();
@@ -736,12 +736,13 @@ function renderResults(r, q, resultsAt = null) {
   if (q.arriveBy) groups = groups.slice().reverse();
   // planned from now: what left in the last ten minutes goes in a strip of its own ("on board?"), the list stays from now
   const nowSec = live.nowOn(q.day), rideDep = (j) => { const fr = j.legs.find((l) => l.type === 'ride'); return fr ? fr.depart : j.depart; };
-  const isGone = (j) => q.isNow && !resultsAt && rideDep(j) < nowSec - 60;
+  const isGone = (j) => q.isNow && rideDep(j) < nowSec - 60;   // the first ride has left
+  const onStrip = (j) => rideDep(j) >= nowSec - 600 || (resultsAt && j.arrive > nowSec);   // left lately, or (restored results) still under way
   const gone = [];
   for (const g of groups) {
     let opts = g.options.map((i) => r.journeys[i]);
     if (q.arriveBy) opts = opts.slice().reverse();
-    for (const j of opts) if (isGone(j) && rideDep(j) >= nowSec - 600 && !gone.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) gone.push(j);
+    for (const j of opts) if (isGone(j) && onStrip(j) && !gone.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) gone.push(j);
     opts = opts.filter((j) => !isGone(j));
     if (opts.length) box.appendChild(journeyCard(opts[0], q, g.lines, opts));
   }
@@ -777,14 +778,12 @@ function renderRecent() {
   for (const r of l) {
     const d = document.createElement('div');
     d.className = 'recent';
-    const when = new Date(r.at);
     d.innerHTML = `<span class="ic">${ic('history')}</span><span class="txt"><span class="name">${esc(r.from.name)} ← ${esc(r.to.name)}</span><small>${esc(dayLabel(r.day || calToday()))} ${esc(r.time || '')}${r.bike && r.bike !== 'none' ? ' · ' + ic('bike') : ''}${r.arriveBy ? ' · ' + t('arriveBy') : ''}</small></span>`;
     if (lang !== 'he') d.querySelector('.name').textContent = `${r.from.name} → ${r.to.name}`;
     d.addEventListener('click', () => { applyQuery(r); $('nowBtn').click(); nav.closeAll(); showScreen('plan'); plan(); });
     box.appendChild(d);
   }
   box.hidden = !!$('results').children.length;
-  void when;
   renderPeek();
 }
 /** The strip the sheet shows when collapsed: plan, home, work, recent places, nearby stops. */
@@ -823,7 +822,7 @@ function makeMap(container, center, zoom) {
   if (typeof maplibregl === 'undefined') return null;
   if (!rtlSet) { try { maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.js', true); } catch (e) {} rtlSet = true; }
   currentStyle = mapStyle();
-  const m = new maplibregl.Map({ container, style: currentStyle, center: [center[1], center[0]], zoom, attributionControl: { compact: true }, pitchWithRotate: false });
+  const m = new maplibregl.Map({ container, style: currentStyle, center: [center[1], center[0]], zoom, attributionControl: { compact: true }, pitchWithRotate: false, maxPitch: 72 });
   m.on('error', (e) => console.warn('map', e && e.error && e.error.message));
   return m;
 }
@@ -839,10 +838,10 @@ async function initMap() {
   if (!mainMap) { mapFailed = true; for (const r of styledWaiters.splice(0)) r(null); return; }
   const m = mainMap;
   geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } });
-  m.addControl(geoCtl, lang === 'he' ? 'top-left' : 'top-right');
+  m.addControl(geoCtl, 'bottom-right');
   // a compass under it: shows the rotation and the tilt, a tap sets north up and flat; hidden while there is nothing to reset
   const compass = new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true });
-  m.addControl(compass, lang === 'he' ? 'top-left' : 'top-right');
+  m.addControl(compass, 'bottom-right');
   const compassVis = () => { const on = Math.abs(m.getBearing()) > 0.5 || m.getPitch() > 0.5; compass._container.classList.toggle('wayli-hidden', !on); };
   compassVis(); for (const ev of ['rotate', 'pitch', 'moveend', 'load']) m.on(ev, compassVis);
   geoCtl.on('geolocate', (p) => notePos(p.coords.latitude, p.coords.longitude));
@@ -917,6 +916,14 @@ function setupMapLayers(m) {
   // the basemap's own transit squares would double our stops
   if (m.getLayer('poi_transit')) m.setLayoutProperty('poi_transit', 'visibility', 'none');
   const dark = typeof currentStyle === 'object';
+  // depth when the map is tilted: a sky and a haze towards the horizon, a low side light that shades the buildings
+  try {
+    m.setSky(dark
+      ? { 'sky-color': '#0a1322', 'horizon-color': '#243247', 'fog-color': '#15181c', 'sky-horizon-blend': 0.7, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.8, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 1, 12, 0] }
+      : { 'sky-color': '#8fc1f2', 'horizon-color': '#dbe7f3', 'fog-color': '#f4f5f2', 'sky-horizon-blend': 0.7, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.8, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 10, 1, 12, 0] });
+    m.setLight({ anchor: 'viewport', color: '#ffffff', intensity: dark ? 0.35 : 0.55, position: [1.2, 215, 35] });
+    if (m.getLayer('building-3d')) { m.setPaintProperty('building-3d', 'fill-extrusion-opacity', 0.9); m.setPaintProperty('building-3d', 'fill-extrusion-vertical-gradient', true); }
+  } catch (e) { /* an older MapLibre without sky: the map stays flat-shaded */ }
   m.addSource('lm-stops', { type: 'geojson', data: EMPTY });
   m.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, filter: ['in', ['get', 'kind'], ['literal', ['bus', 'platform']]], paint: { 'circle-radius': ['case', ['==', ['get', 'kind'], 'platform'], 3, 4], 'circle-color': '#ffffff', 'circle-stroke-color': '#555', 'circle-stroke-width': 1.5 } });
   for (const k of BADGE_KINDS) if (!m.hasImage('wayli-st-' + k)) m.addImage('wayli-st-' + k, stationImage(k), { pixelRatio: 2 });
@@ -1153,7 +1160,8 @@ function lineVehicleMarkers(m, markers, vs, statuses, routeType, mine, fallback 
     const el = document.createElement('div');
     el.className = 'wayli-bus lbl' + (st.stale || st.trip < 0 ? ' stale' : '') + (mine != null && st.trip === mine ? ' mine' : '');
     const d = st.delay != null ? live.delayMinutes(st.delay) : null;
-    el.innerHTML = `${icon}${d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;
+    const isMine = mine != null && st.trip === mine;
+    el.innerHTML = `${icon}${isMine && d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;   // the number (minutes late) only on the rider's own vehicle; the bubble has it for the rest
     el.style.borderColor = routeColor(st.routeType ?? routeType, st.agency || fallback.agency);
     addHeading(el, heading(v));
     el.title = `${clock(v.recordedAt)}${st.headsign ? ' · ' + st.headsign : ''}`;
@@ -1580,7 +1588,18 @@ $('tripBack').addEventListener('click', () => nav.close('tripDetail'));
 // ---------------------------------------------------------------- saved: places, trips, stops (this device only)
 function tripKey(q) { return `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`; }
 function updateStar(id, key, kind) { const on = key && favs.has(kind, key); $(id).innerHTML = ic('star'); $(id).classList.toggle('on', on); }
+/** The last search, shown as it was (its own place and time), when it is under an hour old and went to this place. */
+function restoreLast(p) {
+  const last = lastSearch.get();
+  if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > 3600e3) return false;
+  if (!last.q.to || !p || last.q.to.name !== p.name || last.q.day !== $('day').value && !(manifest && manifest.days.some((d) => d.date === last.q.day))) return false;
+  nav.closeAll(); showScreen('plan');
+  $('day').value = last.q.day; applyQuery(last.q); lastResult = last.result; lastQuery = last.q;
+  renderResults(last.result, last.q, last.at); sheet.set('half');
+  return true;
+}
 async function planTo(p) {
+  if (restoreLast(p)) return;
   nav.closeAll();
   showScreen('plan');
   setPlace('to', p);
@@ -2059,6 +2078,7 @@ const sheet = {
     const prev = this.state;
     this.state = st;
     $('sheet').dataset.state = st;
+    document.body.classList.toggle('sheet-full', st === 'full');
     document.documentElement.style.setProperty('--sheet-h', this.px(st) + 'px');
     if (prev === 'full' && st !== 'full') refreshLiveMap();
     if (st !== prev && mainMap && (st === 'peek' || prev === 'peek')) $('sheetBody').scrollTop = 0;
@@ -2073,12 +2093,14 @@ const sheet = {
   const h = $('sheetHandle'), el = $('sheet');
   const ORDER = ['peek', 'half', 'full'];
   let startX = 0, startY = 0, startH = 0, startState = 'peek', moved = false, dragging = false, onHandle = false, onStrip = false, swallow = false;
+  let trail = [];   // the last few (time, y) of the finger, for its speed at release
+  const speed = () => { const n = trail.length; if (n < 2) return 0; let i = n - 2; while (i > 0 && trail[n - 1].t - trail[i].t < 60) i--; const dt = trail[n - 1].t - trail[i].t; return dt > 0 ? (trail[n - 1].y - trail[i].y) / dt : 0; };
   el.addEventListener('pointerdown', (e) => {
     if (e.button) return;
     onHandle = h.contains(e.target); onStrip = !!e.target.closest('.peekrow');
     const nearTop = e.clientY - el.getBoundingClientRect().top < 96;
     if (!onHandle && (e.target.closest('input, select, textarea') || (sheet.state === 'full' && !nearTop))) return;
-    dragging = true; startX = e.clientX; startY = e.clientY; startH = el.getBoundingClientRect().height; startState = sheet.state; moved = false;
+    dragging = true; startX = e.clientX; startY = e.clientY; startH = el.getBoundingClientRect().height; startState = sheet.state; moved = false; trail = [{ t: performance.now(), y: e.clientY }];
   });
   el.addEventListener('pointermove', (e) => {
     if (!dragging) return;
@@ -2088,10 +2110,13 @@ const sheet = {
       if (onStrip && Math.abs(dx) > Math.abs(dy)) { dragging = false; return; }   // a sideways scroll of the chips
       moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch (x) {}
     }
+    trail.push({ t: performance.now(), y: e.clientY }); if (trail.length > 8) trail.shift();
     el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)) + 'px';
   });
-  /** Where a drag lands: the nearest size, or one step in its direction after a short pull. */
-  const settle = (hh, fromH, fromState) => {
+  /** Where a drag lands: a flick (over 0.6 px/ms at release) goes all the way in its direction; otherwise the
+   *  nearest size, or one step in its direction after a short pull. `v` is the finger's speed, down positive. */
+  const settle = (hh, fromH, fromState, v = 0) => {
+    if (Math.abs(v) >= 0.6) { sheet.set(v < 0 ? 'full' : 'peek'); return; }
     const dy = hh - fromH;
     let best = 'peek';
     for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
@@ -2105,7 +2130,7 @@ const sheet = {
     el.style.height = '';
     if (!moved) { if (onHandle) sheet.toggle(); return; }
     swallow = true; setTimeout(() => { swallow = false; }, 60);
-    settle(hh, startH, startState);
+    settle(hh, startH, startState, speed());
   };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
@@ -2118,12 +2143,13 @@ const sheet = {
       tOn = false;
       if (sheet.state !== 'full' || dragging || e.touches.length !== 1 || body.scrollTop > 0) return;
       if (e.touches[0].clientY - el.getBoundingClientRect().top < 96) return;   // the pointer drag has that zone
-      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = el.getBoundingClientRect().height;
+      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = el.getBoundingClientRect().height; trail = [{ t: performance.now(), y: tY }];
     }, { passive: true });
     body.addEventListener('touchmove', (e) => {
       if (!tOn) return;
       const down = e.touches[0].clientY - tY;
       if (!tMoved) { if (down < 8) { if (body.scrollTop > 0) tOn = false; return; } tMoved = true; el.classList.add('dragging'); }
+      trail.push({ t: performance.now(), y: e.touches[0].clientY }); if (trail.length > 8) trail.shift();
       el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), tH - down)) + 'px';
     }, { passive: true });
     const tEnd = () => {
@@ -2133,7 +2159,7 @@ const sheet = {
       el.classList.remove('dragging');
       const hh = el.getBoundingClientRect().height;
       el.style.height = '';
-      settle(hh, tH, 'full');
+      settle(hh, tH, 'full', Math.max(0, speed()));
     };
     body.addEventListener('touchend', tEnd); body.addEventListener('touchcancel', tEnd);
     // a mouse wheel scrolling up past the top folds it too
