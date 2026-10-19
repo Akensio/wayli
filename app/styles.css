@@ -321,10 +321,11 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .sheet { position: fixed; inset-inline: 0; bottom: 0; height: var(--sheet-h); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); z-index: 20; display: flex; flex-direction: column; transition: height .25s ease; }
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
-.handle { flex: none; height: 32px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
+.handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
 .sheet[data-state="peek"], .sheet[data-state="half"] { touch-action: none; }
 .sheet[data-state="half"] .sheet-body { overflow: hidden; }
-.handle span { width: 42px; height: 5px; border-radius: 3px; background: var(--line); }
+.sheet[data-state="full"] .sheet-body { scroll-padding-top: 0; }
+.handle span { width: 56px; height: 6px; border-radius: 3px; background: var(--line); }
 .sheet-body { flex: 1; overflow: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .sheet[data-state="peek"] .sheet-body { overflow: hidden; }
 .screen[hidden] { display: none; }

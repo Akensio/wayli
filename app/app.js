@@ -2044,31 +2044,40 @@ const sheet = {
   toggle() { this.set(this.state === 'peek' ? 'half' : this.state === 'half' ? 'full' : 'peek'); },
 };
 {
-  // Dragging: from anywhere on the sheet while it is collapsed or half open (the body does not scroll then),
-  // and from the handle always. A tap on the handle steps through the sizes. A tap elsewhere stays a tap.
+  // Dragging: from anywhere on the sheet while it is collapsed or half open (the body does not scroll then;
+  // the chip strip scrolls sideways, so a sideways start is left to it), from the handle and the top 96 px
+  // always. A short pull (40 px) steps one size in its direction; a long one lands where it is let go.
+  // A tap on the handle steps through the sizes. A tap elsewhere stays a tap.
   const h = $('sheetHandle'), el = $('sheet');
-  let startY = 0, startH = 0, moved = false, dragging = false, onHandle = false, swallow = false;
+  const ORDER = ['peek', 'half', 'full'];
+  let startX = 0, startY = 0, startH = 0, startState = 'peek', moved = false, dragging = false, onHandle = false, onStrip = false, swallow = false;
   el.addEventListener('pointerdown', (e) => {
     if (e.button) return;
-    onHandle = h.contains(e.target);
-    if (!onHandle && (sheet.state === 'full' || e.target.closest('input, select, textarea, .peekrow'))) return;
-    dragging = true; startY = e.clientY; startH = el.getBoundingClientRect().height; moved = false;
+    onHandle = h.contains(e.target); onStrip = !!e.target.closest('.peekrow');
+    const nearTop = e.clientY - el.getBoundingClientRect().top < 96;
+    if (!onHandle && (e.target.closest('input, select, textarea') || (sheet.state === 'full' && !nearTop))) return;
+    dragging = true; startX = e.clientX; startY = e.clientY; startH = el.getBoundingClientRect().height; startState = sheet.state; moved = false;
   });
   el.addEventListener('pointermove', (e) => {
     if (!dragging) return;
-    const dy = startY - e.clientY;
-    if (!moved) { if (Math.abs(dy) < 6) return; moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch (x) {} }
+    const dy = startY - e.clientY, dx = e.clientX - startX;
+    if (!moved) {
+      if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+      if (onStrip && Math.abs(dx) > Math.abs(dy)) { dragging = false; return; }   // a sideways scroll of the chips
+      moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch (x) {}
+    }
     el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)) + 'px';
   });
-  const end = () => {
+  const end = (e) => {
     if (!dragging) return;
     dragging = false; el.classList.remove('dragging');
-    const hh = el.getBoundingClientRect().height;
+    const hh = el.getBoundingClientRect().height, dy = hh - startH;
     el.style.height = '';
     if (!moved) { if (onHandle) sheet.toggle(); return; }
     swallow = true; setTimeout(() => { swallow = false; }, 60);
     let best = 'peek';
     for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
+    if (best === startState && Math.abs(dy) > 40) best = ORDER[Math.max(0, Math.min(2, ORDER.indexOf(startState) + (dy > 0 ? 1 : -1)))];
     sheet.set(best);
   };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);

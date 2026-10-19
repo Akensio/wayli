@@ -297,3 +297,8 @@ so they are not re-litigated.
 - 2026-10-19 Gadi: when the bar opens, the "from" row goes above the "to"
   row, and "from" starts filled with "my location". Done; the location is
   resolved when the plan is made, so an empty-handed open costs no GPS fix.
+- 2026-10-19 Gadi: dragging the sheet is still tough. Cause: the chip strip,
+  which fills most of the collapsed sheet, was excluded from the drag to keep
+  its sideways scroll, so only the thin handle grabbed. Now a start on the
+  strip drags unless it moves sideways, a 40 px pull steps one size, and
+  the fully open sheet is pulled down by its top 96 px as well as the handle.
