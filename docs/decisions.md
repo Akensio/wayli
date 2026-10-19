@@ -581,3 +581,9 @@ so they are not re-litigated.
   (origin row, options row, then the side buttons grow in), and the same
   motion out, which the old version skipped; reduced-motion settings turn
   it all off.
+- 2026-10-20 Gadi, on the reload again: "something from the side gets
+  drawn and removed very jumpily". That was the menu drawer: the page
+  starts right-to-left, English flips the direction a moment later, and
+  the drawer's transform animated from the right edge to the left edge
+  across the screen. The language and direction are now set before the
+  first paint, and the drawer has no transition until the app has booted.

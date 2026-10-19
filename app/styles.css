@@ -363,6 +363,7 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
   padding: calc(env(safe-area-inset-top, 0px) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 14px); box-shadow: 0 0 40px rgba(0,0,0,.3); transition: transform .2s ease; transform: translateX(100%); will-change: transform; }
 [dir="ltr"] .drawer { transform: translateX(-100%); }
 .drawer.open { transform: none; }
+body:not(.booted) .drawer { transition: none; }   /* no slide across the screen when the direction is set at start */
 .drawer .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 4px 14px 6px; }
 .drawer .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .drawer .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); flex: none; }
