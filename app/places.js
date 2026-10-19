@@ -80,14 +80,14 @@ const LATIN_STOP = new Set(['street', 'st', 'road', 'rd', 'boulevard', 'blvd', '
 export const isLatin = (w) => /[a-z]/.test(w);
 /** The words of an English name, lower case, without the street-type words. */
 export function wordsEn(s) { return norm(s).split(' ').filter((w) => w && !LATIN_STOP.has(w)); }
-const HEB_SK = { 'ב': 'v', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'V', 'ז': 'z', 'ח': 'h', 'ט': 't', 'כ': 'K', 'ך': 'K', 'ל': 'l', 'מ': 'm', 'ם': 'm',
+const HEB_SK = { 'ב': 'v', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'V', 'ז': 'z', 'ח': 'X', 'ט': 't', 'כ': 'K', 'ך': 'K', 'ל': 'l', 'מ': 'm', 'ם': 'm',
   'נ': 'n', 'ן': 'n', 'ס': 's', 'פ': 'p', 'ף': 'p', 'צ': 'z', 'ץ': 'z', 'ק': 'k', 'ר': 'r', 'ש': 's', 'ת': 't' };   // א ע י: dropped
 const squash = (s) => s.replace(/(.)\1+/g, '$1');
-/** 'hVrdm' -> ['hvrdm', 'hrdm'] (V: ו, a consonant or a vowel), 'mKl' -> ['mkl', 'mhl'] (K: כ, k or kh). */
+/** 'hVrdm' -> ['hvrdm', 'hrdm'] (V: ו, a consonant or a vowel); K: כ, written k or kh/ch (x); X: ח, written h or kh/ch. */
 function expand(s) {
   let out = [''];
   for (const c of s) {
-    const alts = c === 'V' ? ['v', ''] : c === 'K' ? ['k', 'h'] : [c];
+    const alts = c === 'V' ? ['v', ''] : c === 'K' ? ['k', 'x'] : c === 'X' ? ['h', 'x'] : [c];
     const next = [];
     for (const o of out) for (const a of alts) next.push(o + a);
     out = next.length > 16 ? next.slice(0, 16) : next;
@@ -105,12 +105,12 @@ export function skelHe(word) {
 }
 export function skelLatin(word) {
   const w = word.toLowerCase();
-  let s = w.replace(/sch/g, 's').replace(/sh/g, 's').replace(/tch/g, 'z').replace(/ch|kh/g, 'h').replace(/ts|tz/g, 'z').replace(/th/g, 't')
-    .replace(/ph/g, 'p').replace(/ck/g, 'k').replace(/[qc]/g, 'k').replace(/x/g, 'ks').replace(/[bw]/g, 'v').replace(/f/g, 'p').replace(/j/g, 'J');
+  let s = w.replace(/sch/g, 's').replace(/sh/g, 's').replace(/tch/g, 'z').replace(/ch|kh/g, 'x').replace(/ts|tz/g, 'z').replace(/th/g, 't')
+    .replace(/ph/g, 'p').replace(/ck/g, 'k').replace(/[qc]/g, 'k').replace(/[bw]/g, 'v').replace(/f/g, 'p').replace(/j/g, 'J');   // x: a guttural (ח or כ)
   const bases = [];
   const vowelH = /[aeiouy]h$/.test(w);   // "Tikvah": a bare final h after a vowel is a vowel (ה) or a consonant (ח); "Petach" is ח
   for (const b of vowelH ? [s, s.slice(0, -1)] : [s]) {
-    const c = b.replace(/[aeiouy]/g, '').replace(/[^a-z0-9J]/g, '');
+    const c = b.replace(/[aeiouy]/g, '').replace(/[^a-z0-9J]/g, '');   // x stays: the guttural
     if (c.includes('J')) bases.push(c.replace(/J/g, 'z'), c.replace(/J/g, 'g')); else bases.push(c);   // ז' and ג' are both j
   }
   const out = [];
@@ -142,7 +142,7 @@ function wordScore(q, w, i, firstWordNames) {
 function skelScore(qv, wv, i, firstWordNames) {
   let best = 0;
   for (const a of qv) for (const b of wv) {
-    if (a === b) best = Math.max(best, a.length < 2 ? 0.5 : !firstWordNames ? 3.5 : i === 0 ? 4.5 : 2.5);
+    if (a === b) best = Math.max(best, a.length < 3 ? 1.5 : firstWordNames && i === 0 ? 4.5 : 2.9);   // two consonants say little ("hs": Hish, Yehoash); only a street's first word counts as exact
     else if (a.length >= 2 && b.startsWith(a)) best = Math.max(best, i === 0 ? 2.2 : 1.8);
   }
   return best;
