@@ -557,3 +557,7 @@ so they are not re-litigated.
 - 2026-10-20 Gadi: the app icon at the start of the pill and the user at
   its end; a tap on the icon starts a search like the rest of the pill, a
   tap on the user opens the menu. Done.
+- 2026-10-20 Gadi: the map palette should carry the app's turquoise rather
+  than yellow. Motorways, water, parks, casings and labels now take a tint
+  of the brand colour (#12998b) in both modes; land, streets and buildings
+  stay neutral so the transit lines keep the strongest colour on the map.

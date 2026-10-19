@@ -1,29 +1,30 @@
 // The basemap, light and dark: OpenFreeMap's Liberty style with every colour replaced by one of two palettes,
 // at runtime, so the map keeps all of Liberty's detail (road classes, 3D buildings, places) while the roads
 // recede into a quiet, near-neutral ground and the transit lines Wayli draws on top carry the colour.
-// Light: warm off-white land, white streets with soft grey casings, pale sand motorways, muted water
-// (the Positron / Transit-app family of basemaps). Dark: cool near-black land, roads as lighter greys in
-// a clear hierarchy, deep blue-black water, light text with a dark halo.
+// Light: cool off-white land, white streets with soft casings, motorways, water and parks tinted with the
+// app's turquoise instead of Liberty's yellow. Dark: near-black land with the same turquoise cast, roads as
+// lighter greys in a clear hierarchy, deep teal water, light text with a dark halo.
 
 const LIBERTY = 'https://tiles.openfreemap.org/styles/liberty';
 const cache = {};
 
 export const PALETTES = {
+  // the app's turquoise (#12998b) tints what carries colour: motorways, water, parks, casings and labels; the rest stays neutral
   light: {
-    land: '#f3f2ee', landuse: '#edebe6', park: '#dbe9d2', wood: '#d2e2c8', sand: '#efe8d0', ice: '#edf0f1', water: '#c3d8ee', waterLine: '#b5cde8',
-    building: '#e8e6e1', buildingOutline: '#dad7d0', aeroway: '#e9e7e2',
-    motorway: '#f4d9a0', motorwayCasing: '#e0c285', primary: '#ffffff', primaryCasing: '#d5d1c9', secondary: '#ffffff', secondaryCasing: '#dcd8d1',
-    minor: '#ffffff', minorCasing: '#e3e0d9', service: '#faf9f6', serviceCasing: '#e6e3dc', path: '#e6e3dc', pathCasing: '#dedbd3', rail: '#c9c4bb',
-    tunnel: '#efede8', tunnelCasing: '#e2dfd8', boundary: '#cbc6be',
-    text: '#4a4f57', place: '#2d3136', halo: '#ffffff', icon: '#6a7079', iconHalo: '#ffffff',
+    land: '#f2f4f3', landuse: '#ebeeed', park: '#d6e9e1', wood: '#cbe2d8', sand: '#ebe9d9', ice: '#edf1f1', water: '#b9dfe0', waterLine: '#a5d3d4',
+    building: '#e5e9e8', buildingOutline: '#d6dcda', aeroway: '#e6e9e8',
+    motorway: '#c6e6e0', motorwayCasing: '#8fcbc1', primary: '#ffffff', primaryCasing: '#c9d6d3', secondary: '#ffffff', secondaryCasing: '#d5dedc',
+    minor: '#ffffff', minorCasing: '#dde4e2', service: '#f9fbfa', serviceCasing: '#e2e8e6', path: '#dfe6e4', pathCasing: '#d6dedb', rail: '#b9c6c3',
+    tunnel: '#edf0ef', tunnelCasing: '#dfe5e3', boundary: '#c3cdca',
+    text: '#44534f', place: '#243330', halo: '#ffffff', icon: '#4f716b', iconHalo: '#ffffff',
   },
   dark: {
-    land: '#191c21', landuse: '#1c1f25', park: '#1a2420', wood: '#182119', sand: '#22231e', ice: '#1d2126', water: '#0e1a2c', waterLine: '#132238',
-    building: '#22262d', buildingOutline: '#2b3038', aeroway: '#1f2329',
-    motorway: '#565b67', motorwayCasing: '#33373f', primary: '#454a54', primaryCasing: '#2a2e35', secondary: '#3b4048', secondaryCasing: '#272b32',
-    minor: '#31353d', minorCasing: '#24282e', service: '#2a2e35', serviceCasing: '#212529', path: '#33373f', pathCasing: '#272b31', rail: '#4a4f59',
-    tunnel: '#20242a', tunnelCasing: '#1c1f25', boundary: '#3a3f48',
-    text: '#b6bcc6', place: '#e0e4e9', halo: '#15181d', icon: '#9aa1ab', iconHalo: '#15181d',
+    land: '#171c1b', landuse: '#1a201f', park: '#182824', wood: '#16241f', sand: '#20231f', ice: '#1b2222', water: '#0d2628', waterLine: '#12393c',
+    building: '#202726', buildingOutline: '#2a3331', aeroway: '#1d2423',
+    motorway: '#4a6d67', motorwayCasing: '#2a3e3b', primary: '#404d4b', primaryCasing: '#283231', secondary: '#374240', secondaryCasing: '#262f2e',
+    minor: '#2e3836', minorCasing: '#22292a', service: '#283130', serviceCasing: '#1f2626', path: '#303a38', pathCasing: '#262e2d', rail: '#48544f',
+    tunnel: '#1f2625', tunnelCasing: '#1b2120', boundary: '#374442',
+    text: '#b4c4c0', place: '#dde9e6', halo: '#141918', icon: '#8fb3ac', iconHalo: '#141918',
   },
 };
 
