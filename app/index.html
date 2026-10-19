@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f2f4f3">
+<script>/* before the first paint: the menus' theme and the map's ground colour from the saved settings, so a reload never flashes */
+(function(){try{var s=JSON.parse(localStorage.getItem('wayli-settings')||'{}');var sys=matchMedia('(prefers-color-scheme: dark)').matches;var th=s.theme||'system';if(th!=='system')document.documentElement.dataset.theme=th;var map=s.map||'system';var dark=map==='dark'||(map==='system'&&sys);var neutral=s.mapTint==='neutral';var land=dark?(neutral?'#191c21':'#171c1b'):(neutral?'#f3f2ee':'#f2f4f3');document.documentElement.style.setProperty('--map-land',land);var m=document.querySelector('meta[name=theme-color]');if(m)m.content=land;}catch(e){}})();</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Wayli">

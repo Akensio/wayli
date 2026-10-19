@@ -570,3 +570,14 @@ so they are not re-litigated.
 - 2026-10-20 Gadi: the neutral palette "is not bad" either. Both stay: a
   "map colours" setting, turquoise (default) or neutral, each light and
   dark, so he can compare on the phone.
+- 2026-10-20 Gadi, two screen recordings: a reload "is jumpy as hell" and
+  the search-mode animations "not smooth enough, mega sleek, a bit slower
+  is fine". Reload: the map now starts at the camera it was last left at
+  (remembered on every move) instead of a wide default view, the locate
+  control eases to the rider in half a second instead of flying through
+  blank tiles, the status bar and the map's ground colour are set by an
+  inline script before the first paint, and the shell paints once the icons
+  exist, in one fade. Search mode: 0.4 s eases with a soft curve, staggered
+  (origin row, options row, then the side buttons grow in), and the same
+  motion out, which the old version skipped; reduced-motion settings turn
+  it all off.

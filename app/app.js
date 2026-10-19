@@ -56,6 +56,7 @@ const ic = (name, cls = '') => `<svg class="i${cls ? ' ' + cls : ''}" aria-hidde
   svg.setAttribute('style', 'display:none'); svg.setAttribute('aria-hidden', 'true');
   svg.innerHTML = Object.entries(ICONS).map(([k, d]) => `<symbol id="i-${k}" viewBox="0 0 24 24"><path d="${d}"${FILLED_ICONS.has(k) ? ' fill="currentColor" stroke="none"' : ''}/></symbol>`).join('');
   document.body.prepend(svg);
+  document.body.classList.add('booted');   // the shell paints now, icons and all, in one go
 }
 
 // ---------------------------------------------------------------- i18n
@@ -426,14 +427,25 @@ function setPlace(side, p) { place[side] = p; $(side + 'Q').value = p ? p.name :
 let barOpen = false;   // the rider is editing: both rows and the options show
 /** Three states of the bar: the prompt pill (nothing chosen), the two rows with options (editing), and one
  *  summary box of to, from, time and bike once a plan is made; a tap on the summary reopens the rows. */
+let leaveTimer = 0;
 function updateFromRow() {
   const has = !!(place.to || (place.from && !place.from.auto)), edit = barOpen, sum = !barOpen && has;
-  $('fromRow').hidden = !edit; $('optRow').hidden = !edit; $('barBack').hidden = !edit; $('swap').hidden = !edit;
-  $('pair').hidden = sum; $('toRow').hidden = sum; $('sumRow').hidden = !sum;
-  $('topbar').classList.toggle('two', edit);
+  const bar = $('topbar'), wasEdit = bar.classList.contains('two');
+  clearTimeout(leaveTimer); bar.classList.remove('leaving');
+  const settle = () => {
+    $('fromRow').hidden = !edit; $('optRow').hidden = !edit; $('barBack').hidden = !edit; $('swap').hidden = !edit;
+    $('pair').hidden = sum; $('toRow').hidden = sum; $('sumRow').hidden = !sum;
+    bar.classList.remove('leaving');
+    if (sum) renderSummary();
+    layoutTop();
+  };
+  bar.classList.toggle('two', edit);
   if (!edit) setOptions(false);
-  if (sum) renderSummary();
-  layoutTop();
+  if (wasEdit && !edit && !matchMedia('(prefers-reduced-motion: reduce)').matches) {   // leaving search mode: the rows slide away first
+    bar.classList.add('two', 'leaving'); bar.classList.toggle('two', true);
+    leaveTimer = setTimeout(() => { bar.classList.remove('two'); settle(); }, 300);
+    for (const d of bar.querySelectorAll('.dropdown')) d.hidden = true;
+  } else settle();
 }
 function renderSummary() {
   const to = place.to ? place.to.name : $('toQ').value, from = place.from ? place.from.name : ($('fromQ').value || t('myLoc'));
@@ -990,7 +1002,9 @@ function applyTheme() {
   if (th === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = th;
   // the installed app's status bar continues the map: the map's ground colour, light or dark, not a coloured app bar
   // Android keeps the status bar as a strip of one colour, so it takes the map's exact ground colour (iPhone draws the map under it)
-  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = PALETTES[mapTint()][wantDarkMap() ? 'dark' : 'light'].land;
+  const land = PALETTES[mapTint()][wantDarkMap() ? 'dark' : 'light'].land;
+  document.documentElement.style.setProperty('--map-land', land);
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = land;
 }
 const styles = {}, styleLoading = {};
 const mapTint = () => (settings.get().mapTint === 'neutral' ? 'neutral' : 'teal');
@@ -1025,11 +1039,15 @@ const styledWaiters = [];
 const mapReady = () => new Promise((res) => { if (mapFailed) res(null); else if (mainMap && mapStyled) res(mainMap); else styledWaiters.push(res); });
 async function initMap() {
   await styleReady();
-  const start = lastPos || { lat: 32.08, lon: 34.78 };
-  mainMap = makeMap('mainMap', [start.lat, start.lon], lastPos ? 14.5 : 11);
+  // start where the map was last left (no wide view first, no jump): the saved camera, else the position, else Tel Aviv
+  let view = null; try { view = JSON.parse(localStorage.getItem('wayli-view') || 'null'); } catch (e) {}
+  const start = view || lastPos || { lat: 32.08, lon: 34.78 };
+  mainMap = makeMap('mainMap', [start.lat, start.lon], view ? view.zoom : lastPos ? 14.5 : 11);
   if (!mainMap) { mapFailed = true; for (const r of styledWaiters.splice(0)) r(null); return; }
   const m = mainMap;
-  geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15 } });
+  geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15, linear: true, duration: 500 } });
+  let viewTimer = 0;   // the camera is remembered for the next start
+  m.on('moveend', () => { clearTimeout(viewTimer); viewTimer = setTimeout(() => { try { const c = m.getCenter(); localStorage.setItem('wayli-view', JSON.stringify({ lat: +c.lat.toFixed(5), lon: +c.lng.toFixed(5), zoom: +m.getZoom().toFixed(2) })); } catch (e) {} }, 500); });
   m.addControl(geoCtl, 'bottom-right');
   // a compass under it: shows the rotation and the tilt, a tap sets north up and flat; hidden while there is nothing to reset
   const compass = new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true });
