@@ -315,3 +315,11 @@ so they are not re-litigated.
   scroll down should fold the sheet. Done with touch events (the pull is an
   overscroll the browser does nothing with); a swipe that starts scrolled
   down scrolls as before.
+- 2026-10-19 Gadi, on a train that had left before the list's "now": how
+  to resurface the ride he is on, to start following it. Done: a plan from
+  now looks ten minutes back, what left goes in an "already left, on
+  board?" strip above the list with an "I'm on it" button, and a trip
+  started after its first ride left begins on board (the follower used to
+  wait up to 15 minutes at the walk to the stop). Considered for later: "I'm
+  on this one" from a vehicle's bubble on the map, planning the rest of the
+  way from that very vehicle.

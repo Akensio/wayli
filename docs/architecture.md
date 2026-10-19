@@ -214,6 +214,13 @@ references in markup and templates, and drawn with the same paths through
 emoji anywhere in the interface: emoji render differently on every phone
 and cannot take the app's colours.
 
+A plan from now also looks ten minutes back: what left in that time goes
+in a strip of its own above the list ("already left, on board?"), each with
+an "I'm on it" button, for the rider who boarded before opening the app;
+starting any journey whose first ride has left begins the follower on
+board that ride (the last ride to have departed), not at the walk to the
+stop, with the position moving it along from there.
+
 Planning: from and to can be a stop or station, an address, a street, a
 place, a city, the device's location or a point picked on the map. From a
 point, the walk to each stop within reach is the street-network walk plus

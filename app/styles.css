@@ -90,6 +90,15 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .journey .leave { margin-top: 6px; font-size: 13px; color: var(--ink); font-weight: 600; min-height: 0; }
 .journey .leave.live { color: var(--ok); }
 .journey .leave.unsure { color: var(--warn); }
+/* what left in the last ten minutes: a strip above the list, for the rider already on board */
+.gone-strip { margin: 2px 0 10px; }
+.gone-strip > .muted { margin: 0 2px 4px; font-size: 12px; }
+.gone { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 12px; margin-bottom: 6px; background: color-mix(in srgb, var(--chip) 50%, transparent); }
+.gone .txt { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; cursor: pointer; }
+.gone .times { font-weight: 700; font-variant-numeric: tabular-nums; }
+.gone .chips { display: inline-flex; gap: 4px; }
+.gone .muted { font-size: 12px; }
+.gone button.primary { width: auto; margin: 0; padding: 7px 12px; font-size: 13px; flex: none; }
 .journey .leave:empty { display: none; }
 .journey .leave.past { color: var(--ink-2); font-weight: 400; }
 .journey.past { opacity: .6; }

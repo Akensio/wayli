@@ -2,7 +2,7 @@
 // Pure logic lives next door: live.js (real-time), follow.js (trip following), store.js (on-device memory).
 import { settings, recentPlaces, recentTrips, savedPlaces, favs, lastSearch, activeTrip } from './store.js';
 import * as live from './live.js';
-import { initialState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney } from './follow.js';
+import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney } from './follow.js';
 import { darkLiberty } from './darkmap.js';
 
 const $ = (id) => document.getElementById(id);
@@ -82,7 +82,7 @@ const STR = {
     setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
     startTrip: 'התחלת נסיעה', share: 'שיתוף', endTrip: 'סיום', nextStep: 'השלב הבא ›', home: 'בית', work: 'עבודה', notSet: 'לא הוגדר. לחצו כדי לבחור.', change: 'שינוי', addPlace: '+ מקום שמור', remove: 'הסרה',
-    recentTitle: 'חיפושים אחרונים', planAgain: 'חישוב מחדש מעכשיו', resultsFrom: 'תוצאות מ-{time}', leaveIn: 'יוצאים בעוד {n} דק\'', leaveNow: 'יוצאים עכשיו', departed: 'יצא', earlier: '‹ מוקדם יותר', later: 'מאוחר יותר ›',
+    recentTitle: 'חיפושים אחרונים', planAgain: 'חישוב מחדש מעכשיו', resultsFrom: 'תוצאות מ-{time}', leaveIn: 'יוצאים בעוד {n} דק\'', leaveNow: 'יוצאים עכשיו', departed: 'יצא', goneTitle: 'כבר יצאו · עליתם?', leftAgo: 'יצא לפני {n} דק\'', aboard: 'אני בפנים', earlier: '‹ מוקדם יותר', later: 'מאוחר יותר ›',
     tryLater: 'לנסות שעה מאוחרת יותר', tryMoreWalk: 'לאפשר הליכה של 30 דק\'', arriveByNote: 'הגעה עד {time} · המאוחר ביותר קודם', alsoAt: 'גם ב:', orLines: 'או',
     liveNoVehicle: 'אין רכב בשידור', livePassed: 'עבר', onTime: 'בזמן', liveUpdated: 'זמני אמת מ-{time}', liveOff: 'זמני אמת כבויים בהגדרות', liveFail: 'זמני אמת לא זמינים כרגע', liveMin: 'דק\'',
     showStops: 'הצגת התחנות', hideStops: 'הסתרת התחנות', vehicleHere: 'הרכב כאן', tripStopsTitle: 'קו {line} לכיוון {headsign}',
@@ -119,7 +119,7 @@ const STR = {
     setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone sends their server the line numbers and the area you are looking at. Nothing else.',
     startTrip: 'Start trip', share: 'Share', endTrip: 'End', nextStep: 'Next step ›', home: 'Home', work: 'Work', notSet: 'Not set. Tap to choose.', change: 'Change', addPlace: '+ Saved place', remove: 'Remove',
-    recentTitle: 'Recent searches', planAgain: 'Plan again from now', resultsFrom: 'Results from {time}', leaveIn: 'Leave in {n} min', leaveNow: 'Leave now', departed: 'departed', earlier: '‹ Earlier', later: 'Later ›',
+    recentTitle: 'Recent searches', planAgain: 'Plan again from now', resultsFrom: 'Results from {time}', leaveIn: 'Leave in {n} min', leaveNow: 'Leave now', departed: 'departed', goneTitle: 'Already left · on board?', leftAgo: 'left {n} min ago', aboard: 'I\'m on it', earlier: '‹ Earlier', later: 'Later ›',
     tryLater: 'Try an hour later', tryMoreWalk: 'Allow a 30 min walk', arriveByNote: 'Arrive by {time} · latest first', alsoAt: 'Also at:', orLines: 'or',
     liveNoVehicle: 'no vehicle reporting', livePassed: 'passed', onTime: 'on time', liveUpdated: 'live as of {time}', liveOff: 'Live times are off in settings', liveFail: 'Live times unavailable right now', liveMin: 'min',
     showStops: 'Show stops', hideStops: 'Hide stops', vehicleHere: 'vehicle is here', tripStopsTitle: 'Line {line} towards {headsign}',
@@ -628,13 +628,14 @@ async function plan(opts = {}) {
   const weekday = dateOf(day).getDay() <= 4;
   const bike = bikeChoice(), folding = $('folding').checked, arriveBy = timeMode() === 'arrive';
   const at = atSeconds();
-  const fromTime = arriveBy ? Math.max(0, at - 7200) : at, toTime = arriveBy ? at : at + 3600;
+  const isNow = !timeTouched && !arriveBy;   // a plan from now looks ten minutes back too: a ride just boarded can still be followed
+  const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at, toTime = arriveBy ? at : at + 3600;
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   $('planBtn').disabled = true;
   $('results').innerHTML = `<div class="empty">${t('planning')}</div>`;
   $('recentBox').hidden = true;
   setOptions(false); renderOptionChips();
-  const q = { from: place.from, to: place.to, day, at: $('at').value, bike, folding, arriveBy, maxWalk: maxWalk / 60 };
+  const q = { from: place.from, to: place.to, day, at: $('at').value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
   let vehicles = null, liveAsOf = null;
   const svc = live.serviceDay();
@@ -670,12 +671,13 @@ function journeyCard(j, q, alts, options) {
   const d = document.createElement('div');
   d.className = 'journey';
   const rides = j.legs.map((l, i) => ({ l, i })).filter((x) => x.l.type === 'ride');
+  const nowS = live.nowOn(q.day), dep = rides.length && j.depart < nowS && rides[0].l.depart >= nowS - 60 ? Math.min(nowS, rides[0].l.depart) : j.depart;
   d.innerHTML = `<div class="top"><span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="dur">${dur(j.arrive - j.depart)} · ${transfersText(j.transfers)}</span></div>` +
     `<div class="chips">${j.legs.map((l, i) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l, alts && alts[i])}</span>`).join('<span class="muted">›</span>')}</div>` +
     `<div class="sub">${rides.map(({ l }) => `${esc(lineText(l.line))} ${t('toward', { headsign: esc(l.headsign) })}`).join(' · ')}</div>` +
     (options && options.length > 1 ? `<div class="opts"><span class="muted">${t('alsoAt')}</span>${options.slice(1).map((o, k) => `<button type="button" class="opt" data-k="${k + 1}">${fmt(o.depart)}</button>`).join('')}</div>` : '') +
-    `<div class="leave${rides.length && rides[0].l.live ? (rides[0].l.live.stale ? ' unsure' : ' live') : ''}" data-dep="${j.depart}" data-day="${q.day}">${leaveText(j.depart, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
-  if (leaveText(j.depart, q.day) === t('departed')) d.querySelector('.leave').classList.add('past');
+    `<div class="leave${rides.length && rides[0].l.live ? (rides[0].l.live.stale ? ' unsure' : ' live') : ''}" data-dep="${dep}" data-day="${q.day}">${leaveText(dep, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
+  if (leaveText(dep, q.day) === t('departed')) d.querySelector('.leave').classList.add('past');
   for (const b of d.querySelectorAll('.opt')) {
     const o = options[+b.dataset.k];
     if (leaveText(o.depart, q.day) === t('departed')) b.classList.add('past');
@@ -732,10 +734,28 @@ function renderResults(r, q, resultsAt = null) {
   }
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
   if (q.arriveBy) groups = groups.slice().reverse();
+  // planned from now: what left in the last ten minutes goes in a strip of its own ("on board?"), the list stays from now
+  const nowSec = live.nowOn(q.day), rideDep = (j) => { const fr = j.legs.find((l) => l.type === 'ride'); return fr ? fr.depart : j.depart; };
+  const isGone = (j) => q.isNow && !resultsAt && rideDep(j) < nowSec - 60;
+  const gone = [];
   for (const g of groups) {
     let opts = g.options.map((i) => r.journeys[i]);
     if (q.arriveBy) opts = opts.slice().reverse();
-    box.appendChild(journeyCard(opts[0], q, g.lines, opts));
+    for (const j of opts) if (isGone(j) && rideDep(j) >= nowSec - 600 && !gone.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) gone.push(j);
+    opts = opts.filter((j) => !isGone(j));
+    if (opts.length) box.appendChild(journeyCard(opts[0], q, g.lines, opts));
+  }
+  if (gone.length) {
+    const strip = document.createElement('div'); strip.className = 'gone-strip';
+    strip.innerHTML = `<div class="muted">${t('goneTitle')}</div>`;
+    for (const j of gone.sort((a, b) => b.depart - a.depart)) {
+      const d = document.createElement('div'); d.className = 'gone';
+      d.innerHTML = `<div class="txt"><span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="chips">${j.legs.filter((l) => l.type === 'ride').map((l) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l)}</span>`).join('')}</span><span class="muted">${t('leftAgo', { n: Math.max(1, Math.round((nowSec - rideDep(j)) / 60)) })}</span></div><button type="button" class="primary slim">${ic('play')} ${t('aboard')}</button>`;
+      d.querySelector('.txt').addEventListener('click', () => openDetail(j, q));
+      d.querySelector('button').addEventListener('click', (e) => { e.stopPropagation(); startTrip(j, q); });
+      strip.appendChild(d);
+    }
+    box.insertBefore(strip, head.nextSibling);
   }
   const foot = document.createElement('div'); foot.className = 'results-foot';
   const earlier = document.createElement('button'); earlier.type = 'button'; earlier.className = 'ghost'; earlier.textContent = t('earlier');
@@ -1672,7 +1692,9 @@ function startTrip(j, q) {
   const day = q.day;
   if (live.nowOn(day) > j.arrive + 1800) { toast(t('tripOver')); return; }
   ensureAudio();
-  const a = { journey: { ...j, to: q.to.lat != null ? { name: q.to.name, lat: q.to.lat, lon: q.to.lon } : null }, q: { from: q.from, to: q.to, bike: q.bike, folding: q.folding }, day, state: initialState(), view: 'follow', startedAt: Date.now() };
+  const firstRide = j.legs.find((l) => l.type === 'ride');
+  const aboard = firstRide && live.nowOn(day) > firstRide.depart + 60;   // started after the ride left: the rider is on it
+  const a = { journey: { ...j, to: q.to.lat != null ? { name: q.to.name, lat: q.to.lat, lon: q.to.lon } : null }, q: { from: q.from, to: q.to, bike: q.bike, folding: q.folding }, day, state: aboard ? aboardState(j, live.nowOn(day)) : initialState(), view: 'follow', startedAt: Date.now() };
   activeTrip.set(a);
   requestAlertPermission();
   if (!nav.swap('detail', 'follow')) nav.closeAll();

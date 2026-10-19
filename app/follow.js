@@ -12,6 +12,13 @@ const AT_STOP = 60;        // m: close enough to count as being at a stop or the
 const NEAR_ALIGHT = 350;   // m: when the alighting stop is this close, say "get off at the next stop"
 
 export function initialState() { return { step: 0, onBoard: false, rideIdx: 0, alerted: {}, done: false, startedAt: Date.now() }; }
+/** The state for a rider who starts following once already on board: on the ride that has departed (the last
+ *  one to have, else the first), so the walk to the stop is not waited for. */
+export function aboardState(journey, nowSec) {
+  let idx = journey.legs.findIndex((l) => l.type === 'ride');
+  journey.legs.forEach((l, i) => { if (l.type === 'ride' && l.depart <= nowSec) idx = i; });
+  return { ...initialState(), step: Math.max(0, idx), onBoard: true, rideIdx: 0 };
+}
 
 /** Walking legs end at a stop or the destination; where is that? */
 function legEnd(journey, leg) {
