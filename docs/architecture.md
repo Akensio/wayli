@@ -226,9 +226,13 @@ and cannot take the app's colours.
 
 The compass button is a needle with depth (red north, pale south, a
 centre pin), tilted in real perspective with the map. The collapsed sheet
-leaves a pull down to the browser (pull-to-refresh); a pull up is still the
-sheet's; the drawer also has "reload the app" for the installed app, which
-has no browser bar. On iPhones, which never fire the install prompt, the
+leaves a pull down to the browser's pull-to-refresh: nothing on it says
+touch-action none, and its body's overscroll containment is lifted there so
+the gesture chains to the page (containment stays while the sheet is half
+or fully open, where a pull past the top edge folds the sheet instead). A
+pull up on the collapsed sheet opens it through touch events, which keep
+coming even when the browser has taken the gesture; the drawer also has
+"reload the app" for the installed app, which has no browser bar. On iPhones, which never fire the install prompt, the
 settings row "add to home screen" shows Safari's own way (Share, then Add
 to Home Screen); the page carries the Apple meta tags and touch icon.
 

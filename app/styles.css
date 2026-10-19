@@ -356,7 +356,10 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
 .handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
-.sheet[data-state="peek"] { touch-action: pan-y; }   /* a pull down here is the browser's pull-to-refresh; a pull up is still ours */
+/* collapsed, a pull down anywhere on the sheet is the browser's pull-to-refresh: the gesture may chain to the page
+   (no overscroll containment, no touch-action: none); a pull up is still the sheet's, through touch events */
+.sheet[data-state="peek"], .sheet[data-state="peek"] .handle { touch-action: pan-y; }
+.sheet[data-state="peek"] .sheet-body { overscroll-behavior: auto; }
 .sheet[data-state="full"] .sheet-body { scroll-padding-top: 0; }
 .handle span { width: 56px; height: 6px; border-radius: 3px; background: var(--line); }
 .sheet-body { flex: 1; overflow: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }

@@ -2123,6 +2123,7 @@ const sheet = {
     onHandle = h.contains(e.target); onStrip = !!e.target.closest('.peekrow');
     const nearTop = e.clientY - el.getBoundingClientRect().top < 96;
     if (document.body.classList.contains('page')) return;
+    if (e.pointerType === 'touch' && sheet.state === 'peek') return;   // a finger on the collapsed sheet: the touch handler below
     // the body scrolls when half or fully open (a finger there is the touch handler's, at the scroll edges); the handle and the top always drag
     if (!onHandle && (e.target.closest('input, select, textarea') || ((sheet.state === 'full' || (sheet.state === 'half' && e.pointerType === 'touch')) && !nearTop))) return;
     dragging = true; startX = e.clientX; startY = e.clientY; startH = el.getBoundingClientRect().height; startState = sheet.state; moved = false; trail = [{ t: performance.now(), y: e.clientY }];
@@ -2153,12 +2154,46 @@ const sheet = {
     dragging = false; el.classList.remove('dragging');
     const hh = el.getBoundingClientRect().height;
     el.style.height = '';
-    if (!moved) { if (onHandle) sheet.toggle(); return; }
+    if (!moved) return;   // a tap: the handle's click handler cycles the sizes
     swallow = true; setTimeout(() => { swallow = false; }, 60);
     settle(hh, startH, startState, speed());
   };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+  h.addEventListener('click', () => { if (!swallow) sheet.toggle(); });
+  // Collapsed, the browser may take a pull down as pull-to-refresh and cancel pointer events; touch events keep
+  // coming, so a pull up (or a sideways-free start on the strip) opens the sheet through them.
+  {
+    let pOn = false, pMoved = false, pX = 0, pY = 0, pH = 0, pStrip = false;
+    el.addEventListener('touchstart', (e) => {
+      pOn = false;
+      if (sheet.state !== 'peek' || e.touches.length !== 1 || document.body.classList.contains('page') || e.target.closest('input, select, textarea')) return;
+      pOn = true; pMoved = false; pX = e.touches[0].clientX; pY = e.touches[0].clientY; pH = el.getBoundingClientRect().height; pStrip = !!e.target.closest('.peekrow');
+      trail = [{ t: performance.now(), y: pY }];
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      if (!pOn) return;
+      const up = pY - e.touches[0].clientY, dx = e.touches[0].clientX - pX;
+      if (!pMoved) {
+        if (Math.abs(up) < 8 && Math.abs(dx) < 8) return;
+        if (up <= 0 || (pStrip && Math.abs(dx) > Math.abs(up))) { pOn = false; return; }   // down: the browser's; sideways on the strip: its scroll
+        pMoved = true; el.classList.add('dragging');
+      }
+      trail.push({ t: performance.now(), y: e.touches[0].clientY }); if (trail.length > 8) trail.shift();
+      el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), pH + up)) + 'px';
+    }, { passive: true });
+    const pEnd = () => {
+      if (!pOn) return;
+      pOn = false;
+      if (!pMoved) return;
+      el.classList.remove('dragging');
+      const hh = el.getBoundingClientRect().height;
+      el.style.height = '';
+      swallow = true; setTimeout(() => { swallow = false; }, 60);
+      settle(hh, pH, 'peek', speed());
+    };
+    el.addEventListener('touchend', pEnd); el.addEventListener('touchcancel', pEnd);
+  }
   // Half or fully open, the list scrolls natively and the browser cancels pointer events; but a finger pulling past
   // an edge of the list only overscrolls, and touch events keep coming: past the top edge, pulling down folds the
   // sheet; past the bottom edge (or with nothing to scroll), pulling up opens it.

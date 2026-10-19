@@ -371,3 +371,7 @@ so they are not re-litigated.
 - 2026-10-19 Gadi: map look should be light / dark / like the device, and
   the menus should have the same setting. Done; the old map value "auto"
   (light) reads as "device".
+- 2026-10-19 Gadi: pull-to-refresh still did not work. Cause: the sheet
+  body's overscroll containment stopped the gesture from chaining to the
+  page even when collapsed, and the handle said touch-action none. Lifted
+  for the collapsed sheet; the pull up there moved to touch events.
