@@ -511,8 +511,11 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   per case: "12 vehicles of the lines searched · data as of 08:05 (18 min
   ago, the source is behind)", or "No vehicles of the lines searched
   reporting in this area right now". A vehicle whose last report is
-  more than five minutes behind the newest report of the feed is not drawn
-  at all (the feed lags as a whole; a single stale vehicle is noise). When
+  more than five minutes behind the newest report of its own set (the
+  vehicles in the area in view, or the line's) is not drawn at all (the
+  feed lags as a whole and unevenly by area; a single stale vehicle is
+  noise, but a whole area twenty minutes behind the rest of the country is
+  still the best picture of that area). When
   the whole feed is four or more minutes behind the clock, every dot is
   drawn faded, the note says how old the data is and that the source is
   behind, and a vehicle's bubble gives the age next to the report time.
@@ -557,9 +560,13 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   screen shows how old the newest report is; a report older than four
   minutes is marked with "?" and coloured orange wherever a live time or
   delay is shown (green means a fresh report; lateness is the number, not
-  the colour), one more than five minutes behind the feed's
-  newest report is left off the map, and when the feed as a whole is four
-  or more minutes behind, the map says so and fades the dots. The lag is
+  the colour), one more than five minutes behind the newest report
+  of its own set (area in view, or line) is left off the map, and when the
+  feed as a whole is four or more minutes behind, the map says so and
+  fades the dots. The lag is uneven by area: on 2026-10-19 at 15:34 the
+  newest report in the Tel Aviv box was 20 minutes old while the newest
+  in the country was 6 minutes old, so judging an area against the
+  country's newest emptied the map over Azrieli. The lag is
   the pipeline's, not ours: the newest rows come first in every query. A
   position fifteen minutes old says little about where the bus is now; the
   delay it reports is still worth more than the timetable alone.

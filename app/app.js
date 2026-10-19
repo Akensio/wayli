@@ -1192,8 +1192,9 @@ function wireStopLayers(m, layers) {
 /** Every reporting vehicle of a line as a marker with its delay; the one running `mine` stands out. */
 function lineVehicleMarkers(m, markers, vs, statuses, routeType, mine, fallback = {}) {
   const icon = ic(routeType === 2 ? 'train' : routeType === 0 ? 'tram' : 'bus');
+  const newest = live.newest(vs);
   vs.forEach((v, i) => {
-    if (!live.isFresh(v)) return;   // last seen long before the feed's newest report: its position says nothing now
+    if (!live.isFresh(v, 300, newest)) return;   // last seen long before this line's newest report: its position says nothing now
     const st = statuses[i] || { trip: -1 };
     const el = document.createElement('div');
     el.className = 'wayli-bus lbl' + (st.stale || st.trip < 0 ? ' stale' : '') + (mine != null && st.trip === mine ? ' mine' : '');
@@ -1490,7 +1491,7 @@ async function refreshLiveMap() {
     const now = Date.now();
     const nwAll = live.newest(vs);
     const feedLag = nwAll ? (now - nwAll.getTime()) / 60000 : 0;   // minutes the whole feed is behind the clock
-    const features = vs.filter((v) => live.isFresh(v)).map((v) => {
+    const features = vs.filter((v) => live.isFresh(v, 300, nwAll)).map((v) => {   // fresh against this area's own newest report
       const lb = lmLabels.get(String(v.lineRef));
       const age = nwAll ? (nwAll.getTime() - v.recordedAt.getTime()) / 1000 : 0;   // behind the feed, not the clock
       return { type: 'Feature', geometry: { type: 'Point', coordinates: [v.lon, v.lat] },

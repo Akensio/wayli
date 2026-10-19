@@ -407,3 +407,10 @@ so they are not re-litigated.
   add?" Five gesture layers, but the stutter was the oldest piece: the sheet
   moved by animating its height, a layout on the main thread every frame.
   It now slides by a transform (composited); the gesture rules stay.
+- 2026-10-19 Gadi: "no way there are no buses around there right now"
+  (Azrieli, 15:33, the map said no vehicles reporting). A real bug: a
+  vehicle counted as fresh only within five minutes of the newest report
+  seen anywhere, and Hasadna's lag is uneven by area (Tel Aviv's newest was
+  20 minutes old, the country's 6), so a whole area fell off the map. Each
+  set is now judged against its own newest report; the note still says how
+  old the data is.

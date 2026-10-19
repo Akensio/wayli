@@ -59,8 +59,13 @@ function norm(v) {
 }
 /** Latest position per ride (a few rows carry impossible future times; they are dropped). */
 let newestSeen = 0;   // ms: the newest report any query returned; "fresh" is measured against it, not the clock
-/** A vehicle whose last report is within five minutes of the newest report seen (the feed itself may lag). */
-export function isFresh(v, windowSec = 300) { const ref = newestSeen || Date.now(); return ref - v.recordedAt.getTime() <= windowSec * 1000; }
+/** A vehicle whose last report is within five minutes of the newest report of its own set (`ref`, a Date or ms;
+ *  by default the newest seen anywhere). The feed lags unevenly, area by area and operator by operator (measured
+ *  2026-10-19 15:34: Tel Aviv 20 min behind, the country 6), so a set is judged against its own newest report. */
+export function isFresh(v, windowSec = 300, ref = null) {
+  const r = ref ? (ref instanceof Date ? ref.getTime() : ref) : newestSeen || Date.now();
+  return r - v.recordedAt.getTime() <= windowSec * 1000;
+}
 function latest(rows) {
   const by = new Map();
   const horizon = Date.now() + 600e3;
