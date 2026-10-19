@@ -390,3 +390,11 @@ so they are not re-litigated.
   phone, where every pull is fast: speed now steps one size, like
   Android's sheets, and only a long drag past the midpoint goes all the
   way; the dead zone at the start of a drag shrank from 8 px to 4.
+- 2026-10-19 Gadi: the sheet still sticks when the drag starts on the chip
+  strip, and pulling down on the search box does not refresh. Cause of
+  both: the browser claimed gestures (the strip is a horizontal scroller;
+  its pull-to-refresh never fires on this fixed page). Decided: the app owns
+  them. touch-action none on the bar's controls and the collapsed sheet; the
+  strip scrolls by script; pull-to-refresh is the app's own circle on the
+  bar and the collapsed sheet. Rejected: more touch-action tuning (three
+  rounds spent).

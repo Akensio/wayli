@@ -2105,6 +2105,40 @@ function showScreen(name, record = true) {
   if (name === 'nearby' && ttReady && !$('nearbyList').querySelector('.stop')) loadNearby();
   if (name === 'plan') $('recentBox').hidden = !!$('results').children.length;
 }
+// ---- pull to refresh, ours: the browser's needs a page that scrolls, and this one never does. A pull down on the
+// bar or on the collapsed sheet shows a circle that follows the finger and turns on past 72 px; letting go then
+// reloads (the service worker serves the new build). Works the same in Chrome, Safari and the installed app.
+const pullRefresh = (() => {
+  const el = document.createElement('div'); el.className = 'ptr'; el.innerHTML = ic('refresh'); document.body.appendChild(el);
+  let pull = 0, armed = false, busy = false;
+  return {
+    move(px) {
+      if (busy) return;
+      pull = Math.max(0, Math.min(130, px)); armed = pull >= 72;
+      el.classList.add('on'); el.classList.toggle('armed', armed);
+      el.style.transform = `translate(-50%, ${Math.round(pull * 0.7)}px) rotate(${Math.round(pull * 2.5)}deg)`; el.style.opacity = String(Math.min(1, pull / 36));
+    },
+    end() {
+      if (busy) return;
+      if (armed) { busy = true; el.classList.add('busy'); el.style.transform = 'translate(-50%, 50px)'; setTimeout(() => location.reload(), 200); return; }
+      el.classList.remove('on', 'armed'); el.style.transform = ''; el.style.opacity = ''; pull = 0;
+    },
+    get busy() { return busy; },
+  };
+})();
+{
+  const bar = $('topbar');
+  let on = false, mode = 0, x0 = 0, y0 = 0;
+  bar.addEventListener('touchstart', (e) => { on = false; if (e.touches.length !== 1 || e.target.closest('.dropdown, select, .optpanel')) return; on = true; mode = 0; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  bar.addEventListener('touchmove', (e) => {
+    if (!on) return;
+    const dy = e.touches[0].clientY - y0, dx = e.touches[0].clientX - x0;
+    if (!mode) { if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return; if (dy > Math.abs(dx)) mode = 1; else { on = false; return; } }
+    pullRefresh.move(dy - 6);
+  }, { passive: true });
+  const end = () => { if (!on) return; on = false; if (mode) pullRefresh.end(); };
+  bar.addEventListener('touchend', end); bar.addEventListener('touchcancel', end);
+}
 // ---- the bottom sheet: peek (a strip), half, or full; dragged by its handle, tapped to cycle
 const sheet = {
   state: 'peek',
@@ -2179,35 +2213,48 @@ const sheet = {
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
   h.addEventListener('click', () => { if (!swallow) sheet.toggle(); });
-  // Collapsed, the browser may take a pull down as pull-to-refresh and cancel pointer events; touch events keep
-  // coming, so a pull up (or a sideways-free start on the strip) opens the sheet through them.
+  // Collapsed, every touch on the sheet is ours (touch-action none, so the browser never claims a gesture and
+  // the events keep coming): a pull up opens it, a pull down is the pull-to-refresh, a sideways move on the
+  // chip strip scrolls the strip (with a little fling). The direction is read once, after 6 px.
   {
-    let pOn = false, pMoved = false, pX = 0, pY = 0, pH = 0, pStrip = false;
+    const strip = $('peekRow');
+    let pOn = false, pMode = '', pX = 0, pY = 0, pH = 0, pStrip = false, lastX = 0, xTrail = [];
     el.addEventListener('touchstart', (e) => {
       pOn = false;
       if (sheet.state !== 'peek' || e.touches.length !== 1 || document.body.classList.contains('page') || e.target.closest('input, select, textarea')) return;
-      pOn = true; pMoved = false; pX = e.touches[0].clientX; pY = e.touches[0].clientY; pH = el.getBoundingClientRect().height; pStrip = !!e.target.closest('.peekrow');
-      trail = [{ t: performance.now(), y: pY }];
+      pOn = true; pMode = ''; pX = lastX = e.touches[0].clientX; pY = e.touches[0].clientY; pH = el.getBoundingClientRect().height; pStrip = !!e.target.closest('.peekrow');
+      trail = [{ t: performance.now(), y: pY }]; xTrail = [{ t: performance.now(), x: pX }];
     }, { passive: true });
     el.addEventListener('touchmove', (e) => {
       if (!pOn) return;
-      const up = pY - e.touches[0].clientY, dx = e.touches[0].clientX - pX;
-      if (!pMoved) {
-        if (Math.abs(up) < 4 && Math.abs(dx) < 4) return;
-        if (up <= 0 || (pStrip && Math.abs(dx) > Math.abs(up))) { pOn = false; return; }   // down: the browser's; sideways on the strip: its scroll
-        pMoved = true; el.classList.add('dragging');
+      const x = e.touches[0].clientX, y = e.touches[0].clientY, up = pY - y, dx = x - pX;
+      if (!pMode) {
+        if (Math.abs(up) < 6 && Math.abs(dx) < 6) return;
+        if (pStrip && Math.abs(dx) > Math.abs(up) * 1.4) pMode = 'scroll';
+        else pMode = up > 0 ? 'sheet' : 'refresh';
+        if (pMode === 'sheet') el.classList.add('dragging');
       }
-      trail.push({ t: performance.now(), y: e.touches[0].clientY }); if (trail.length > 8) trail.shift();
-      el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), pH + up)) + 'px';
+      if (pMode === 'scroll') { strip.scrollBy({ left: -(x - lastX) }); xTrail.push({ t: performance.now(), x }); if (xTrail.length > 8) xTrail.shift(); }
+      else if (pMode === 'refresh') pullRefresh.move(-up - 6);
+      else { trail.push({ t: performance.now(), y }); if (trail.length > 8) trail.shift(); el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), pH + up)) + 'px'; }
+      lastX = x;
     }, { passive: true });
     const pEnd = () => {
       if (!pOn) return;
       pOn = false;
-      if (!pMoved) return;
+      if (!pMode) return;
+      swallow = true; setTimeout(() => { swallow = false; }, 60);
+      if (pMode === 'refresh') { pullRefresh.end(); return; }
+      if (pMode === 'scroll') {   // a fling: the strip keeps going a little
+        const n = xTrail.length; let i = n - 2; while (i > 0 && xTrail[n - 1].t - xTrail[i].t < 60) i--;
+        const dt = n > 1 ? xTrail[n - 1].t - xTrail[i].t : 0; let vx = dt > 0 ? (xTrail[n - 1].x - xTrail[i].x) / dt : 0;
+        const fling = () => { strip.scrollBy({ left: -vx * 16 }); vx *= 0.9; if (Math.abs(vx) > 0.03) requestAnimationFrame(fling); };
+        if (Math.abs(vx) > 0.2) requestAnimationFrame(fling);
+        return;
+      }
       el.classList.remove('dragging');
       const hh = el.getBoundingClientRect().height;
       el.style.height = '';
-      swallow = true; setTimeout(() => { swallow = false; }, 60);
       settle(hh, pH, 'peek', speed());
     };
     el.addEventListener('touchend', pEnd); el.addEventListener('touchcancel', pEnd);

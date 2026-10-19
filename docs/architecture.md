@@ -227,17 +227,18 @@ emoji anywhere in the interface: emoji render differently on every phone
 and cannot take the app's colours.
 
 The compass button is a needle with depth (red north, pale south, a
-centre pin), tilted in real perspective with the map. The collapsed sheet
-leaves a pull down to the browser's pull-to-refresh and keeps a pull up for
-itself: its touch-action is `pan-up`, which in Chrome hands the browser only
-the finger-down swipe (measured 2026-10-19; `pan-y` is the fallback where
-the one-way values are unknown, Safari among them), and its body's
-overscroll containment is lifted there so the gesture chains to the page
-(containment stays while the sheet is half or fully open, where a pull past
-the top edge folds the sheet instead). A pull up on the collapsed sheet
-opens it through touch events, which keep coming even where the browser
-has taken the gesture; the drawer also has
-"reload the app" for the installed app, which has no browser bar. On iPhones, which never fire the install prompt, the
+centre pin), tilted in real perspective with the map. Pull-to-refresh is
+the app's own: the browser's needs a page that scrolls and this one never
+does (tried: `pan-y`, `pan-up`, lifting overscroll containment; Chrome's
+circle never came, and whatever it did claim made the sheet drag stutter).
+A pull down on the bar or on the collapsed sheet shows a circle that follows
+the finger and lights up past 72 px; letting go then reloads, in Chrome,
+Safari and the installed app alike. So the bar's controls and the collapsed
+sheet say `touch-action: none` and the sheet reads every touch itself: up
+opens it, down refreshes, sideways on the chip strip scrolls the strip by
+script with a small fling (the browser never claims a gesture there, which
+is what made starts on the strip feel stuck). The drawer also has "reload
+the app". On iPhones, which never fire the install prompt, the
 settings row "add to home screen" shows Safari's own way (Share, then Add
 to Home Screen); the page carries the Apple meta tags and touch icon.
 

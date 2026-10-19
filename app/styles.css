@@ -359,10 +359,17 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
 .handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
-/* collapsed, a pull down anywhere on the sheet is the browser's pull-to-refresh: the gesture may chain to the page
-   (no overscroll containment, no touch-action: none); a pull up is still the sheet's, through touch events */
-.sheet[data-state="peek"], .sheet[data-state="peek"] .handle { touch-action: pan-y; touch-action: pan-up; }   /* pan-up: Chrome owns only the finger-down swipe (measured 2026-10-19); Safari keeps pan-y */
-.sheet[data-state="peek"] .sheet-body { overscroll-behavior: auto; }
+/* collapsed, every touch on the sheet is the app's: a pull up opens it, a pull down is the app's own pull-to-refresh,
+   a sideways move on the chip strip scrolls the strip (by script); the browser never claims a gesture here */
+.sheet[data-state="peek"], .sheet[data-state="peek"] .handle, .sheet[data-state="peek"] .sheet-body { touch-action: none; }
+/* the bar too: a pull down on it refreshes (the dropdown underneath keeps its own scrolling) */
+.topbar input, .topbar .tag, .topbar .userbtn, .topbar .iconbtn, .topbar .chipbtn, .topbar .sumbox, .topbar .clearbtn, .topbar button.primary { touch-action: none; }
+/* the refresh circle: follows the pull, lights up when it would reload, spins while reloading */
+.ptr { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px); left: 50%; transform: translate(-50%, 0); width: 42px; height: 42px; border-radius: 50%; background: var(--surface); color: var(--ink-2); box-shadow: 0 4px 14px rgba(0,0,0,.28); display: grid; place-items: center; z-index: 80; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.ptr .i { width: 22px; height: 22px; }
+.ptr.armed { color: var(--accent-text); }
+.ptr.busy { transition: transform .2s; } .ptr.busy .i { animation: ptrspin .7s linear infinite; }
+@keyframes ptrspin { to { transform: rotate(360deg); } }
 .sheet[data-state="full"] .sheet-body { scroll-padding-top: 0; }
 .handle span { width: 56px; height: 6px; border-radius: 3px; background: var(--line); }
 .sheet-body { flex: 1; overflow: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -383,7 +390,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; }
 .optpanel[hidden] { display: none; }
 .optpanel .primary { margin-top: 10px; }
-.peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; touch-action: pan-x pan-y; touch-action: pan-x pan-up; }
+.peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; touch-action: none; scroll-behavior: auto; }
 .peekrow::-webkit-scrollbar { display: none; }
 .peekrow .chipbtn { flex: none; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 .chipbtn.accent { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
