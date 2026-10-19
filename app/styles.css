@@ -112,9 +112,7 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .center { text-align: center; padding: 6px 16px 0; }
 .leg .what .live { display: inline-block; margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
-.live.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
 /* live colours mean confidence: green a fresh report, orange a report older than four minutes (marked ?), plain the schedule */
-.live.unsure { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
 .live.gone { background: var(--chip); color: var(--ink-2); text-decoration: line-through; }
 .leg .toggle { background: none; border: 0; color: var(--accent-text); font-size: 13px; padding: 2px 0; cursor: pointer; display: block; }
 .leg .stoplist { margin: 4px 0 2px; padding-inline-start: 4px; border-inline-start: 2px solid var(--line); }
@@ -228,6 +226,8 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .pop .chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .pop .chips .chip { cursor: pointer; }
 .pop .live { display: inline-block; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; }
+.live.ok, .leg .what .live.ok, .pop .live.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.live.unsure, .leg .what .live.unsure, .pop .live.unsure { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
 
 .leg .t s { opacity: .6; }
 /* a ride leg can be tapped to show only its line on the map */
