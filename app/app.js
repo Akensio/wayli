@@ -2144,21 +2144,27 @@ const sheet = {
     if (!dragging) return;
     const dy = startY - e.clientY, dx = e.clientX - startX;
     if (!moved) {
-      if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+      if (Math.abs(dy) < 4 && Math.abs(dx) < 4) return;
       if (onStrip && Math.abs(dx) > Math.abs(dy)) { dragging = false; return; }   // a sideways scroll of the chips
       moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch (x) {}
     }
     trail.push({ t: performance.now(), y: e.clientY }); if (trail.length > 8) trail.shift();
     el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)) + 'px';
   });
-  /** Where a drag lands: a flick (over 0.6 px/ms at release) goes all the way in its direction; otherwise the
-   *  nearest size, or one step in its direction after a short pull. `v` is the finger's speed, down positive. */
+  /** Where a drag lands. The nearest size to where it was let go; a short pull (40 px) or a quick one (0.5 px/ms)
+   *  steps one size in its direction instead of falling back; only a long drag past the midpoint opens or closes
+   *  all the way (as Android's own sheets do: speed picks the next size, never the far one). `v` is the finger's
+   *  speed, down positive. */
   const settle = (hh, fromH, fromState, v = 0) => {
-    const dy = hh - fromH;
-    if (Math.abs(v) >= 0.6 && Math.abs(dy) >= 30) { sheet.set(v < 0 ? 'full' : 'peek'); return; }   // a flick, after real travel
+    const dy = hh - fromH, i0 = ORDER.indexOf(fromState);
     let best = 'peek';
     for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
-    if (best === fromState && Math.abs(dy) > 40) best = ORDER[Math.max(0, Math.min(2, ORDER.indexOf(fromState) + (dy > 0 ? 1 : -1)))];
+    const dir = Math.abs(v) >= 0.5 && Math.abs(dy) >= 12 ? (v < 0 ? 1 : -1) : Math.abs(dy) > 40 ? (dy > 0 ? 1 : -1) : 0;
+    if (dir) {
+      const step = ORDER[Math.max(0, Math.min(2, i0 + dir))];
+      // a decisive move lands at least one size along; farther only if the drag itself went farther
+      if ((ORDER.indexOf(best) - i0) * dir <= 0) best = step;
+    }
     sheet.set(best);
   };
   const end = (e) => {
@@ -2187,7 +2193,7 @@ const sheet = {
       if (!pOn) return;
       const up = pY - e.touches[0].clientY, dx = e.touches[0].clientX - pX;
       if (!pMoved) {
-        if (Math.abs(up) < 8 && Math.abs(dx) < 8) return;
+        if (Math.abs(up) < 4 && Math.abs(dx) < 4) return;
         if (up <= 0 || (pStrip && Math.abs(dx) > Math.abs(up))) { pOn = false; return; }   // down: the browser's; sideways on the strip: its scroll
         pMoved = true; el.classList.add('dragging');
       }
@@ -2223,7 +2229,7 @@ const sheet = {
       if (!tOn) return;
       const down = e.touches[0].clientY - tY;
       if (!tMoved) {
-        if (Math.abs(down) < 8) return;
+        if (Math.abs(down) < 5) return;
         if (!(down > 0 ? tTop : tBottom)) { tOn = false; return; }   // not at the edge in that direction: the list scrolls
         tMoved = true; el.classList.add('dragging');
       }

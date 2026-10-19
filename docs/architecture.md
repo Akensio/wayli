@@ -187,10 +187,12 @@ pulling down folds it; past the bottom (or with nothing to scroll),
 pulling up opens it. The browser owns vertical gestures in a scrolling
 list and cancels pointer events, but a pull past an edge only overscrolls,
 so touch events drive the sheet there; a mouse wheel past an edge does the
-same. A flick (the finger
-faster than 1 px/ms at release) goes all the way in its direction, a short
-pull of 40 px steps one size, a long slow one lands where it is let go,
-and a tap on the handle cycles the sizes; a tap on empty map collapses it.
+same. Where a drag lands: the
+nearest size to where it was let go; a short pull (40 px) or a quick one
+(0.5 px/ms) steps one size in its direction rather than falling back; only
+a long drag past the midpoint opens or closes all the way, as Android's own
+sheets do (speed picks the next size, never the far one). A tap on the
+handle cycles the sizes; a tap on empty map collapses it.
 The map's own buttons (locate, compass) sit in the bottom corner above the
 sheet and fade with the map under a fully open sheet. Tilted, the map gets
 depth: a sky and a haze towards the horizon (MapLibre's sky, pitch up to

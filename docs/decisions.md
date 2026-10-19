@@ -385,3 +385,8 @@ so they are not re-litigated.
   Now a fresh plan shows one quiet line that opens on a tap; a plan
   restored from earlier shows the rows at once (that is the rider who
   boarded and came back); the rows are calmer, four at most.
+- 2026-10-19 Gadi: the sheet is still stuckish and oversensitive for the
+  full opening. The flick rule ("fast means all the way") was wrong for a
+  phone, where every pull is fast: speed now steps one size, like
+  Android's sheets, and only a long drag past the midpoint goes all the
+  way; the dead zone at the start of a drag shrank from 8 px to 4.
