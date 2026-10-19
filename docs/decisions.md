@@ -543,3 +543,17 @@ so they are not re-litigated.
   ahead of accounts. Entering search mode animates: the origin row slides
   in above, the options row under, back and swap pop in, the pill narrows
   smoothly; the summary box and the suggestion list slide in too.
+- 2026-10-20 Gadi: a better colour palette for the roads and such, light and
+  dark. Liberty's own colours (yellow motorways, saturated water, green
+  parks) fight the transit lines drawn over them. Both modes are now
+  Liberty with every colour replaced from a palette by role and road class
+  (mapstyle.js replaces darkmap.js): light is warm off-white land, white
+  streets with soft grey casings, pale sand motorways and muted water, the
+  Positron and Transit-app family; dark is cool near-black land, roads as
+  lighter greys in a clear hierarchy, deep blue-black water. Alphas and
+  zoom fades are kept. Rejected: OpenFreeMap's Positron as is (no POIs, no
+  3D buildings) and the old HSL remap (one formula cannot give motorways
+  and side streets their own places).
+- 2026-10-20 Gadi: the app icon at the start of the pill and the user at
+  its end; a tap on the icon starts a search like the rest of the pill, a
+  tap on the user opens the menu. Done.

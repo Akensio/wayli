@@ -127,14 +127,18 @@ history, saved places and the trip in progress, all in localStorage),
 cached, so the app works offline once loaded; a new build reloads the page
 once, and notification taps reopen the app), `styles.css`,
 `manifest.webmanifest`, icons. Maps are MapLibre GL (cdnjs) over OpenFreeMap
-vector tiles (no key, no cost): the Liberty style by default in every theme,
-and in dark mode, when chosen in settings, the same Liberty recoloured on
-the device (`darkmap.js`: every colour in the style turned by its role,
-ground near black, roads mid grey with lighter casings, buildings a shade
-above the ground, text light with a dark halo), so the dark map keeps all
-of Liberty's detail: road classes, 3D buildings, stops, places.
-OpenFreeMap's own dark styles were rejected as too bare. The RTL text
-plugin shapes Hebrew and Arabic labels. Lines are coloured by mode and
+vector tiles (no key, no cost): the Liberty style, with every colour
+replaced on the device from one of two palettes by role and road class
+(`mapstyle.js`), so both maps keep all of Liberty's detail (road classes,
+3D buildings, stops, places) while the roads recede and the transit lines
+drawn over them carry the colour. Light: warm off-white land, white
+streets with soft grey casings, pale sand motorways, muted water (the
+Positron and Transit-app family of basemaps). Dark: cool near-black land,
+roads as lighter greys in a clear hierarchy, deep blue-black water, light
+text with a dark halo; the sprite's black-and-white hatchings are faded.
+Alphas and zoom fades of the original are kept. OpenFreeMap's own Positron
+and dark styles were rejected as too bare. The RTL text plugin shapes
+Hebrew and Arabic labels. Lines are coloured by mode and
 operator: trains navy, light rail red (both lines running are "the red
 line"), buses in their operator's colour, approximate brand colours kept
 in one table in `app.js` (Egged green and Dan blue read off their sites;

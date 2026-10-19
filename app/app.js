@@ -3,7 +3,7 @@
 import { settings, recentPlaces, recentTrips, savedPlaces, favs, lastSearch, activeTrip } from './store.js';
 import * as live from './live.js';
 import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney } from './follow.js';
-import { darkLiberty } from './darkmap.js';
+import { styledLiberty } from './mapstyle.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -594,7 +594,7 @@ function clearPlan() {
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
 $('menuReload').addEventListener('click', () => location.reload());
-$('appLogo').addEventListener('click', () => { nav.closeAll(); showScreen('more'); });
+$('appLogo').addEventListener('click', () => $('toQ').focus());   // the logo is part of the pill: a tap starts a search
 // search a line by number: the To box, numeric keyboard, until it is left
 $('menuLines').addEventListener('click', () => {
   nav.closeAll(); showScreen('plan'); barOpen = true; updateFromRow();   // the rows, even over a plan's summary
@@ -992,18 +992,19 @@ function applyTheme() {
   const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = wantDarkMap() ? '#141210' : '#f8f4f0';
 }
 applyTheme();
-let darkStyle = null, darkStyleLoading = null;
-/** Resolves once the style to use is at hand (the dark one needs a fetch); maps are made after it. */
+const styles = {}, styleLoading = {};
+/** Resolves once the style to use is at hand (Liberty in Wayli's palette needs a fetch); maps are made after it. */
 function styleReady() {
-  if (!wantDarkMap() || darkStyle) return Promise.resolve();
-  if (!darkStyleLoading) darkStyleLoading = darkLiberty().then((st) => { darkStyle = st; }).catch(() => {}).finally(() => { darkStyleLoading = null; });
-  return darkStyleLoading;
+  const mode = wantDarkMap() ? 'dark' : 'light';
+  if (styles[mode]) return Promise.resolve();
+  if (!styleLoading[mode]) styleLoading[mode] = styledLiberty(mode).then((st) => { styles[mode] = st; }).catch(() => {}).finally(() => { styleLoading[mode] = null; });
+  return styleLoading[mode];
 }
 function mapStyle() {
   let o = null; try { o = localStorage.getItem('wayli-map-style'); } catch (e) {}
   if (o) return `https://tiles.openfreemap.org/styles/${o}`;
-  if (wantDarkMap() && darkStyle) return darkStyle;
-  return 'https://tiles.openfreemap.org/styles/liberty';
+  const mode = wantDarkMap() ? 'dark' : 'light';
+  return styles[mode] || 'https://tiles.openfreemap.org/styles/liberty';
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapStyle);
 let rtlSet = false;
@@ -1106,7 +1107,7 @@ function setupMapLayers(m) {
   // the basemap's own transit squares would double our stops
   if (m.getLayer('poi_transit')) m.setLayoutProperty('poi_transit', 'visibility', 'none');
   setBasemapLang(m);
-  const dark = typeof currentStyle === 'object';
+  const dark = wantDarkMap();
   // depth when the map is tilted: a sky and a haze towards the horizon, a low side light that shades the buildings
   try {
     m.setSky(dark
