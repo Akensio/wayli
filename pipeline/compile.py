@@ -31,7 +31,7 @@ import numpy as np
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3   # 3: header `names`, stop/station/city names and headsigns in other languages
 WALK_SPEED = 1.2        # m/s
 WALK_RADIUS = 400.0     # m, generated footpaths between stops closer than this (250 was too small for big stations)
 MIN_WALK = 60           # s, floor for any footpath
@@ -69,6 +69,47 @@ def member(zf, name):
 def rows(zf, name):
     with member(zf, name) as f:
         yield from csv.DictReader(f)
+
+
+def read_translations(zf, langs):
+    """translations.txt -> {lang: {hebrew string: translation}} for the languages asked for (lower-case codes).
+    The MOT feed uses the pre-2020 layout (trans_id, lang, translation); the standard layout (table_name,
+    field_name, language, translation, field_value) is read too. A translation equal to the source is dropped."""
+    out = {L: {} for L in langs}
+    if not langs or "translations.txt" not in set(zf.namelist()):
+        return out
+    for r in rows(zf, "translations.txt"):
+        L = (r.get("lang") or r.get("language") or "").strip().lower()
+        src = (r.get("trans_id") if "trans_id" in r else r.get("field_value")) or ""
+        dst = (r.get("translation") or "").strip()
+        src = src.strip()
+        if L in out and src and dst and dst != src:
+            out[L][src] = dst
+    return out
+
+
+def translate(s, d):
+    """A name in another language: the whole string when the feed translates it, else piece by piece around
+    the dashes of the MOT 'stop-city' convention; the string itself when nothing is known."""
+    s = s.strip()
+    if s in d:
+        return d[s]
+    if "-" in s:
+        a, b = s.rsplit("-", 1)
+        ta, tb = translate(a, d), translate(b, d)
+        if ta != a.strip() or tb != b.strip():
+            return f"{ta}-{tb}"
+    return s
+
+
+def headsign_of(long_name):
+    """The destination of 'origin-city<->destination-city-1#' (the app's own reading of route_long_name)."""
+    parts = long_name.split("<->")
+    if len(parts) != 2:
+        return long_name
+    dest = re.sub(r"-\d+[#א-ת]*$", "", parts[1]).strip()
+    i = dest.rfind("-")
+    return dest[:i].strip() if i > 0 else dest
 
 
 def hms(s):
@@ -151,6 +192,7 @@ def main():
     ap.add_argument("--max-walk", type=int, default=600, help="seconds: longest stop-to-stop walk on the street graph")
     ap.add_argument("--shapes", default=None, help="compact shapes from shapes.py: each pattern's course and where its stops fall on it")
     ap.add_argument("--rail", default=None, help="rail graph from rail.py: train rides along the track (the feed has no shapes for trains)")
+    ap.add_argument("--langs", default="en", help="comma-separated languages to carry names in from translations.txt (besides Hebrew); empty for none")
     args = ap.parse_args()
     WALK_RADIUS = args.walk_radius
 
@@ -552,6 +594,32 @@ def main():
         add("railLat", np.round(np.array(rail_lat, np.float64) * 1e5).astype(np.int32), "int32")
         add("railLon", np.round(np.array(rail_lon, np.float64) * 1e5).astype(np.int32), "int32")
 
+    # ---- names in other languages: stops, stations, cities and headsigns, from translations.txt ----
+    langs = [L.strip().lower() for L in args.langs.split(",") if L.strip()]
+    translations = read_translations(zf, langs)
+    names = {}
+    for L in langs:
+        d = translations[L]
+        tl = lambda s: (d.get(s.strip(), "") if s else "")
+        cities = {}
+        for s in stop_list:
+            if s[6] and s[6] not in cities and tl(s[6]):
+                cities[s[6]] = tl(s[6])
+        heads = []
+        for r in route_list:
+            hs = headsign_of(r[1])
+            th = translate(hs, d)
+            heads.append(th if th != hs else "")
+        names[L] = {
+            "stops": [tl(s[1]) for s in stop_list],
+            "stations": [tl(stops_raw[pid][0]) if pid in stops_raw else "" for pid in parent_index],
+            "cities": cities,
+            "routes": heads,
+        }
+        log(f"names in {L}: {sum(1 for x in names[L]['stops'] if x)}/{len(stop_list)} stops, "
+            f"{sum(1 for x in names[L]['stations'] if x)}/{len(parent_index)} stations, {len(cities)} cities, "
+            f"{sum(1 for x in heads if x)}/{len(route_list)} headsigns")
+
     header = {
         "format": FORMAT_VERSION,
         "date": args.date,
@@ -566,6 +634,7 @@ def main():
         "routes": route_list,
         "stops": [[s[0], s[1], s[4], s[6]] for s in stop_list],
         "stations": [[pid, stops_raw[pid][0] if pid in stops_raw else ""] for pid in parent_index],
+        "names": names or None,
         "streets": {"file": args.streets.split("/")[-1], "max_walk_s": args.max_walk, "footpaths": n_street} if args.streets else None,
         "shapes": {"file": args.shapes.split("/")[-1], "patterns": int(n_shaped)} if args.shapes else None,
         "rail": {"pairs": len(rail_pair_off) - 1, "patterns": int(n_rail), "straight": int(n_rail_fallback)} if args.rail else None,

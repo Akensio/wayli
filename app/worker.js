@@ -1,10 +1,11 @@
 // Wayli worker: holds the timetable and the street graph, answers every query off the main thread.
-import { parseTimetable, searchStops, profile, fmtTime, routeLabel } from './raptor.js';
+import { parseTimetable, searchStops, profile, fmtTime, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode } from './places.js';
 import { estimateDelay, secondsOn } from './live.js';
 
 let tt = null, st = null, pl = null, sh = null;
+let lang = 'he';   // the language names are handed out in (setLang); the timetable carries what the feed translates
 
 /** The compact shapes file: int32 coordinates (1e-5 degrees) per GTFS shape id. */
 function parseShapes(ab) {
@@ -94,17 +95,14 @@ function linesAt(stop, limit = 12) {
   return Array.from(seen.values()).slice(0, limit);
 }
 
-function headsign(route) {
-  // MOT route_long_name: "origin-city<->destination-city-1#"; the city is after the last dash
-  const parts = route[1].split('<->');
-  if (parts.length !== 2) return route[1];
-  const dest = parts[1].replace(/-\d+[#א-ת]*$/, '').trim();
-  const i = dest.lastIndexOf('-');
-  return i > 0 ? dest.slice(0, i).trim() : dest;
-}
+// names in the rider's language, falling back to the feed's Hebrew
+const headsign = (ri) => routeHeadsign(tt, ri, lang);
+const sName = (s) => stopName(tt, s, lang);
+const stName = (p) => stationName(tt, p, lang);
+const cName = (c) => cityName(tt, c, lang);
 
 function stopOut(s) {
-  return { stop: s, name: tt.stops[s][1], city: tt.stops[s][3] || '', code: tt.stops[s][2], lat: tt.stopLat[s], lon: tt.stopLon[s] };
+  return { stop: s, name: sName(s), city: cName(tt.stops[s][3]), code: tt.stops[s][2], lat: tt.stopLat[s], lon: tt.stopLon[s] };
 }
 
 /** Resolve a place into origin/destination entries for the planner. */
@@ -218,13 +216,13 @@ function legOut(l, q) {
     for (let i = 0; i < ns; i++) if (tt.patStops[tt.patStopsOff[p] + i] === l.from && tt.dep[base + i] === l.depart) { bp = i; break; }
     const raw = rawTimes(p, l.trip);   // the schedule: dep/arr may carry a live shift during a plan
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), stops: l.stops, line: routeLabel(l.route),
-      headsign: headsign(l.route), agency: l.route[2], routeType: l.route[3],
+      headsign: headsign(tt.patRoute[p]), agency: l.route[2], routeType: l.route[3],
       trip: l.trip, routeId: l.route[4] ?? null, route: tt.patRoute[p], firstDep: raw.dep[0], boardPos: bp, live: tripLive.get(l.trip) || null,
       schedDepart: bp >= 0 ? raw.dep[bp] : l.depart, schedArrive: bp >= 0 ? raw.arr[bp + l.stops] : l.arrive,
       pattern: p, alightPos: bp + l.stops,
       path: ridePath(p, bp, bp + l.stops) || l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]), pathKind: hasCourse(p) ? 'shape' : 'stops',
       // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
-      stopsAlong: l.via.map((s, i) => ({ stop: s, name: tt.stops[s][1], lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + bp + i], dep: tt.dep[base + bp + i] })) });
+      stopsAlong: l.via.map((s, i) => ({ stop: s, name: sName(s), lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + bp + i], dep: tt.dep[base + bp + i] })) });
   } else if (l.type === 'walk') {
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), path: [[tt.stopLat[l.from], tt.stopLon[l.from]], [tt.stopLat[l.to], tt.stopLon[l.to]]] });
   } else if (l.type === 'access') {
@@ -289,7 +287,7 @@ const ops = {
     return patterns.map((p) => {
       const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
       const stops = [];
-      for (let i = 0; i < ns; i++) { const st = tt.patStops[tt.patStopsOff[p] + i]; stops.push([tt.stopLat[st], tt.stopLon[st], tt.stops[st][1], st]); }
+      for (let i = 0; i < ns; i++) { const st = tt.patStops[tt.patStopsOff[p] + i]; stops.push([tt.stopLat[st], tt.stopLon[st], sName(st), st]); }
       return { path: (ns >= 2 && ridePath(p, 0, ns - 1)) || stops.map((x) => [x[0], x[1]]), stops };
     });
   },
@@ -299,16 +297,16 @@ const ops = {
     return pl.header.counts;
   },
   /** Stops and stations first, then addresses, streets, places and cities from the address book. */
-  search({ q, limit = 10, lang = 'he', near = null }) {
+  search({ q, limit = 10, lang: L = lang, near = null }) {
     // stops and places on one scale: match strength (whole words over prefixes), nearness, and a point
     // ahead of a street at equal strength (a stop is what the planner boards; an address when a number was typed)
     const bandBonus = (g) => { if (!near) return 0; const km = haversine(near.lat, near.lon, g.lat, g.lon) / 1000; return km < 3 ? 3 : km < 15 ? 1.5 : 0; };
-    const stops = searchStops(tt, q, limit).map((g) => ({ kind: 'stop', key: g.key, name: g.name, city: g.city, stops: g.stops, lat: g.lat, lon: g.lon, code: g.code, platforms: g.stops.length, rank: g.score + 1 + bandBonus(g) }));
+    const stops = searchStops(tt, q, limit, L).map((g) => ({ kind: 'stop', key: g.key, name: g.name, city: g.city, stops: g.stops, lat: g.lat, lon: g.lon, code: g.code, platforms: g.stops.length, rank: g.score + 1 + bandBonus(g) }));
     const hasDigit = /\d/.test(q);
     let places = [];
     if (pl) {
       places = searchPlaces(pl, q, limit, near).map((r) => ({ kind: r.kind, name: r.name, city: r.city, lat: r.lat, lon: r.lon, approx: r.approx ?? null,
-        label: r.kind === 'poi' ? kindLabel(r.poiKind, lang) : null, score: r.score, rank: r.score + (hasDigit && r.kind === 'address' ? 3 : 0) }));
+        label: r.kind === 'poi' ? kindLabel(r.poiKind, L) : null, score: r.score, rank: r.score + (hasDigit && r.kind === 'address' ? 3 : 0) }));
     }
     const merged = [...stops, ...places].map((r, i) => ({ r, i })).sort((a, b) => b.r.rank - a.r.rank || a.i - b.i).map((x) => x.r);
     return { results: merged.slice(0, limit + 4), placesLoaded: !!pl };
@@ -347,7 +345,7 @@ const ops = {
   routeLabels({ ids }) {
     if (!routeById) indexRoutes();
     const out = {};
-    for (const id of ids) { const ri = routeById.get(String(id)); if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(r), route: ri }; } }
+    for (const id of ids) { const ri = routeById.get(String(id)); if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(ri), route: ri }; } }
     return out;
   },
   /** Lines by number: exact matches first, then prefix; one row per direction, grouped by line and agency. */
@@ -363,7 +361,7 @@ const ops = {
       if (!score) return;
       let trips = 0;
       for (const p of routePats.get(i) || []) trips += tt.patTripsOff[p + 1] - tt.patTripsOff[p];
-      rows.push({ route: i, routeId: r[4] ?? null, line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(r), trips, score });
+      rows.push({ route: i, routeId: r[4] ?? null, line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(i), trips, score });
     });
     const num = (x) => { const m = /^\d+/.exec(x); return m ? +m[0] : 1e9; };
     rows.sort((a, b) => b.score - a.score || num(a.line) - num(b.line) || a.line.localeCompare(b.line) || a.agency.localeCompare(b.agency) || b.trips - a.trips);
@@ -388,8 +386,8 @@ const ops = {
     const path = best >= 0 && ns >= 2 ? (ridePath(best, 0, ns - 1) || stops.map((s) => [s.lat, s.lon])) : [];
     const others = [];
     const label = routeLabel(r);
-    tt.routes.forEach((o, i) => { if (i !== route && routeLabel(o) === label && o[2] === r[2] && (routePats.get(i) || []).length) others.push({ route: i, headsign: headsign(o) }); });
-    return { route, routeId: r[4] ?? null, line: label, agency: r[2], routeType: r[3], headsign: headsign(r), stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    tt.routes.forEach((o, i) => { if (i !== route && routeLabel(o) === label && o[2] === r[2] && (routePats.get(i) || []).length) others.push({ route: i, headsign: headsign(i) }); });
+    return { route, routeId: r[4] ?? null, line: label, agency: r[2], routeType: r[3], headsign: headsign(route), stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {
@@ -400,7 +398,7 @@ const ops = {
       const { stops } = tripStopList(t);
       const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: new Date(v.recordedAt) }, stops, day);
       const ri = tt.patRoute[tt.tripPat[t]];
-      return { trip: t, delay: est ? est.delay : null, stale: est ? est.ageSec > 240 : true, index: est ? est.index : -1, headsign: headsign(tt.routes[ri]), route: ri, line: routeLabel(tt.routes[ri]), agency: tt.routes[ri][2], routeType: tt.routes[ri][3] };
+      return { trip: t, delay: est ? est.delay : null, stale: est ? est.ageSec > 240 : true, index: est ? est.index : -1, headsign: headsign(ri), route: ri, line: routeLabel(tt.routes[ri]), agency: tt.routes[ri][2], routeType: tt.routes[ri][3] };
     });
   },
   /** The trip a reported vehicle is running: route id and scheduled start (ISO or ms). */
@@ -421,11 +419,11 @@ const ops = {
       for (const s of members) { la += tt.stopLat[s]; lo += tt.stopLon[s]; const ks = kindOf(s); if (ks === 'rail' || (ks === 'lrt' && k === 'station')) k = ks; }
       if (k === 'station' && members.length < 3) continue;   // a pair of opposite bus stops the feed groups is not a bus station
       stKind.set(p, k);
-      features.push({ type: 'Feature', properties: { stop: members[0], station: p, name: (tt.stations[p] && tt.stations[p][1]) || tt.stops[members[0]][1], kind: k }, geometry: { type: 'Point', coordinates: [lo / members.length, la / members.length] } });
+      features.push({ type: 'Feature', properties: { stop: members[0], station: p, name: stName(p) || sName(members[0]), kind: k }, geometry: { type: 'Point', coordinates: [lo / members.length, la / members.length] } });
     }
     for (let s = 0; s < tt.stops.length; s++) {
       const p = tt.stopParent[s];
-      features.push({ type: 'Feature', properties: p >= 0 && stKind.has(p) ? { stop: s, name: tt.stops[s][1], kind: 'platform', st: stKind.get(p) } : { stop: s, name: tt.stops[s][1], kind: kindOf(s) }, geometry: { type: 'Point', coordinates: [tt.stopLon[s], tt.stopLat[s]] } });
+      features.push({ type: 'Feature', properties: p >= 0 && stKind.has(p) ? { stop: s, name: sName(s), kind: 'platform', st: stKind.get(p) } : { stop: s, name: sName(s), kind: kindOf(s) }, geometry: { type: 'Point', coordinates: [tt.stopLon[s], tt.stopLat[s]] } });
     }
     return { type: 'FeatureCollection', features };
   },
@@ -439,7 +437,7 @@ const ops = {
       const s = tt.patStops[tt.patStopsOff[p] + i];
       stops.push({ ...stopOut(s), arr: tt.arr[base + i], dep: tt.dep[base + i] });
     }
-    return { trip, routeId: r[4] ?? null, line: routeLabel(r), headsign: headsign(r), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
+    return { trip, routeId: r[4] ?? null, line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
   },
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
   reverse({ lat, lon }) {
@@ -452,7 +450,7 @@ const ops = {
       const d = haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]);
       if (d < bd) { bd = d; best = s; }
     }
-    if (best >= 0) return { name: tt.stops[best][1], kind: 'stop', distance: Math.round(bd) };
+    if (best >= 0) return { name: sName(best), kind: 'stop', distance: Math.round(bd) };
     return { name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, kind: 'point', distance: 0 };
   },
   nearby({ lat, lon, limit = 15, radius = 1200 }) {
@@ -469,7 +467,7 @@ const ops = {
     if (station < 0) return { ...stopOut(stop), lines: linesAt(stop, 30) };
     const seen = new Map();
     for (const s of tt.stationStops.get(station) || [stop]) for (const l of linesAt(s, 40)) if (!seen.has(l.label)) seen.set(l.label, l);
-    return { ...stopOut(stop), name: (tt.stations[station] && tt.stations[station][1]) || tt.stops[stop][1], code: '', lines: Array.from(seen.values()).slice(0, 30) };
+    return { ...stopOut(stop), name: stName(station) || sName(stop), code: '', lines: Array.from(seen.values()).slice(0, 30) };
   },
   /** The GTFS route ids of the lines serving stops within `radius` m of a point: what can be taken from there. */
   nearbyRoutes({ lat, lon, radius = 500 }) {
@@ -480,6 +478,8 @@ const ops = {
     }
     return Array.from(ids);
   },
+  /** The language every name is handed out in from now on (what the timetable carries; Hebrew otherwise). */
+  setLang({ lang: l }) { lang = l || 'he'; return lang; },
   departures({ stop, fromTime, limit = 40 }) {
     const out = [];
     for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {
@@ -490,7 +490,7 @@ const ops = {
       const tFirst = tt.patTripsOff[p], tEnd = tt.patTripsOff[p + 1], base = tt.tripTimesOff[p];
       for (let t = tFirst; t < tEnd; t++) {
         const d = tt.dep[base + (t - tFirst) * ns + pos];
-        if (d >= fromTime) out.push({ time: d, line: routeLabel(r), headsign: headsign(r), routeType: r[3], agency: r[2], trip: t, routeId: r[4] ?? null, firstDep: tt.dep[base + (t - tFirst) * ns], last: pos === ns - 1 });
+        if (d >= fromTime) out.push({ time: d, line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], trip: t, routeId: r[4] ?? null, firstDep: tt.dep[base + (t - tFirst) * ns], last: pos === ns - 1 });
       }
     }
     out.sort((a, b) => a.time - b.time);
@@ -502,7 +502,7 @@ self.onmessage = async (ev) => {
   const { id, op, args } = ev.data;
   try {
     if (!ops[op]) throw new Error('unknown op ' + op);
-    if (!tt && op !== 'loadTimetable') throw new Error('timetable not loaded');
+    if (!tt && op !== 'loadTimetable' && op !== 'setLang') throw new Error('timetable not loaded');
     const result = await ops[op](args || {});
     post({ id, result });
   } catch (e) {

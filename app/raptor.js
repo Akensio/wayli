@@ -16,7 +16,7 @@ export function parseTimetable(ab) {
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
   const base = 4 + headerLen;
   const tt = { header, counts: header.counts, routes: header.routes, stops: header.stops,
-               stations: header.stations || [] };
+               stations: header.stations || [], names: header.names || {} };
   for (const s of header.sections) tt[s.name] = new TYPES[s.dtype](ab, base + s.offset, s.length);
   const w = header.walk || {};
   tt.slack = w.transfer_slack_s ?? 90;
@@ -90,6 +90,14 @@ function buildSearchIndex(tt) {
     tt.stopName[i] = norm(tt.stops[i][1]);
     tt.stopCity[i] = norm(tt.stops[i][3] || '');
   }
+  // the same names in the other languages the timetable carries, so a stop matches whichever one is typed
+  tt.altNames = [];
+  for (const [lang, n] of Object.entries(tt.names)) {
+    if (!n || !n.stops) continue;
+    const name = new Array(S), city = new Array(S);
+    for (let i = 0; i < S; i++) { name[i] = n.stops[i] ? norm(n.stops[i]) : ''; city[i] = norm((n.cities && n.cities[tt.stops[i][3]]) || ''); }
+    tt.altNames.push({ lang, name, city });
+  }
   // station groups: parent index -> member stops
   tt.stationStops = new Map();
   for (let i = 0; i < S; i++) {
@@ -101,38 +109,61 @@ function buildSearchIndex(tt) {
   }
 }
 
+// ---------------------------------------------------------------- names in the rider's language
+
+const other = (tt, lang) => (lang && lang !== 'he' && tt.names[lang]) || null;
+/** A stop's name in `lang` when the timetable carries it, else as the feed names it (Hebrew). */
+export function stopName(tt, s, lang) { const n = other(tt, lang); return (n && n.stops[s]) || tt.stops[s][1]; }
+export function stationName(tt, p, lang) { const n = other(tt, lang); return (n && n.stations[p]) || (tt.stations[p] && tt.stations[p][1]) || ''; }
+export function cityName(tt, city, lang) { const n = other(tt, lang); return (n && n.cities && n.cities[city]) || city || ''; }
+/** Where a route is headed: the destination half of the MOT route_long_name "origin-city<->destination-city-1#". */
+export function parseHeadsign(longName) {
+  const parts = longName.split('<->');
+  if (parts.length !== 2) return longName;
+  const dest = parts[1].replace(/-\d+[#א-ת]*$/, '').trim();
+  const i = dest.lastIndexOf('-');
+  return i > 0 ? dest.slice(0, i).trim() : dest;
+}
+export function routeHeadsign(tt, ri, lang) { const n = other(tt, lang); return (n && n.routes && n.routes[ri]) || parseHeadsign(tt.routes[ri][1]); }
+
+/** How well a name (with its city) answers the typed tokens; null when a token matches neither. */
+function matchScore(name, city, tokens) {
+  if (!name) return null;
+  let score = 0;
+  for (const tok of tokens) {
+    if (name === tok || name.startsWith(tok + ' ')) score += 4;   // a whole first word (הל"ה/הדרים for "הלה"), not just a prefix (הלהב)
+    else if (name.startsWith(tok)) score += 3;
+    else if (name.includes(' ' + tok)) score += 2.5;
+    else if (name.includes(tok)) score += 2;
+    else if (city.startsWith(tok) || city.includes(' ' + tok)) score += 1;
+    else if (city.includes(tok)) score += 0.5;
+    else return null;
+  }
+  if (tokens.join(' ') === name) score += 1.5;   // the whole name, typed in full
+  return score - name.length / 200;
+}
+
 /**
- * Search stops by name and city. Returns groups: a station with all its
- * platforms is one result, a plain stop is a group of one.
+ * Search stops by name and city, in Hebrew or any language the timetable carries names in. Returns groups:
+ * a station with all its platforms is one result, a plain stop is a group of one, named in `lang`.
  * [{ name, city, stops: [idx...], lat, lon, score }]
  */
-export function searchStops(tt, query, limit = 12) {
+export function searchStops(tt, query, limit = 12, lang = 'he') {
   const tokens = norm(query).split(' ').filter(Boolean);
   if (!tokens.length) return [];
   const S = tt.stops.length;
   const groups = new Map();
   for (let i = 0; i < S; i++) {
-    const name = tt.stopName[i], city = tt.stopCity[i];
-    let score = 0, ok = true;
-    for (const tok of tokens) {
-      if (name === tok || name.startsWith(tok + ' ')) score += 4;   // a whole first word (הל"ה/הדרים for "הלה"), not just a prefix (הלהב)
-      else if (name.startsWith(tok)) score += 3;
-      else if (name.includes(' ' + tok)) score += 2.5;
-      else if (name.includes(tok)) score += 2;
-      else if (city.startsWith(tok) || city.includes(' ' + tok)) score += 1;
-      else if (city.includes(tok)) score += 0.5;
-      else { ok = false; break; }
-    }
-    if (!ok) continue;
-    if (tokens.join(' ') === name) score += 1.5;   // the whole name, typed in full
-    score -= name.length / 200;
+    let score = matchScore(tt.stopName[i], tt.stopCity[i], tokens);
+    for (const a of tt.altNames) { const s2 = matchScore(a.name[i], a.city[i], tokens); if (s2 != null && (score == null || s2 > score)) score = s2; }
+    if (score == null) continue;
     const p = tt.stopParent[i];
     if (p >= 0) score += 1;
     const key = p >= 0 ? 'p' + p : 's' + i;
     let g = groups.get(key);
     if (!g) {
-      g = { key, name: p >= 0 ? (tt.stations[p] && tt.stations[p][1]) || tt.stops[i][1] : tt.stops[i][1],
-            city: tt.stops[i][3] || '', stops: [], score: -Infinity, lat: 0, lon: 0, code: tt.stops[i][2] };
+      g = { key, name: (p >= 0 && stationName(tt, p, lang)) || stopName(tt, i, lang),
+            city: cityName(tt, tt.stops[i][3], lang), stops: [], score: -Infinity, lat: 0, lon: 0, code: tt.stops[i][2] };
       groups.set(key, g);
     }
     g.stops.push(i);

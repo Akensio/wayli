@@ -89,6 +89,8 @@ trips, proposes a faster way while following when delays appear (v0.3.1),
 and has settings. 2026-10-18 later: one vector icon set replaces every
 emoji (also the map badges), settings are grouped lists, the menu opens from
 a user button in the search pill, the sheet drags from anywhere, and train
-courses meet the track beside each station. Next: crowd reports, stop-name translations and Arabic,
-elevation, measuring live-data freshness in daily use, a fallback relay
-only if Hasadna proves unreliable.
+courses meet the track beside each station. 2026-10-19: stop names,
+headsigns and the basemap's labels follow the language setting (English from
+the feed's translations). Next: crowd reports, Arabic, elevation, measuring
+live-data freshness in daily use, a fallback relay only if Hasadna proves
+unreliable.

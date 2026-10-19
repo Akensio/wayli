@@ -157,6 +157,29 @@ function setLang(l) {
   lang = l; try { localStorage.setItem('wayli-lang', lang); } catch (e) {}
   applyLang(); renderSaved(); renderRecent(); renderPeek();
   if (lastResult && lastQuery) renderResults(lastResult, lastQuery);
+  if (mainMap) setBasemapLang(mainMap);
+  // stop names, headsigns and map labels come from the worker: ask again in the new language
+  call('setLang', { lang }).then(() => {
+    lmStops = false; loadStopsGeo();
+    const located = (p) => p && !(p.transient && p.lat == null);   // never a location prompt for a language switch
+    if (lastResult && lastQuery && located(place.from) && located(place.to)) plan();
+  }).catch(() => {});
+}
+/** The basemap's own labels (streets, places, water) in the rider's language: one name per label, not Latin plus Hebrew. */
+const NAME_FIELD = {
+  he: ['coalesce', ['get', 'name:he'], ['get', 'name:nonlatin'], ['get', 'name']],
+  en: ['coalesce', ['get', 'name:en'], ['get', 'name:latin'], ['get', 'name']],
+  ar: ['coalesce', ['get', 'name:ar'], ['get', 'name:nonlatin'], ['get', 'name']],
+};
+function setBasemapLang(m) {
+  let layers;
+  try { layers = (m.getStyle() || {}).layers || []; } catch (e) { return; }
+  for (const l of layers) {
+    if (l.type !== 'symbol' || !l.layout || !l.layout['text-field'] || /^lm-|^wayli/.test(l.id)) continue;
+    const tf = JSON.stringify(l.layout['text-field']);
+    if (!tf.includes('"name')) continue;   // road shields and refs keep theirs
+    try { m.setLayoutProperty(l.id, 'text-field', NAME_FIELD[lang] || NAME_FIELD.he); } catch (e) { /* a layer that is gone */ }
+  }
 }
 
 // ---------------------------------------------------------------- worker
@@ -269,6 +292,7 @@ async function loadDay(date) {
   const d = manifest.days.find((x) => x.date === date) || manifest.days[0];
   ttReady = false;
   $('planBtn').disabled = true;
+  call('setLang', { lang });   // names come back in the rider's language where the timetable carries them
   const info = await call('loadTimetable', { url: `data/${d.file}?v=${encodeURIComponent(manifest.built || '')}` });
   dayInfo = info; ttReady = true; tsCache.clear(); lmLabels.clear(); lmStops = false;
   $('planBtn').disabled = false;
@@ -953,6 +977,7 @@ function setupMapLayers(m) {
   if (m.getSource('lm-veh')) return;
   // the basemap's own transit squares would double our stops
   if (m.getLayer('poi_transit')) m.setLayoutProperty('poi_transit', 'visibility', 'none');
+  setBasemapLang(m);
   const dark = typeof currentStyle === 'object';
   // depth when the map is tilted: a sky and a haze towards the horizon, a low side light that shades the buildings
   try {

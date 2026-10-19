@@ -414,3 +414,21 @@ so they are not re-litigated.
   20 minutes old, the country's 6), so a whole area fell off the map. Each
   set is now judged against its own newest report; the note still says how
   old the data is.
+- 2026-10-19 Gadi: "do they always lag so badly?" Measured on Hasadna's own
+  snapshot log: the ETL of each minute's snapshot starts 10 to 25 minutes
+  after it (median 15, p90 19) in every daytime hour today, the same
+  yesterday and on 2026-10-15, and a quarter of today's minutes had not
+  loaded at all by the afternoon. It is the cadence of their pipeline, not an
+  incident, so a position on the map is a quarter of an hour old by design;
+  the delay a bus reported then is still the best estimate we have. Fresher
+  data means MOT's SIRI feed directly (a key and a relay), which stays the
+  fallback plan.
+- 2026-10-19 Gadi: station names on the map are Hebrew while the app is in
+  English. The feed's translations.txt has English and Arabic for most stop
+  names, so the compiler carries English names (stops, stations, cities,
+  headsigns) in the timetable header, the worker hands out names in the
+  app's language, search matches Hebrew and English alike, and the basemap's
+  own labels follow the setting too (one name per label instead of Latin plus
+  Hebrew). Arabic waits for an Arabic interface; the data side is a flag.
+  Rejected: a separate names file translated in the app at runtime (one more
+  download and a map by stop id for no gain).
