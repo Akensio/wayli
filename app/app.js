@@ -2068,20 +2068,56 @@ const sheet = {
     }
     el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)) + 'px';
   });
+  /** Where a drag lands: the nearest size, or one step in its direction after a short pull. */
+  const settle = (hh, fromH, fromState) => {
+    const dy = hh - fromH;
+    let best = 'peek';
+    for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
+    if (best === fromState && Math.abs(dy) > 40) best = ORDER[Math.max(0, Math.min(2, ORDER.indexOf(fromState) + (dy > 0 ? 1 : -1)))];
+    sheet.set(best);
+  };
   const end = (e) => {
     if (!dragging) return;
     dragging = false; el.classList.remove('dragging');
-    const hh = el.getBoundingClientRect().height, dy = hh - startH;
+    const hh = el.getBoundingClientRect().height;
     el.style.height = '';
     if (!moved) { if (onHandle) sheet.toggle(); return; }
     swallow = true; setTimeout(() => { swallow = false; }, 60);
-    let best = 'peek';
-    for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
-    if (best === startState && Math.abs(dy) > 40) best = ORDER[Math.max(0, Math.min(2, ORDER.indexOf(startState) + (dy > 0 ? 1 : -1)))];
-    sheet.set(best);
+    settle(hh, startH, startState);
   };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+  // Fully open, the list scrolls natively and the browser cancels pointer events; but a finger pulling down
+  // with the list at its top only overscrolls, and touch events keep coming, so the sheet follows that pull.
+  {
+    const body = $('sheetBody');
+    let tY = 0, tH = 0, tOn = false, tMoved = false;
+    body.addEventListener('touchstart', (e) => {
+      tOn = false;
+      if (sheet.state !== 'full' || dragging || e.touches.length !== 1 || body.scrollTop > 0) return;
+      if (e.touches[0].clientY - el.getBoundingClientRect().top < 96) return;   // the pointer drag has that zone
+      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = el.getBoundingClientRect().height;
+    }, { passive: true });
+    body.addEventListener('touchmove', (e) => {
+      if (!tOn) return;
+      const down = e.touches[0].clientY - tY;
+      if (!tMoved) { if (down < 8) { if (body.scrollTop > 0) tOn = false; return; } tMoved = true; el.classList.add('dragging'); }
+      el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), tH - down)) + 'px';
+    }, { passive: true });
+    const tEnd = () => {
+      if (!tOn) return;
+      tOn = false;
+      if (!tMoved) return;
+      el.classList.remove('dragging');
+      const hh = el.getBoundingClientRect().height;
+      el.style.height = '';
+      settle(hh, tH, 'full');
+    };
+    body.addEventListener('touchend', tEnd); body.addEventListener('touchcancel', tEnd);
+    // a mouse wheel scrolling up past the top folds it too
+    let wheelAt = 0;
+    body.addEventListener('wheel', (e) => { if (sheet.state === 'full' && body.scrollTop === 0 && e.deltaY < -20 && Date.now() - wheelAt > 700) { wheelAt = Date.now(); sheet.set('half'); } }, { passive: true });
+  }
   window.addEventListener('resize', () => sheet.set(sheet.state));
 }
 sheet.set('peek');

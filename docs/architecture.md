@@ -180,9 +180,12 @@ chooser and the trip being followed. The sheet is dragged from anywhere on
 it while it is collapsed or half open (its body does not scroll then; the
 half size is a preview, a pull opens it fully; a sideways start on the chip
 strip scrolls the strip instead), and from its handle or its top 96 px
-always. A short pull of 40 px steps one size in its direction, a long one
-lands where it is let go, and a tap on the handle cycles the sizes; a tap
-on empty map collapses it.
+always; fully open, a finger pulling down with the list at its top folds
+it too (the browser owns vertical gestures in a scrolling list and cancels
+pointer events, but that pull only overscrolls, so touch events drive the
+sheet; a mouse wheel past the top does the same). A short pull of 40 px
+steps one size in its direction, a long one lands where it is let go, and
+a tap on the handle cycles the sizes; a tap on empty map collapses it.
 Picking a point
 is a mode of the same map: the sheet and bar give way to a hint and a
 Cancel; a tap drops the pin. The strip at the bottom when nothing is open offers plan, home,

@@ -311,3 +311,7 @@ so they are not re-litigated.
   departures, bubbles, the follow badge): green a report under four
   minutes old, orange an older one (still marked ?), plain the schedule.
   Lateness is the number alone; orange no longer means "3+ minutes late".
+- 2026-10-19 Gadi: with the sheet fully open and the list at its top, a
+  scroll down should fold the sheet. Done with touch events (the pull is an
+  overscroll the browser does nothing with); a swipe that starts scrolled
+  down scrolls as before.
