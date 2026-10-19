@@ -536,3 +536,10 @@ so they are not re-litigated.
   popover and, when a plan is showing, re-plans it. The "plan trip" button
   is gone: Go is the one button. Rejected: a full options sheet (too much
   for two choices).
+- 2026-10-20 Gadi, on third thought: the lowered pill is nice, it was the
+  coloured top in the installed app that annoyed him; with the status bar
+  now continuing the map, the pill stays a row lower at rest. The pill
+  carries the app's logo at its end beside the user button at its start,
+  ahead of accounts. Entering search mode animates: the origin row slides
+  in above, the options row under, back and swap pop in, the pill narrows
+  smoothly; the summary box and the suggestion list slide in too.

@@ -594,6 +594,7 @@ function clearPlan() {
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
 $('menuReload').addEventListener('click', () => location.reload());
+$('appLogo').addEventListener('click', () => { nav.closeAll(); showScreen('more'); });
 // search a line by number: the To box, numeric keyboard, until it is left
 $('menuLines').addEventListener('click', () => {
   nav.closeAll(); showScreen('plan'); barOpen = true; updateFromRow();   // the rows, even over a plan's summary
