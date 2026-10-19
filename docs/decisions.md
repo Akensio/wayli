@@ -467,3 +467,8 @@ so they are not re-litigated.
   as before) and drawing every way (clutter; the toggles add more).
 - 2026-10-19 Gadi: the top search "more pill-like"? Yes: the field, the
   summary box, the chips and the Go button are full pills now.
+- 2026-10-19 Gadi: a small x inside each text box to clear the text while
+  searching. Added to every search box (to, from, the place chooser): shown
+  while the box has text and focus, it clears the text, keeps the keyboard
+  and brings the recents list back. The round X beside the To box still
+  clears the whole plan.

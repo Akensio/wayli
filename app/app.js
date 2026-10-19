@@ -74,7 +74,7 @@ const STR = {
     direct: 'ישיר', transfer1: 'החלפה אחת', transfers: '{n} החלפות', min: 'דק\'', hour: 'שע\'', walk: 'הליכה', bike2: 'רכיבה',
     walkTo: 'הליכה {min} דק\' אל {name}', bikeTo: 'רכיבה {min} דק\' אל {name}', walkFrom: 'הליכה {min} דק\' מ{name} ליעד', bikeFrom: 'רכיבה {min} דק\' מ{name} ליעד',
     ride: '{line} · {agency} · {stops} תחנות', toward: 'לכיוון {headsign}', bikeOnly: 'רכיבה כל הדרך: {min} דק\', {km} ק"מ',
-    noBikeOnly: 'רכיבה כל הדרך: אין מסלול עד 3 שעות.', found: '{n} דרכים להגיע', onMap: 'הצגה במפה', withBikeOnBoard: ' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים',
+    noBikeOnly: 'רכיבה כל הדרך: אין מסלול עד 3 שעות.', found: '{n} דרכים להגיע', onMap: 'הצגה במפה', clearText: 'ניקוי', withBikeOnBoard: ' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים',
     foldingNote: ' · אופניים מתקפלים', parkNote: ' · האופניים נשארים בתחנה הראשונה', noLocation: 'אין גישה למיקום. אפשרו מיקום לאתר, או חפשו תחנה.',
     locating: 'מאתר…', m: 'מ\'', inMin: 'בעוד {n} דק\'', nowDep: 'עכשיו', noDeps: 'אין יציאות נוספות היום.', favEmptyTrips: 'עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.',
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
@@ -111,7 +111,7 @@ const STR = {
     direct: 'direct', transfer1: '1 transfer', transfers: '{n} transfers', min: 'min', hour: 'h', walk: 'walk', bike2: 'bike',
     walkTo: 'walk {min} min to {name}', bikeTo: 'bike {min} min to {name}', walkFrom: 'walk {min} min from {name}', bikeFrom: 'bike {min} min from {name}',
     ride: '{line} · {agency} · {stops} stops', toward: 'towards {headsign}', bikeOnly: 'Bike all the way: {min} min, {km} km',
-    noBikeOnly: 'Bike all the way: no route within 3 hours.', found: '{n} ways to get there', onMap: 'Show on the map', withBikeOnBoard: ' · bike on board: trains off-peak and intercity buses',
+    noBikeOnly: 'Bike all the way: no route within 3 hours.', found: '{n} ways to get there', onMap: 'Show on the map', clearText: 'Clear', withBikeOnBoard: ' · bike on board: trains off-peak and intercity buses',
     foldingNote: ' · folding bike', parkNote: ' · bike stays at the first stop', noLocation: 'Location unavailable. Allow location access, or search for a stop.',
     locating: 'Locating…', m: 'm', inMin: 'in {n} min', nowDep: 'now', noDeps: 'No more departures today.', favEmptyTrips: 'No saved trips yet. Tap the star in a journey.',
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
@@ -455,6 +455,13 @@ function attachSearch(input, drop, onPick, opts = {}) {
   let timer = 0, seq = 0, focusedAt = 0;
   const pick = (p) => { onPick(p); drop.hidden = true; };
   const show = () => { drop.hidden = false; fitDrop(drop); };
+  // a small x inside the box while it has text and focus: clears the text, keeps the keyboard, shows the list again
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'fieldx'; x.hidden = true; x.setAttribute('aria-label', t('clearText')); x.innerHTML = ic('close');
+  input.insertAdjacentElement('afterend', x);
+  const syncX = () => { x.hidden = !(input.value && document.activeElement === input); };
+  x.addEventListener('pointerdown', (e) => e.preventDefault());   // the box keeps its focus
+  x.addEventListener('click', () => { input.value = ''; onPick(null, true); focusedAt = Date.now(); input.focus(); quickMenu(); syncX(); });
+  input.addEventListener('input', syncX); input.addEventListener('focus', syncX); input.addEventListener('blur', () => setTimeout(syncX, 0));
   const row = (html, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html; return b; };
   function quickMenu() {
     drop.innerHTML = '';
@@ -526,7 +533,7 @@ function attachSearch(input, drop, onPick, opts = {}) {
     else if (place.from && place.to) { plan(); e.preventDefault(); }
   });
   // a tap elsewhere closes the list, unless that tap is what focused the box (the clear or go button hands focus here)
-  document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input && Date.now() - focusedAt > 500) drop.hidden = true; });
+  document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input && !x.contains(e.target) && Date.now() - focusedAt > 500) drop.hidden = true; });
 }
 /** The list ends above the keyboard (the visual viewport), so it scrolls inside itself instead of panning the page. */
 function fitDrop(drop) {
