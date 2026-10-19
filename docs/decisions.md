@@ -380,3 +380,8 @@ so they are not re-litigated.
   drag too (nothing scrolls, but the gesture is taken and touch events are
   throttled), and a tiny quick nudge counted as a flick. Now `pan-up`, which
   hands Chrome only the finger-down swipe, and a flick needs 30 px of travel.
+- 2026-10-19 Gadi: the "already left, on board?" rows on top of every plan
+  were confusing; most of the time the rider wants the next departures.
+  Now a fresh plan shows one quiet line that opens on a tap; a plan
+  restored from earlier shows the rows at once (that is the rider who
+  boarded and came back); the rows are calmer, four at most.

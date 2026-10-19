@@ -105,7 +105,10 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .gone .times { font-weight: 700; font-variant-numeric: tabular-nums; }
 .gone .chips { display: inline-flex; gap: 4px; }
 .gone .muted { font-size: 12px; }
-.gone button.primary { width: auto; margin: 0; padding: 7px 12px; font-size: 13px; flex: none; }
+.gone button.ghost { padding: 6px 10px; font-size: 13px; flex: none; color: var(--accent-text); font-weight: 600; }
+.gone-hint { display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 4px 2px 8px; color: var(--ink-2); font-size: 13px; cursor: pointer; }
+.gone-hint .i { transition: transform .2s; } .gone-hint.open .i { transform: rotate(180deg); }
+.gone-rows[hidden] { display: none; }
 .journey .leave:empty { display: none; }
 .journey .leave.past { color: var(--ink-2); font-weight: 400; }
 .journey.past { opacity: .6; }

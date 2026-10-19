@@ -83,7 +83,7 @@ const STR = {
     setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', iosInstall: 'ב-Safari: לחצו על כפתור השיתוף (ריבוע עם חץ למעלה) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', reload: 'רענון האפליקציה', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
     startTrip: 'התחלת נסיעה', share: 'שיתוף', endTrip: 'סיום', nextStep: 'השלב הבא ›', home: 'בית', work: 'עבודה', notSet: 'לא הוגדר. לחצו כדי לבחור.', change: 'שינוי', addPlace: '+ מקום שמור', remove: 'הסרה',
-    recentTitle: 'חיפושים אחרונים', planAgain: 'חישוב מחדש מעכשיו', resultsFrom: 'תוצאות מ-{time}', leaveIn: 'יוצאים בעוד {n} דק\'', leaveNow: 'יוצאים עכשיו', departed: 'יצא', goneTitle: 'כבר יצאו · עליתם?', leftAgo: 'יצא לפני {n} דק\'', aboard: 'אני בפנים', earlier: '‹ מוקדם יותר', later: 'מאוחר יותר ›',
+    recentTitle: 'חיפושים אחרונים', planAgain: 'חישוב מחדש מעכשיו', resultsFrom: 'תוצאות מ-{time}', leaveIn: 'יוצאים בעוד {n} דק\'', leaveNow: 'יוצאים עכשיו', departed: 'יצא', goneTitle: 'יצאו לפני רגע · כבר בנסיעה?', goneHint: 'כבר בנסיעה? {n} נסיעות יצאו לפני רגע', goneHint1: 'כבר בנסיעה? נסיעה אחת יצאה לפני רגע', leftAgo: 'יצא לפני {n} דק\'', aboard: 'אני בפנים', earlier: '‹ מוקדם יותר', later: 'מאוחר יותר ›',
     tryLater: 'לנסות שעה מאוחרת יותר', tryMoreWalk: 'לאפשר הליכה של 30 דק\'', arriveByNote: 'הגעה עד {time} · המאוחר ביותר קודם', alsoAt: 'גם ב:', orLines: 'או',
     liveNoVehicle: 'אין רכב בשידור', livePassed: 'עבר', onTime: 'בזמן', liveUpdated: 'זמני אמת מ-{time}', liveOff: 'זמני אמת כבויים בהגדרות', liveFail: 'זמני אמת לא זמינים כרגע', liveMin: 'דק\'',
     showStops: 'הצגת התחנות', hideStops: 'הסתרת התחנות', vehicleHere: 'הרכב כאן', tripStopsTitle: 'קו {line} לכיוון {headsign}',
@@ -120,7 +120,7 @@ const STR = {
     setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', iosInstall: 'In Safari: tap the Share button (the square with an arrow) and then "Add to Home Screen". The app then opens full screen, without the browser bar.', reload: 'Reload the app', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone sends their server the line numbers and the area you are looking at. Nothing else.',
     startTrip: 'Start trip', share: 'Share', endTrip: 'End', nextStep: 'Next step ›', home: 'Home', work: 'Work', notSet: 'Not set. Tap to choose.', change: 'Change', addPlace: '+ Saved place', remove: 'Remove',
-    recentTitle: 'Recent searches', planAgain: 'Plan again from now', resultsFrom: 'Results from {time}', leaveIn: 'Leave in {n} min', leaveNow: 'Leave now', departed: 'departed', goneTitle: 'Already left · on board?', leftAgo: 'left {n} min ago', aboard: 'I\'m on it', earlier: '‹ Earlier', later: 'Later ›',
+    recentTitle: 'Recent searches', planAgain: 'Plan again from now', resultsFrom: 'Results from {time}', leaveIn: 'Leave in {n} min', leaveNow: 'Leave now', departed: 'departed', goneTitle: 'Just left · already riding?', goneHint: 'Already riding? {n} rides just left', goneHint1: 'Already riding? One ride just left', leftAgo: 'left {n} min ago', aboard: 'I\'m on it', earlier: '‹ Earlier', later: 'Later ›',
     tryLater: 'Try an hour later', tryMoreWalk: 'Allow a 30 min walk', arriveByNote: 'Arrive by {time} · latest first', alsoAt: 'Also at:', orLines: 'or',
     liveNoVehicle: 'no vehicle reporting', livePassed: 'passed', onTime: 'on time', liveUpdated: 'live as of {time}', liveOff: 'Live times are off in settings', liveFail: 'Live times unavailable right now', liveMin: 'min',
     showStops: 'Show stops', hideStops: 'Hide stops', vehicleHere: 'vehicle is here', tripStopsTitle: 'Line {line} towards {headsign}',
@@ -752,15 +752,27 @@ function renderResults(r, q, resultsAt = null) {
     opts = opts.filter((j) => !isGone(j));
     if (opts.length) box.appendChild(journeyCard(opts[0], q, g.lines, opts));
   }
+  // Rides that just left: on a fresh plan one quiet line that opens on a tap (most riders want the next departures);
+  // on a plan restored from earlier they are shown, since the rider is likely on the way already.
   if (gone.length) {
     const strip = document.createElement('div'); strip.className = 'gone-strip';
-    strip.innerHTML = `<div class="muted">${t('goneTitle')}</div>`;
-    for (const j of gone.sort((a, b) => b.depart - a.depart)) {
+    const rows = document.createElement('div'); rows.className = 'gone-rows';
+    for (const j of gone.sort((a, b) => b.depart - a.depart).slice(0, 4)) {   // the four most recent: the one the rider is on is among them
       const d = document.createElement('div'); d.className = 'gone';
-      d.innerHTML = `<div class="txt"><span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="chips">${j.legs.filter((l) => l.type === 'ride').map((l) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l)}</span>`).join('')}</span><span class="muted">${t('leftAgo', { n: Math.max(1, Math.round((nowSec - rideDep(j)) / 60)) })}</span></div><button type="button" class="primary slim">${ic('play')} ${t('aboard')}</button>`;
+      d.innerHTML = `<div class="txt"><span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="chips">${j.legs.filter((l) => l.type === 'ride').map((l) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l)}</span>`).join('')}</span><span class="muted">${t('leftAgo', { n: Math.max(1, Math.round((nowSec - rideDep(j)) / 60)) })}</span></div><button type="button" class="ghost">${ic('play')} ${t('aboard')}</button>`;
       d.querySelector('.txt').addEventListener('click', () => openDetail(j, q));
       d.querySelector('button').addEventListener('click', (e) => { e.stopPropagation(); startTrip(j, q); });
-      strip.appendChild(d);
+      rows.appendChild(d);
+    }
+    if (resultsAt) {
+      strip.innerHTML = `<div class="muted">${t('goneTitle')}</div>`;
+      strip.appendChild(rows);
+    } else {
+      const open = document.createElement('button'); open.type = 'button'; open.className = 'gone-hint';
+      open.innerHTML = `${esc(gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length }))} ${ic('chevronDown')}`;
+      open.addEventListener('click', () => { const on = rows.hidden; rows.hidden = !on; open.classList.toggle('open', on); });
+      rows.hidden = true;
+      strip.append(open, rows);
     }
     box.insertBefore(strip, head.nextSibling);
   }

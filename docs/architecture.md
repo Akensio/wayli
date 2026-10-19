@@ -242,9 +242,12 @@ to Home Screen); the page carries the Apple meta tags and touch icon.
 Checks: `npx --yes eslint@9 app/*.js` (eslint.config.mjs at the root, the
 no-undef rule) runs in the deploy workflow before the build.
 
-A plan from now also looks ten minutes back: what left in that time goes
-in a strip of its own above the list ("already left, on board?"), each with
-an "I'm on it" button, for the rider who boarded before opening the app.
+A plan from now also looks ten minutes back, for the rider who boarded
+before opening the app: what left in that time is kept out of the list and
+behind one quiet line ("already riding? 3 rides just left") that opens on
+a tap into rows with an "I'm on it" button (the four most recent). When a
+plan is restored from earlier the rows show at once, since that rider is
+likely on the way already.
 The last search is kept with its results for an hour and restored as it
 was (its own origin and time, the strip then holding every ride that has
 left but not arrived) on reopening the app or on tapping its destination
