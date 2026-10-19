@@ -132,6 +132,11 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .chip.alt { background: var(--chip); color: var(--ink); font-weight: 600; }
 .results-foot { display: flex; gap: 8px; justify-content: space-between; margin: 4px 0 16px; }
 .results-head { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+/* filters and the sort order over the results: small pills, the active ones filled */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.filters .chipbtn { padding: 5px 11px; min-height: 30px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
+.filters .chipbtn.on { background: var(--ink); color: var(--bg); }
+.filters .chipbtn .i { width: 15px; height: 15px; }
 .results-head .spacer { flex: 1; }
 .linkbtn { background: none; border: 0; color: var(--accent-text); font-weight: 600; cursor: pointer; padding: 4px 6px; font-size: 13px; }
 .recent { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
@@ -276,7 +281,7 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 html, body { height: 100%; overflow: hidden; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font); position: relative; }
 #mainMap { position: fixed; inset: 0; background: var(--chip); }
-:root { --sheet-h: 118px; --sheet-full: 100vh; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); }
+:root { --sheet-h: 118px; --sheet-full: 100vh; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); --sab: env(safe-area-inset-bottom, 0px); }
 .topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); inset-inline: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
 .topbar .trow { display: flex; gap: 8px; align-items: center; }
 .topbar .trow[hidden] { display: none; }

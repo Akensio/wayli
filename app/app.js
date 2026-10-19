@@ -74,7 +74,7 @@ const STR = {
     direct: 'ישיר', transfer1: 'החלפה אחת', transfers: '{n} החלפות', min: 'דק\'', hour: 'שע\'', walk: 'הליכה', bike2: 'רכיבה',
     walkTo: 'הליכה {min} דק\' אל {name}', bikeTo: 'רכיבה {min} דק\' אל {name}', walkFrom: 'הליכה {min} דק\' מ{name} ליעד', bikeFrom: 'רכיבה {min} דק\' מ{name} ליעד',
     ride: '{line} · {agency} · {stops} תחנות', toward: 'לכיוון {headsign}', bikeOnly: 'רכיבה כל הדרך: {min} דק\', {km} ק"מ',
-    noBikeOnly: 'רכיבה כל הדרך: אין מסלול עד 3 שעות.', found: '{n} דרכים להגיע', onMap: 'הצגה במפה', clearText: 'ניקוי', withBikeOnBoard: ' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים',
+    noBikeOnly: 'רכיבה כל הדרך: אין מסלול עד 3 שעות.', found: '{n} דרכים להגיע', onMap: 'הצגה במפה', clearText: 'ניקוי', lineNumber: 'מספר קו…', stops1: 'תחנה אחת', stopsN: '{n} תחנות', fDirect: 'ישיר', fTrain: 'רכבת', sortDepart: 'לפי יציאה', sortArrive: 'לפי הגעה', sortFast: 'הכי מהיר', sortChanges: 'הכי פחות החלפות', filterNone: 'אין דרך כזאת בשעות האלה; הסינון מוצג בלי תוצאות', withBikeOnBoard: ' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים',
     foldingNote: ' · אופניים מתקפלים', parkNote: ' · האופניים נשארים בתחנה הראשונה', noLocation: 'אין גישה למיקום. אפשרו מיקום לאתר, או חפשו תחנה.',
     locating: 'מאתר…', m: 'מ\'', inMin: 'בעוד {n} דק\'', nowDep: 'עכשיו', noDeps: 'אין יציאות נוספות היום.', favEmptyTrips: 'עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.',
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
@@ -111,7 +111,7 @@ const STR = {
     direct: 'direct', transfer1: '1 transfer', transfers: '{n} transfers', min: 'min', hour: 'h', walk: 'walk', bike2: 'bike',
     walkTo: 'walk {min} min to {name}', bikeTo: 'bike {min} min to {name}', walkFrom: 'walk {min} min from {name}', bikeFrom: 'bike {min} min from {name}',
     ride: '{line} · {agency} · {stops} stops', toward: 'towards {headsign}', bikeOnly: 'Bike all the way: {min} min, {km} km',
-    noBikeOnly: 'Bike all the way: no route within 3 hours.', found: '{n} ways to get there', onMap: 'Show on the map', clearText: 'Clear', withBikeOnBoard: ' · bike on board: trains off-peak and intercity buses',
+    noBikeOnly: 'Bike all the way: no route within 3 hours.', found: '{n} ways to get there', onMap: 'Show on the map', clearText: 'Clear', lineNumber: 'Line number…', stops1: '1 stop', stopsN: '{n} stops', fDirect: 'Direct', fTrain: 'Train', sortDepart: 'By departure', sortArrive: 'By arrival', sortFast: 'Fastest', sortChanges: 'Fewest changes', filterNone: 'No such way at these hours; the filter leaves nothing', withBikeOnBoard: ' · bike on board: trains off-peak and intercity buses',
     foldingNote: ' · folding bike', parkNote: ' · bike stays at the first stop', noLocation: 'Location unavailable. Allow location access, or search for a stop.',
     locating: 'Locating…', m: 'm', inMin: 'in {n} min', nowDep: 'now', noDeps: 'No more departures today.', favEmptyTrips: 'No saved trips yet. Tap the star in a journey.',
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
@@ -234,6 +234,14 @@ const fmtPlus = (sec) => fmt(sec) + (sec >= 86400 ? '⁺' : '');   // past midni
 let resultCards = [];   // [{ idx, j, q, el, dep }] the cards of the current results, in list order
 let altShown = new Set(), altSel = -1, altMarkers = [];
 let peekSync = () => {};   // set once the sheet exists: the collapsed height follows the peek line
+const AGENCY_EN = { 'רכבת ישראל': 'Israel Railways', 'אגד': 'Egged', 'אלקטרה אפיקים תחבורה': 'Electra Afikim', 'אלקטרה אפיקים': 'Electra Afikim', 'דן': 'Dan', 'ש.א.מ': 'Sham',
+  'נסיעות ותיירות': 'Nesiot VeTayarut', 'גי.בי.טורס': 'GB Tours', 'מועצה אזורית אילות': 'Eilot Regional Council', 'נתיב אקספרס': 'Nateev Express', 'מטרופולין': 'Metropoline',
+  'סופרבוס': 'Superbus', 'קווים': 'Kavim', 'כרמלית': 'Carmelit', 'כפיר': 'Kfir', 'תבל': 'Tevel', 'גלים': 'Galim', 'מועצה אזורית גולן': 'Golan Regional Council', 'דן בדרום': 'Dan BaDarom',
+  'דן באר שבע': 'Dan Beer Sheva', 'כבל אקספרס': 'Cable Express', 'תנופה': 'Tnufa', 'בית שמש אקספרס': 'Beit Shemesh Express', 'אקסטרה': 'Extra', 'אקסטרה ירושלים': 'Extra Jerusalem',
+  'דן נתיבים בעמ': 'Dan Netivim', 'יונייטד טורס': 'United Tours', 'מוניות מטרו קו': 'Metro Kav', 'אודליה מוניות בעמ': 'Odelia', 'דרך אגד עוטף ירושלים': 'Egged Jerusalem Envelope' };
+/** An operator's name for display: English where known, else as the feed names it, isolated so a Hebrew name inside an English line keeps its place. */
+const agencyText = (a) => `<bdi>${esc(lang === 'he' ? a : AGENCY_EN[a] || a)}</bdi>`;
+const stopsText = (n) => (n === 1 ? t('stops1') : t('stopsN', { n }));
 const dur = (sec) => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
 const dateOf = (s) => new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
 const calToday = () => { const p = live.ilParts(); return live.dayStr(p.y, p.m, p.d); };
@@ -402,6 +410,11 @@ $('nowBtn').addEventListener('click', () => {
   if (dayInfo && dayInfo.date !== $('day').value) $('day').dispatchEvent(new Event('change'));
 });
 for (const id of ['at', 'day']) $(id).addEventListener('input', () => { timeTouched = true; });
+// after midnight the planner is still on "tonight" (yesterday's service day); a time from 03:00 on means the coming day
+$('at').addEventListener('change', () => {
+  const svc = live.serviceDay(), h = Number($('at').value.split(':')[0]);
+  if (svc.lateNight && $('day').value === svc.day && h >= 3 && manifest && manifest.days.some((d) => d.date === calToday())) { $('day').value = calToday(); renderOptionChips(); }
+});
 function setTimeMode(mode) { for (const o of $('timeMode').querySelectorAll('button')) o.setAttribute('aria-pressed', String(o.dataset.mode === mode)); }
 const timeMode = () => $('timeMode').querySelector('[aria-pressed="true"]').dataset.mode;
 for (const b of $('timeMode').querySelectorAll('button')) b.addEventListener('click', () => { setTimeMode(b.dataset.mode); timeTouched = true; });
@@ -469,9 +482,9 @@ function attachSearch(input, drop, onPick, opts = {}) {
     const saved = savedPlaces.all(), recent = recentPlaces.list().filter((r) => !savedPlaces.has(r));
     if (opts.actions) {
       const a1 = row(`<span class="ic">${ic('locate')}</span><span class="txt">${t('myLoc')}</span>`, 'quick');
-      a1.addEventListener('click', async () => { drop.hidden = true; input.value = t('locating'); try { onPick(myLocation(await getPosition())); } catch (e) { input.value = ''; onPick(null, true); toast(t('noLocation')); } });
+      a1.addEventListener('click', async () => { drop.hidden = true; if (opts.onLocate) { opts.onLocate(); return; } input.value = t('locating'); try { onPick(myLocation(await getPosition())); } catch (e) { input.value = ''; onPick(null, true); toast(t('noLocation')); } });
       const a2 = row(`<span class="ic">${ic('map')}</span><span class="txt">${t('pickTitle')}</span>`, 'quick');
-      a2.addEventListener('click', () => { drop.hidden = true; input.blur(); pickOnMap(place.from || place.to).then((p) => { if (p) onPick(p); }); });
+      a2.addEventListener('click', () => { drop.hidden = true; input.blur(); if (opts.onMap) { opts.onMap(); return; } pickOnMap(place.from || place.to).then((p) => { if (p) onPick(p); }); });
       drop.append(a1, a2);
     } else if (!saved.length && !recent.length) { drop.hidden = true; return; }
     for (const p of saved) {
@@ -581,6 +594,13 @@ function clearPlan() {
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
 $('menuReload').addEventListener('click', () => location.reload());
+// search a line by number: the To box, numeric keyboard, until it is left
+$('menuLines').addEventListener('click', () => {
+  nav.closeAll(); showScreen('plan'); barOpen = true; updateFromRow();   // the rows, even over a plan's summary
+  const q = $('toQ'); q.placeholder = t('lineNumber'); q.inputMode = 'numeric'; q.value = '';
+  q.addEventListener('blur', () => { q.placeholder = t('goQ'); q.inputMode = ''; }, { once: true });
+  setTimeout(() => q.focus(), 60);
+});
 for (const id of ['menuBtn', 'menuBtn2']) $(id).addEventListener('click', () => { $('toQ').blur(); showOverlay('drawer'); });
 $('backdrop').addEventListener('click', () => nav.close('drawer'));
 $('menuClose').addEventListener('click', () => nav.close('drawer'));
@@ -644,7 +664,7 @@ function choosePlace(title) {
   });
 }
 const closeChooser = (p) => { const r = chooserResolve; chooserResolve = null; nav.close('chooser'); if (r) r(p); };
-attachSearch($('chQ'), $('chDrop'), (p, typing) => { if (!typing && p) closeChooser(p); });
+attachSearch($('chQ'), $('chDrop'), (p, typing) => { if (!typing && p) closeChooser(p); }, { actions: true, onLocate: () => $('chLoc').click(), onMap: () => $('chMap').click() });
 $('chCancel').addEventListener('click', () => closeChooser(null));
 $('chLoc').addEventListener('click', async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); closeChooser({ name: r.name, lat: pos.lat, lon: pos.lon }); } catch (e) { toast(t('noLocation')); } });
 $('chMap').addEventListener('click', async () => { const p = await pickOnMap(null); if (p) closeChooser(p); });
@@ -780,9 +800,24 @@ function renderOptionChips() {
 }
 for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => setOptions($('formBody').hidden));
 for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at')]) { el.addEventListener('click', renderOptionChips); el.addEventListener('change', renderOptionChips); }
+let lastResultsAt = null;
+const SORTS = ['depart', 'arrive', 'fast', 'changes'];
+const sortKey = { depart: (j) => j.depart, arrive: (j) => j.arrive, fast: (j) => j.arrive - j.depart, changes: (j) => j.transfers * 1e6 + j.depart };
+/** Filters (direct, with a train) and the sort order over the results; remembered across plans. */
+function filterChips(box) {
+  const s = settings.get();
+  const row = document.createElement('div'); row.className = 'filters';
+  const chip = (label, on, fn, icon = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn' + (on ? ' on' : ''); b.innerHTML = (icon ? ic(icon) + ' ' : '') + esc(label); b.addEventListener('click', () => { fn(); renderResults(lastResult, lastQuery, lastResultsAt); }); row.appendChild(b); };
+  chip(t('fDirect'), s.fDirect, () => settings.set({ fDirect: !s.fDirect }));
+  chip(t('fTrain'), s.fTrain, () => settings.set({ fTrain: !s.fTrain }), 'train');
+  const so = SORTS.includes(s.resultSort) ? s.resultSort : 'depart';
+  chip(t('sort' + so[0].toUpperCase() + so.slice(1)), so !== 'depart', () => settings.set({ resultSort: SORTS[(SORTS.indexOf(so) + 1) % SORTS.length] }), 'sliders');
+  box.appendChild(row);
+}
 function renderResults(r, q, resultsAt = null) {
   const box = $('results');
   box.innerHTML = '';
+  lastResultsAt = resultsAt;
   resultCards = []; altShown = new Set(); altSel = -1;
   $('recentBox').hidden = true;
   lastQuery = q;
@@ -819,6 +854,13 @@ function renderResults(r, q, resultsAt = null) {
   }
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
   if (q.arriveBy) groups = groups.slice().reverse();
+  filterChips(box);
+  const fs = settings.get(), first = (g) => r.journeys[q.arriveBy ? g.options[g.options.length - 1] : g.options[0]];
+  if (fs.fDirect) groups = groups.filter((g) => first(g).transfers === 0);
+  if (fs.fTrain) groups = groups.filter((g) => first(g).legs.some((l) => l.type === 'ride' && l.routeType === 2));
+  const sk = sortKey[fs.resultSort] || sortKey.depart;
+  if (fs.resultSort && fs.resultSort !== 'depart') groups = groups.slice().sort((a, b) => sk(first(a)) - sk(first(b)));
+  if (!groups.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = t('filterNone'); box.appendChild(e); }
   // planned from now: what left in the last ten minutes goes in a strip of its own ("on board?"), the list stays from now
   const nowSec = live.nowOn(q.day), rideDep = (j) => { const fr = j.legs.find((l) => l.type === 'ride'); return fr ? fr.depart : j.depart; };
   const isGone = (j) => q.isNow && rideDep(j) < nowSec - 60;   // the first ride has left
@@ -1242,7 +1284,7 @@ function vehiclePopup(m, lngLat, v) {
   const d = v.delay != null ? live.delayMinutes(v.delay) : null;
   const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
   const html = `<div class="pop"><div class="row"><span class="chip t${v.routeType}"${chipStyle(v.routeType, v.agency)}>${esc(lineText(v.line))}</span><b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
-    `<div class="muted">${v.agency ? esc(v.agency) + ' · ' : ''}${t('seenAgo', { time: clock(v.seen) })}${Date.now() - new Date(v.seen).getTime() >= 180e3 ? ` (${t('agoMin', { n: Math.round((Date.now() - new Date(v.seen).getTime()) / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
+    `<div class="muted">${v.agency ? agencyText(v.agency) + ' · ' : ''}${t('seenAgo', { time: clock(v.seen) })}${Date.now() - new Date(v.seen).getTime() >= 180e3 ? ` (${t('agoMin', { n: Math.round((Date.now() - new Date(v.seen).getTime()) / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
     (d == null ? '' : `<div><span class="live ${v.stale ? 'unsure' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
     `<div class="row"><button type="button" class="ghost" data-act="trip" ${v.trip >= 0 ? '' : 'disabled'}>${t('popStops')}</button><button type="button" class="ghost" data-act="line" ${v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
@@ -1397,7 +1439,7 @@ function openDetail(j, q, bikeOnly = false) {
     const mins = Math.max(1, Math.round(l.seconds / 60));
     if (l.type === 'ride') {
       const planned = l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: l.live.stale }) : null;
-      what = `<span class="chip btn t${l.routeType}" data-route="${l.route ?? ''}"${chipStyle(l.routeType, l.agency)}>${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live${planned ? ' ' + planned.cls : ''}" data-live="${l.trip}">${planned ? esc(planned.text) : ''}</span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${t('ride', { line: '', agency: esc(l.agency), stops: l.stops }).replace(/^ · /, '')}</small>`;
+      what = `<span class="chip btn t${l.routeType}" data-route="${l.route ?? ''}"${chipStyle(l.routeType, l.agency)}>${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live${planned ? ' ' + planned.cls : ''}" data-live="${l.trip}">${planned ? esc(planned.text) : ''}</span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${stopsText(l.stops)} · ${agencyText(l.agency)}</small>`;
       if (l.stopsAlong && l.stopsAlong.length > 2) what += `<button type="button" class="toggle">${t('showStops')}</button><div class="stoplist" hidden>${l.stopsAlong.map((s) => `<div><span>${fmt(s.arr)}</span><span>${esc(s.name)}</span></div>`).join('')}</div>`;
     }
     else if (l.type === 'access') what = (l.mode === 'bike' ? t('bikeTo', { min: mins, name: esc(l.to.name) }) : t('walkTo', { min: mins, name: esc(l.to.name) }));
@@ -1416,6 +1458,8 @@ function openDetail(j, q, bikeOnly = false) {
   updateStar('detailStar', q && !bikeOnly ? tripKey(q) : null, 'trips');
   $('detailStar').onclick = () => { if (q && !bikeOnly) { favs.toggle('trips', tripKey(q), { from: q.from, to: q.to, bike: q.bike, folding: q.folding }); renderSaved(); } updateStar('detailStar', tripKey(q), 'trips'); };
   $('detailStart').hidden = bikeOnly;
+  const over = live.nowOn(q.day) > j.arrive + 1800;
+  $('detailStart').disabled = over; $('detailStart').title = over ? t('tripOver') : '';
   $('detailStart').onclick = () => startTrip(j, q);
   $('detailShare').onclick = () => shareJourney(j, q, bikeOnly);
 }
@@ -1480,7 +1524,22 @@ async function loadNearby() {
   try { lastPos = await getPosition(); } catch (e) { list.innerHTML = `<div class="empty">${t('noLocation')}</div>`; return; }
   const stops = await call('nearby', { lat: lastPos.lat, lon: lastPos.lon, limit: 20 });
   renderStops(list, stops, true);
+  nearbyStops = stops; redrawMap(true);
 }
+let nearbyStops = [];
+/** The nearby screen on the map: the rider's position, a ring out to the farthest listed stop, the stops highlighted. */
+mapOf['screen-nearby'] = async (seq) => {
+  const m = mainMap;
+  if (!m || !lastPos || !nearbyStops.length || stale(seq)) return;
+  ensureJourneyLayers(m);
+  const r = Math.max(150, nearbyStops[nearbyStops.length - 1].distance + 30), ring = [];
+  for (let i = 0; i <= 64; i++) { const a = i / 64 * 2 * Math.PI; ring.push([lastPos.lon + r / 111000 / Math.cos(lastPos.lat * Math.PI / 180) * Math.cos(a), lastPos.lat + r / 111000 * Math.sin(a)]); }
+  m.getSource('context').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#12998b' }, geometry: { type: 'LineString', coordinates: ring } }] });
+  m.getSource('stops').setData({ type: 'FeatureCollection', features: nearbyStops.map((s) => ({ type: 'Feature', properties: { stop: s.stop, ...stopKindProp(s.stop) }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) });
+  if (!meMarker) { const el = document.createElement('div'); el.className = 'wayli-me'; meMarker = new maplibregl.Marker({ element: el }).setLngLat([lastPos.lon, lastPos.lat]).addTo(m); }
+  const b = new maplibregl.LngLatBounds(); ring.forEach((c) => b.extend(c));
+  fitMap(b, 16);
+};
 function renderStops(container, stops, withDistance) {
   container.innerHTML = '';
   if (!stops.length) { container.innerHTML = `<div class="empty">${t('favEmptyStops')}</div>`; return; }
@@ -2210,7 +2269,7 @@ let screen = 'plan';
 // screens that need no map are pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
 const PAGE_TITLE = { 'screen-more': 'settings', 'screen-saved': 'tabSaved', chooser: null };
 $('pageBack').addEventListener('click', () => { if (topPanel() === 'chooser') $('chCancel').click(); else if (nav.stack.length) history.back(); else showScreen('plan'); });
-const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || place.from || place.to ? 'half' : 'peek'), 'screen-nearby': 'full', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
+const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || place.from || place.to ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
 /** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
 function renderPanels() {
   renderDrawer();
@@ -2287,7 +2346,8 @@ const pullRefresh = (() => {
 const sheet = {
   state: 'peek',
   dragH: null,   // the visible height while a finger drags it, else null
-  px(st) { return st === 'peek' ? ($('peekLine').hidden ? 44 : 80) : st === 'half' ? Math.round(innerHeight * 0.46) : fullSheetPx(); },
+  // collapsed, the handle sits above the phone's gesture strip (16 px, plus the inset of an installed app)
+  px(st) { return st === 'peek' ? ($('peekLine').hidden ? 44 : 80) + 16 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0) : st === 'half' ? Math.round(innerHeight * 0.46) : fullSheetPx(); },
   visible() { return this.dragH != null ? this.dragH : this.px(this.state); },
   /** Follow the finger: slide to a visible height without changing the state. */
   drag(h) {

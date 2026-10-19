@@ -479,3 +479,30 @@ so they are not re-litigated.
   swap sits at the end, centred between the two rows, as in Google Maps.
   Back returns to the summary when a plan is shown, else to the plain pill;
   clearing a plan is the summary's X.
+- 2026-10-19 Gadi: the collapsed sheet sits too low for Android's swipe-up
+  gesture strip; the collapsed height gains 16 px (plus the bottom inset of
+  an installed app) so the handle clears it. Filling the collapsed sheet
+  with content: "maybe not needed", left as the one line.
+- 2026-10-19 Gadi could not find the line search and the nearby stops.
+  Both exist (a number typed in the search box lists lines; "stops near me"
+  is in the menu), so the menu gets a "search a line by number" entry that
+  opens the box with a numeric keyboard, and the nearby screen now opens as
+  a half sheet with the map showing the rider's position, a ring out to the
+  farthest listed stop and the stops highlighted. The lines near the rider
+  are the live layer's "lines near me" already.
+- 2026-10-19 Gadi: sorting and filtering of results ("single-stop"). Chips
+  over the list: Direct, Train, and a sort that cycles by departure,
+  arrival, fastest, fewest changes; remembered across plans. Rejected: a
+  filter panel (the chips are one tap each).
+- 2026-10-19 Gadi: trip tracking "a little messed up", with a screenshot at
+  00:51 of a plan for "Tonight 08:00" whose Start said the trip was over.
+  After midnight the planner stays on the night's service day, so a morning
+  time landed on the past morning; a time from 03:00 on typed at night now
+  moves the day to the coming one. Start is disabled, with the reason, when
+  the trip is over, instead of a toast after the tap. The ride line read
+  "1 · דן stops" in English: a bidi artefact of a Hebrew operator name in an
+  English sentence; operators now show English names (a table in the app)
+  isolated with <bdi>, and "1 stop" is singular.
+- 2026-10-19 Gadi: home and work need a choose-on-map option. The chooser
+  had it as a chip under the box; it is now also a row in the list that
+  opens with the box, like the To box's own.
