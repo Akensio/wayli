@@ -307,7 +307,7 @@ async function loadDay(date) {
   call('setLang', { lang });   // names come back in the rider's language where the timetable carries them
   const info = await call('loadTimetable', { url: `data/${d.file}?v=${encodeURIComponent(manifest.built || '')}` });
   dayInfo = info; ttReady = true; tsCache.clear(); lmLabels.clear(); lmStops = false;
-  $('planBtn').disabled = false;
+  $('planBtn').disabled = false; plannerBusy = false;
   nearRoutes = null; updateNearRoutes();
   loadStopsGeo(); refreshLiveMap();
   setStatus(t('ready', { trips: info.counts.trips.toLocaleString(), date: dayLabel(info.date) }));
@@ -716,7 +716,7 @@ async function plan(opts = {}) {
   const isNow = !timeTouched && !arriveBy;   // a plan from now looks ten minutes back too: a ride just boarded can still be followed
   const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at, toTime = arriveBy ? at : at + 3600;
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
-  $('planBtn').disabled = true;
+  $('planBtn').disabled = true; plannerBusy = true;
   $('results').innerHTML = `<div class="empty">${t('planning')}</div>`;
   $('recentBox').hidden = true;
   setOptions(false); renderOptionChips();
@@ -736,7 +736,7 @@ async function plan(opts = {}) {
     renderResults(r, q);
     renderRecent();
   } catch (e) { showPlanError(e.message); $('results').innerHTML = ''; }
-  $('planBtn').disabled = false;
+  $('planBtn').disabled = false; plannerBusy = false;
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
 const inShort = (n) => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
@@ -791,14 +791,45 @@ function toggleAlt(idx) {
   applyAlt();
 }
 /** The options as two chips (when; bicycle); the details open under them on a tap and close after planning. */
-function setOptions(open) { $('formBody').hidden = !open; $('topbar').classList.toggle('open', open); layoutTop(); }
+let optOpen = '', optDirty = false;   // which popover is open ('time' or 'bike'); whether an option changed while one was open
+/** Open the when or bicycle popover, or close whatever is open; closing after a change re-plans the trip on show. */
+function setOptions(open, which = optOpen || 'time') {
+  optOpen = open ? which : '';
+  $('formBody').hidden = !open; $('whenBody').hidden = which !== 'time'; $('bikeBody').hidden = which !== 'bike';
+  $('topbar').classList.toggle('open', open);
+  $('optTime').classList.toggle('open', open && which === 'time'); $('optBike').classList.toggle('open', open && which === 'bike');
+  if (open) renderDayPills();
+  layoutTop();
+  if (!open && optDirty) { optDirty = false; if (lastResult && place.from && place.to && !plannerBusy) plan(); }
+}
+let plannerBusy = false;
+/** The days the data covers, as pills; the hidden select stays the value the planner reads. */
+function renderDayPills() {
+  const box = $('dayPills');
+  if (!manifest) return;
+  if (box.children.length !== manifest.days.length) {   // built once; a tap only moves the mark (the tapped pill must stay in the document)
+    box.innerHTML = '';
+    for (const d of manifest.days) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn'; b.dataset.date = d.date;
+      b.addEventListener('click', () => { $('day').value = d.date; $('day').dispatchEvent(new Event('input')); $('day').dispatchEvent(new Event('change')); renderDayPills(); renderOptionChips(); });
+      box.appendChild(b);
+    }
+  }
+  for (const b of box.children) { b.textContent = dayLabel(b.dataset.date).split(' · ')[0]; b.classList.toggle('on', $('day').value === b.dataset.date); }
+  $('nowBtn').classList.toggle('on', !timeTouched);
+  $('foldingRow').hidden = bikeChoice() === 'none';
+}
 function renderOptionChips() {
   const bike = bikeChoice(), day = $('day').value;
   $('optTime').innerHTML = ic('clock') + ' ' + (timeTouched ? `${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? esc(dayLabel(day).split(' · ')[0]) : ''} ${esc($('at').value)}` : t('now'));
   $('optBike').innerHTML = `${ic('bike')} ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
   if (!$('sumRow').hidden) renderSummary();
 }
-for (const id of ['optTime', 'optBike']) $(id).addEventListener('click', () => setOptions($('formBody').hidden));
+$('optTime').addEventListener('click', () => setOptions(optOpen !== 'time', 'time'));
+$('optBike').addEventListener('click', () => setOptions(optOpen !== 'bike', 'bike'));
+// a tap anywhere else closes the popover
+document.addEventListener('click', (e) => { if (optOpen && !e.target.closest('#formBody, #optTime, #optBike')) setOptions(false); });
+for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at'), $('nowBtn')]) for (const ev of ['click', 'change']) el.addEventListener(ev, () => { if (optOpen) { optDirty = true; renderDayPills(); } });
 for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at')]) { el.addEventListener('click', renderOptionChips); el.addEventListener('change', renderOptionChips); }
 let lastResultsAt = null;
 const SORTS = ['depart', 'arrive', 'fast', 'changes'];

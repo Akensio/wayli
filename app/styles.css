@@ -425,9 +425,22 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .topbar .trow.opts { padding-inline-start: 54px; gap: 6px; }
 .topbar .trow.opts .chipbtn { background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-weight: 600; }
 .topbar.open .trow.opts .chipbtn { background: var(--ink); color: var(--bg); }
-.optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; }
-.optpanel[hidden] { display: none; }
-.optpanel .primary { margin-top: 10px; }
+/* the option popovers under the chips: when (depart or arrive, day pills, now or a time) and bicycle; changes apply at once */
+.optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.optpanel[hidden], .optpanel > [hidden] { display: none; }
+.optpanel #whenBody, .optpanel #bikeBody { display: flex; flex-direction: column; gap: 10px; }
+.optpanel .seg.pill { align-self: flex-start; }
+.daypills { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.daypills::-webkit-scrollbar { display: none; }
+.daypills .chipbtn { flex: none; white-space: nowrap; }
+.daypills .chipbtn.on { background: var(--ink); color: var(--bg); }
+.timerow { display: flex; gap: 6px; align-items: center; }
+.timerow .chipbtn.on { background: var(--ink); color: var(--bg); }
+input.timepill { border: 0; border-radius: 999px; background: var(--chip); color: var(--ink); padding: 6px 12px; min-height: 34px; font-size: 14px; font-family: inherit; }
+label.pilltoggle { background: var(--chip); border-radius: 999px; padding: 6px 12px; min-height: 34px; align-self: flex-start; cursor: pointer; }
+label.pilltoggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+label.pilltoggle:has(input:checked) { background: var(--ink); color: var(--bg); }
+label.pilltoggle[hidden] { display: none; }
 /* collapsed with results: one line about the journey highlighted on the map; a tap opens the list */
 .peekline { display: flex; align-items: center; gap: 8px; width: 100%; margin: -4px 0 10px; padding: 4px 2px; border: 0; background: none; color: var(--ink); font-size: 14px; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
 .peekline[hidden] { display: none; }

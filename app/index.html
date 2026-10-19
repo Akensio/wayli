@@ -52,25 +52,27 @@
     <button type="button" class="primary slim go" id="goBtn" data-t="go">תכנון</button>
   </div>
   <div class="optpanel" id="formBody" hidden>
-    <div class="row">
-      <div class="seg small" id="timeMode">
+    <div id="whenBody">
+      <div class="seg pill" id="timeMode">
         <button type="button" data-mode="depart" aria-pressed="true" data-t="departAt">יציאה</button>
         <button type="button" data-mode="arrive" aria-pressed="false" data-t="arriveBy">הגעה עד</button>
       </div>
-      <select id="day"></select>
-      <input type="time" id="at">
-      <button type="button" class="swap" id="nowBtn" data-t="now">עכשיו</button>
+      <div class="daypills" id="dayPills"></div>
+      <select id="day" hidden></select>
+      <div class="timerow">
+        <button type="button" class="chipbtn" id="nowBtn" data-t="now">עכשיו</button>
+        <input type="time" id="at" class="timepill">
+      </div>
     </div>
-    <div class="row" style="margin-top:8px">
-      <span class="muted" data-t="bike">אופניים</span>
-      <div class="seg" id="bikeMode">
+    <div id="bikeBody" hidden>
+      <div class="seg pill" id="bikeMode">
         <button type="button" data-mode="none" aria-pressed="true" data-t="bikeNone">בלי</button>
         <button type="button" data-mode="park" aria-pressed="false" data-t="bikePark">עד התחנה</button>
         <button type="button" data-mode="along" aria-pressed="false" data-t="bikeAlong">לוקח/ת איתי</button>
       </div>
-      <label class="check"><input type="checkbox" id="folding"> <span data-t="folding">מתקפלים</span></label>
+      <label class="check pilltoggle" id="foldingRow"><input type="checkbox" id="folding"> <span data-t="folding">מתקפלים</span></label>
     </div>
-    <button type="button" class="primary slim" id="planBtn" data-t="plan">תכנון מסלול</button>
+    <button type="button" class="primary slim" id="planBtn" data-t="plan" hidden>תכנון מסלול</button>
   </div>
 </div>
 <div class="backdrop" id="backdrop"></div>

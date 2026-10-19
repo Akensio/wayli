@@ -528,3 +528,11 @@ so they are not re-litigated.
   (the From row now slides in above the pill instead); the status bar takes
   the map's ground colour (theme-color follows the map setting, light
   #f8f4f0 or dark #141210) and on iPhone it is translucent over the map.
+- 2026-10-20 Gadi: the options panel (clock, bike, "plan trip" next to Go)
+  is "a weird old relic". Rethought: the two chips each open a small
+  popover, when (depart or arrive, the days as pills, now or a time) and
+  bicycle (none, to the stop, take it along; folding appears when a bike is
+  chosen). Changes apply to the chip at once; a tap elsewhere closes the
+  popover and, when a plan is showing, re-plans it. The "plan trip" button
+  is gone: Go is the one button. Rejected: a full options sheet (too much
+  for two choices).
