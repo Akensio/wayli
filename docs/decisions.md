@@ -306,3 +306,8 @@ so they are not re-litigated.
   green only when the line has a live location. Done: green when the first
   ride's vehicle reports (and is not stale), plain ink otherwise; the
   results header still says which time the live data is from.
+- 2026-10-19 Gadi: orange when the live location carries big uncertainty.
+  Live colours now mean confidence everywhere (result cards, legs, stop
+  departures, bubbles, the follow badge): green a report under four
+  minutes old, orange an older one (still marked ?), plain the schedule.
+  Lateness is the number alone; orange no longer means "3+ minutes late".

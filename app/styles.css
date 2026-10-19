@@ -89,6 +89,7 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 /* "leave in n min": green only when the first ride's vehicle is reporting live, plain otherwise */
 .journey .leave { margin-top: 6px; font-size: 13px; color: var(--ink); font-weight: 600; min-height: 0; }
 .journey .leave.live { color: var(--ok); }
+.journey .leave.unsure { color: var(--warn); }
 .journey .leave:empty { display: none; }
 .journey .leave.past { color: var(--ink-2); font-weight: 400; }
 .journey.past { opacity: .6; }
@@ -112,7 +113,8 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .center { text-align: center; padding: 6px 16px 0; }
 .leg .what .live { display: inline-block; margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
 .live.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
-.live.late { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+/* live colours mean confidence: green a fresh report, orange a report older than four minutes (marked ?), plain the schedule */
+.live.unsure { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
 .live.gone { background: var(--chip); color: var(--ink-2); text-decoration: line-through; }
 .leg .toggle { background: none; border: 0; color: var(--accent-text); font-size: 13px; padding: 2px 0; cursor: pointer; display: block; }
 .leg .stoplist { margin: 4px 0 2px; padding-inline-start: 4px; border-inline-start: 2px solid var(--line); }
@@ -120,7 +122,7 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .leg .stoplist div span:first-child { min-width: 44px; }
 .leg .stoplist div.here { color: var(--ink); font-weight: 600; }
 .dep { cursor: pointer; }
-.dep .time.live { color: var(--ok); } .dep .time.late { color: var(--warn); } .dep .time.gone { text-decoration: line-through; color: var(--ink-2); }
+.dep .time.live { color: var(--ok); } .dep .time.unsure { color: var(--warn); } .dep .time.gone { text-decoration: line-through; color: var(--ink-2); }
 .dep .in .live { font-size: 11px; }
 .stopsrow { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .stopsrow .time { min-width: 48px; color: var(--ink-2); } .stopsrow.here { color: var(--ok); font-weight: 700; }
@@ -168,7 +170,7 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .nowcard.alert .ghost { background: rgba(255,255,255,.25); color: var(--accent-ink); }
 @keyframes pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
 .livebadge { font-size: 12px; border-radius: 10px; padding: 2px 8px; background: var(--chip); color: var(--ink-2); font-weight: 600; white-space: nowrap; }
-.livebadge.ok { color: var(--ok); } .livebadge.late { color: var(--warn); }
+.livebadge.ok { color: var(--ok); } .livebadge.unsure { color: var(--warn); }
 .wayli-me { width: 18px; height: 18px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(26,115,232,.25); }
 .wayli-bus { width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 2px solid #1b1f24; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 .wayli-bus.stale { opacity: .55; }

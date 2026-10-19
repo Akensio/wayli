@@ -664,7 +664,7 @@ function liveLine(l) {
   if (!l || !l.live) return '';
   const d = live.delayMinutes(l.live.delay);
   const txt = d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
-  return `<div class="muted"><span class="live ${d >= 3 ? 'late' : 'ok'}">${esc(txt)}${l.live.stale ? ' ?' : ''}</span></div>`;
+  return `<div class="muted"><span class="live ${l.live.stale ? 'unsure' : 'ok'}">${esc(txt)}${l.live.stale ? ' ?' : ''}</span></div>`;
 }
 function journeyCard(j, q, alts, options) {
   const d = document.createElement('div');
@@ -674,7 +674,7 @@ function journeyCard(j, q, alts, options) {
     `<div class="chips">${j.legs.map((l, i) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l, alts && alts[i])}</span>`).join('<span class="muted">›</span>')}</div>` +
     `<div class="sub">${rides.map(({ l }) => `${esc(lineText(l.line))} ${t('toward', { headsign: esc(l.headsign) })}`).join(' · ')}</div>` +
     (options && options.length > 1 ? `<div class="opts"><span class="muted">${t('alsoAt')}</span>${options.slice(1).map((o, k) => `<button type="button" class="opt" data-k="${k + 1}">${fmt(o.depart)}</button>`).join('')}</div>` : '') +
-    `<div class="leave${rides.length && rides[0].l.live && !rides[0].l.live.stale ? ' live' : ''}" data-dep="${j.depart}" data-day="${q.day}">${leaveText(j.depart, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
+    `<div class="leave${rides.length && rides[0].l.live ? (rides[0].l.live.stale ? ' unsure' : ' live') : ''}" data-dep="${j.depart}" data-day="${q.day}">${leaveText(j.depart, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
   if (leaveText(j.depart, q.day) === t('departed')) d.querySelector('.leave').classList.add('past');
   for (const b of d.querySelectorAll('.opt')) {
     const o = options[+b.dataset.k];
@@ -1092,7 +1092,7 @@ function vehiclePopup(m, lngLat, v) {
   const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
   const html = `<div class="pop"><div class="row"><span class="chip t${v.routeType}"${chipStyle(v.routeType, v.agency)}>${esc(lineText(v.line))}</span><b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
     `<div class="muted">${v.agency ? esc(v.agency) + ' · ' : ''}${t('seenAgo', { time: clock(v.seen) })}${Date.now() - new Date(v.seen).getTime() >= 180e3 ? ` (${t('agoMin', { n: Math.round((Date.now() - new Date(v.seen).getTime()) / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
-    (d == null ? '' : `<div><span class="live ${d >= 3 ? 'late' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
+    (d == null ? '' : `<div><span class="live ${v.stale ? 'unsure' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
     `<div class="row"><button type="button" class="ghost" data-act="trip" ${v.trip >= 0 ? '' : 'disabled'}>${t('popStops')}</button><button type="button" class="ghost" data-act="line" ${v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
     const b1 = el.querySelector('[data-act="trip"]'), b2 = el.querySelector('[data-act="line"]');
@@ -1173,7 +1173,7 @@ function liveBadge(at) {
   if (at.passed) return { text: t('livePassed'), cls: 'gone' };
   const d = live.delayMinutes(at.delay);
   const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
-  return { text, cls: d >= 3 ? 'late' : 'ok' };
+  return { text, cls: at.stale ? 'unsure' : 'ok' };
 }
 /** Ride legs planned before the shapes were loaded get their course now (in place). */
 async function withCourses(j) {
@@ -1378,8 +1378,8 @@ async function liveForStop(info, deps, day, seq) {
       const tm = el.querySelector('.time'), inEl = el.querySelector('.in');
       if (at.passed) { tm.className = 'time gone'; inEl.textContent = t('livePassed'); continue; }
       const dmin = live.delayMinutes(at.delay);
-      tm.textContent = fmt(at.time); tm.className = 'time ' + (dmin >= 3 ? 'late' : 'live');
-      inEl.innerHTML = `${esc(inText(at.time, day))} <span class="live ${dmin >= 3 ? 'late' : 'ok'}">⦿${dmin ? ` ${dmin > 0 ? '+' : ''}${dmin}` : ''}${at.stale ? '?' : ''}</span>`;
+      tm.textContent = fmt(at.time); tm.className = 'time ' + (at.stale ? 'unsure' : 'live');
+      inEl.innerHTML = `${esc(inText(at.time, day))} <span class="live ${at.stale ? 'unsure' : 'ok'}">⦿${dmin ? ` ${dmin > 0 ? '+' : ''}${dmin}` : ''}${at.stale ? '?' : ''}</span>`;
     }
     const nw = live.newest(vs);
     $('stopLiveNote').textContent = nw ? t('liveUpdated', { time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) }) : t('liveNoVehicle');

@@ -225,8 +225,9 @@ service day runs past midnight; bicycle choice; the longest walk to a stop
 is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
 ("also at 08:17, 08:32") and the alternative lines of a leg shown together
-("5 / 18"); "leave in 4 min" counts down (green only when the first ride's vehicle
-is reporting live, plain otherwise) and departed options grey out;
+("5 / 18"); "leave in 4 min" counts down (green when the first ride's vehicle has a
+fresh live report, orange when its report is older than four minutes,
+plain with the schedule alone) and departed options grey out;
 earlier/later buttons shift the window; no results offers an hour later or
 a longer walk. The last search and its results come back when the app is
 reopened within six hours, with one tap to plan it again from now; the
@@ -491,7 +492,9 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   the newest ingested snapshot was 07:41), and backfills old snapshots, so
   queries look back half an hour, sort by recorded time (not id), and every
   screen shows how old the newest report is; a report older than four
-  minutes is marked with "?", one more than five minutes behind the feed's
+  minutes is marked with "?" and coloured orange wherever a live time or
+  delay is shown (green means a fresh report; lateness is the number, not
+  the colour), one more than five minutes behind the feed's
   newest report is left off the map, and when the feed as a whole is four
   or more minutes behind, the map says so and fades the dots. The lag is
   the pipeline's, not ours: the newest rows come first in every query. A
