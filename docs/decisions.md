@@ -302,3 +302,7 @@ so they are not re-litigated.
   its sideways scroll, so only the thin handle grabbed. Now a start on the
   strip drags unless it moves sideways, a 40 px pull steps one size, and
   the fully open sheet is pulled down by its top 96 px as well as the handle.
+- 2026-10-19 Gadi: the green "leave in n min" on a result card should be
+  green only when the line has a live location. Done: green when the first
+  ride's vehicle reports (and is not stale), plain ink otherwise; the
+  results header still says which time the live data is from.

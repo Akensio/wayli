@@ -225,7 +225,8 @@ service day runs past midnight; bicycle choice; the longest walk to a stop
 is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
 ("also at 08:17, 08:32") and the alternative lines of a leg shown together
-("5 / 18"); "leave in 4 min" counts down and departed options grey out;
+("5 / 18"); "leave in 4 min" counts down (green only when the first ride's vehicle
+is reporting live, plain otherwise) and departed options grey out;
 earlier/later buttons shift the window; no results offers an hour later or
 a longer walk. The last search and its results come back when the app is
 reopened within six hours, with one tap to plan it again from now; the

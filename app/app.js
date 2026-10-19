@@ -674,7 +674,7 @@ function journeyCard(j, q, alts, options) {
     `<div class="chips">${j.legs.map((l, i) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l, alts && alts[i])}</span>`).join('<span class="muted">›</span>')}</div>` +
     `<div class="sub">${rides.map(({ l }) => `${esc(lineText(l.line))} ${t('toward', { headsign: esc(l.headsign) })}`).join(' · ')}</div>` +
     (options && options.length > 1 ? `<div class="opts"><span class="muted">${t('alsoAt')}</span>${options.slice(1).map((o, k) => `<button type="button" class="opt" data-k="${k + 1}">${fmt(o.depart)}</button>`).join('')}</div>` : '') +
-    `<div class="leave" data-dep="${j.depart}" data-day="${q.day}">${leaveText(j.depart, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
+    `<div class="leave${rides.length && rides[0].l.live && !rides[0].l.live.stale ? ' live' : ''}" data-dep="${j.depart}" data-day="${q.day}">${leaveText(j.depart, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
   if (leaveText(j.depart, q.day) === t('departed')) d.querySelector('.leave').classList.add('past');
   for (const b of d.querySelectorAll('.opt')) {
     const o = options[+b.dataset.k];
