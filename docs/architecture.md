@@ -432,6 +432,19 @@ workflow in `.github/workflows/build.yml` runs nightly (and on push to
 next 7 days, and deploys `site/` to GitHub Pages, turning Pages on by itself the first
 time (`actions/configure-pages` with `enablement: true`). No server, no cost.
 
+The results on the map: the first three ways are drawn together, the
+highlighted one in its mode colours with pins and stops, the others grey with
+a white casing, each with a pill at the middle of its longest ride saying its
+minutes (the highlighted one in the accent colour). A tap on a grey route or
+its pill highlights that way; each card has a map button that shows a way
+(and highlights it), highlights a shown one, or hides the highlighted one.
+Collapsed, the sheet is a handle alone, or, with results, a handle and one
+line about the highlighted way (times, minutes, transfers, the countdown)
+that opens the list on a tap. The chip strip that used to sit there (plan,
+home, work, recents, nearby) is gone: the search pill and its list cover it,
+and the drawer keeps "stops near me". The top bar is pills: the search
+field, the summary box, the chips and the Go button.
+
 Not yet: crowd reports, elevation, Arabic (the data format carries it, the
 interface does not), line pages beyond a trip's stop list, the bike-on-board
 rules for light rail, fares.

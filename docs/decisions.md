@@ -453,3 +453,17 @@ so they are not re-litigated.
   visible screen, so scrolling it pans the page and the from/to boxes slide
   away. The list now ends above the keyboard (the visual viewport) and
   scrolls inside itself, without scroll chaining to the page.
+- 2026-10-19 Gadi: "maybe it's time we remove" the chips in the collapsed
+  sheet (plan, home, work, recents, nearby). Agreed: the search pill and its
+  list offer the same, nearby stays in the drawer. The collapsed sheet is
+  now a handle, plus one line about the highlighted way when there are
+  results. The strip's sideways-scroll gesture code went with it.
+- 2026-10-19 Gadi: show the alternative ways on the map, as road-planning
+  apps do, with a per-route toggle in the list. Built the Google Maps model
+  plus his toggle: the first three ways drawn together, one highlighted in
+  colour, the others grey with a minutes pill; a tap on a grey route or pill
+  highlights it; a card's map button shows, highlights or hides its way.
+  Rejected: a highlight-only tap on the card (a card tap opens the detail,
+  as before) and drawing every way (clutter; the toggles add more).
+- 2026-10-19 Gadi: the top search "more pill-like"? Yes: the field, the
+  summary box, the chips and the Go button are full pills now.

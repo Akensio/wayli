@@ -44,7 +44,7 @@ button, input, select { font: inherit; }
 .field .icon { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-2); pointer-events: none; font-size: 14px; }
 .field input[type=text] { padding-inline-start: 34px; padding-inline-end: 12px; }
 .chips-row { display: flex; gap: 6px; margin: -2px 0 10px; }
-.chipbtn { background: var(--chip); border: 0; border-radius: 16px; padding: 7px 12px; cursor: pointer; color: var(--ink); font-size: 13px; min-height: 34px; }
+.chipbtn { background: var(--chip); border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; color: var(--ink); font-size: 13px; min-height: 34px; }
 .chipbtn:active { background: var(--line); }
 .field input[type=text] { padding-inline-end: 12px; }
 .dropdown { position: absolute; z-index: 20; inset-inline: 0; top: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-top: 4px; max-height: 360px; overflow: auto; overscroll-behavior: contain; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
@@ -65,8 +65,15 @@ label.check input { width: 18px; height: 18px; margin: 0; }
 button.primary { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 8px; }
 button.primary:disabled { opacity: .5; }
 button.ghost { background: var(--chip); color: var(--ink); border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-.journey { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; cursor: pointer; }
-.journey .top { display: flex; align-items: baseline; gap: 10px; }
+.journey { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; cursor: pointer; }
+.journey.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.journey .mapbtn { position: absolute; top: 8px; inset-inline-end: 8px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--chip); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.journey .mapbtn .i { width: 18px; height: 18px; }
+.journey .mapbtn.on { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--accent-text); }
+.journey.sel .mapbtn.on { background: var(--accent); color: var(--accent-ink); }
+.journey .top { display: flex; align-items: baseline; gap: 10px; padding-inline-end: 36px; }
+.wayli-alt { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.3); cursor: pointer; font-variant-numeric: tabular-nums; }
+.wayli-alt.sel { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .journey .times { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 17px; }
 .journey .dur { color: var(--ink-2); font-size: 13px; margin-inline-start: auto; white-space: nowrap; }
 .journey .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
@@ -278,13 +285,13 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .topbar.two .userbtn { display: none; }
 .iconbtn.small { width: 40px; height: 40px; font-size: 18px; }
 .topbar .field { flex: 1; margin: 0; }
-.topbar .field input[type=text] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 44px; font-size: 16px; }
-.field.tagged input[type=text] { padding-inline-start: 66px; }
+.topbar .field input[type=text] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 46px; font-size: 16px; border-radius: 23px; padding-inline-end: 44px; }
+.field.tagged input[type=text] { padding-inline-start: 70px; }
 .topbar:not(.two) .field.withuser .tag { display: none; }
-.topbar:not(.two) .field.withuser input[type=text] { padding-inline-start: 50px; }
+.topbar:not(.two) .field.withuser input[type=text] { padding-inline-start: 52px; }
 /* the summary box: one pill with to, from, time and bike once a plan is made; a tap reopens the rows */
-.sumbox { position: relative; flex: 1; min-width: 0; background: var(--surface); border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-height: 54px; display: flex; align-items: center; }
-.sumtxt { flex: 1; min-width: 0; background: none; border: 0; text-align: start; padding: 7px 44px 7px 44px; padding-inline-start: 48px; padding-inline-end: 44px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.sumbox { position: relative; flex: 1; min-width: 0; background: var(--surface); border-radius: 28px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-height: 56px; display: flex; align-items: center; }
+.sumtxt { flex: 1; min-width: 0; background: none; border: 0; text-align: start; padding: 7px 44px 7px 44px; padding-inline-start: 52px; padding-inline-end: 44px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
 .sumtxt .l1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sumtxt .l2 { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
 .sumtxt .l2 .i { width: 14px; height: 14px; } .sumtxt .sep { color: var(--line); padding: 0 1px; }
@@ -292,17 +299,17 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .sumbox .tag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-inline-end: 6px; vertical-align: 1px; }
 .sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
 /* the suggestions list hangs below all the boxes, never over the other field */
-.topbar .dropdown { position: fixed; top: var(--top-h); inset-inline: 10px; margin-top: 0; max-height: calc(100vh - var(--top-h) - 16px); max-height: calc(100dvh - var(--top-h) - 16px); }
+.topbar .dropdown { position: fixed; top: var(--top-h); inset-inline: 10px; margin-top: 0; border-radius: 18px; max-height: calc(100vh - var(--top-h) - 16px); max-height: calc(100dvh - var(--top-h) - 16px); }
 .userbtn { position: absolute; inset-inline-start: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); display: grid; place-items: center; cursor: pointer; z-index: 1; padding: 0; }
 .userbtn .i { width: 21px; height: 21px; }
 .userbtn:active { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
 .clearbtn .i { width: 16px; height: 16px; vertical-align: middle; }
 .iconbtn .i { width: 22px; height: 22px; vertical-align: middle; }
 .chipbtn .i { vertical-align: -.2em; }
-.field .tag { position: absolute; inset-inline-start: 10px; top: 50%; transform: translateY(-50%); background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; border-radius: 8px; padding: 2px 6px; pointer-events: none; width: 48px; text-align: center; white-space: nowrap; overflow: hidden; }
+.field .tag { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 6px; pointer-events: none; width: 48px; text-align: center; white-space: nowrap; overflow: hidden; }
 .field .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
 .field .clearbtn[hidden] { display: none; }
-.topbar .trow.opts .go { width: auto; margin: 0 0 0 auto; margin-inline-start: auto; padding: 7px 16px; font-size: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.topbar .trow.opts .go { width: auto; margin: 0 0 0 auto; margin-inline-start: auto; padding: 7px 18px; font-size: 14px; border-radius: 999px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
 .iconbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--surface); color: var(--ink); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 20px; cursor: pointer; flex: none; }
 .iconbtn.lang { font-size: 13px; font-weight: 700; }
 /* the menu: a drawer sliding in from the start edge over a dimmed map */
@@ -402,11 +409,15 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; }
 .optpanel[hidden] { display: none; }
 .optpanel .primary { margin-top: 10px; }
-.peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; touch-action: none; scroll-behavior: auto; }
-.peekrow::-webkit-scrollbar { display: none; }
-.peekrow .chipbtn { flex: none; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+/* collapsed with results: one line about the journey highlighted on the map; a tap opens the list */
+.peekline { display: flex; align-items: center; gap: 8px; width: 100%; margin: -4px 0 10px; padding: 4px 2px; border: 0; background: none; color: var(--ink); font-size: 14px; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.peekline[hidden] { display: none; }
+.peekline .times { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
+.peekline .leave { margin-inline-start: auto; font-weight: 600; }
+.peekline .leave.past { color: var(--ink-2); font-weight: 400; }
+.peekline > span { overflow: hidden; text-overflow: ellipsis; }
 .chipbtn.accent { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.sheet[data-state="peek"] #screen-plan > :not(.peekrow) { display: none; }
+.sheet[data-state="peek"] #screen-plan > :not(.peekline) { display: none; }
 .toast { position: fixed; left: 50%; bottom: calc(var(--sheet-h) + 12px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 100; max-width: 90vw; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
 .toast[hidden] { display: none; }
 #ver { font-size: 12px; margin: 8px 0 20px; }

@@ -74,7 +74,7 @@ const STR = {
     direct: 'ישיר', transfer1: 'החלפה אחת', transfers: '{n} החלפות', min: 'דק\'', hour: 'שע\'', walk: 'הליכה', bike2: 'רכיבה',
     walkTo: 'הליכה {min} דק\' אל {name}', bikeTo: 'רכיבה {min} דק\' אל {name}', walkFrom: 'הליכה {min} דק\' מ{name} ליעד', bikeFrom: 'רכיבה {min} דק\' מ{name} ליעד',
     ride: '{line} · {agency} · {stops} תחנות', toward: 'לכיוון {headsign}', bikeOnly: 'רכיבה כל הדרך: {min} דק\', {km} ק"מ',
-    noBikeOnly: 'רכיבה כל הדרך: אין מסלול עד 3 שעות.', found: '{n} דרכים להגיע', withBikeOnBoard: ' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים',
+    noBikeOnly: 'רכיבה כל הדרך: אין מסלול עד 3 שעות.', found: '{n} דרכים להגיע', onMap: 'הצגה במפה', withBikeOnBoard: ' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים',
     foldingNote: ' · אופניים מתקפלים', parkNote: ' · האופניים נשארים בתחנה הראשונה', noLocation: 'אין גישה למיקום. אפשרו מיקום לאתר, או חפשו תחנה.',
     locating: 'מאתר…', m: 'מ\'', inMin: 'בעוד {n} דק\'', nowDep: 'עכשיו', noDeps: 'אין יציאות נוספות היום.', favEmptyTrips: 'עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.',
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
@@ -111,7 +111,7 @@ const STR = {
     direct: 'direct', transfer1: '1 transfer', transfers: '{n} transfers', min: 'min', hour: 'h', walk: 'walk', bike2: 'bike',
     walkTo: 'walk {min} min to {name}', bikeTo: 'bike {min} min to {name}', walkFrom: 'walk {min} min from {name}', bikeFrom: 'bike {min} min from {name}',
     ride: '{line} · {agency} · {stops} stops', toward: 'towards {headsign}', bikeOnly: 'Bike all the way: {min} min, {km} km',
-    noBikeOnly: 'Bike all the way: no route within 3 hours.', found: '{n} ways to get there', withBikeOnBoard: ' · bike on board: trains off-peak and intercity buses',
+    noBikeOnly: 'Bike all the way: no route within 3 hours.', found: '{n} ways to get there', onMap: 'Show on the map', withBikeOnBoard: ' · bike on board: trains off-peak and intercity buses',
     foldingNote: ' · folding bike', parkNote: ' · bike stays at the first stop', noLocation: 'Location unavailable. Allow location access, or search for a stop.',
     locating: 'Locating…', m: 'm', inMin: 'in {n} min', nowDep: 'now', noDeps: 'No more departures today.', favEmptyTrips: 'No saved trips yet. Tap the star in a journey.',
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
@@ -230,6 +230,10 @@ function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp
 // ---------------------------------------------------------------- time, days (Israel time, service days)
 const fmt = (sec) => `${String(Math.floor(sec / 3600) % 24).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`;
 const fmtPlus = (sec) => fmt(sec) + (sec >= 86400 ? '⁺' : '');   // past midnight, still this service day
+// the current results on the map: the first few journeys drawn together, one highlighted, the rest muted
+let resultCards = [];   // [{ idx, j, q, el, dep }] the cards of the current results, in list order
+let altShown = new Set(), altSel = -1, altMarkers = [];
+let peekSync = () => {};   // set once the sheet exists: the collapsed height follows the peek line
 const dur = (sec) => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
 const dateOf = (s) => new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
 const calToday = () => { const p = live.ilParts(); return live.dayStr(p.y, p.m, p.d); };
@@ -560,9 +564,10 @@ function clearPlan() {
   place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = ''; barOpen = false;
   lastResult = null; lastQuery = null; { const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true }); }
   $('results').innerHTML = ''; showPlanError('');
+  resultCards = []; altShown = new Set(); altSel = -1;
   setOptions(false); $('nowBtn').click();
   updateFromRow(); renderOptionChips(); renderRecent();
-  applyLiveShow(); renderPanels();
+  applyLiveShow(); renderPanels(); renderPeek(); redrawMap(true);
 }
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
@@ -718,7 +723,7 @@ function liveLine(l) {
   const txt = d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
   return `<div class="muted"><span class="live ${l.live.stale ? 'unsure' : 'ok'}">${esc(txt)}${l.live.stale ? ' ?' : ''}</span></div>`;
 }
-function journeyCard(j, q, alts, options) {
+function journeyCard(j, q, alts, options, idx = null) {
   const d = document.createElement('div');
   d.className = 'journey';
   const rides = j.legs.map((l, i) => ({ l, i })).filter((x) => x.l.type === 'ride');
@@ -735,7 +740,26 @@ function journeyCard(j, q, alts, options) {
     b.addEventListener('click', (e) => { e.stopPropagation(); openDetail(o, q); });
   }
   d.addEventListener('click', () => openDetail(j, q));
+  d.dataset.depAt = dep;   // not data-dep: that marks the countdown spans the timer rewrites
+  if (idx != null) {
+    const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'mapbtn'; mb.title = t('onMap'); mb.setAttribute('aria-label', t('onMap')); mb.innerHTML = ic('map');
+    mb.addEventListener('click', (e) => { e.stopPropagation(); toggleAlt(idx); });
+    d.appendChild(mb);
+  }
   return d;
+}
+/** A route on the map is highlighted: its card too, the peek line says which, the map redraws. */
+function applyAlt() {
+  for (const c of resultCards) { c.el.classList.toggle('sel', c.idx === altSel && altShown.has(c.idx)); c.el.querySelector('.mapbtn').classList.toggle('on', altShown.has(c.idx)); }
+  renderPeek();
+  redrawMap(true);
+}
+function selectAlt(idx) { altSel = idx; altShown.add(idx); applyAlt(); }
+/** The card's map button: show the route (highlighted), highlight a shown one, hide the highlighted one. */
+function toggleAlt(idx) {
+  if (altShown.has(idx) && altSel === idx) { altShown.delete(idx); altSel = altShown.size ? [...altShown][0] : -1; }
+  else { altShown.add(idx); altSel = idx; }
+  applyAlt();
 }
 /** The options as two chips (when; bicycle); the details open under them on a tap and close after planning. */
 function setOptions(open) { $('formBody').hidden = !open; $('topbar').classList.toggle('open', open); layoutTop(); }
@@ -750,6 +774,7 @@ for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at')]
 function renderResults(r, q, resultsAt = null) {
   const box = $('results');
   box.innerHTML = '';
+  resultCards = []; altShown = new Set(); altSel = -1;
   $('recentBox').hidden = true;
   lastQuery = q;
   barOpen = false; updateFromRow(); renderOptionChips();
@@ -780,7 +805,7 @@ function renderResults(r, q, resultsAt = null) {
     foot.appendChild(later);
     if (r.reason && q.maxWalk < 30) { const w = document.createElement('button'); w.type = 'button'; w.className = 'ghost'; w.textContent = t('tryMoreWalk'); w.addEventListener('click', () => plan({ maxWalk: 30 })); foot.appendChild(w); }
     box.appendChild(foot);
-    applyLiveShow();
+    applyLiveShow(); renderPeek(); redrawMap(true);
     return;
   }
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
@@ -795,8 +820,16 @@ function renderResults(r, q, resultsAt = null) {
     if (q.arriveBy) opts = opts.slice().reverse();
     for (const j of opts) if (isGone(j) && onStrip(j) && !gone.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) gone.push(j);
     opts = opts.filter((j) => !isGone(j));
-    if (opts.length) box.appendChild(journeyCard(opts[0], q, g.lines, opts));
+    if (opts.length) {
+      const idx = resultCards.length, card = journeyCard(opts[0], q, g.lines, opts, idx);
+      resultCards.push({ idx, j: opts[0], q, el: card, dep: +card.dataset.depAt });
+      box.appendChild(card);
+    }
   }
+  // the first three ways are drawn on the map, the first of them highlighted; the cards' map buttons change that
+  for (const c of resultCards.slice(0, 3)) altShown.add(c.idx);
+  altSel = resultCards.length ? resultCards[0].idx : -1;
+  for (const c of resultCards) { c.el.classList.toggle('sel', c.idx === altSel); c.el.querySelector('.mapbtn').classList.toggle('on', altShown.has(c.idx)); }
   // Rides that just left: on a fresh plan one quiet line that opens on a tap (most riders want the next departures);
   // on a plan restored from earlier they are shown, since the rider is likely on the way already.
   if (gone.length) {
@@ -829,7 +862,7 @@ function renderResults(r, q, resultsAt = null) {
   foot.append(earlier, later);
   box.appendChild(foot);
   if (!topPanel() && screen === 'plan' && sheet.state === 'peek') sheet.set('half');
-  applyLiveShow();
+  applyLiveShow(); renderPeek(); redrawMap(true);
 }
 /** Recent searches, under the form while there are no results. */
 function renderRecent() {
@@ -849,17 +882,17 @@ function renderRecent() {
   box.hidden = !!$('results').children.length;
   renderPeek();
 }
-/** The strip the sheet shows when collapsed: plan, home, work, recent places, nearby stops. */
+/** The line the collapsed sheet shows: the journey highlighted on the map, with its countdown; nothing without results. */
 function renderPeek() {
-  const box = $('peekRow');
-  box.innerHTML = '';
-  const chip = (txt, fn, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn ' + cls; b.innerHTML = txt; b.addEventListener('click', fn); box.appendChild(b); };
-  chip(ic('route') + ' ' + t('tabPlan'), () => { $('toQ').focus(); }, 'accent');
-  const sp = savedPlaces.get();
-  if (sp.home) chip(ic('home') + ' ' + t('home'), () => planTo(sp.home));
-  if (sp.work) chip(ic('work') + ' ' + t('work'), () => planTo(sp.work));
-  for (const p of recentPlaces.list().filter((r) => !savedPlaces.has(r)).slice(0, 4)) chip(ic('history') + ' ' + esc(p.name), () => planTo(p));
-  chip(ic('locate') + ' ' + t('tabNearby'), () => showScreen('nearby'));
+  const el = $('peekLine');
+  const c = resultCards.find((x) => x.idx === altSel && altShown.has(x.idx)) || null;
+  if (!c) { el.hidden = true; el.innerHTML = ''; }
+  else {
+    const j = c.j;
+    el.innerHTML = `<span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="muted">${dur(j.arrive - j.depart)} · ${transfersText(j.transfers)}</span><span class="leave" data-dep="${c.dep}" data-day="${c.q.day}">${leaveText(c.dep, c.q.day)}</span>`;
+    el.hidden = false;
+  }
+  peekSync();
 }
 
 // ---------------------------------------------------------------- maps (MapLibre, OpenFreeMap vector tiles)
@@ -928,6 +961,7 @@ async function initMap() {
   });
   m.on('moveend', () => { applyLiveShow(); clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
   m.on('click', (e) => {
+    if (m.getLayer('alt-hit') && m.queryRenderedFeatures(e.point, { layers: ['alt-hit'] }).length) return;   // an alternative route: highlighted by its own handler
     if (isOpen('picker')) {
       const f = stopNear(m, e.point);
       const s = f ? { stop: +f.properties.stop, name: f.properties.name || '' } : null;
@@ -1085,9 +1119,9 @@ function applyLiveShow() {
   } else $('liveNote').textContent = '';
 }
 function clearMap(m) {
-  for (const arr of [journeyMarkers, liveMarkers, lineVeh, followVehicle]) for (const mk of arr.splice(0)) mk.remove();
+  for (const arr of [journeyMarkers, liveMarkers, lineVeh, followVehicle, altMarkers]) for (const mk of arr.splice(0)) mk.remove();
   if (meMarker) { meMarker.remove(); meMarker = null; }
-  for (const src of ['journey', 'stops', 'context', 'context-stops']) if (m.getSource(src)) m.getSource(src).setData(EMPTY);
+  for (const src of ['journey', 'stops', 'context', 'context-stops', 'alts']) if (m.getSource(src)) m.getSource(src).setData(EMPTY);
 }
 /** Fit bounds into the part of the map the sheet and the top bar leave visible. */
 function fitMap(b, maxZoom) {
@@ -1119,6 +1153,14 @@ function ensureJourneyLayers(m) {
   m.addSource('context-stops', { type: 'geojson', data: EMPTY });
   m.addSource('journey', { type: 'geojson', data: EMPTY });
   m.addSource('stops', { type: 'geojson', data: EMPTY });
+  // the other ways to go, muted under the highlighted one; a wide invisible line takes the taps
+  m.addSource('alts', { type: 'geojson', data: EMPTY });
+  m.addLayer({ id: 'alt-casing', type: 'line', source: 'alts', paint: { 'line-color': '#ffffff', 'line-width': 7, 'line-opacity': .85 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'alt-ride', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': '#8d939c', 'line-width': 4.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'alt-walk', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': '#8d939c', 'line-width': 3.5, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
+  m.addLayer({ id: 'alt-hit', type: 'line', source: 'alts', paint: { 'line-color': '#000000', 'line-width': 18, 'line-opacity': 0.001 } });
+  m.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) selectAlt(+f.properties.idx); });
+  m.on('mouseenter', 'alt-hit', () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', 'alt-hit', () => { m.getCanvas().style.cursor = ''; });
   m.addLayer({ id: 'context-line', type: 'line', source: 'context', paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.3 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'context-stops', type: 'circle', source: 'context-stops', minzoom: 11, paint: { 'circle-radius': 3, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 1.5, 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 } });
   m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 8, 7], 'line-opacity': .9 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
@@ -1148,7 +1190,7 @@ async function drawContext(m, j, focus = -1) {
   } catch (e) { /* the ride itself is still drawn */ }
 }
 /** Draw a journey on a map: casing, rides, dashed walks, pins at boarding and alighting stops, dots at the stops between. */
-function drawJourney(m, j, markers, focus = -1) {
+function drawJourney(m, j, markers, focus = -1, context = true) {
   ensureJourneyLayers(m);
   for (const mk of markers.splice(0)) mk.remove();
   const features = [], dots = [];
@@ -1172,7 +1214,7 @@ function drawJourney(m, j, markers, focus = -1) {
   m.getSource('journey').setData({ type: 'FeatureCollection', features });
   m.getSource('stops').setData({ type: 'FeatureCollection', features: dots });
   m.getSource('context').setData(EMPTY); m.getSource('context-stops').setData(EMPTY);
-  drawContext(m, j, focus);
+  if (context) drawContext(m, j, focus);
   return bounds;
 }
 const boundsOf = (path) => { const b = new maplibregl.LngLatBounds(); for (const p of path || []) b.extend([p[1], p[0]]); return b; };
@@ -1260,6 +1302,38 @@ function vehicleMarker(m, markers, v, label) {
 
 // ---------------------------------------------------------------- journey detail
 let journeyMarkers = [], liveMarkers = [], detailSeq = 0, detailFocus = -1;
+/** The results on the map: the ways switched on, the highlighted one in colour with its stops, the others grey,
+ *  each with a badge of its minutes at the middle of its longest ride (a tap highlights that way). */
+mapOf['screen-plan'] = async (seq) => {
+  const m = mainMap;
+  const shown = resultCards.filter((c) => altShown.has(c.idx));
+  if (!m || !shown.length) return;
+  await Promise.all(shown.map((c) => withCourses(c.j)));
+  if (stale(seq) || !mainMap) return;
+  ensureJourneyLayers(m);
+  for (const mk of altMarkers.splice(0)) mk.remove();
+  const features = [], b = new maplibregl.LngLatBounds();
+  for (const c of shown) {
+    let longest = null;
+    for (const l of c.j.legs) {
+      if (!l.path || l.path.length < 2) continue;
+      const coords = l.path.map((p) => [p[1], p[0]]);
+      coords.forEach((x) => b.extend(x));
+      if (c.idx !== altSel) features.push({ type: 'Feature', properties: { idx: c.idx, ride: l.type === 'ride' ? 1 : 0 }, geometry: { type: 'LineString', coordinates: coords } });
+      if (l.type === 'ride' && (!longest || coords.length > longest.length)) longest = coords;
+    }
+    const at = longest ? longest[Math.floor(longest.length / 2)] : null;
+    if (!at) continue;
+    const el = document.createElement('button'); el.type = 'button'; el.className = 'wayli-alt' + (c.idx === altSel ? ' sel' : '');
+    el.textContent = dur(c.j.arrive - c.j.depart);
+    el.addEventListener('click', (e) => { e.stopPropagation(); selectAlt(c.idx); });
+    altMarkers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(at).addTo(m));
+  }
+  m.getSource('alts').setData({ type: 'FeatureCollection', features });
+  const sel = shown.find((c) => c.idx === altSel) || shown[0];
+  drawJourney(m, sel.j, journeyMarkers, -1, false);
+  fitMap(b, 15);
+};
 /** Focus one ride of the journey being shown (or release it): its course alone, only its vehicles, the map on it. */
 function focusLeg(i) {
   detailFocus = detailFocus === i ? -1 : i;
@@ -2204,7 +2278,7 @@ const pullRefresh = (() => {
 const sheet = {
   state: 'peek',
   dragH: null,   // the visible height while a finger drags it, else null
-  px(st) { return st === 'peek' ? 118 : st === 'half' ? Math.round(innerHeight * 0.46) : fullSheetPx(); },
+  px(st) { return st === 'peek' ? ($('peekLine').hidden ? 44 : 80) : st === 'half' ? Math.round(innerHeight * 0.46) : fullSheetPx(); },
   visible() { return this.dragH != null ? this.dragH : this.px(this.state); },
   /** Follow the finger: slide to a visible height without changing the state. */
   drag(h) {
@@ -2225,6 +2299,8 @@ const sheet = {
   },
   toggle() { this.set(this.state === 'peek' ? 'half' : this.state === 'half' ? 'full' : 'peek'); },
 };
+peekSync = () => { if (sheet.state === 'peek') sheet.set('peek'); };
+$('peekLine').addEventListener('click', () => { sheet.set('half'); const c = resultCards.find((x) => x.idx === altSel); if (c) c.el.scrollIntoView({ block: 'nearest' }); });
 {
   // Dragging: from anywhere on the sheet while it is collapsed or half open (the body does not scroll then;
   // the chip strip scrolls sideways, so a sideways start is left to it), from the handle and the top 96 px
@@ -2232,12 +2308,12 @@ const sheet = {
   // A tap on the handle steps through the sizes. A tap elsewhere stays a tap.
   const h = $('sheetHandle'), el = $('sheet');
   const ORDER = ['peek', 'half', 'full'];
-  let startX = 0, startY = 0, startH = 0, startState = 'peek', moved = false, dragging = false, onHandle = false, onStrip = false, swallow = false;
+  let startX = 0, startY = 0, startH = 0, startState = 'peek', moved = false, dragging = false, onHandle = false, swallow = false;
   let trail = [];   // the last few (time, y) of the finger, for its speed at release
   const speed = () => { const n = trail.length; if (n < 2) return 0; let i = n - 2; while (i > 0 && trail[n - 1].t - trail[i].t < 60) i--; const dt = trail[n - 1].t - trail[i].t; return dt > 0 ? (trail[n - 1].y - trail[i].y) / dt : 0; };
   el.addEventListener('pointerdown', (e) => {
     if (e.button) return;
-    onHandle = h.contains(e.target); onStrip = !!e.target.closest('.peekrow');
+    onHandle = h.contains(e.target);
     const nearTop = e.clientY - el.getBoundingClientRect().top < 96;
     if (document.body.classList.contains('page')) return;
     if (e.pointerType === 'touch' && sheet.state === 'peek') return;   // a finger on the collapsed sheet: the touch handler below
@@ -2250,7 +2326,6 @@ const sheet = {
     const dy = startY - e.clientY, dx = e.clientX - startX;
     if (!moved) {
       if (Math.abs(dy) < 4 && Math.abs(dx) < 4) return;
-      if (onStrip && Math.abs(dx) > Math.abs(dy)) { dragging = false; return; }   // a sideways scroll of the chips
       moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch (x) {}
     }
     trail.push({ t: performance.now(), y: e.clientY }); if (trail.length > 8) trail.shift();
@@ -2285,30 +2360,26 @@ const sheet = {
   el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
   h.addEventListener('click', () => { if (!swallow) sheet.toggle(); });
   // Collapsed, every touch on the sheet is ours (touch-action none, so the browser never claims a gesture and
-  // the events keep coming): a pull up opens it, a pull down is the pull-to-refresh, a sideways move on the
-  // chip strip scrolls the strip (with a little fling). The direction is read once, after 6 px.
+  // the events keep coming): a pull up opens it, a pull down is the pull-to-refresh. The direction is read
+  // once, after 6 px.
   {
-    const strip = $('peekRow');
-    let pOn = false, pMode = '', pX = 0, pY = 0, pH = 0, pStrip = false, lastX = 0, xTrail = [];
+    let pOn = false, pMode = '', pY = 0, pH = 0;
     el.addEventListener('touchstart', (e) => {
       pOn = false;
       if (sheet.state !== 'peek' || e.touches.length !== 1 || document.body.classList.contains('page') || e.target.closest('input, select, textarea')) return;
-      pOn = true; pMode = ''; pX = lastX = e.touches[0].clientX; pY = e.touches[0].clientY; pH = sheet.visible(); pStrip = !!e.target.closest('.peekrow');
-      trail = [{ t: performance.now(), y: pY }]; xTrail = [{ t: performance.now(), x: pX }];
+      pOn = true; pMode = ''; pY = e.touches[0].clientY; pH = sheet.visible();
+      trail = [{ t: performance.now(), y: pY }];
     }, { passive: true });
     el.addEventListener('touchmove', (e) => {
       if (!pOn) return;
-      const x = e.touches[0].clientX, y = e.touches[0].clientY, up = pY - y, dx = x - pX;
+      const y = e.touches[0].clientY, up = pY - y;
       if (!pMode) {
-        if (Math.abs(up) < 6 && Math.abs(dx) < 6) return;
-        if (pStrip && Math.abs(dx) > Math.abs(up) * 1.4) pMode = 'scroll';
-        else pMode = up > 0 ? 'sheet' : 'refresh';
+        if (Math.abs(up) < 6) return;
+        pMode = up > 0 ? 'sheet' : 'refresh';
         if (pMode === 'sheet') el.classList.add('dragging');
       }
-      if (pMode === 'scroll') { strip.scrollBy({ left: -(x - lastX) }); xTrail.push({ t: performance.now(), x }); if (xTrail.length > 8) xTrail.shift(); }
-      else if (pMode === 'refresh') pullRefresh.move(-up - 6);
+      if (pMode === 'refresh') pullRefresh.move(-up - 6);
       else { trail.push({ t: performance.now(), y }); if (trail.length > 8) trail.shift(); sheet.drag(Math.max(sheet.px('peek'), Math.min(sheet.px('full'), pH + up))); }
-      lastX = x;
     }, { passive: true });
     const pEnd = () => {
       if (!pOn) return;
@@ -2316,13 +2387,6 @@ const sheet = {
       if (!pMode) return;
       swallow = true; setTimeout(() => { swallow = false; }, 60);
       if (pMode === 'refresh') { pullRefresh.end(); return; }
-      if (pMode === 'scroll') {   // a fling: the strip keeps going a little
-        const n = xTrail.length; let i = n - 2; while (i > 0 && xTrail[n - 1].t - xTrail[i].t < 60) i--;
-        const dt = n > 1 ? xTrail[n - 1].t - xTrail[i].t : 0; let vx = dt > 0 ? (xTrail[n - 1].x - xTrail[i].x) / dt : 0;
-        const fling = () => { strip.scrollBy({ left: -vx * 16 }); vx *= 0.9; if (Math.abs(vx) > 0.03) requestAnimationFrame(fling); };
-        if (Math.abs(vx) > 0.2) requestAnimationFrame(fling);
-        return;
-      }
       el.classList.remove('dragging');
       const hh = sheet.visible();
       sheet.dragEnd();

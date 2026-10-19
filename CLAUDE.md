@@ -90,7 +90,10 @@ and has settings. 2026-10-18 later: one vector icon set replaces every
 emoji (also the map badges), settings are grouped lists, the menu opens from
 a user button in the search pill, the sheet drags from anywhere, and train
 courses meet the track beside each station. 2026-10-19: stop names,
-headsigns and the basemap's labels follow the language setting (English from
-the feed's translations). Next: crowd reports, Arabic, elevation, measuring
-live-data freshness in daily use, a fallback relay only if Hasadna proves
-unreliable.
+headsigns, the address book and the basemap's labels follow the language
+setting (English from the feed's translations and OpenStreetMap); the first
+three ways are drawn on the map together, one highlighted, with a map button
+per card; the collapsed sheet is a handle plus one line about the
+highlighted way (the chip strip is gone); the top bar is pills. Next: crowd
+reports, Arabic, elevation, measuring live-data freshness in daily use, a
+fallback relay only if Hasadna proves unreliable.
