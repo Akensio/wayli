@@ -8,7 +8,7 @@
 const LIBERTY = 'https://tiles.openfreemap.org/styles/liberty';
 const cache = {};
 
-export const PALETTES = {
+const TEAL = {
   // the app's turquoise (#12998b) tints what carries colour: motorways, water, parks, casings and labels; the rest stays neutral
   light: {
     land: '#f2f4f3', landuse: '#ebeeed', park: '#d6e9e1', wood: '#cbe2d8', sand: '#ebe9d9', ice: '#edf1f1', water: '#b9dfe0', waterLine: '#a5d3d4',
@@ -27,6 +27,27 @@ export const PALETTES = {
     text: '#b4c4c0', place: '#dde9e6', halo: '#141918', icon: '#8fb3ac', iconHalo: '#141918',
   },
 };
+const NEUTRAL = {
+  light: {
+    land: '#f3f2ee', landuse: '#edebe6', park: '#dbe9d2', wood: '#d2e2c8', sand: '#efe8d0', ice: '#edf0f1', water: '#c3d8ee', waterLine: '#b5cde8',
+    building: '#e8e6e1', buildingOutline: '#dad7d0', aeroway: '#e9e7e2',
+    motorway: '#f4d9a0', motorwayCasing: '#e0c285', primary: '#ffffff', primaryCasing: '#d5d1c9', secondary: '#ffffff', secondaryCasing: '#dcd8d1',
+    minor: '#ffffff', minorCasing: '#e3e0d9', service: '#faf9f6', serviceCasing: '#e6e3dc', path: '#e6e3dc', pathCasing: '#dedbd3', rail: '#c9c4bb',
+    tunnel: '#efede8', tunnelCasing: '#e2dfd8', boundary: '#cbc6be',
+    text: '#4a4f57', place: '#2d3136', halo: '#ffffff', icon: '#6a7079', iconHalo: '#ffffff',
+  },
+  dark: {
+    land: '#191c21', landuse: '#1c1f25', park: '#1a2420', wood: '#182119', sand: '#22231e', ice: '#1d2126', water: '#0e1a2c', waterLine: '#132238',
+    building: '#22262d', buildingOutline: '#2b3038', aeroway: '#1f2329',
+    motorway: '#565b67', motorwayCasing: '#33373f', primary: '#454a54', primaryCasing: '#2a2e35', secondary: '#3b4048', secondaryCasing: '#272b32',
+    minor: '#31353d', minorCasing: '#24282e', service: '#2a2e35', serviceCasing: '#212529', path: '#33373f', pathCasing: '#272b31', rail: '#4a4f59',
+    tunnel: '#20242a', tunnelCasing: '#1c1f25', boundary: '#3a3f48',
+    text: '#b6bcc6', place: '#e0e4e9', halo: '#15181d', icon: '#9aa1ab', iconHalo: '#15181d',
+  },
+};
+/** The palettes: `teal` carries the app's turquoise, `neutral` is the quiet grey family (Positron, Transit app); each light and dark. */
+export const PALETTES = { teal: TEAL, neutral: NEUTRAL };
+
 
 /** The palette key a layer's colour property maps to, from the layer's id and the property. */
 function roleOf(layer, prop) {
@@ -85,9 +106,10 @@ function walk(v, role, pal) {
 const COLOR_PROPS = ['background-color', 'fill-color', 'fill-outline-color', 'fill-extrusion-color', 'line-color', 'text-color', 'text-halo-color', 'icon-color', 'icon-halo-color', 'circle-color', 'circle-stroke-color'];
 
 /** Liberty in Wayli's palette, 'light' or 'dark'; fetched once per mode. */
-export async function styledLiberty(mode = 'light') {
-  if (cache[mode]) return cache[mode];
-  const pal = PALETTES[mode] || PALETTES.light;
+export async function styledLiberty(mode = 'light', tint = 'teal') {
+  const key = tint + ':' + mode;
+  if (cache[key]) return cache[key];
+  const pal = (PALETTES[tint] || TEAL)[mode] || TEAL.light;
   const style = await (await fetch(LIBERTY)).json();
   for (const layer of style.layers || []) {
     // the sprite's hatchings (construction sites, pedestrian areas, rail ties) are black and white: faint in the dark
@@ -101,7 +123,7 @@ export async function styledLiberty(mode = 'light') {
       for (const k of COLOR_PROPS) if (k in props) props[k] = walk(props[k], roleOf(layer, k), pal);
     }
   }
-  style.name = `Liberty, Wayli ${mode}`;
-  cache[mode] = style;
+  style.name = `Liberty, Wayli ${tint} ${mode}`;
+  cache[key] = style;
   return style;
 }

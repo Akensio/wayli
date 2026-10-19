@@ -567,3 +567,6 @@ so they are not re-litigated.
   removes it, taking the clock with it). The strip now takes the exact
   ground colour of the current palette, so it continues the map's ground;
   on iPhone the status bar is translucent and the map runs under it.
+- 2026-10-20 Gadi: the neutral palette "is not bad" either. Both stay: a
+  "map colours" setting, turquoise (default) or neutral, each light and
+  dark, so he can compare on the phone.

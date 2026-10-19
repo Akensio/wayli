@@ -79,7 +79,7 @@ const STR = {
     locating: 'מאתר…', m: 'מ\'', inMin: 'בעוד {n} דק\'', nowDep: 'עכשיו', noDeps: 'אין יציאות נוספות היום.', favEmptyTrips: 'עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.',
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
     dayFmt: ['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], today: 'היום', tomorrow: 'מחר', tonight: 'הלילה',
-    offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מראה המפה', setTheme: 'מראה התפריטים', mapLight: 'בהיר', mapDark: 'כהה', mapSystem: 'כמו המכשיר', grpGeneral: 'כללי', grpPlan: 'תכנון', grpLive: 'זמן אמת והתראות', grpApp: 'האפליקציה', grpAbout: 'על Wayli', menuNote: 'בלי חשבון. הכול נשאר בטלפון.', setWalkHint: 'דקות, לכל היותר, לתחנה הראשונה ומהאחרונה',
+    offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מראה המפה', setTint: 'צבעי המפה', tintTeal: 'טורקיז', tintNeutral: 'ניטרלי', setTheme: 'מראה התפריטים', mapLight: 'בהיר', mapDark: 'כהה', mapSystem: 'כמו המכשיר', grpGeneral: 'כללי', grpPlan: 'תכנון', grpLive: 'זמן אמת והתראות', grpApp: 'האפליקציה', grpAbout: 'על Wayli', menuNote: 'בלי חשבון. הכול נשאר בטלפון.', setWalkHint: 'דקות, לכל היותר, לתחנה הראשונה ומהאחרונה',
     setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', iosInstall: 'ב-{browser}: לחצו על כפתור השיתוף ({where}) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', shareBottom: 'ריבוע עם חץ למעלה, בתחתית המסך', shareAddr: 'ריבוע עם חץ למעלה, ליד שורת הכתובת', shareMenu: 'בתפריט הדפדפן', reload: 'רענון האפליקציה', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
     startTrip: 'התחלת נסיעה', share: 'שיתוף', endTrip: 'סיום', nextStep: 'השלב הבא ›', home: 'בית', work: 'עבודה', notSet: 'לא הוגדר. לחצו כדי לבחור.', change: 'שינוי', addPlace: '+ מקום שמור', remove: 'הסרה',
@@ -116,7 +116,7 @@ const STR = {
     locating: 'Locating…', m: 'm', inMin: 'in {n} min', nowDep: 'now', noDeps: 'No more departures today.', favEmptyTrips: 'No saved trips yet. Tap the star in a journey.',
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
     dayFmt: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], today: 'Today', tomorrow: 'Tomorrow', tonight: 'Tonight',
-    offline: 'offline', resume: 'Resume', departAt: 'Depart', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map look', setTheme: 'Menus look', mapLight: 'Light', mapDark: 'Dark', mapSystem: 'Device', grpGeneral: 'General', grpPlan: 'Planning', grpLive: 'Live times and alerts', grpApp: 'The app', grpAbout: 'About Wayli', menuNote: 'No account. Everything stays on your phone.', setWalkHint: 'minutes at most, to the first stop and from the last',
+    offline: 'offline', resume: 'Resume', departAt: 'Depart', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map look', setTint: 'Map colours', tintTeal: 'Turquoise', tintNeutral: 'Neutral', setTheme: 'Menus look', mapLight: 'Light', mapDark: 'Dark', mapSystem: 'Device', grpGeneral: 'General', grpPlan: 'Planning', grpLive: 'Live times and alerts', grpApp: 'The app', grpAbout: 'About Wayli', menuNote: 'No account. Everything stays on your phone.', setWalkHint: 'minutes at most, to the first stop and from the last',
     setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', iosInstall: 'In {browser}: tap the Share button ({where}) and then "Add to Home Screen". The app then opens full screen, without the browser bar.', shareBottom: 'the square with an arrow, at the bottom of the screen', shareAddr: 'the square with an arrow, next to the address bar', shareMenu: 'in the browser menu', reload: 'Reload the app', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone sends their server the line numbers and the area you are looking at. Nothing else.',
     startTrip: 'Start trip', share: 'Share', endTrip: 'End', nextStep: 'Next step ›', home: 'Home', work: 'Work', notSet: 'Not set. Tap to choose.', change: 'Change', addPlace: '+ Saved place', remove: 'Remove',
@@ -990,22 +990,23 @@ function applyTheme() {
   if (th === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = th;
   // the installed app's status bar continues the map: the map's ground colour, light or dark, not a coloured app bar
   // Android keeps the status bar as a strip of one colour, so it takes the map's exact ground colour (iPhone draws the map under it)
-  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = PALETTES[wantDarkMap() ? 'dark' : 'light'].land;
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = PALETTES[mapTint()][wantDarkMap() ? 'dark' : 'light'].land;
 }
-applyTheme();
 const styles = {}, styleLoading = {};
+const mapTint = () => (settings.get().mapTint === 'neutral' ? 'neutral' : 'teal');
+const styleKey = () => mapTint() + ':' + (wantDarkMap() ? 'dark' : 'light');
+applyTheme();   // after the helpers it reads
 /** Resolves once the style to use is at hand (Liberty in Wayli's palette needs a fetch); maps are made after it. */
 function styleReady() {
-  const mode = wantDarkMap() ? 'dark' : 'light';
-  if (styles[mode]) return Promise.resolve();
-  if (!styleLoading[mode]) styleLoading[mode] = styledLiberty(mode).then((st) => { styles[mode] = st; }).catch(() => {}).finally(() => { styleLoading[mode] = null; });
-  return styleLoading[mode];
+  const key = styleKey();
+  if (styles[key]) return Promise.resolve();
+  if (!styleLoading[key]) styleLoading[key] = styledLiberty(wantDarkMap() ? 'dark' : 'light', mapTint()).then((st) => { styles[key] = st; }).catch(() => {}).finally(() => { styleLoading[key] = null; });
+  return styleLoading[key];
 }
 function mapStyle() {
   let o = null; try { o = localStorage.getItem('wayli-map-style'); } catch (e) {}
   if (o) return `https://tiles.openfreemap.org/styles/${o}`;
-  const mode = wantDarkMap() ? 'dark' : 'light';
-  return styles[mode] || 'https://tiles.openfreemap.org/styles/liberty';
+  return styles[styleKey()] || 'https://tiles.openfreemap.org/styles/liberty';
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapStyle);
 let rtlSet = false;
@@ -1908,13 +1909,14 @@ function renderSaved() {
 function renderSettings() {
   const s = settings.get();
   const seg = (id, v) => { for (const b of $(id).querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); };
-  seg('setLang', lang); seg('setMap', mapChoice()); seg('setTheme', s.theme || 'system');
+  seg('setLang', lang); seg('setMap', mapChoice()); seg('setTheme', s.theme || 'system'); seg('setTint', s.mapTint === 'neutral' ? 'neutral' : 'teal');
   $('setWalk').value = s.maxWalk;
   $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
 }
 for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
 for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); applyTheme(); renderSettings(); });
 for (const b of $('setTheme').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ theme: b.dataset.v }); applyTheme(); renderSettings(); });
+for (const b of $('setTint').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ mapTint: b.dataset.v }); applyMapStyle(); applyTheme(); renderSettings(); });
 const setWalk = (v) => { settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(+v) || 15)) }); renderSettings(); };
 $('setWalk').addEventListener('change', () => setWalk($('setWalk').value));
 $('walkMinus').addEventListener('click', () => setWalk(settings.get().maxWalk - 1));
