@@ -220,6 +220,17 @@ references in markup and templates, and drawn with the same paths through
 emoji anywhere in the interface: emoji render differently on every phone
 and cannot take the app's colours.
 
+The compass button is a needle with depth (red north, pale south, a
+centre pin), tilted in real perspective with the map. The collapsed sheet
+leaves a pull down to the browser (pull-to-refresh); a pull up is still the
+sheet's; the drawer also has "reload the app" for the installed app, which
+has no browser bar. On iPhones, which never fire the install prompt, the
+settings row "add to home screen" shows Safari's own way (Share, then Add
+to Home Screen); the page carries the Apple meta tags and touch icon.
+
+Checks: `npx --yes eslint@9 app/*.js` (eslint.config.mjs at the root, the
+no-undef rule) runs in the deploy workflow before the build.
+
 A plan from now also looks ten minutes back: what left in that time goes
 in a strip of its own above the list ("already left, on board?"), each with
 an "I'm on it" button, for the rider who boarded before opening the app.

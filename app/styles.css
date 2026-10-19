@@ -324,7 +324,9 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { transition: bottom .25s, opacity .2s; }
 .livenote { max-width: calc(100vw - 80px); }
 .maplibregl-ctrl-group.wayli-hidden { display: none; }
-.maplibregl-ctrl-group button.maplibregl-ctrl-compass { width: 40px; height: 40px; }
+.maplibregl-ctrl-group button.maplibregl-ctrl-compass { width: 46px; height: 46px; perspective: 70px; border-radius: 50%; }
+.maplibregl-ctrl-group:has(.maplibregl-ctrl-compass) { border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.maplibregl-ctrl-compass .maplibregl-ctrl-icon { background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"%3E%3Cdefs%3E%3ClinearGradient id="n" x1="0" y1="0" x2="1" y2="0"%3E%3Cstop offset="0" stop-color="#ff7b7b"/%3E%3Cstop offset=".5" stop-color="#e03a3a"/%3E%3Cstop offset="1" stop-color="#9e1818"/%3E%3C/linearGradient%3E%3ClinearGradient id="s" x1="0" y1="0" x2="1" y2="0"%3E%3Cstop offset="0" stop-color="#ffffff"/%3E%3Cstop offset=".5" stop-color="#dfe4ea"/%3E%3Cstop offset="1" stop-color="#9aa3ad"/%3E%3C/linearGradient%3E%3CradialGradient id="d" cx=".5" cy=".5" r=".5"%3E%3Cstop offset=".7" stop-color="#1b1f24" stop-opacity=".06"/%3E%3Cstop offset="1" stop-color="#1b1f24" stop-opacity=".18"/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx="22" cy="22" r="21" fill="url(#d)"/%3E%3Ccircle cx="22" cy="22" r="20.2" fill="none" stroke="#5b6470" stroke-opacity=".45" stroke-width="1"/%3E%3Cpath d="M22 3.5 29 22 15 22Z" fill="url(#n)"/%3E%3Cpath d="M22 40.5 29 22 15 22Z" fill="url(#s)" stroke="#8d96a0" stroke-width=".5"/%3E%3Ccircle cx="22" cy="22" r="2.8" fill="#1b1f24"/%3E%3Ccircle cx="21.2" cy="21.2" r=".9" fill="#ffffff" fill-opacity=".7"/%3E%3C/svg%3E") !important; background-size: 38px 38px; background-position: center; transform-style: preserve-3d; filter: drop-shadow(0 3px 3px rgba(0,0,0,.35)); transition: transform .15s; }
 .wayli-pick { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg) translate(6px, -6px); background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 .crosshair-unused { position: fixed; left: 50%; top: 50%; width: 28px; height: 28px; margin: -28px 0 0 -14px; pointer-events: none; z-index: 25;
   background: radial-gradient(circle at 50% 35%, var(--accent) 0 7px, transparent 8px); }
@@ -338,7 +340,8 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
 .handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
-.sheet[data-state="peek"], .sheet[data-state="half"] { touch-action: none; }
+.sheet[data-state="half"] { touch-action: none; }
+.sheet[data-state="peek"] { touch-action: pan-y; }   /* a pull down here is the browser's pull-to-refresh; a pull up is still ours */
 .sheet[data-state="half"] .sheet-body { overflow: hidden; }
 .sheet[data-state="full"] .sheet-body { scroll-padding-top: 0; }
 .handle span { width: 56px; height: 6px; border-radius: 3px; background: var(--line); }
@@ -360,7 +363,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; }
 .optpanel[hidden] { display: none; }
 .optpanel .primary { margin-top: 10px; }
-.peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; touch-action: pan-x; }
+.peekrow { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; touch-action: pan-x pan-y; }
 .peekrow::-webkit-scrollbar { display: none; }
 .peekrow .chipbtn { flex: none; white-space: nowrap; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 .chipbtn.accent { background: var(--accent); color: var(--accent-ink); font-weight: 600; }

@@ -79,7 +79,7 @@ const STR = {
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
     dayFmt: ['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], today: 'היום', tomorrow: 'מחר', tonight: 'הלילה',
     offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מראה המפה', mapLight: 'בהירה', mapDark: 'כהה', grpGeneral: 'כללי', grpPlan: 'תכנון', grpLive: 'זמן אמת והתראות', grpApp: 'האפליקציה', grpAbout: 'על Wayli', menuNote: 'בלי חשבון. הכול נשאר בטלפון.', setWalkHint: 'דקות, לכל היותר, לתחנה הראשונה ומהאחרונה',
-    setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', clearHistory: 'מחיקת היסטוריה',
+    setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', iosInstall: 'ב-Safari: לחצו על כפתור השיתוף (ריבוע עם חץ למעלה) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', reload: 'רענון האפליקציה', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
     startTrip: 'התחלת נסיעה', share: 'שיתוף', endTrip: 'סיום', nextStep: 'השלב הבא ›', home: 'בית', work: 'עבודה', notSet: 'לא הוגדר. לחצו כדי לבחור.', change: 'שינוי', addPlace: '+ מקום שמור', remove: 'הסרה',
     recentTitle: 'חיפושים אחרונים', planAgain: 'חישוב מחדש מעכשיו', resultsFrom: 'תוצאות מ-{time}', leaveIn: 'יוצאים בעוד {n} דק\'', leaveNow: 'יוצאים עכשיו', departed: 'יצא', goneTitle: 'כבר יצאו · עליתם?', leftAgo: 'יצא לפני {n} דק\'', aboard: 'אני בפנים', earlier: '‹ מוקדם יותר', later: 'מאוחר יותר ›',
@@ -116,7 +116,7 @@ const STR = {
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
     dayFmt: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], today: 'Today', tomorrow: 'Tomorrow', tonight: 'Tonight',
     offline: 'offline', resume: 'Resume', departAt: 'Depart', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map look', mapLight: 'Light', mapDark: 'Dark', grpGeneral: 'General', grpPlan: 'Planning', grpLive: 'Live times and alerts', grpApp: 'The app', grpAbout: 'About Wayli', menuNote: 'No account. Everything stays on your phone.', setWalkHint: 'minutes at most, to the first stop and from the last',
-    setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', clearHistory: 'Clear history',
+    setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', iosInstall: 'In Safari: tap the Share button (the square with an arrow) and then "Add to Home Screen". The app then opens full screen, without the browser bar.', reload: 'Reload the app', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone sends their server the line numbers and the area you are looking at. Nothing else.',
     startTrip: 'Start trip', share: 'Share', endTrip: 'End', nextStep: 'Next step ›', home: 'Home', work: 'Work', notSet: 'Not set. Tap to choose.', change: 'Change', addPlace: '+ Saved place', remove: 'Remove',
     recentTitle: 'Recent searches', planAgain: 'Plan again from now', resultsFrom: 'Results from {time}', leaveIn: 'Leave in {n} min', leaveNow: 'Leave now', departed: 'departed', goneTitle: 'Already left · on board?', leftAgo: 'left {n} min ago', aboard: 'I\'m on it', earlier: '‹ Earlier', later: 'Later ›',
@@ -308,7 +308,11 @@ function startDay() {
 
 let installPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; $('installBtn').hidden = false; });
-$('installBtn').addEventListener('click', async () => { if (!installPrompt) return; installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; $('installBtn').hidden = true; });
+// iPhones and iPads never fire that event: the row shows there too and explains Safari's own way
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = navigator.standalone === true || (matchMedia('(display-mode: standalone)').matches);
+if (isIOS && !standalone) $('installBtn').hidden = false;
+$('installBtn').addEventListener('click', async () => { if (!installPrompt) { $('installHint').hidden = !$('installHint').hidden; return; } installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; $('installBtn').hidden = true; });
 const updateOnline = () => { $('offline').hidden = navigator.onLine !== false; };
 window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline);
 
@@ -516,6 +520,7 @@ function clearPlan() {
 }
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
+$('menuReload').addEventListener('click', () => location.reload());
 for (const id of ['menuBtn', 'menuBtn2']) $(id).addEventListener('click', () => { $('toQ').blur(); showOverlay('drawer'); });
 $('backdrop').addEventListener('click', () => nav.close('drawer'));
 $('menuClose').addEventListener('click', () => nav.close('drawer'));

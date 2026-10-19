@@ -68,6 +68,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `app/feasibility.html` | The routing test page (older harness). `app/bench.mjs` times the router in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` builds the artifact variant. |
 | `pipeline/build_site.py` | Assembles `site/`: app files, per-day timetables, street graph, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |
+| `eslint.config.mjs` | The lint check (undeclared names are errors): `npx --yes eslint@9 app/*.js`, also run by the workflow before every build. Run it before pushing app code. |
 | `data/`, `site/` | Gitignored: downloads, compiled files, the built site. |
 
 Planned, not yet created: `worker/` (Cloudflare Worker for the real-time

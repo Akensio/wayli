@@ -346,3 +346,16 @@ so they are not re-litigated.
   loop-scoped name; Safari threw it into the plan's error handler, which
   wiped the results. Removed; an eslint no-undef scan of every module is
   now part of the checks.
+- 2026-10-19 Gadi: "add to home screen" does not work on iPhone. iOS never
+  fires the install prompt; the row now shows on iPhones with Safari's own
+  steps. Pull-to-refresh did not work anywhere: the collapsed sheet now
+  leaves a pull down to the browser, and the drawer has "reload the app".
+  The 3D ask was about the compass button, not the map: a needle with depth
+  in real perspective; the map's sky and light stay, they cost nothing.
+- 2026-10-19 Gadi asks about a future stack (TypeScript, React, strict
+  lint) so such bugs cannot happen. Answer in the conversation and here:
+  the bug class is "undeclared name", which eslint no-undef (now in CI) and
+  TypeScript both catch; React would not have, and the no-framework,
+  no-build-step rule stays. Path if wanted: TypeScript's checkJs with JSDoc
+  first (no build step), then .ts with tsc in CI; measured today: checkJs
+  with strict off reports 114 findings, 97 of them DOM typing.
