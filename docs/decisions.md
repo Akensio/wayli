@@ -587,3 +587,7 @@ so they are not re-litigated.
   the drawer's transform animated from the right edge to the left edge
   across the screen. The language and direction are now set before the
   first paint, and the drawer has no transition until the app has booted.
+- 2026-10-20 Gadi: both option chips glowed when one popover opened (only
+  the open one now); bus stops on the map are small and some seem missing
+  (the dots and badges are a third larger, badges never yield to labels; a
+  stop without service that day is still left off, by design).

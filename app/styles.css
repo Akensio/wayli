@@ -450,7 +450,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 /* the options in the top bar: two chips under the origin (when; bicycle); their details in a card hanging off the bar */
 .topbar .trow.opts { padding-inline-start: 54px; gap: 6px; }
 .topbar .trow.opts .chipbtn { background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-weight: 600; }
-.topbar.open .trow.opts .chipbtn { background: var(--ink); color: var(--bg); }
+.topbar .trow.opts .chipbtn.open { background: var(--ink); color: var(--bg); }   /* only the chip whose popover is open */
 /* the option popovers under the chips: when (depart or arrive, day pills, now or a time) and bicycle; changes apply at once */
 .optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .optpanel[hidden], .optpanel > [hidden] { display: none; }
