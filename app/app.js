@@ -42,6 +42,7 @@ const ICONS = {
   live: 'M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2',
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a13.5 13.5 0 0 1 0 18M12 3a13.5 13.5 0 0 0 0 18',
   moon: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4',
   trash: 'M4 7h16M10 11.5v6M14 11.5v6M6 7l1 13h10l1-13M9 7V4h6v3',
   download: 'M12 3.5v12M7 11l5 5 5-5M4 20h16',
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.5M12 7.5h.01',
@@ -78,7 +79,7 @@ const STR = {
     locating: 'מאתר…', m: 'מ\'', inMin: 'בעוד {n} דק\'', nowDep: 'עכשיו', noDeps: 'אין יציאות נוספות היום.', favEmptyTrips: 'עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.',
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
     dayFmt: ['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], today: 'היום', tomorrow: 'מחר', tonight: 'הלילה',
-    offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מראה המפה', mapLight: 'בהירה', mapDark: 'כהה', grpGeneral: 'כללי', grpPlan: 'תכנון', grpLive: 'זמן אמת והתראות', grpApp: 'האפליקציה', grpAbout: 'על Wayli', menuNote: 'בלי חשבון. הכול נשאר בטלפון.', setWalkHint: 'דקות, לכל היותר, לתחנה הראשונה ומהאחרונה',
+    offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מראה המפה', setTheme: 'מראה התפריטים', mapLight: 'בהיר', mapDark: 'כהה', mapSystem: 'כמו המכשיר', grpGeneral: 'כללי', grpPlan: 'תכנון', grpLive: 'זמן אמת והתראות', grpApp: 'האפליקציה', grpAbout: 'על Wayli', menuNote: 'בלי חשבון. הכול נשאר בטלפון.', setWalkHint: 'דקות, לכל היותר, לתחנה הראשונה ומהאחרונה',
     setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', iosInstall: 'ב-Safari: לחצו על כפתור השיתוף (ריבוע עם חץ למעלה) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', reload: 'רענון האפליקציה', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
     startTrip: 'התחלת נסיעה', share: 'שיתוף', endTrip: 'סיום', nextStep: 'השלב הבא ›', home: 'בית', work: 'עבודה', notSet: 'לא הוגדר. לחצו כדי לבחור.', change: 'שינוי', addPlace: '+ מקום שמור', remove: 'הסרה',
@@ -90,7 +91,7 @@ const STR = {
     getOffNext: 'לרדת בתחנה הבאה!', getOffNow: 'לרדת כאן: {name}', arrived: 'הגעתם ליעד 🎉', arrivesAt: 'הגעה ב-{time}', boarded: 'עלינו על קו {line}', tripOver: 'הנסיעה הזאת כבר הסתיימה.', tripEnded: 'הנסיעה הסתיימה.',
     alertSoon: 'עוד תחנה אחת', alertSoonBody: 'יורדים ב{name}', alertOff: 'לרדת כאן', alertArrived: 'הגעתם', testAlertMsg: 'כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.', alertPermNo: 'התראות חסומות לאתר; יישארו רטט וצליל.',
     gpsNo: 'אין מיקום, מתקדם לפי השעון', gpsOk: 'מיקום {acc} מ\'', followTitle: '{line} ← {to}', walkTitle: 'הליכה ← {to}', copied: 'הקישור הועתק', walkToDest: 'הליכה {min} דק\' אל היעד: {name}',
-    agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים · נתונים מ-{time}', liveOnlyLines: 'רק קווי החיפוש', liveNearLines: 'קווי התחנות שלידי', legHint: 'לחיצה על נסיעה מציגה רק את הקו שלה במפה', liveMapNone: 'אין רכבים בשידור באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', feedBehind: 'המקור מפגר', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
+    agoMin: 'לפני {n} דק\'', liveMap: 'מפה חיה', liveMapCount: '{n} רכבים{scope} · נתונים מ-{time}{age}', liveMapOne: 'רכב אחד{scope} · נתונים מ-{time}{age}', liveScopeSearch: ' מקווי החיפוש', liveScopeNear: ' מהקווים שלידי', liveAge: ' (לפני {n} דק\')', liveAgeBehind: ' (לפני {n} דק\', המקור מפגר)', legHint: 'לחיצה על נסיעה מציגה רק את הקו שלה במפה', liveMapNone: 'אין כרגע רכבים משדרים{scope} באזור הזה', liveMapZoom: 'התקרבו כדי לראות רכבים', seenAgo: 'דווח ב-{time}', feedBehind: 'המקור מפגר', kmh: 'קמ"ש', livePlanned: 'זמני אמת מ-{time}', schedOnly: 'לוח זמנים בלבד', liveDelay: '⦿ {d} דק\'',
     stopsCount: '{n} תחנות', popStops: 'התחנות', popLine: 'הקו', popDeps: 'יציאות', lineSearch: 'חיפוש קו לפי מספר', lineTitle: 'קו {line}', tripsToday: '{n} נסיעות היום', lineNoMatch: 'אין קו כזה היום', vehiclesOnLine: '{n} בשידור', otherDir: 'לכיוון {headsign}', noLineVehicles: 'אין רכב בשידור בקו',
     fasterWay: 'יש דרך מהירה יותר', altGetOff: 'לרדת ב{stop}', altInstead: 'במקום קו {line}', altThen: 'קו {line} לכיוון {headsign} ב-{time}', altArrive: 'הגעה ב-{time}, {n} דק\' קודם', switchRoute: 'מעבר למסלול הזה', keepRoute: 'להישאר', routeSwitched: 'המסלול הוחלף',
     chooseHome: 'איפה הבית?', chooseWork: 'איפה העבודה?', choosePlace: 'מקום לשמירה', savePlace: 'שמירה', unsavePlace: 'הסרה מהשמורים', fromMyLoc: 'מהמיקום שלי', historyCleared: 'ההיסטוריה נמחקה', walkOnly: 'הליכה כל הדרך: {min} דק\'',
@@ -115,7 +116,7 @@ const STR = {
     locating: 'Locating…', m: 'm', inMin: 'in {n} min', nowDep: 'now', noDeps: 'No more departures today.', favEmptyTrips: 'No saved trips yet. Tap the star in a journey.',
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
     dayFmt: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], today: 'Today', tomorrow: 'Tomorrow', tonight: 'Tonight',
-    offline: 'offline', resume: 'Resume', departAt: 'Depart', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map look', mapLight: 'Light', mapDark: 'Dark', grpGeneral: 'General', grpPlan: 'Planning', grpLive: 'Live times and alerts', grpApp: 'The app', grpAbout: 'About Wayli', menuNote: 'No account. Everything stays on your phone.', setWalkHint: 'minutes at most, to the first stop and from the last',
+    offline: 'offline', resume: 'Resume', departAt: 'Depart', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map look', setTheme: 'Menus look', mapLight: 'Light', mapDark: 'Dark', mapSystem: 'Device', grpGeneral: 'General', grpPlan: 'Planning', grpLive: 'Live times and alerts', grpApp: 'The app', grpAbout: 'About Wayli', menuNote: 'No account. Everything stays on your phone.', setWalkHint: 'minutes at most, to the first stop and from the last',
     setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', iosInstall: 'In Safari: tap the Share button (the square with an arrow) and then "Add to Home Screen". The app then opens full screen, without the browser bar.', reload: 'Reload the app', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone sends their server the line numbers and the area you are looking at. Nothing else.',
     startTrip: 'Start trip', share: 'Share', endTrip: 'End', nextStep: 'Next step ›', home: 'Home', work: 'Work', notSet: 'Not set. Tap to choose.', change: 'Change', addPlace: '+ Saved place', remove: 'Remove',
@@ -127,7 +128,7 @@ const STR = {
     getOffNext: 'Get off at the next stop!', getOffNow: 'Get off here: {name}', arrived: 'You have arrived 🎉', arrivesAt: 'arrives at {time}', boarded: 'On line {line}', tripOver: 'This trip is already over.', tripEnded: 'Trip ended.',
     alertSoon: 'One more stop', alertSoonBody: 'Get off at {name}', alertOff: 'Get off here', alertArrived: 'You have arrived', testAlertMsg: 'This is what an alert looks like. If none showed, allow notifications for this site.', alertPermNo: 'Notifications are blocked for this site; vibration and sound remain.',
     gpsNo: 'no position, following the clock', gpsOk: 'position ±{acc} m', followTitle: '{line} → {to}', walkTitle: 'Walk → {to}', copied: 'Link copied', walkToDest: 'walk {min} min to the destination: {name}',
-    agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles · data as of {time}', liveOnlyLines: 'only the lines of this search', liveNearLines: 'lines of the stops near me', legHint: 'Tap a ride to see only its line on the map', liveMapNone: 'No vehicles reporting in this area', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', feedBehind: 'the source is behind', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
+    agoMin: '{n} min ago', liveMap: 'Live map', liveMapCount: '{n} vehicles{scope} · data as of {time}{age}', liveMapOne: 'One vehicle{scope} · data as of {time}{age}', liveScopeSearch: ' of the lines searched', liveScopeNear: ' of the lines near me', liveAge: ' ({n} min ago)', liveAgeBehind: ' ({n} min ago, the source is behind)', legHint: 'Tap a ride to see only its line on the map', liveMapNone: 'No vehicles{scope} reporting in this area right now', liveMapZoom: 'Zoom in to see vehicles', seenAgo: 'reported at {time}', feedBehind: 'the source is behind', kmh: 'km/h', livePlanned: 'live times as of {time}', schedOnly: 'schedule only', liveDelay: '⦿ {d} min',
     stopsCount: '{n} stops', popStops: 'Stops', popLine: 'Line', popDeps: 'Departures', lineSearch: 'Search a line by number', lineTitle: 'Line {line}', tripsToday: '{n} trips today', lineNoMatch: 'No such line today', vehiclesOnLine: '{n} reporting', otherDir: 'towards {headsign}', noLineVehicles: 'No vehicle of this line reporting',
     fasterWay: 'There is a faster way', altGetOff: 'Get off at {stop}', altInstead: 'Instead of line {line}', altThen: 'line {line} towards {headsign} at {time}', altArrive: 'arrive at {time}, {n} min earlier', switchRoute: 'Switch to it', keepRoute: 'Keep mine', routeSwitched: 'Route switched',
     chooseHome: 'Where is home?', chooseWork: 'Where is work?', choosePlace: 'Place to save', savePlace: 'Save', unsavePlace: 'Remove from saved', fromMyLoc: 'from my location', historyCleared: 'History cleared', walkOnly: 'Walk all the way: {min} min',
@@ -807,7 +808,16 @@ function renderPeek() {
 // ---------------------------------------------------------------- maps (MapLibre, OpenFreeMap vector tiles)
 // light Liberty everywhere; in dark mode, when chosen in settings, the same Liberty recoloured dark
 // (darkmap.js), so the dark map keeps every detail. (localStorage 'wayli-map-style' overrides, for trying others)
-const wantDarkMap = () => settings.get().map === 'dark' && matchMedia('(prefers-color-scheme: dark)').matches;
+const mapChoice = () => { const m = settings.get().map; return m === 'auto' ? 'system' : m || 'system'; };
+const wantDarkMap = () => mapChoice() === 'dark' || (mapChoice() === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+/** The interface's colours: light, dark, or the device's (the stylesheet reads data-theme; absent means the device decides). */
+function applyTheme() {
+  const th = settings.get().theme || 'system';
+  if (th === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = th;
+  const dark = th === 'dark' || (th === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = dark ? '#1e2227' : '#12998b';
+}
+applyTheme();
 let darkStyle = null, darkStyleLoading = null;
 /** Resolves once the style to use is at hand (the dark one needs a fetch); maps are made after it. */
 function styleReady() {
@@ -1469,8 +1479,9 @@ async function refreshLiveMap() {
     const nw = live.newest(vs);
     const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
     const shown = Array.isArray(liveShow) ? features.filter((f) => liveShow.includes(f.properties.ref)).length : features.length;
-    const why = !Array.isArray(liveShow) ? '' : nearRoutes && liveShow === nearRoutes.ids ? ' · ' + t('liveNearLines') : ' · ' + t('liveOnlyLines');
-    $('liveNote').textContent = (shown ? t('liveMapCount', { n: shown, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) + (ageMin >= 3 ? ` (${t('agoMin', { n: ageMin })})` : '') }) : t('liveMapNone')) + (shown && ageMin >= 4 ? ' · ' + t('feedBehind') : '') + why;
+    const scope = !Array.isArray(liveShow) ? '' : nearRoutes && liveShow === nearRoutes.ids ? t('liveScopeNear') : t('liveScopeSearch');
+    const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
+    $('liveNote').textContent = shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope });
     $('liveNote').classList.toggle('lag', !!shown && ageMin >= 4);
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch (e) {}
   } catch (e) { if (my === lmSeq) $('liveNote').textContent = t('liveFail'); }
@@ -1661,12 +1672,13 @@ function renderSaved() {
 function renderSettings() {
   const s = settings.get();
   const seg = (id, v) => { for (const b of $(id).querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); };
-  seg('setLang', lang); seg('setMap', s.map);
+  seg('setLang', lang); seg('setMap', mapChoice()); seg('setTheme', s.theme || 'system');
   $('setWalk').value = s.maxWalk;
   $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
 }
 for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
 for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); renderSettings(); });
+for (const b of $('setTheme').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ theme: b.dataset.v }); applyTheme(); renderSettings(); });
 const setWalk = (v) => { settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(+v) || 15)) }); renderSettings(); };
 $('setWalk').addEventListener('change', () => setWalk($('setWalk').value));
 $('walkMinus').addEventListener('click', () => setWalk(settings.get().maxWalk - 1));

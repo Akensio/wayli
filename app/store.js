@@ -4,7 +4,7 @@
 const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const set = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-const DEFAULTS = { map: 'auto', live: true, notify: true, sound: true, maxWalk: 15, lang: null };
+const DEFAULTS = { map: 'system', theme: 'system', live: true, notify: true, sound: true, maxWalk: 15, lang: null };   // map and theme: 'light' | 'dark' | 'system' (the old map value 'auto' reads as 'system')
 export const settings = {
   get() { return { ...DEFAULTS, ...get('wayli-settings', {}) }; },
   set(patch) { const s = { ...this.get(), ...patch }; set('wayli-settings', s); return s; },

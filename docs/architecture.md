@@ -358,6 +358,9 @@ live times and alerts, the app, about) with an icon per row: language and
 map look as pill segments, longest walk as a stepper, live times (with a
 plain statement of what is sent), alerts and sound as switches, then a test
 alert, add to home screen and clear history as rows, and the about text.
+Map look and menus look are each light, dark or the device's: the map
+through the light or the recoloured dark Liberty, the interface through a
+data-theme attribute the stylesheet reads (absent means the device decides).
 
 Time is Israel time whatever the phone's zone (`Intl` with
 `Asia/Jerusalem`), and "now" is expressed in seconds on the selected
@@ -484,7 +487,10 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   view); while results are shown, only the lines of those journeys (the
   note says which); hidden while a journey, a line or a followed trip
   draws its own vehicles (the rider's own carries its minutes late; the
-  others show it in their bubble). A vehicle whose last report is
+  others show it in their bubble). The note under the map is one sentence
+  per case: "12 vehicles of the lines searched · data as of 08:05 (18 min
+  ago, the source is behind)", or "No vehicles of the lines searched
+  reporting in this area right now". A vehicle whose last report is
   more than five minutes behind the newest report of the feed is not drawn
   at all (the feed lags as a whole; a single stale vehicle is noise). When
   the whole feed is four or more minutes behind the clock, every dot is

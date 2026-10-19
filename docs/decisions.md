@@ -365,3 +365,9 @@ so they are not re-litigated.
 - 2026-10-19 Gadi: the half-open sheet could not be scrolled; his earlier
   ask had been misread. Now half and full both scroll, and only a pull past
   the top edge folds the sheet or past the bottom edge opens it.
+- 2026-10-19 Gadi: the live note "אין רכבים בשידור באזור הזה · רק קווי
+  החיפוש" was broken Hebrew (two fragments glued). It is now a sentence per
+  case, in both languages.
+- 2026-10-19 Gadi: map look should be light / dark / like the device, and
+  the menus should have the same setting. Done; the old map value "auto"
+  (light) reads as "device".

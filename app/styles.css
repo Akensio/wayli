@@ -5,8 +5,15 @@
   --train: #1f5fa8; --bus: #2a7d4f; --lrt: #8a3fb0; --bike: #1f5fa8;
   --font: "Heebo", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
+/* the interface's dark colours: chosen in settings (data-theme) or the device's, unless light was chosen */
+:root[data-theme="dark"] {
+    --bg: #15181c; --surface: #1e2227; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #2d3339;
+    --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --chip: #262b31;
+    --train: #6ea8ff; --bus: #6fcf97; --lrt: #c48fe0; --bike: #6ea8ff;
+    color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #15181c; --surface: #1e2227; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #2d3339;
     --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --chip: #262b31;
     --train: #6ea8ff; --bus: #6fcf97; --lrt: #c48fe0; --bike: #6ea8ff;
@@ -151,7 +158,7 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .item.text { display: block; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
 .item.text p { margin: 0 0 8px; } .item.text p:last-child { margin: 0; } .item.text b { color: var(--ink); }
 .seg.pill { background: var(--chip); border-radius: 999px; padding: 3px; gap: 2px; flex: none; }
-.seg.pill button { background: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; flex: 0 1 auto; color: var(--ink-2); font-weight: 600; }
+.seg.pill button { background: none; border-radius: 999px; padding: 6px 10px; font-size: 13px; flex: 0 1 auto; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
 .seg.pill button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
 .switch { position: relative; width: 48px; height: 28px; flex: none; }
 .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
