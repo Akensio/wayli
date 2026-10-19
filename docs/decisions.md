@@ -359,3 +359,9 @@ so they are not re-litigated.
   no-build-step rule stays. Path if wanted: TypeScript's checkJs with JSDoc
   first (no build step), then .ts with tsc in CI; measured today: checkJs
   with strict off reports 114 findings, 97 of them DOM typing.
+- 2026-10-19 Gadi: screens that need no map (settings, saved, the place
+  chooser) should be whole-screen pages, not the sheet over a map. Done:
+  the sheet becomes the page, with its own header.
+- 2026-10-19 Gadi: the half-open sheet could not be scrolled; his earlier
+  ask had been misread. Now half and full both scroll, and only a pull past
+  the top edge folds the sheet or past the bottom edge opens it.

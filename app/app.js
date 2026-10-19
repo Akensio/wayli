@@ -2053,6 +2053,9 @@ window.addEventListener('popstate', (e) => {
 try { history.replaceState({ wayli: 0 }, ''); } catch (e) {}
 let screen = 'plan';
 /** How open the sheet is when a panel or screen comes up. */
+// screens that need no map are pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
+const PAGE_TITLE = { 'screen-more': 'settings', 'screen-saved': 'tabSaved', chooser: null };
+$('pageBack').addEventListener('click', () => { if (topPanel() === 'chooser') $('chCancel').click(); else if (nav.stack.length) history.back(); else showScreen('plan'); });
 const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || place.from || place.to ? 'half' : 'peek'), 'screen-nearby': 'full', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
 /** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
 function renderPanels() {
@@ -2065,6 +2068,9 @@ function renderPanels() {
   const key = top || 'screen-' + screen;
   const show = picking ? null : (PANEL_EL[key] || key);
   for (const el of document.querySelectorAll('#sheetBody > .screen, #sheetBody > .detail')) el.hidden = el.id !== show;
+  const page = !picking && key in PAGE_TITLE;
+  document.body.classList.toggle('page', page);
+  if (page) { $('pageTitle').textContent = PAGE_TITLE[key] ? t(PAGE_TITLE[key]) : $('chTitle').textContent; $('sheetBody').scrollTop = 0; }
   if (!picking) { const st = SHEET_FOR[key]; sheet.set(typeof st === 'function' ? st() : st || 'half'); }
   redrawMap();
 }
@@ -2104,7 +2110,9 @@ const sheet = {
     if (e.button) return;
     onHandle = h.contains(e.target); onStrip = !!e.target.closest('.peekrow');
     const nearTop = e.clientY - el.getBoundingClientRect().top < 96;
-    if (!onHandle && (e.target.closest('input, select, textarea') || (sheet.state === 'full' && !nearTop))) return;
+    if (document.body.classList.contains('page')) return;
+    // the body scrolls when half or fully open (a finger there is the touch handler's, at the scroll edges); the handle and the top always drag
+    if (!onHandle && (e.target.closest('input, select, textarea') || ((sheet.state === 'full' || (sheet.state === 'half' && e.pointerType === 'touch')) && !nearTop))) return;
     dragging = true; startX = e.clientX; startY = e.clientY; startH = el.getBoundingClientRect().height; startState = sheet.state; moved = false; trail = [{ t: performance.now(), y: e.clientY }];
   });
   el.addEventListener('pointermove', (e) => {
@@ -2139,21 +2147,27 @@ const sheet = {
   };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
-  // Fully open, the list scrolls natively and the browser cancels pointer events; but a finger pulling down
-  // with the list at its top only overscrolls, and touch events keep coming, so the sheet follows that pull.
+  // Half or fully open, the list scrolls natively and the browser cancels pointer events; but a finger pulling past
+  // an edge of the list only overscrolls, and touch events keep coming: past the top edge, pulling down folds the
+  // sheet; past the bottom edge (or with nothing to scroll), pulling up opens it.
   {
     const body = $('sheetBody');
-    let tY = 0, tH = 0, tOn = false, tMoved = false;
+    let tY = 0, tH = 0, tOn = false, tMoved = false, tTop = false, tBottom = false, tState = 'half';
     body.addEventListener('touchstart', (e) => {
       tOn = false;
-      if (sheet.state !== 'full' || dragging || e.touches.length !== 1 || body.scrollTop > 0) return;
-      if (e.touches[0].clientY - el.getBoundingClientRect().top < 96) return;   // the pointer drag has that zone
-      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = el.getBoundingClientRect().height; trail = [{ t: performance.now(), y: tY }];
+      if (sheet.state === 'peek' || dragging || e.touches.length !== 1 || document.body.classList.contains('page')) return;
+      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = el.getBoundingClientRect().height; tState = sheet.state;
+      tTop = body.scrollTop <= 0; tBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 2;
+      trail = [{ t: performance.now(), y: tY }];
     }, { passive: true });
     body.addEventListener('touchmove', (e) => {
       if (!tOn) return;
       const down = e.touches[0].clientY - tY;
-      if (!tMoved) { if (down < 8) { if (body.scrollTop > 0) tOn = false; return; } tMoved = true; el.classList.add('dragging'); }
+      if (!tMoved) {
+        if (Math.abs(down) < 8) return;
+        if (!(down > 0 ? tTop : tBottom)) { tOn = false; return; }   // not at the edge in that direction: the list scrolls
+        tMoved = true; el.classList.add('dragging');
+      }
       trail.push({ t: performance.now(), y: e.touches[0].clientY }); if (trail.length > 8) trail.shift();
       el.style.height = Math.max(sheet.px('peek'), Math.min(sheet.px('full'), tH - down)) + 'px';
     }, { passive: true });
@@ -2164,12 +2178,12 @@ const sheet = {
       el.classList.remove('dragging');
       const hh = el.getBoundingClientRect().height;
       el.style.height = '';
-      settle(hh, tH, 'full', Math.max(0, speed()));
+      settle(hh, tH, tState, speed());
     };
     body.addEventListener('touchend', tEnd); body.addEventListener('touchcancel', tEnd);
     // a mouse wheel scrolling up past the top folds it too
     let wheelAt = 0;
-    body.addEventListener('wheel', (e) => { if (sheet.state === 'full' && body.scrollTop === 0 && e.deltaY < -20 && Date.now() - wheelAt > 700) { wheelAt = Date.now(); sheet.set('half'); } }, { passive: true });
+    body.addEventListener('wheel', (e) => { if (document.body.classList.contains('page') || Date.now() - wheelAt < 700) return; if (sheet.state !== 'peek' && body.scrollTop === 0 && e.deltaY < -20) { wheelAt = Date.now(); sheet.set(sheet.state === 'full' ? 'half' : 'peek'); } else if (sheet.state === 'half' && e.deltaY > 20 && body.scrollTop + body.clientHeight >= body.scrollHeight - 2) { wheelAt = Date.now(); sheet.set('full'); } }, { passive: true });
   }
   window.addEventListener('resize', () => sheet.set(sheet.state));
 }

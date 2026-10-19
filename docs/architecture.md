@@ -176,14 +176,18 @@ it never covers the other field. A bottom sheet with three heights (a
 strip, about half the screen, nearly full) carries every panel: the plan
 screen (results and recent searches only), nearby, saved, settings,
 and the panels for a journey, a stop, a trip's stops, a line, the place
-chooser and the trip being followed. The sheet is dragged from anywhere on
-it while it is collapsed or half open (its body does not scroll then; the
-half size is a preview, a pull opens it fully; a sideways start on the chip
-strip scrolls the strip instead), and from its handle or its top 96 px
-always; fully open, a finger pulling down with the list at its top folds
-it too (the browser owns vertical gestures in a scrolling list and cancels
-pointer events, but that pull only overscrolls, so touch events drive the
-sheet; a mouse wheel past the top does the same). A flick (the finger
+chooser and the trip being followed. Settings, saved and the place chooser
+need no map, so they are pages: the sheet grows over the whole screen with
+a header of its own (back, title) and the bar, the handle and the map's
+buttons go. The sheet is dragged from anywhere on it while it is collapsed
+(a sideways start on the chip strip scrolls the strip instead), and from
+its handle or its top 96 px always. Half or fully open, the list scrolls
+as a list should; only a pull past an edge moves the sheet: past the top,
+pulling down folds it; past the bottom (or with nothing to scroll),
+pulling up opens it. The browser owns vertical gestures in a scrolling
+list and cancels pointer events, but a pull past an edge only overscrolls,
+so touch events drive the sheet there; a mouse wheel past an edge does the
+same. A flick (the finger
 faster than 1 px/ms at release) goes all the way in its direction, a short
 pull of 40 px steps one size, a long slow one lands where it is let go,
 and a tap on the handle cycles the sizes; a tap on empty map collapses it.

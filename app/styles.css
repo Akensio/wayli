@@ -319,6 +319,15 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .livenote:empty { display: none; }
 .livenote.lag { color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + 6px) !important; transition: bottom .25s; }
+/* pages: a map-less screen takes the whole screen; the sheet is the page, with a header of its own */
+body.page .sheet { height: 100% !important; border-radius: 0; box-shadow: none; transition: none; }
+body.page #topbar, body.page .floating, body.page .livenote, body.page .handle, body.page .maplibregl-ctrl-bottom-right, body.page .maplibregl-ctrl-bottom-left { display: none !important; }
+.pagehead { display: none; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px; border-bottom: 1px solid var(--line); flex: none; }
+body.page .pagehead { display: flex; }
+.pagehead h2 { margin: 0; font-size: 18px; flex: 1; }
+.pagehead .iconbtn.flat .i { width: 22px; height: 22px; }
+body.page #screen-more > h2.sec, body.page #chooser .bar { display: none; }
+body.page #screen-more { margin-top: -0; padding-top: 14px; }
 /* the map's own buttons live in the bottom corner above the sheet, and go with the map under a fully open sheet */
 body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-bottom-left, body.sheet-full .livenote { opacity: 0; pointer-events: none; }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { transition: bottom .25s, opacity .2s; }
@@ -340,9 +349,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
 .handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
-.sheet[data-state="half"] { touch-action: none; }
 .sheet[data-state="peek"] { touch-action: pan-y; }   /* a pull down here is the browser's pull-to-refresh; a pull up is still ours */
-.sheet[data-state="half"] .sheet-body { overflow: hidden; }
 .sheet[data-state="full"] .sheet-body { scroll-padding-top: 0; }
 .handle span { width: 56px; height: 6px; border-radius: 3px; background: var(--line); }
 .sheet-body { flex: 1; overflow: auto; padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
