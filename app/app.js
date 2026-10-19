@@ -821,7 +821,8 @@ function renderDayPills() {
 }
 function renderOptionChips() {
   const bike = bikeChoice(), day = $('day').value;
-  $('optTime').innerHTML = ic('clock') + ' ' + (timeTouched ? `${t(timeMode() === 'arrive' ? 'arriveBy' : 'departAt')} · ${day ? esc(dayLabel(day).split(' · ')[0]) : ''} ${esc($('at').value)}` : t('now'));
+  const dayShort = day ? esc(dayLabel(day).split(' · ')[0]) : '';
+  $('optTime').innerHTML = ic('clock') + ' ' + (timeTouched ? `${timeMode() === 'arrive' ? t('arriveBy') + ' ' : ''}${dayShort} ${esc($('at').value)}` : t('now'));
   $('optBike').innerHTML = `${ic('bike')} ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
   if (!$('sumRow').hidden) renderSummary();
 }

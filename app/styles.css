@@ -429,6 +429,8 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .optpanel[hidden], .optpanel > [hidden] { display: none; }
 .optpanel #whenBody, .optpanel #bikeBody { display: flex; flex-direction: column; gap: 10px; }
+.optpanel #whenBody[hidden], .optpanel #bikeBody[hidden] { display: none; }
+.topbar .trow.opts .chipbtn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 56vw; }
 .optpanel .seg.pill { align-self: flex-start; }
 .daypills { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .daypills::-webkit-scrollbar { display: none; }
