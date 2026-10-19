@@ -521,3 +521,10 @@ so they are not re-litigated.
   mean inventing headways; Gadi decides between asking the municipality or
   HopOn for the schedule file, estimated headways labelled as such, or
   showing the lines on the map without times.
+- 2026-10-20 Gadi: lowering the search pill at rest was "a bad design
+  proposition"; what he wanted is the installed app's look of map apps,
+  the map continuing under the phone's status bar instead of a coloured app
+  bar, while the website keeps the pill at the top. Reverted the lowering
+  (the From row now slides in above the pill instead); the status bar takes
+  the map's ground colour (theme-color follows the map setting, light
+  #f8f4f0 or dark #141210) and on iPhone it is translucent over the map.

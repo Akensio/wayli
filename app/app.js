@@ -955,8 +955,8 @@ const wantDarkMap = () => mapChoice() === 'dark' || (mapChoice() === 'system' &&
 function applyTheme() {
   const th = settings.get().theme || 'system';
   if (th === 'system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = th;
-  const dark = th === 'dark' || (th === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = dark ? '#1e2227' : '#12998b';
+  // the installed app's status bar continues the map: the map's ground colour, light or dark, not a coloured app bar
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.content = wantDarkMap() ? '#141210' : '#f8f4f0';
 }
 applyTheme();
 let darkStyle = null, darkStyleLoading = null;
@@ -1878,7 +1878,7 @@ function renderSettings() {
   $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
 }
 for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
-for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); renderSettings(); });
+for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); applyTheme(); renderSettings(); });
 for (const b of $('setTheme').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ theme: b.dataset.v }); applyTheme(); renderSettings(); });
 const setWalk = (v) => { settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(+v) || 15)) }); renderSettings(); };
 $('setWalk').addEventListener('change', () => setWalk($('setWalk').value));
