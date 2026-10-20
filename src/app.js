@@ -11,7 +11,9 @@ const $ = (id) => document.getElementById(id);
 import { ICONS, FILLED_ICONS, ic } from './ui/icons.ts';
 import * as search from './state/search.ts';   // the top bar's state: places, when, bike, which parts are open
 import { fmt, dateOf, calToday, dayLabel } from './time.ts';
-import * as results from './state/results.ts';   // the plan's results: the list, the ways on the map, the recent trips
+import * as results from './state/results.ts';
+import * as sheet from './state/sheet.ts';   // the bottom sheet: peek, half or full
+import { topPad, fullPx as fullSheetPx } from './state/sheet.ts';   // the plan's results: the list, the ways on the map, the recent trips
 import { routeColor, textOn, chipStyle, legColor } from './journey/colors.ts';
 import { dur, transfersText, lineText, stopsText, describePlace, minutesUntil, leaveText } from './journey/format.ts';
 
@@ -237,8 +239,6 @@ search.hooks.startDay = () => (manifest ? startDay() : '');
 
 // ---------------------------------------------------------------- places and search
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
-/** The sheet's full size: the screen under the bar. */
-const fullSheetPx = () => Math.max(200, innerHeight - topPad() + 4);
 function layoutTop() {
   const r = $('topbar').getBoundingClientRect();
   document.documentElement.style.setProperty('--top-h', `${Math.round(r.bottom + 6)}px`);
@@ -425,7 +425,7 @@ $('chCancel').addEventListener('click', () => closeChooser(null));
 $('chLoc').addEventListener('click', async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); closeChooser({ name: r.name, lat: pos.lat, lon: pos.lon }); } catch (e) { toast(t('noLocation')); } });
 $('chMap').addEventListener('click', async () => { const p = await pickOnMap(null); if (p) closeChooser(p); });
 
-function showPlanError(msg) { results.error.value = msg; if (msg && sheet.state === 'peek') sheet.set('half'); }
+function showPlanError(msg) { results.error.value = msg; if (msg && sheet.state.value === 'peek') sheet.set('half'); }
 
 // ---------------------------------------------------------------- planning
 const applyQuery = search.applyQuery;   // fill the bar from a query (a recent search, a shared link, a saved trip)
@@ -455,9 +455,9 @@ Object.assign(results.hooks, {
   startTrip: (j, q) => startTrip(j, q),
   plan: (opts) => plan(opts),
   replan: (q) => { applyQuery(q); search.resetNow(); nav.closeAll(); showScreen('plan'); plan(); },
-  afterResults: () => { $('sheetBody').scrollTop = 0; if (!topPanel() && screen === 'plan' && sheet.state === 'peek') sheet.set('half'); applyLiveShow(); redrawMap(true); },
+  afterResults: () => { $('sheetBody').scrollTop = 0; if (!topPanel() && screen === 'plan' && sheet.state.value === 'peek') sheet.set('half'); applyLiveShow(); redrawMap(true); },
   redraw: () => redrawMap(true),
-  peekChanged: () => { if (sheet.state === 'peek') sheet.set('peek'); },
+  peekChanged: () => { if (sheet.state.value === 'peek') sheet.set('peek'); },
   peekTap: () => sheet.set('half'),
 });
 function parseShared(params) {
@@ -597,7 +597,7 @@ async function initMap() {
     if (hit.length || popup) return;   // the layer's own handler answers, or the open bubble closes
     const near = stopNear(m, e.point);
     if (near) { stopPopup(m, near.geometry.coordinates, +near.properties.stop, near.properties.station); return; }
-    if (sheet.state !== 'peek' || search.barOpen.value) { sheet.set('peek'); search.foldBar(); return; }
+    if (sheet.state.value !== 'peek' || search.barOpen.value) { sheet.set('peek'); search.foldBar(); return; }
     placeBubble(m, e);
   });
   lmTimer = setInterval(refreshLiveMap, 20000);
@@ -753,10 +753,9 @@ function fitMap(b, maxZoom) {
   const m = mainMap;
   if (!m || !b || b.isEmpty()) return;
   const top = topPad();
-  const bottom = Math.min(sheet.px(sheet.state) + 20, innerHeight - top - 120);
+  const bottom = Math.min(sheet.px(sheet.state.value) + 20, innerHeight - top - 120);
   m.fitBounds(b, { padding: { top, bottom, left: 24, right: 24 }, duration: 0, maxZoom });
 }
-const topPad = () => { const r = document.querySelector('.topbar').getBoundingClientRect(); return Math.round(r.bottom + 12); };
 const EMPTY = { type: 'FeatureCollection', features: [] };
 /** The map's sources and layers for a journey, created once, bottom to top: the faded whole lines, then the journey. */
 function ensureJourneyLayers(m) {
@@ -1212,7 +1211,7 @@ async function loadStopsGeo() {
 }
 async function refreshLiveMap() {
   const m = mainMap;
-  if (!m || !mapStyled || document.hidden || sheet.state === 'full') return;
+  if (!m || !mapStyled || document.hidden || sheet.state.value === 'full') return;
   if (isOpen('picker') || liveShow === 'none') { $('liveNote').textContent = ''; return; }
   if (!liveOn()) { $('liveNote').textContent = ''; m.getSource('lm-veh').setData(EMPTY); return; }
   if (m.getZoom() < 10) { $('liveNote').textContent = t('liveMapZoom'); m.getSource('lm-veh').setData(EMPTY); return; }
@@ -1855,213 +1854,8 @@ function showScreen(name, record = true) {
   renderPanels();
   if (name === 'nearby' && ttReady && !$('nearbyList').querySelector('.stop')) loadNearby();
 }
-// ---- touch feedback: a ripple from the finger on anything tappable (the browser's blue flash is turned off in CSS)
-document.addEventListener('pointerdown', (e) => {
-  if (e.button) return;
-  const host = e.target.closest('button:not(.handle):not(.maplibregl-ctrl-compass):not(.maplibregl-ctrl-geolocate), .chipbtn, .journey, .item.act, .drawer > button, .recent, .saved-row, .stop, .gone .txt, .opt');
-  if (!host || host.disabled) return;
-  const r = host.getBoundingClientRect(), size = Math.max(r.width, r.height) * 2;
-  host.classList.add('rippling');
-  const dot = document.createElement('span'); dot.className = 'ripple';
-  dot.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px`;
-  host.appendChild(dot);
-  dot.addEventListener('animationend', () => { dot.remove(); if (!host.querySelector('.ripple')) host.classList.remove('rippling'); }, { once: true });
-}, { passive: true });
-// ---- pull to refresh, ours: the browser's needs a page that scrolls, and this one never does. A pull down on the
-// bar or on the collapsed sheet shows a circle that follows the finger and turns on past 72 px; letting go then
-// reloads (the service worker serves the new build). Works the same in Chrome, Safari and the installed app.
-const pullRefresh = (() => {
-  const el = document.createElement('div'); el.className = 'ptr'; el.innerHTML = ic('refresh'); document.body.appendChild(el);
-  let pull = 0, armed = false, busy = false;
-  return {
-    move(px) {
-      if (busy) return;
-      pull = Math.max(0, Math.min(130, px)); armed = pull >= 72;
-      el.classList.add('on'); el.classList.toggle('armed', armed);
-      el.style.transform = `translate(-50%, ${Math.round(pull * 0.7)}px) rotate(${Math.round(pull * 2.5)}deg)`; el.style.opacity = String(Math.min(1, pull / 36));
-    },
-    end() {
-      if (busy) return;
-      if (armed) { busy = true; el.classList.add('busy'); el.style.transform = 'translate(-50%, 50px)'; setTimeout(() => location.reload(), 200); return; }
-      el.classList.remove('on', 'armed'); el.style.transform = ''; el.style.opacity = ''; pull = 0;
-    },
-    get busy() { return busy; },
-  };
-})();
-{
-  const bar = $('topbar');
-  let on = false, mode = 0, x0 = 0, y0 = 0;
-  bar.addEventListener('touchstart', (e) => { on = false; if (e.touches.length !== 1 || e.target.closest('.dropdown, select, .optpanel')) return; on = true; mode = 0; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
-  bar.addEventListener('touchmove', (e) => {
-    if (!on) return;
-    const dy = e.touches[0].clientY - y0, dx = e.touches[0].clientX - x0;
-    if (!mode) { if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return; if (dy > Math.abs(dx)) mode = 1; else { on = false; return; } }
-    pullRefresh.move(dy - 6);
-  }, { passive: true });
-  const end = () => { if (!on) return; on = false; if (mode) pullRefresh.end(); };
-  bar.addEventListener('touchend', end); bar.addEventListener('touchcancel', end);
-}
-// ---- the bottom sheet: peek (a strip), half, or full; dragged by its handle, tapped to cycle
-// The sheet is always as tall as its full size and slides by a transform (composited: no layout per frame, the
-// snap animates on the GPU); `--sheet-h` is the visible part, which the body's height and the map's buttons follow.
-const sheet = {
-  state: 'peek',
-  dragH: null,   // the visible height while a finger drags it, else null
-  // collapsed, the handle sits above the phone's gesture strip (16 px, plus the inset of an installed app)
-  px(st) { return st === 'peek' ? ($('peekLine').hidden ? 44 : 80) + 16 + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0) : st === 'half' ? Math.round(innerHeight * 0.46) : fullSheetPx(); },
-  visible() { return this.dragH != null ? this.dragH : this.px(this.state); },
-  /** Follow the finger: slide to a visible height without changing the state. */
-  drag(h) {
-    this.dragH = h;
-    $('sheet').style.transform = `translateY(${Math.round(this.px('full') - h)}px)`;
-    $('sheetBody').style.height = `${Math.max(0, h - 36)}px`;
-  },
-  dragEnd() { this.dragH = null; $('sheet').style.transform = ''; $('sheetBody').style.height = ''; },
-  set(st) {
-    const prev = this.state;
-    this.state = st;
-    $('sheet').dataset.state = st;
-    document.body.classList.toggle('sheet-full', st === 'full');
-    document.documentElement.style.setProperty('--sheet-h', this.px(st) + 'px');
-    document.documentElement.style.setProperty('--sheet-full', this.px('full') + 'px');
-    if (prev === 'full' && st !== 'full') refreshLiveMap();
-    if (st !== prev && mainMap && (st === 'peek' || prev === 'peek')) $('sheetBody').scrollTop = 0;
-  },
-  toggle() { this.set(this.state === 'peek' ? 'half' : this.state === 'half' ? 'full' : 'peek'); },
+sheet.hooks.changed = (prev, st) => {
+  if (prev === 'full' && st !== 'full') refreshLiveMap();
+  if (st !== prev && mainMap && (st === 'peek' || prev === 'peek')) $('sheetBody').scrollTop = 0;
 };
-{
-  // Dragging: from anywhere on the sheet while it is collapsed or half open (the body does not scroll then;
-  // the chip strip scrolls sideways, so a sideways start is left to it), from the handle and the top 96 px
-  // always. A short pull (40 px) steps one size in its direction; a long one lands where it is let go.
-  // A tap on the handle steps through the sizes. A tap elsewhere stays a tap.
-  const h = $('sheetHandle'), el = $('sheet');
-  const ORDER = ['peek', 'half', 'full'];
-  let startX = 0, startY = 0, startH = 0, startState = 'peek', moved = false, dragging = false, onHandle = false, swallow = false;
-  let trail = [];   // the last few (time, y) of the finger, for its speed at release
-  const speed = () => { const n = trail.length; if (n < 2) return 0; let i = n - 2; while (i > 0 && trail[n - 1].t - trail[i].t < 60) i--; const dt = trail[n - 1].t - trail[i].t; return dt > 0 ? (trail[n - 1].y - trail[i].y) / dt : 0; };
-  el.addEventListener('pointerdown', (e) => {
-    if (e.button) return;
-    onHandle = h.contains(e.target);
-    const nearTop = e.clientY - el.getBoundingClientRect().top < 96;
-    if (document.body.classList.contains('page')) return;
-    if (e.pointerType === 'touch' && sheet.state === 'peek') return;   // a finger on the collapsed sheet: the touch handler below
-    // the body scrolls when half or fully open (a finger there is the touch handler's, at the scroll edges); the handle and the top always drag
-    if (!onHandle && (e.target.closest('input, select, textarea') || ((sheet.state === 'full' || (sheet.state === 'half' && e.pointerType === 'touch')) && !nearTop))) return;
-    dragging = true; startX = e.clientX; startY = e.clientY; startH = sheet.visible(); startState = sheet.state; moved = false; trail = [{ t: performance.now(), y: e.clientY }];
-  });
-  el.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const dy = startY - e.clientY, dx = e.clientX - startX;
-    if (!moved) {
-      if (Math.abs(dy) < 4 && Math.abs(dx) < 4) return;
-      moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch (x) {}
-    }
-    trail.push({ t: performance.now(), y: e.clientY }); if (trail.length > 8) trail.shift();
-    sheet.drag(Math.max(sheet.px('peek'), Math.min(sheet.px('full'), startH + dy)));
-  });
-  /** Where a drag lands. The nearest size to where it was let go; a short pull (40 px) or a quick one (0.5 px/ms)
-   *  steps one size in its direction instead of falling back; only a long drag past the midpoint opens or closes
-   *  all the way (as Android's own sheets do: speed picks the next size, never the far one). `v` is the finger's
-   *  speed, down positive. */
-  const settle = (hh, fromH, fromState, v = 0) => {
-    const dy = hh - fromH, i0 = ORDER.indexOf(fromState);
-    let best = 'peek';
-    for (const st of ['half', 'full']) if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
-    const dir = Math.abs(v) >= 0.5 && Math.abs(dy) >= 12 ? (v < 0 ? 1 : -1) : Math.abs(dy) > 40 ? (dy > 0 ? 1 : -1) : 0;
-    if (dir) {
-      const step = ORDER[Math.max(0, Math.min(2, i0 + dir))];
-      // a decisive move lands at least one size along; farther only if the drag itself went farther
-      if ((ORDER.indexOf(best) - i0) * dir <= 0) best = step;
-    }
-    sheet.set(best);
-  };
-  const end = (e) => {
-    if (!dragging) return;
-    dragging = false; el.classList.remove('dragging');
-    const hh = sheet.visible();
-    sheet.dragEnd();
-    if (!moved) return;   // a tap: the handle's click handler cycles the sizes
-    swallow = true; setTimeout(() => { swallow = false; }, 60);
-    settle(hh, startH, startState, speed());
-  };
-  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
-  el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
-  h.addEventListener('click', () => { if (!swallow) sheet.toggle(); });
-  // Collapsed, every touch on the sheet is ours (touch-action none, so the browser never claims a gesture and
-  // the events keep coming): a pull up opens it, a pull down is the pull-to-refresh. The direction is read
-  // once, after 6 px.
-  {
-    let pOn = false, pMode = '', pY = 0, pH = 0;
-    el.addEventListener('touchstart', (e) => {
-      pOn = false;
-      if (sheet.state !== 'peek' || e.touches.length !== 1 || document.body.classList.contains('page') || e.target.closest('input, select, textarea')) return;
-      pOn = true; pMode = ''; pY = e.touches[0].clientY; pH = sheet.visible();
-      trail = [{ t: performance.now(), y: pY }];
-    }, { passive: true });
-    el.addEventListener('touchmove', (e) => {
-      if (!pOn) return;
-      const y = e.touches[0].clientY, up = pY - y;
-      if (!pMode) {
-        if (Math.abs(up) < 6) return;
-        pMode = up > 0 ? 'sheet' : 'refresh';
-        if (pMode === 'sheet') el.classList.add('dragging');
-      }
-      if (pMode === 'refresh') pullRefresh.move(-up - 6);
-      else { trail.push({ t: performance.now(), y }); if (trail.length > 8) trail.shift(); sheet.drag(Math.max(sheet.px('peek'), Math.min(sheet.px('full'), pH + up))); }
-    }, { passive: true });
-    const pEnd = () => {
-      if (!pOn) return;
-      pOn = false;
-      if (!pMode) return;
-      swallow = true; setTimeout(() => { swallow = false; }, 60);
-      if (pMode === 'refresh') { pullRefresh.end(); return; }
-      el.classList.remove('dragging');
-      const hh = sheet.visible();
-      sheet.dragEnd();
-      settle(hh, pH, 'peek', speed());
-    };
-    el.addEventListener('touchend', pEnd); el.addEventListener('touchcancel', pEnd);
-  }
-  // Half or fully open, the list scrolls natively and the browser cancels pointer events; but a finger pulling past
-  // an edge of the list only overscrolls, and touch events keep coming: past the top edge, pulling down folds the
-  // sheet; past the bottom edge (or with nothing to scroll), pulling up opens it.
-  {
-    const body = $('sheetBody');
-    let tY = 0, tH = 0, tOn = false, tMoved = false, tTop = false, tBottom = false, tState = 'half';
-    body.addEventListener('touchstart', (e) => {
-      tOn = false;
-      if (sheet.state === 'peek' || dragging || e.touches.length !== 1 || document.body.classList.contains('page')) return;
-      tOn = true; tMoved = false; tY = e.touches[0].clientY; tH = sheet.visible(); tState = sheet.state;
-      tTop = body.scrollTop <= 0; tBottom = body.scrollTop + body.clientHeight >= body.scrollHeight - 2;
-      trail = [{ t: performance.now(), y: tY }];
-    }, { passive: true });
-    body.addEventListener('touchmove', (e) => {
-      if (!tOn) return;
-      const down = e.touches[0].clientY - tY;
-      if (!tMoved) {
-        if (Math.abs(down) < 5) return;
-        if (!(down > 0 ? tTop : tBottom)) { tOn = false; return; }   // not at the edge in that direction: the list scrolls
-        tMoved = true; el.classList.add('dragging');
-      }
-      trail.push({ t: performance.now(), y: e.touches[0].clientY }); if (trail.length > 8) trail.shift();
-      sheet.drag(Math.max(sheet.px('peek'), Math.min(sheet.px('full'), tH - down)));
-    }, { passive: true });
-    const tEnd = () => {
-      if (!tOn) return;
-      tOn = false;
-      if (!tMoved) return;
-      el.classList.remove('dragging');
-      const hh = sheet.visible();
-      sheet.dragEnd();
-      settle(hh, tH, tState, speed());
-    };
-    body.addEventListener('touchend', tEnd); body.addEventListener('touchcancel', tEnd);
-    // a mouse wheel scrolling up past the top folds it too
-    let wheelAt = 0;
-    body.addEventListener('wheel', (e) => { if (document.body.classList.contains('page') || Date.now() - wheelAt < 700) return; if (sheet.state !== 'peek' && body.scrollTop === 0 && e.deltaY < -20) { wheelAt = Date.now(); sheet.set(sheet.state === 'full' ? 'half' : 'peek'); } else if (sheet.state === 'half' && e.deltaY > 20 && body.scrollTop + body.clientHeight >= body.scrollHeight - 2) { wheelAt = Date.now(); sheet.set('full'); } }, { passive: true });
-  }
-  window.addEventListener('resize', () => sheet.set(sheet.state));
-}
-sheet.set('peek');
-
 init().catch((e) => setStatus(t('loadFail', { msg: e.message }), true));

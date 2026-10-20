@@ -132,8 +132,11 @@ left, the cards, the recent trips and the peek line) over `state/results.ts`,
 where the cards are a computed over the result, the filters and the language,
 and the ways drawn on the map are two signals the map reads. Shared:
 `time.ts` (days and times), `journey/` (types, line colours, the words for
-journeys), `state/clock.ts` (a 20-second tick the countdowns read). Next: the
-sheet, the journey detail and following, the pages, the map. Files: `main.ts` (entry: the sprite, the
+journeys), `state/clock.ts` (a 20-second tick the countdowns read). The sheet's size
+is a signal in `state/sheet.ts` (the sizes in pixels, the slide), its gestures
+and the pull to refresh are `features/sheet/`, the ripple is `ui/ripple.ts`;
+the sheet's markup stays in `index.html` until the pages move. Next: the
+journey detail and following, the pages, the map. Files: `main.ts` (entry: the sprite, the
 components, then `app.js`), `index.html` (shell), `app.js` (the rest of the UI), `worker.js` (a Web Worker that holds the data and answers
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
 router and street graph, shared with the test harness), `places.js` (the
