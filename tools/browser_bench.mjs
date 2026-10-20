@@ -1,5 +1,5 @@
 // Headless-Chromium benchmark of feasibility.html, to measure the router in a real browser.
-//   node app/browser_bench.mjs "מרכזית המפרץ" "מרכזית באר שבע" 08:00
+//   node tools/browser_bench.mjs "מרכזית המפרץ" "מרכזית באר שבע" 08:00
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -8,9 +8,9 @@ import path from 'node:path';
 const here = path.dirname(new URL(import.meta.url).pathname);
 const root = path.join(here, '..');
 const files = {
-  '/': ['app/feasibility.html', 'text/html; charset=utf-8'],
-  '/raptor.js': ['app/raptor.js', 'text/javascript'],
-  '/streets.js': ['app/streets.js', 'text/javascript'],
+  '/': ['tools/feasibility.html', 'text/html; charset=utf-8'],
+  '/raptor.js': ['src/raptor.js', 'text/javascript'],
+  '/streets.js': ['src/streets.js', 'text/javascript'],
   '/timetable.bin.gz': ['data/timetable.bin.gz', 'application/octet-stream'],
   '/streets.bin.gz': ['data/streets.bin.gz', 'application/octet-stream'],
 };

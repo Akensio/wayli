@@ -1,4 +1,26 @@
-// Undeclared names are errors: Safari has no global `when`, Chromium does (a scheduler API), and a leftover
-// read of one took every route calculation down on iPhones (2026-10-19). Run: npx --yes eslint@9 app/*.js
-const browser = Object.fromEntries(['window', 'document', 'navigator', 'localStorage', 'location', 'history', 'fetch', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'requestAnimationFrame', 'performance', 'console', 'maplibregl', 'Notification', 'AudioContext', 'webkitAudioContext', 'matchMedia', 'innerHeight', 'innerWidth', 'URL', 'URLSearchParams', 'Blob', 'TextDecoder', 'TextEncoder', 'DecompressionStream', 'Response', 'Worker', 'self', 'postMessage', 'caches', 'clients', 'addEventListener', 'Intl', 'Path2D', 'PointerEvent', 'Event', 'CustomEvent', 'Image', 'Audio', 'screen', 'alert', 'confirm', 'crypto', 'AbortController', 'structuredClone', 'requestIdleCallback', 'Node', 'HTMLElement', 'visualViewport', 'devicePixelRatio', 'getComputedStyle', 'scrollTo', 'open', 'importScripts', 'registration', 'skipWaiting', 'process', 'Buffer', 'globalThis'].map((g) => [g, 'readonly']));
-export default [{ files: ['app/**/*.js', 'app/**/*.mjs'], languageOptions: { ecmaVersion: 2023, sourceType: 'module', globals: { ...browser, onmessage: 'writable' } }, rules: { 'no-undef': 'error', 'no-unused-vars': 'off' } }];
+// Lint: undeclared names are errors (a Safari-only crash slipped through once); TypeScript files get the
+// typescript-eslint recommended rules on top. Run with `npm run lint`; the workflow runs it before every build.
+import js from '@eslint/js';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  { ignores: ['dist/**', 'node_modules/**', 'src/public/**', 'site/**', 'data/**'] },
+  js.configs.recommended,
+  { files: ['src/sw.template.js'], languageOptions: { globals: { __SHELL_FILES__: 'readonly' } } },   // filled in at build time
+  ...tseslint.configs.recommended,
+  {
+    files: ['src/**/*.{js,ts,tsx}', 'tools/**/*.mjs', 'vite.config.ts'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly' } },
+    rules: {
+      'no-undef': 'error',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'prefer-const': 'off',
+      'no-cond-assign': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+);

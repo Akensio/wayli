@@ -59,17 +59,18 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/streets.py`, `pipeline/streetgraph.py` | OpenStreetMap extract to the compact street graph; reader and stop-to-stop walking times for the compiler. |
 | `pipeline/shapes.py` | GTFS shapes to the compact courses file (simplified polylines per shape); the compiler (`--shapes`) records each pattern's course and where its stops fall on it. |
 | `pipeline/rail.py` | OpenStreetMap railways to a small rail graph with an A* router; the compiler (`--rail`) draws train patterns along the track, since the feed has no shapes for trains. |
-| `app/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
-| `app/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
-| `pipeline/places.py`, `app/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |
-| `app/index.html`, `app/app.js`, `app/worker.js`, `app/sw.js`, `app/styles.css` | The app: shell (one map, a top search bar, a bottom sheet of panels), UI, data worker, service worker, styles. Hebrew/RTL first, English toggle, no framework, no build step. |
-| `app/live.js`, `app/follow.js`, `app/store.js` | Real-time client (Hasadna Open Bus, delay estimate, Israel-time helpers); trip-following state machine (pure, testable in Node); on-device store (settings, history, saved places, trip in progress). |
-| `app/mapstyle.js` | The basemap, light and dark: OpenFreeMap's Liberty style with every colour replaced from one of two palettes at runtime. |
-| `app/feasibility.html` | The routing test page (older harness). `app/bench.mjs` times the router in Node, `app/browser_bench.mjs` in headless Chromium, `app/build_artifact.py` builds the artifact variant. |
-| `pipeline/build_site.py` | Assembles `site/`: app files, per-day timetables, street graph, `data/manifest.json`. |
+| `src/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
+| `src/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
+| `pipeline/places.py`, `src/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |
+| `src/index.html`, `src/app.js`, `src/worker.js`, `src/sw.template.js`, `src/styles.css` | The app: shell (one map, a top search bar, a bottom sheet of panels), UI, data worker, service worker template, styles. Hebrew/RTL first, English toggle. Being moved to Preact + TypeScript components, feature by feature (see `docs/architecture.md`). |
+| `src/live.js`, `src/follow.js`, `src/store.js` | Real-time client (Hasadna Open Bus, delay estimate, Israel-time helpers); trip-following state machine (pure, testable in Node); on-device store (settings, history, saved places, trip in progress). |
+| `src/mapstyle.js` | The basemap, light and dark: OpenFreeMap's Liberty style with every colour replaced from one of two palettes at runtime. |
+| `src/public/` | Copied as is into the build: icons, the web manifest. |
+| `package.json`, `vite.config.ts`, `tsconfig.json`, `eslint.config.mjs` | The toolchain: `npm run check` (lint and type-check) and `npm run build` (Vite, into `dist/`; the service worker is written there with the list of built files). Run `npm run check` before pushing app code; the workflow runs both before every build. |
+| `tools/` | The older routing harness: `feasibility.html`, `bench.mjs` (the router in Node), `browser_bench.mjs` (headless Chromium), `build_artifact.py`. |
+| `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |
-| `eslint.config.mjs` | The lint check (undeclared names are errors): `npx --yes eslint@9 app/*.js`, also run by the workflow before every build. Run it before pushing app code. |
-| `data/`, `site/` | Gitignored: downloads, compiled files, the built site. |
+| `data/`, `site/`, `dist/`, `node_modules/` | Gitignored: downloads, compiled files, the built site, the build, the toolchain. |
 
 Planned, not yet created: `worker/` (Cloudflare Worker for the real-time
 relay, reports and push). Create it when the work starts.
@@ -96,4 +97,6 @@ three ways are drawn on the map together, one highlighted, with a map button
 per card; the collapsed sheet is a handle plus one line about the
 highlighted way (the chip strip is gone); the top bar is pills. Next: crowd
 reports, Arabic, elevation, measuring live-data freshness in daily use, a
-fallback relay only if Hasadna proves unreliable.
+fallback relay only if Hasadna proves unreliable. 2026-10-20: Gadi chose the stack change: Preact with signals,
+TypeScript and a Vite build; the app is being moved into components feature
+by feature while staying live (`docs/architecture.md`, "The app").

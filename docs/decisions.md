@@ -607,3 +607,14 @@ so they are not re-litigated.
   layout change; leaving plays it back in reverse. The day pills wrap onto
   two rows so every day shows (half seemed "blocked" off the edge of a
   scroller); a calendar was considered and rejected for seven days of data.
+- 2026-10-20 Gadi: "let's do the Preact refactor, as modular and readable
+  as possible". The no-framework, no-build-step rule is retired: a build
+  costs nothing here and the UI's mishaps came from state scattered over
+  the DOM. Preact (React's API at 4 KB) with signals, TypeScript strict,
+  Vite. Step one, same day: the unchanged app builds through Vite (src/,
+  dist/, the service worker written with the hashed file names, the data
+  paths absolute since the worker now lives under assets/), the workflow
+  runs `npm run check` and `npm run build`; the old harnesses moved to
+  tools/. The components follow feature by feature, the app staying live.
+  Rejected: React itself (same API, ten times the size), Svelte or Solid
+  (a different model for no gain here), a big-bang rewrite.

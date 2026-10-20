@@ -116,7 +116,16 @@ Known gaps, in rough order of importance:
 ## The app (v0.3, `app/`)
 
 An installable web app, Hebrew and right-to-left first with an English
-toggle, no framework and no build step. Files: `index.html` (shell),
+toggle. Built by Vite from `src/` into `dist/` (Preact with signals and
+TypeScript, both strict; `npm run check` lints and type-checks, `npm run
+build` bundles the shell, the worker and the data modules and writes the
+service worker with the list of built files, since their names carry
+content hashes); `pipeline/build_site.py` joins the build with the data.
+The move to components is incremental: Preact renders a feature inside the
+existing shell while the rest of `app.js` keeps working around it, until
+`app.js` is empty. Order: the top bar (the search state machine, where the
+layout mishaps came from), the results, the sheet, the journey detail and
+following, the pages, the map. Files: `index.html` (shell),
 `app.js` (UI), `worker.js` (a Web Worker that holds the data and answers
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
 router and street graph, shared with the test harness), `places.js` (the

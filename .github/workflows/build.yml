@@ -22,8 +22,13 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Lint the app for undeclared names (a Safari-only crash slipped through once)
-        run: npx --yes eslint@9 app/*.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Lint and type-check, then build the app with Vite into dist/
+        run: npm run check && npm run build
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

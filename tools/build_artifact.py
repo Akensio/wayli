@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Turn app/feasibility.html into a page publishable as a Claude artifact.
+"""Turn tools/feasibility.html into a page publishable as a Claude artifact.
 
-    python3 app/build_artifact.py --from "מרכזית המפרץ" --to "מרכזית באר שבע" --out data/wayli-routing-test.html
+    python3 tools/build_artifact.py --from "מרכזית המפרץ" --to "מרכזית באר שבע" --out data/wayli-routing-test.html
 
 The artifact host wraps the file in its own html/head/body skeleton, so this
-strips ours, inlines app/raptor.js into the module script (no separate file to
+strips ours, inlines src/raptor.js into the module script (no separate file to
 serve) and fills the preset stops. The timetable is published alongside as
 timetable.b64.txt (the host serves text, not binaries).
 """

@@ -131,8 +131,8 @@
 </div>
 
 <script type="module">
-import { parseTimetable, searchStops, plan, profile, fmtTime, routeLabel } from './raptor.js';
-import { parseStreets, accessStops, route } from './streets.js';
+import { parseTimetable, searchStops, plan, profile, fmtTime, routeLabel } from '../src/raptor.js';
+import { parseStreets, accessStops, route } from '../src/streets.js';
 
 const $ = (id) => document.getElementById(id);
 $('ua').textContent = navigator.userAgent.replace(/Mozilla\/5\.0 /, '');

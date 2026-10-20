@@ -184,7 +184,8 @@ function setBasemapLang(m) {
 }
 
 // ---------------------------------------------------------------- worker
-const worker = new Worker('worker.js', { type: 'module' });
+const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+const DATA_URL = new URL('data/', location.href).href;   // absolute: the worker lives under assets/ and would resolve a relative path there
 const pending = new Map();
 let nextId = 1;
 function call(op, args) {
@@ -306,7 +307,7 @@ async function loadDay(date) {
   ttReady = false;
   $('planBtn').disabled = true;
   call('setLang', { lang });   // names come back in the rider's language where the timetable carries them
-  const info = await call('loadTimetable', { url: `data/${d.file}?v=${encodeURIComponent(manifest.built || '')}` });
+  const info = await call('loadTimetable', { url: `${DATA_URL}${d.file}?v=${encodeURIComponent(manifest.built || '')}` });
   dayInfo = info; ttReady = true; tsCache.clear(); lmLabels.clear(); lmStops = false;
   $('planBtn').disabled = false; plannerBusy = false;
   nearRoutes = null; updateNearRoutes();
@@ -317,7 +318,7 @@ async function loadDay(date) {
 async function loadPlaces() {
   if (plReady || !manifest.places) return;
   try {
-    await call('loadPlaces', { url: `data/${manifest.places.file}?v=${encodeURIComponent(manifest.places.built || manifest.built || '')}` });
+    await call('loadPlaces', { url: `${DATA_URL}${manifest.places.file}?v=${encodeURIComponent(manifest.places.built || manifest.built || '')}` });
     plReady = true;
     for (const side of ['from', 'to']) if (!place[side] && $(side + 'Q').value.trim().length >= 2) $(side + 'Q').dispatchEvent(new Event('input'));
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); }
@@ -325,14 +326,14 @@ async function loadPlaces() {
 async function loadShapes() {
   if (shReady || !manifest.shapes) return;
   try {
-    await call('loadShapes', { url: `data/${manifest.shapes.file}?v=${encodeURIComponent(manifest.shapes.built || manifest.built || '')}` });
+    await call('loadShapes', { url: `${DATA_URL}${manifest.shapes.file}?v=${encodeURIComponent(manifest.shapes.built || manifest.built || '')}` });
     shReady = true;
   } catch (e) { /* straight lines between stops until then */ }
 }
 async function loadStreets() {
   if (stReady || !manifest.streets) return;
   try {
-    await call('loadStreets', { url: `data/${manifest.streets.file}?v=${encodeURIComponent(manifest.streets.built || manifest.built || '')}` });
+    await call('loadStreets', { url: `${DATA_URL}${manifest.streets.file}?v=${encodeURIComponent(manifest.streets.built || manifest.built || '')}` });
     stReady = true;
     setStatus(t('readyStreets'));
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); }

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Assemble the deployable site: the app shell plus the data files and a manifest.
+"""Assemble the deployable site: the built app shell plus the data files and a manifest.
 
-    python3 pipeline/build_site.py --out site
+    npm run build && python3 pipeline/build_site.py --out site
 
-Copies app/* (not the test harnesses), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz and shapes.bin.gz,
+Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz and shapes.bin.gz,
 and writes site/data/manifest.json with the available days.
 """
 import argparse
@@ -16,7 +16,7 @@ import shutil
 import struct
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-APP_FILES = ["index.html", "app.js", "worker.js", "raptor.js", "streets.js", "places.js", "live.js", "store.js", "follow.js", "mapstyle.js", "styles.css", "sw.js", "manifest.webmanifest"]
+DIST = ROOT / "dist"   # the Vite build (npm run build): the shell, hashed assets, the service worker
 
 
 def header_of(path):
@@ -33,16 +33,13 @@ def main():
     out = pathlib.Path(args.out)
     if out.exists():
         shutil.rmtree(out)
+    if not (DIST / "index.html").exists():
+        raise SystemExit("no dist/index.html; run `npm run build` first")
+    shutil.copytree(DIST, out)
     (out / "data").mkdir(parents=True)
-    (out / "icons").mkdir()
     built = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    for name in APP_FILES:
-        if name == "sw.js":
-            (out / name).write_text((ROOT / "app" / name).read_text(encoding="utf-8").replace("__BUILD__", built), encoding="utf-8")
-        else:
-            shutil.copy(ROOT / "app" / name, out / name)
-    for p in (ROOT / "app" / "icons").glob("*.png"):
-        shutil.copy(p, out / "icons" / p.name)
+    sw = out / "sw.js"
+    sw.write_text(sw.read_text(encoding="utf-8").replace("__BUILD__", built), encoding="utf-8")
     data = pathlib.Path(args.data)
     days = []
     for p in sorted(data.glob("timetable-*.bin.gz")):

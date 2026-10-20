@@ -1,8 +1,7 @@
 // Wayli service worker: the app shell works offline; data files are cached once downloaded.
 const SHELL = 'wayli-shell-__BUILD__';   // build_site.py puts the build time here: every deploy is a new shell cache
 const DATA = 'wayli-data-v1';
-const SHELL_FILES = ['./', './index.html', './app.js', './worker.js', './raptor.js', './streets.js', './places.js', './live.js', './store.js', './follow.js', './mapstyle.js', './styles.css',
-  './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-180.png'];
+const SHELL_FILES = __SHELL_FILES__;   // the built files, written by vite.config.ts at build time
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));
