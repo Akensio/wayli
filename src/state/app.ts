@@ -8,6 +8,9 @@ export const installable = signal(false);   // the install row shows (Chrome's p
 export const installHint = signal('');      // Safari's steps, shown under the row on a tap
 export const online = signal(navigator.onLine !== false);
 export const drawerOpen = signal(false);
+export const status = signal<{ text: string; error: boolean; frac: number | null } | null>(null);   // the loading pill
+export const liveNote = signal('');    // the live map's line at the bottom
+export const liveLag = signal(false);
 
 export const hooks = {
   install: () => {},                       // Chrome's prompt, or the hint
@@ -18,4 +21,5 @@ export const hooks = {
   appearanceChanged: () => {},             // the map's look or the menus' theme changed
   requestAlertPermission: async () => {},
   testAlert: () => {},
+  pickCancel: () => {},                    // the map picker's cancel
 };

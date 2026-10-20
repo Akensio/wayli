@@ -143,8 +143,15 @@ faster-way card) draws from `state/follow.ts`; the controller (the position
 watch, the timers, the live polls, the re-planning) still runs in `app.js`
 and publishes the trip there after every step. `ui/toast.ts`,
 `journey/share.ts` and `journey/agencies.ts` came out of `app.js` with them.
-Next: the pages (nearby, saved, settings, the drawer, line and stop detail,
-the choosers) with the navigation, then the map. Files: `main.ts` (entry: the sprite, the
+The pages (nearby, saved, settings, the stop, trip and line pages, the
+place chooser, the drawer) are `features/pages/` over one small state module
+each; the navigation (`state/nav.ts`: the stack of panels and screens, the
+history entries, what the sheet shows) and the shell (`features/shell/`: the
+sheet with every panel, the status pill, the live note, the pick bar) are
+components too, so `index.html` is roots only. What stays in `app.js`: the
+worker, loading, planning, the map and its live layer, the controllers of
+the stop, line, trip and follow pages (they publish into the state modules).
+Next: the map as a module of its own, then the controllers. Files: `main.ts` (entry: the sprite, the
 components, then `app.js`), `index.html` (shell), `app.js` (the rest of the UI), `worker.js` (a Web Worker that holds the data and answers
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
 router and street graph, shared with the test harness), `places.js` (the

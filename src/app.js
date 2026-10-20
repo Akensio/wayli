@@ -20,6 +20,7 @@ import * as appState from './state/app.ts';   // the build, install, the drawer
 import * as saved from './state/saved.ts';
 import * as nearby from './state/nearby.ts';
 import * as chooser from './state/chooser.ts';
+import * as nav from './state/nav.ts';   // screens, panels and the back button
 import * as stopPage from './state/stop.ts';
 import * as linePage from './state/line.ts';
 import * as tripPage from './state/trip.ts';
@@ -89,13 +90,9 @@ worker.onerror = (e) => setStatus(t('loadFail', { msg: e.message || 'worker' }),
 // ---------------------------------------------------------------- status, toast
 let statusTimer = 0;
 function setStatus(text, error = false, frac = null) {
-  $('statusText').textContent = text;
-  $('status').classList.toggle('error', error);
-  $('status').hidden = false;
-  $('statusBar').hidden = frac == null;
-  if (frac != null) $('statusBar').firstElementChild.style.width = `${Math.round(frac * 100)}%`;
+  appState.status.value = { text, error, frac };
   clearTimeout(statusTimer);
-  if (!error && frac == null) statusTimer = setTimeout(() => { $('status').hidden = true; }, 4000);
+  if (!error && frac == null) statusTimer = setTimeout(() => { appState.status.value = null; }, 4000);
 }
 function showProgress(m) {
   if (m.label === 'shapes') return;   // quiet: the courses arrive in the background
@@ -181,7 +178,7 @@ function iosInstallHint() {
   return t('iosInstall', { browser: chrome ? 'Chrome' : firefox ? 'Firefox' : edge ? 'Edge' : 'Safari', where: chrome ? t('shareAddr') : firefox || edge ? t('shareMenu') : t('shareBottom') });
 }
 appState.hooks.install = async () => { if (!installPrompt) { appState.installHint.value = appState.installHint.value ? '' : iosInstallHint(); return; } installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; appState.installable.value = false; };
-const updateOnline = () => { $('offline').hidden = navigator.onLine !== false; };
+const updateOnline = () => { appState.online.value = navigator.onLine !== false; };
 window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline);
 
 async function init() {
@@ -246,19 +243,18 @@ function clearPlan() {
   showPlanError('');
   search.optOpen.value = ''; search.resetNow();
   results.refreshRecent();
-  applyLiveShow(); renderPanels(); redrawMap(true);
+  applyLiveShow(); nav.renderPanels(); redrawMap(true);
 }
 // the drawer (features/pages/Drawer): the screens, the line search by number (the To box, numeric keyboard)
 Object.assign(appState.hooks, {
-  go: (name) => { nav.closeAll(); showScreen(name); if (name === 'plan') sheet.set('half'); },
-  lineSearch: () => { nav.closeAll(); showScreen('plan'); search.lineMode(); },   // the rows, even over a plan's summary
+  go: (name) => { nav.closeAll(); nav.showScreen(name); if (name === 'plan') sheet.set('half'); },
+  lineSearch: () => { nav.closeAll(); nav.showScreen('plan'); search.lineMode(); },   // the rows, even over a plan's summary
   closeDrawer: () => nav.close('drawer'),
   setLang: (l) => setLang(l),
   appearanceChanged: () => { applyMapStyle(); applyTheme(); },
   requestAlertPermission: () => requestAlertPermission(),
   testAlert: async () => { ensureAudio(); await requestAlertPermission(); alertUser(t('alertSoon'), t('testAlertMsg')); },
 });
-function renderDrawer() { appState.drawerOpen.value = isOpen('drawer'); }
 
 // ---- pick a point on the map
 // Picking a place on the map: a tap drops a pin with a bubble (the place's name, a Choose button); another
@@ -267,7 +263,7 @@ let pickSeq = 0, pickResolve = null, pickMarker = null;
 function pickOnMap(startAt) {
   return new Promise((resolve) => {
     pickResolve = resolve;
-    showOverlay('picker');
+    nav.showOverlay('picker');
     (async () => {
       const m = await mapReady();
       if (!m || !pickResolve) return;
@@ -289,13 +285,13 @@ async function pickAt(m, lngLat, stopHit) {
   if (stopHit) return;
   try {
     const r = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
-    if (my !== pickSeq || !isOpen('picker')) return;
+    if (my !== pickSeq || !nav.isOpen('picker')) return;
     picked = { ...picked, name: r.kind === 'point' ? t('pointName') : r.distance > 40 ? t('nearName', { name: r.name }) : r.name };
   } catch (e) { if (my !== pickSeq) return; picked = { ...picked, name: t('pointName') }; }
   show();
 }
 const closePicker = (p) => { const r = pickResolve; pickResolve = null; if (pickMarker) { pickMarker.remove(); pickMarker = null; } if (popup) { popup.remove(); popup = null; } nav.close('picker'); if (r) r(p); };
-$('pickCancel').addEventListener('click', () => closePicker(null));
+appState.hooks.pickCancel = () => closePicker(null);
 let lastPosAt = 0;
 const notePos = (lat, lon) => { lastPos = { lat, lon }; lastPosAt = Date.now(); try { localStorage.setItem('wayli-geo', '1'); } catch (e) {} updateNearRoutes(); };
 function getPosition() {
@@ -309,7 +305,7 @@ function getPosition() {
 // ---- choose a place for home / work / saved (features/pages/Chooser: search, my location or the map)
 const choosePlace = (title) => chooser.open(title);
 Object.assign(chooser.hooks, {
-  show: () => showOverlay('chooser'),
+  show: () => nav.showOverlay('chooser'),
   close: () => nav.close('chooser'),
   locate: async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); return { name: r.name, lat: pos.lat, lon: pos.lon }; } catch (e) { toast(t('noLocation')); return null; } },
   pickOnMap: () => pickOnMap(null),
@@ -323,9 +319,9 @@ function showPlanError(msg) { results.error.value = msg; if (msg && sheet.state.
 const applyQuery = search.applyQuery;   // fill the bar from a query (a recent search, a shared link, a saved trip)
 // What the bar needs from the rest of the app (state/search.ts `hooks`): planning, searching, the map, the menu.
 Object.assign(search.hooks, {
-  plan: () => { nav.closeAll(); showScreen('plan'); plan(); },
+  plan: () => { nav.closeAll(); nav.showScreen('plan'); plan(); },
   planTo: (p) => planTo(p),
-  clearPlan: () => { if (nav.stack.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); },
+  clearPlan: () => { if (nav.stack.value.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); },
   hasResults: () => !!(results.result.value && results.query.value),
   lastQuery: () => results.query.value,
   search: (q) => call('search', { q, limit: 10, lang, near: lastPos }),
@@ -334,7 +330,7 @@ Object.assign(search.hooks, {
   openLine: (r) => openLine(r.route),
   getPosition: () => getPosition(),
   pickOnMap: (start) => pickOnMap(start),
-  openMenu: () => showOverlay('drawer'),
+  openMenu: () => nav.showOverlay('drawer'),
   layoutTop: () => layoutTop(),
   toast: (msg) => toast(msg),
   ttReady: () => ttReady,
@@ -345,8 +341,8 @@ Object.assign(results.hooks, {
   openDetail: (j, q, bikeOnly) => openDetail(j, q, bikeOnly),
   startTrip: (j, q) => startTrip(j, q),
   plan: (opts) => plan(opts),
-  replan: (q) => { applyQuery(q); search.resetNow(); nav.closeAll(); showScreen('plan'); plan(); },
-  afterResults: () => { $('sheetBody').scrollTop = 0; if (!topPanel() && screen === 'plan' && sheet.state.value === 'peek') sheet.set('half'); applyLiveShow(); redrawMap(true); },
+  replan: (q) => { applyQuery(q); search.resetNow(); nav.closeAll(); nav.showScreen('plan'); plan(); },
+  afterResults: () => { $('sheetBody').scrollTop = 0; if (!nav.topPanel() && nav.screen.value === 'plan' && sheet.state.value === 'peek') sheet.set('half'); applyLiveShow(); redrawMap(true); },
   redraw: () => redrawMap(true),
   peekChanged: () => { if (sheet.state.value === 'peek') sheet.set('peek'); },
   peekTap: () => sheet.set('half'),
@@ -369,7 +365,7 @@ async function plan(opts = {}) {
     }
   }
   if (!search.timeTouched.value) { search.setDefaultTime(); if (manifest && search.day.value !== startDay()) search.day.value = startDay(); }
-  if (!nav.stack.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' });   // the back button clears the plan
+  if (!nav.stack.value.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' });   // the back button clears the plan
   const day = search.day.value;
   const weekday = dateOf(day).getDay() <= 4;
   const bike = search.bike.value, folding = search.folding.value, arriveBy = search.timeMode.value === 'arrive';
@@ -473,7 +469,7 @@ async function initMap() {
   m.on('moveend', () => { applyLiveShow(); clearTimeout(lmMove); lmMove = setTimeout(refreshLiveMap, 400); });
   m.on('click', (e) => {
     if (m.getLayer('alt-hit') && m.queryRenderedFeatures(e.point, { layers: ['alt-hit'] }).length) return;   // an alternative route: highlighted by its own handler
-    if (isOpen('picker')) {
+    if (nav.isOpen('picker')) {
       const f = stopNear(m, e.point);
       const s = f ? { stop: +f.properties.stop, name: f.properties.name || '' } : null;
       pickAt(m, s ? f.geometry.coordinates : [e.lngLat.lng, e.lngLat.lat], s);
@@ -514,9 +510,9 @@ async function placeBubble(m, e) {
   const show = () => {
     openPopup(m, lngLat, `<div class="pop"><b>${esc(p.name)}</b><div class="row"><button type="button" class="primary slim" data-act="to">${t('toHere')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button></div></div>`, (el2) => {
       el2.querySelector('[data-act="to"]').addEventListener('click', () => { if (popup) popup.remove(); planTo(p); });
-      el2.querySelector('[data-act="from"]').addEventListener('click', () => { if (popup) popup.remove(); nav.closeAll(); search.setPlace('from', p); showScreen('plan'); search.barOpen.value = true; search.focusBox('toQ'); });
+      el2.querySelector('[data-act="from"]').addEventListener('click', () => { if (popup) popup.remove(); nav.closeAll(); search.setPlace('from', p); nav.showScreen('plan'); search.barOpen.value = true; search.focusBox('toQ'); });
     });
-    if (popup) popup.on('close', () => { if (pickMarker && !isOpen('picker')) { pickMarker.remove(); pickMarker = null; } });
+    if (popup) popup.on('close', () => { if (pickMarker && !nav.isOpen('picker')) { pickMarker.remove(); pickMarker = null; } });
   };
   show();
   if (poi) return;
@@ -574,7 +570,7 @@ let drawnFor = null, drawSeq = 0;
 const stale = (seq) => seq !== drawSeq;
 /** Draw what the panel on top wants on the map; nothing when it wants nothing. */
 function redrawMap(force = false) {
-  const key = topPanel() || 'screen-' + screen;
+  const key = nav.topPanel() || 'screen-' + nav.screen.value;
   applyLiveShow();
   if (!force && key === drawnFor) return;
   drawnFor = key;
@@ -616,7 +612,7 @@ async function updateNearRoutes() {
   } catch (e) { /* everything stays visible */ }
 }
 function applyLiveShow() {
-  const want = liveShowFor(topPanel() || 'screen-' + screen);
+  const want = liveShowFor(nav.topPanel() || 'screen-' + nav.screen.value);
   const same = liveShow != null && String(want) === String(liveShow);
   liveShow = want;
   const m = mainMap;
@@ -627,7 +623,7 @@ function applyLiveShow() {
     m.setFilter('lm-veh', f); m.setFilter('lm-veh-label', f);
     m.setFilter('lm-veh-dir', f ? ['all', ['>', ['get', 'bearing'], -1], f] : ['>', ['get', 'bearing'], -1]);
     refreshLiveMap();
-  } else $('liveNote').textContent = '';
+  } else appState.liveNote.value = '';
 }
 function clearMap(m) {
   for (const arr of [journeyMarkers, liveMarkers, lineVeh, followVehicle, altMarkers]) for (const mk of arr.splice(0)) mk.remove();
@@ -741,14 +737,14 @@ function vehiclePopup(m, lngLat, v) {
 }
 /** A stop's bubble: name, its lines, and departures / from here / to here. */
 async function stopPopup(m, lngLat, stop, station) {
-  if (isOpen('picker')) return;   // in pick mode the map tap handler picks the stop instead
+  if (nav.isOpen('picker')) return;   // in pick mode the map tap handler picks the stop instead
   let info;
   try { info = await call('stopInfo', { stop, station: station != null && station !== '' ? +station : -1 }); } catch (e) { return; }
   const html = `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
     `<div class="chips">${info.lines.slice(0, 10).map((l) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${esc(lineText(l.label))}</span>`).join('')}</div>` +
     `<div class="row"><button type="button" class="ghost" data-act="deps">${t('popDeps')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
-    const go = (side) => { if (popup) popup.remove(); if (side === 'to') planTo(stopPlace(info)); else { nav.closeAll(); search.setPlace('from', stopPlace(info)); showScreen('plan'); sheet.set('half'); } };
+    const go = (side) => { if (popup) popup.remove(); if (side === 'to') planTo(stopPlace(info)); else { nav.closeAll(); search.setPlace('from', stopPlace(info)); nav.showScreen('plan'); sheet.set('half'); } };
     el.querySelector('[data-act="deps"]').addEventListener('click', () => { if (popup) popup.remove(); openStop(stop); });
     el.querySelector('[data-act="from"]').addEventListener('click', () => go('from'));
     el.querySelector('[data-act="to"]').addEventListener('click', () => go('to'));
@@ -861,7 +857,7 @@ function openDetail(j, q, bikeOnly = false) {
   detail.open(j, q, bikeOnly);
 }
 Object.assign(detail.hooks, {
-  show: () => showOverlay('detail'),
+  show: () => nav.showOverlay('detail'),
   close: () => nav.close('detail'),
   redraw: () => redrawMap(true),
   openLine: (route) => openLine(route),
@@ -943,15 +939,15 @@ async function openStop(stop) {
   clearInterval(stopTimer);
   if (isNow) {
     liveForStop(info, deps, day, my);
-    stopTimer = setInterval(() => { if (!isOpen('stopDetail')) clearInterval(stopTimer); else liveForStop(info, deps, day, my); }, 45000);
+    stopTimer = setInterval(() => { if (!nav.isOpen('stopDetail')) clearInterval(stopTimer); else liveForStop(info, deps, day, my); }, 45000);
   }
 }
 Object.assign(stopPage.hooks, {
-  show: () => showOverlay('stopDetail'),
+  show: () => nav.showOverlay('stopDetail'),
   close: () => nav.close('stopDetail'),
   refresh: () => { if (currentStop) openStop(currentStop.stop); },
   openTrip: (trip, stop) => openTrip(trip, stop),
-  fromHere: () => { if (!currentStop) return; const p = stopPlace(currentStop); nav.closeAll(); search.setPlace('from', p); showScreen('plan'); sheet.set('half'); },
+  fromHere: () => { if (!currentStop) return; const p = stopPlace(currentStop); nav.closeAll(); search.setPlace('from', p); nav.showScreen('plan'); sheet.set('half'); },
   toHere: () => { if (currentStop) planTo(stopPlace(currentStop)); },
 });
 /** Live times for the departures of a stop: one request for the vehicles around it, then by line for what it missed. */
@@ -1002,9 +998,9 @@ async function loadStopsGeo() {
 async function refreshLiveMap() {
   const m = mainMap;
   if (!m || !mapStyled || document.hidden || sheet.state.value === 'full') return;
-  if (isOpen('picker') || liveShow === 'none') { $('liveNote').textContent = ''; return; }
-  if (!liveOn()) { $('liveNote').textContent = ''; m.getSource('lm-veh').setData(EMPTY); return; }
-  if (m.getZoom() < 10) { $('liveNote').textContent = t('liveMapZoom'); m.getSource('lm-veh').setData(EMPTY); return; }
+  if (nav.isOpen('picker') || liveShow === 'none') { appState.liveNote.value = ''; return; }
+  if (!liveOn()) { appState.liveNote.value = ''; m.getSource('lm-veh').setData(EMPTY); return; }
+  if (m.getZoom() < 10) { appState.liveNote.value = t('liveMapZoom'); m.getSource('lm-veh').setData(EMPTY); return; }
   const my = ++lmSeq;
   const b = m.getBounds();
   try {
@@ -1033,10 +1029,10 @@ async function refreshLiveMap() {
     const shown = Array.isArray(liveShow) ? features.filter((f) => liveShow.includes(f.properties.ref)).length : features.length;
     const scope = !Array.isArray(liveShow) ? '' : nearRoutes && liveShow === nearRoutes.ids ? t('liveScopeNear') : t('liveScopeSearch');
     const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
-    $('liveNote').textContent = shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope });
-    $('liveNote').classList.toggle('lag', !!shown && ageMin >= 4);
+    appState.liveNote.value = shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope });
+    appState.liveLag.value = !!shown && ageMin >= 4;
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch (e) {}
-  } catch (e) { if (my === lmSeq) $('liveNote').textContent = t('liveFail'); }
+  } catch (e) { if (my === lmSeq) appState.liveNote.value = t('liveFail'); }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLiveMap(); });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
@@ -1069,7 +1065,7 @@ function arrowImage(color) {
   return ctx.getImageData(0, 0, size, size);
 }
 async function selectVehicle(p, coords) {
-  if (isOpen('picker')) return;
+  if (nav.isOpen('picker')) return;
   const lb = lmLabels.get(String(p.lineRef));
   // which trip it runs and how late: one worker call
   let st = { trip: -1 };
@@ -1095,7 +1091,7 @@ async function openLine(route) {
     lineLive();
   };
   linePage.info.value = info; linePage.liveText.value = ''; linePage.liveOk.value = false;
-  showOverlay('lineDetail');
+  nav.showOverlay('lineDetail');
   clearInterval(lineTimer);
   lineTimer = setInterval(lineLive, 20000);
 }
@@ -1103,7 +1099,7 @@ Object.assign(linePage.hooks, { close: () => nav.close('lineDetail'), openLine: 
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive() {
   const info = lineCur;
-  if (!info || !isOpen('lineDetail') || !liveOn() || info.routeId == null) return;
+  if (!info || !nav.isOpen('lineDetail') || !liveOn() || info.routeId == null) return;
   const my = lineSeq;
   try {
     const vs = await live.vehiclesByLine(info.routeId);
@@ -1122,7 +1118,7 @@ async function lineLive() {
 async function openTrip(trip, hereStop) {
   const ts = await tripStopsCached(trip);
   tripPage.ts.value = ts; tripPage.hereStop.value = hereStop; tripPage.vehicle.value = null; tripPage.noVehicle.value = false;
-  showOverlay('tripDetail');
+  nav.showOverlay('tripDetail');
   const day = search.day.value;
   if (!liveOn() || ts.routeId == null) return;
   try {
@@ -1142,14 +1138,14 @@ function restoreLast(p) {
   const last = lastSearch.get();
   if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > 3600e3) return false;
   if (!last.q.to || !p || last.q.to.name !== p.name || last.q.day !== search.day.value && !(manifest && manifest.days.some((d) => d.date === last.q.day))) return false;
-  nav.closeAll(); showScreen('plan');
+  nav.closeAll(); nav.showScreen('plan');
   search.day.value = last.q.day; applyQuery(last.q); results.setResults(last.result, last.q, last.at); sheet.set('half');
   return true;
 }
 async function planTo(p) {
   if (restoreLast(p)) return;
   nav.closeAll();
-  showScreen('plan');
+  nav.showScreen('plan');
   search.setPlace('to', p);
   results.status.value = 'locating';
   sheet.set('half');
@@ -1228,7 +1224,7 @@ function openFollow(a) {
     fitMap(drawJourney(m, a.journey, journeyMarkers), 16);
     stepFollow(); followLive();
   };
-  showOverlay('follow');
+  nav.showOverlay('follow');
   follow.resumable.value = null;
   stepFollow();
 }
@@ -1387,117 +1383,15 @@ Object.assign(follow.hooks, {
   dismiss: (alt) => { if (!fol) return; fol.dismissed[alt.key] = Date.now(); fol.alt = null; renderFollow(); },
 });
 
-// ---------------------------------------------------------------- screens and the back button
-// Every overlay and every tab change is a history entry, so the phone's back button (or the browser's)
-// closes the overlay or returns to the previous tab instead of leaving the app. Closing with an
-// in-app button goes through history too, so both paths look the same.
-// A close steps history back; the browser performs that later, and a pushState made meanwhile would be
-// swallowed by it (the traversal is measured from where the call was made). So while a step back is
-// pending, new entries wait in `queued` and are pushed once its popstate arrives.
-const nav = {
-  stack: [],   // entries: {kind: 'overlay', id}, {kind: 'tab', from} or {kind: 'plan'}
-  settling: false, queued: [],
-  push(entry) {
-    this.stack.push(entry);
-    if (this.settling) { this.queued.push(entry); return; }
-    try { history.pushState({ wayli: this.stack.length }, ''); } catch (e) {}
-  },
-  /** History caught up with a close: push what waited, in stack order. */
-  settled() {
-    this.settling = false;
-    for (const e of this.queued.splice(0)) { const i = this.stack.indexOf(e); if (i >= 0) try { history.pushState({ wayli: i + 1 }, ''); } catch (x) {} }
-  },
-  stepBack(n) {
-    this.settling = true;
-    try { history.go(-n); } catch (e) { this.settled(); return; }
-    setTimeout(() => { if (this.settling) this.settled(); }, 600);
-  },
-  /** Undo the top entry (called from popstate, or to close programmatically). */
-  undo(entry) {
-    if (entry.kind === 'overlay') hideOverlay(entry.id);
-    else if (entry.kind === 'tab') showScreen(entry.from, false);
-    else if (entry.kind === 'plan') clearPlan();
-  },
-  /** Close the given overlay (or the plan) now; history steps back one entry to match (its popstate then finds nothing left to undo). */
-  close(id) {
-    const i = this.stack.findIndex((e) => (e.kind === 'overlay' && e.id === id) || (e.kind === 'plan' && id === 'plan'));
-    if (i < 0) { if (id === 'plan') clearPlan(); return; }
-    const [entry] = this.stack.splice(i, 1);
-    if (entry.kind === 'plan') clearPlan(); else hideOverlay(id);
-    this.stepBack(1);
-  },
-  /** Replace one open overlay by another in place (the trip detail becomes the trip being followed). */
-  swap(oldId, newId) {
-    const i = this.stack.findIndex((e) => e.kind === 'overlay' && e.id === oldId);
-    if (i < 0) return false;
-    this.stack[i] = { kind: 'overlay', id: newId };
-    if (popup) { popup.remove(); popup = null; }
-    if (OVERLAY_CLOSE[oldId]) OVERLAY_CLOSE[oldId]();
-    renderPanels();
-    return true;
-  },
-  /** Close every panel and return to the base screen (the history catches up on its own). */
-  closeAll() {
-    const old = this.stack;
-    if (!old.length) return;
-    this.stack = [];
-    const base = old.find((e) => e.kind === 'tab');
-    if (base) screen = base.from;
-    for (const e of old) if (e.kind === 'overlay') hideOverlay(e.id);
-    renderPanels();
-    this.stepBack(old.length);
-  },
-};
-const isOpen = (id) => nav.stack.some((e) => e.kind === 'overlay' && e.id === id);
-const topPanel = () => { for (let i = nav.stack.length - 1; i >= 0; i--) if (nav.stack[i].kind === 'overlay' && nav.stack[i].id !== 'drawer') return nav.stack[i].id; return null; };
+// ---------------------------------------------------------------- panels: what closing each one stops (state/nav.ts does the rest)
 const OVERLAY_CLOSE = { detail: () => { detailSeq++; delete mapOf.detail; }, stopDetail: () => { clearInterval(stopTimer); stopSeq++; delete mapOf.stopDetail; }, lineDetail: () => { clearInterval(lineTimer); lineSeq++; lineCur = null; delete mapOf.lineDetail; },
   picker: () => { const r = pickResolve; pickResolve = null; if (pickMarker) { pickMarker.remove(); pickMarker = null; } if (r) r(null); }, chooser: () => chooser.finish(null, false), follow: () => { if (fol) closeFollow(false); delete mapOf.follow; } };
-const PANEL_EL = { picker: 'pickbar' };
-function showOverlay(id) {
-  if (isOpen(id)) { redrawMap(true); return; }
-  nav.push({ kind: 'overlay', id });
-  renderPanels();
-}
-function hideOverlay(id) {
-  if (popup) { popup.remove(); popup = null; }
-  if (OVERLAY_CLOSE[id]) OVERLAY_CLOSE[id]();
-  renderPanels();
-}
-window.addEventListener('popstate', (e) => {
-  if (nav.settling) { nav.settled(); return; }   // our own step back: the stack is already right
-  const depth = e.state && e.state.wayli ? e.state.wayli : 0;
-  while (nav.stack.length > depth) nav.undo(nav.stack.pop());
+Object.assign(nav.hooks, {
+  closed: (id) => { if (popup) { popup.remove(); popup = null; } if (OVERLAY_CLOSE[id]) OVERLAY_CLOSE[id](); },
+  clearPlan: () => clearPlan(),
+  changed: () => redrawMap(),
+  screenShown: (name) => { if (name === 'nearby' && ttReady && nearby.status.value !== 'ready') loadNearby(); },
 });
-try { history.replaceState({ wayli: 0 }, ''); } catch (e) {}
-let screen = 'plan';
-/** How open the sheet is when a panel or screen comes up. */
-// screens that need no map are pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
-const PAGE_TITLE = { 'screen-more': 'settings', 'screen-saved': 'tabSaved', chooser: null };
-$('pageBack').addEventListener('click', () => { if (topPanel() === 'chooser') chooser.finish(null); else if (nav.stack.length) history.back(); else showScreen('plan'); });
-const SHEET_FOR = { 'screen-plan': () => (results.showing.value || search.from.value || search.to.value ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
-/** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
-function renderPanels() {
-  renderDrawer();
-  const top = topPanel();
-  const picking = top === 'picker';
-  $('pickbar').hidden = !picking;
-  document.querySelector('.topbar').hidden = picking;
-  $('sheet').hidden = picking;
-  const key = top || 'screen-' + screen;
-  const show = picking ? null : (PANEL_EL[key] || key);
-  for (const el of document.querySelectorAll('#sheetBody > .screen, #sheetBody > .detail')) el.hidden = el.id !== show;
-  const page = !picking && key in PAGE_TITLE;
-  document.body.classList.toggle('page', page);
-  if (page) { $('pageTitle').textContent = PAGE_TITLE[key] ? t(PAGE_TITLE[key]) : chooser.title.value; $('sheetBody').scrollTop = 0; }
-  if (!picking) { const st = SHEET_FOR[key]; sheet.set(typeof st === 'function' ? st() : st || 'half'); }
-  redrawMap();
-}
-function showScreen(name, record = true) {
-  if (record && name !== screen) nav.push({ kind: 'tab', from: screen });
-  screen = name;
-  renderPanels();
-  if (name === 'nearby' && ttReady && nearby.status.value !== 'ready') loadNearby();
-}
 sheet.hooks.changed = (prev, st) => {
   if (prev === 'full' && st !== 'full') refreshLiveMap();
   if (st !== prev && mainMap && (st === 'peek' || prev === 'peek')) $('sheetBody').scrollTop = 0;

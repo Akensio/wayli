@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { Icon } from '../../ui/Icon';
 import { t, lang } from '../../i18n';
 import * as search from '../../state/search';
+import * as nav from '../../state/nav';
 import { SearchField } from './SearchField';
 import { WhenPopover, BikePopover, TimeChipInner, BikeChipInner } from './Popovers';
 
@@ -61,7 +62,7 @@ export function TopBar() {
   };
 
   return (
-    <div ref={barRef} class={`topbar${edit ? ' two' : ''}${search.leaving.value ? ' leaving' : ''}${opt ? ' open' : ''}`} id="topbar">
+    <div ref={barRef} class={`topbar${edit ? ' two' : ''}${search.leaving.value ? ' leaving' : ''}${opt ? ' open' : ''}`} id="topbar" hidden={nav.picking.value}>
       <div class="pair" id="pair" hidden={sum}>
         <button type="button" class="iconbtn small" id="barBack" hidden={!edit} aria-label={t('back')} onClick={search.back}><Icon name="back" class="chev" /></button>
         <div class="trow origin" id="fromRow" hidden={!edit}>

@@ -23,43 +23,11 @@
 
 <div id="topbar-root"></div>
 <div id="drawer-root" style="display:contents"></div>
-<div class="floating">
-  <div class="status" id="status" hidden><span id="statusText">טוען…</span><div class="bar" id="statusBar"><div></div></div></div>
-  <span class="offline" id="offline" hidden data-t="offline">לא מקוון</span>
-  <div id="resume-root" style="display:contents"></div>
-</div>
-<div class="livenote" id="liveNote"></div>
-<div class="pickbar" id="pickbar" hidden>
-  <div class="row"><span class="muted" id="pickHint" data-t="pickHint">הקישו על המפה על המקום הרצוי</span><span class="spacer" style="flex:1"></span><button type="button" class="ghost" id="pickCancel" data-t="cancel">ביטול</button></div>
-</div>
+<div id="floating-root" style="display:contents"></div>
+<div id="livenote-root" style="display:contents"></div>
+<div id="pickbar-root" style="display:contents"></div>
 
-<div class="sheet" id="sheet" data-state="peek">
-  <div class="handle" id="sheetHandle"><span></span></div>
-  <div class="pagehead"><button type="button" class="iconbtn flat" id="pageBack" aria-label="חזרה"><svg class="i chev" aria-hidden="true"><use href="#i-back"/></svg></button><h2 id="pageTitle"></h2></div>
-  <div class="sheet-body" id="sheetBody">
-
-  <section class="screen" id="screen-plan"></section>
-
-  <section class="screen" id="screen-nearby" hidden></section>
-
-  <section class="screen" id="screen-saved" hidden></section>
-
-  <section class="screen" id="screen-more" hidden></section>
-
-  <div class="detail" id="detail" hidden></div>
-
-  <div class="detail" id="stopDetail" hidden></div>
-
-  <div class="detail" id="tripDetail" hidden></div>
-
-  <div class="detail" id="lineDetail" hidden></div>
-
-  <div class="detail" id="chooser" hidden></div>
-
-  <div class="detail follow" id="follow" hidden></div>
-
-  </div>
-</div>
+<div id="sheet-root" style="display:contents"></div>
 
 <div class="toast" id="toast" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js" crossorigin=""></script>
