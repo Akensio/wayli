@@ -11,6 +11,9 @@ const $ = (id) => document.getElementById(id);
 import { ICONS, FILLED_ICONS, ic } from './ui/icons.ts';
 import * as search from './state/search.ts';   // the top bar's state: places, when, bike, which parts are open
 import { fmt, dateOf, calToday, dayLabel } from './time.ts';
+import * as results from './state/results.ts';   // the plan's results: the list, the ways on the map, the recent trips
+import { routeColor, textOn, chipStyle, legColor } from './journey/colors.ts';
+import { dur, transfersText, lineText, stopsText, describePlace, minutesUntil, leaveText } from './journey/format.ts';
 
 // ---------------------------------------------------------------- i18n
 import { t, lang as langSig, storeLang } from './i18n.ts';
@@ -26,14 +29,13 @@ function applyLang() {
 }
 function setLang(l) {
   lang = l; storeLang(l);
-  applyLang(); renderSaved(); renderRecent(); renderPeek();
-  if (lastResult && lastQuery) renderResults(lastResult, lastQuery);
+  applyLang(); renderSaved(); results.refreshRecent();
   if (mainMap) setBasemapLang(mainMap);
   // stop names, headsigns and map labels come from the worker: ask again in the new language
   call('setLang', { lang }).then(() => {
     lmStops = false; loadStopsGeo();
     const located = (p) => p && !(p.transient && p.lat == null);   // never a location prompt for a language switch
-    if (lastResult && lastQuery && located(search.from.value) && located(search.to.value)) plan();
+    if (results.result.value && located(search.from.value) && located(search.to.value)) plan();
   }).catch(() => {});
 }
 /** The basemap's own labels (streets, places, water) in the rider's language: one name per label, not Latin plus Hebrew. */
@@ -102,9 +104,7 @@ function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp
 // ---------------------------------------------------------------- time, days (Israel time, service days)
 const fmtPlus = (sec) => fmt(sec) + (sec >= 86400 ? '⁺' : '');   // past midnight, still this service day
 // the current results on the map: the first few journeys drawn together, one highlighted, the rest muted
-let resultCards = [];   // [{ idx, j, q, el, dep }] the cards of the current results, in list order
-let altShown = new Set(), altSel = -1, altMarkers = [];
-let peekSync = () => {};   // set once the sheet exists: the collapsed height follows the peek line
+let altMarkers = [];   // the minutes badges of the ways drawn on the map
 const AGENCY_EN = { 'רכבת ישראל': 'Israel Railways', 'אגד': 'Egged', 'אלקטרה אפיקים תחבורה': 'Electra Afikim', 'אלקטרה אפיקים': 'Electra Afikim', 'דן': 'Dan', 'ש.א.מ': 'Sham',
   'נסיעות ותיירות': 'Nesiot VeTayarut', 'גי.בי.טורס': 'GB Tours', 'מועצה אזורית אילות': 'Eilot Regional Council', 'נתיב אקספרס': 'Nateev Express', 'מטרופולין': 'Metropoline',
   'סופרבוס': 'Superbus', 'קווים': 'Kavim', 'כרמלית': 'Carmelit', 'כפיר': 'Kfir', 'תבל': 'Tevel', 'גלים': 'Galim', 'מועצה אזורית גולן': 'Golan Regional Council', 'דן בדרום': 'Dan BaDarom',
@@ -112,17 +112,6 @@ const AGENCY_EN = { 'רכבת ישראל': 'Israel Railways', 'אגד': 'Egged',
   'דן נתיבים בעמ': 'Dan Netivim', 'יונייטד טורס': 'United Tours', 'מוניות מטרו קו': 'Metro Kav', 'אודליה מוניות בעמ': 'Odelia', 'דרך אגד עוטף ירושלים': 'Egged Jerusalem Envelope' };
 /** An operator's name for display: English where known, else as the feed names it, isolated so a Hebrew name inside an English line keeps its place. */
 const agencyText = (a) => `<bdi>${esc(lang === 'he' ? a : AGENCY_EN[a] || a)}</bdi>`;
-const stopsText = (n) => (n === 1 ? t('stops1') : t('stopsN', { n }));
-const dur = (sec) => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
-/** Minutes until a departure on a service day, from the real clock. */
-const minutesUntil = (sec, day) => Math.round((sec - live.nowOn(day)) / 60);
-function leaveText(sec, day) {
-  const n = minutesUntil(sec, day);
-  if (n > 180 || n < -180) return '';
-  if (n < -1) return t('departed');
-  if (n <= 0) return t('leaveNow');
-  return t('leaveIn', { n });
-}
 setInterval(() => {
   for (const el of document.querySelectorAll('[data-dep]')) {
     const txt = leaveText(+el.dataset.dep, el.dataset.day);
@@ -216,7 +205,7 @@ async function init() {
   updateOnline();
   layoutTop();
   initMap();
-  renderSaved(); renderRecent(); renderPeek();
+  renderSaved(); results.refreshRecent();
   // a trip in progress comes back first, timetable or not
   const active = activeTrip.get();
   if (active && !tripStale(active)) { updateResumeBar(); if (active.view === 'follow') openFollow(active); } else if (active) activeTrip.clear();
@@ -235,7 +224,7 @@ async function init() {
   search.day.value = start;
   search.setDefaultTime();
   if (shared) applyQuery(shared);
-  else if (last && last.q && !last.dismissed && last.q.day === start && Date.now() - last.at < 6 * 3600e3) { applyQuery(last.q); lastResult = last.result; lastQuery = last.q; renderResults(last.result, last.q, last.at); }
+  else if (last && last.q && !last.dismissed && last.q.day === start && Date.now() - last.at < 6 * 3600e3) { applyQuery(last.q); results.setResults(last.result, last.q, last.at); }
   try { await loadDay(start); } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   if (shared) { history.replaceState(null, '', location.pathname); plan(); }
   await loadPlaces();
@@ -247,7 +236,6 @@ search.hooks.dayChanged = (d) => { loadDay(d).catch((e) => setStatus(t('loadFail
 search.hooks.startDay = () => (manifest ? startDay() : '');
 
 // ---------------------------------------------------------------- places and search
-function describePlace(p) { return p ? p.name + (p.platforms > 1 ? ` (${t('platforms', { n: p.platforms })})` : '') : ''; }
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
 /** The sheet's full size: the screen under the bar. */
 const fullSheetPx = () => Math.max(200, innerHeight - topPad() + 4);
@@ -359,12 +347,11 @@ const myLocation = search.myLocation;
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 function clearPlan() {
   search.clearPlaces();
-  lastResult = null; lastQuery = null; { const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true }); }
-  $('results').innerHTML = ''; showPlanError('');
-  resultCards = []; altShown = new Set(); altSel = -1;
+  results.clear(); { const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true }); }
+  showPlanError('');
   search.optOpen.value = ''; search.resetNow();
-  renderRecent();
-  applyLiveShow(); renderPanels(); renderPeek(); redrawMap(true);
+  results.refreshRecent();
+  applyLiveShow(); renderPanels(); redrawMap(true);
 }
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
@@ -438,18 +425,17 @@ $('chCancel').addEventListener('click', () => closeChooser(null));
 $('chLoc').addEventListener('click', async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); closeChooser({ name: r.name, lat: pos.lat, lon: pos.lon }); } catch (e) { toast(t('noLocation')); } });
 $('chMap').addEventListener('click', async () => { const p = await pickOnMap(null); if (p) closeChooser(p); });
 
-function showPlanError(msg) { $('planError').textContent = msg; $('planError').hidden = !msg; if (msg && sheet.state === 'peek') sheet.set('half'); }
+function showPlanError(msg) { results.error.value = msg; if (msg && sheet.state === 'peek') sheet.set('half'); }
 
 // ---------------------------------------------------------------- planning
-let lastResult = null, lastQuery = null;
 const applyQuery = search.applyQuery;   // fill the bar from a query (a recent search, a shared link, a saved trip)
 // What the bar needs from the rest of the app (state/search.ts `hooks`): planning, searching, the map, the menu.
 Object.assign(search.hooks, {
   plan: () => { nav.closeAll(); showScreen('plan'); plan(); },
   planTo: (p) => planTo(p),
   clearPlan: () => { if (nav.stack.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); },
-  hasResults: () => !!(lastResult && lastQuery),
-  lastQuery: () => lastQuery,
+  hasResults: () => !!(results.result.value && results.query.value),
+  lastQuery: () => results.query.value,
   search: (q) => call('search', { q, limit: 10, lang, near: lastPos }),
   searchLines: (q) => call('searchLines', { q, limit: 6 }),
   lineChipHtml: (r) => `<span class="chip t${r.routeType}"${chipStyle(r.routeType, r.agency)}>${esc(lineText(r.line))}</span>`,
@@ -462,6 +448,17 @@ Object.assign(search.hooks, {
   ttReady: () => ttReady,
   lastPos: () => lastPos,
   afterSaved: () => renderSaved(),
+});
+// What the results need (state/results.ts `hooks`): the detail and follow screens, planning again, the sheet and the map.
+Object.assign(results.hooks, {
+  openDetail: (j, q, bikeOnly) => openDetail(j, q, bikeOnly),
+  startTrip: (j, q) => startTrip(j, q),
+  plan: (opts) => plan(opts),
+  replan: (q) => { applyQuery(q); search.resetNow(); nav.closeAll(); showScreen('plan'); plan(); },
+  afterResults: () => { $('sheetBody').scrollTop = 0; if (!topPanel() && screen === 'plan' && sheet.state === 'peek') sheet.set('half'); applyLiveShow(); redrawMap(true); },
+  redraw: () => redrawMap(true),
+  peekChanged: () => { if (sheet.state === 'peek') sheet.set('peek'); },
+  peekTap: () => sheet.set('half'),
 });
 function parseShared(params) {
   const pt = (s) => { if (!s) return null; const [lat, lon, ...rest] = s.split(','); const name = decodeURIComponent(rest.join(',')) || `${lat}, ${lon}`; return Number.isNaN(+lat) ? null : { name, lat: +lat, lon: +lon }; };
@@ -490,8 +487,7 @@ async function plan(opts = {}) {
   const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at, toTime = arriveBy ? at : at + 3600;
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   search.busy.value = true;
-  $('results').innerHTML = `<div class="empty">${t('planning')}</div>`;
-  $('recentBox').hidden = true;
+  results.status.value = 'planning';
   search.optOpen.value = '';
   const q = { from: search.from.value, to: search.to.value, day, at: search.at.value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
@@ -503,212 +499,18 @@ async function plan(opts = {}) {
   q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null; q.liveTried = !!(liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200);
   try {
     const r = await call('plan', { from: search.from.value, to: search.to.value, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
-    lastResult = r; lastQuery = q;
     recentTrips.add(q); recentPlaces.add(search.from.value); recentPlaces.add(search.to.value);
     lastSearch.set({ q, result: r, at: Date.now() });
-    renderResults(r, q);
-    renderRecent();
-  } catch (e) { showPlanError(e.message); $('results').innerHTML = ''; }
+    results.setResults(r, q);
+    results.refreshRecent();
+  } catch (e) { showPlanError(e.message); results.result.value = null; results.status.value = 'idle'; }
   search.busy.value = false;
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
 const inShort = (n) => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
-const transfersText = (n) => n === 0 ? t('direct') : n === 1 ? t('transfer1') : t('transfers', { n });
 const chipClass = (l) => l.type === 'ride' ? `chip t${l.routeType}` : l.mode === 'bike' ? 'chip bike' : 'chip walk';
-const lineText = (line) => line === 'train' ? t('train') : line;
 const chipText = (l, alts) => l.type === 'ride' ? esc(alts && alts.length > 1 ? alts.map(lineText).join(' / ') : lineText(l.line)) : `${ic(l.mode === 'bike' ? 'bike' : 'walk')} ${Math.round(l.seconds / 60)}`;
 const chipAttr = (l) => (l.type === 'ride' ? chipStyle(l.routeType, l.agency) : '');
-/** A ride leg planned with live data: how late its vehicle runs. */
-function liveLine(l) {
-  if (!l || !l.live) return '';
-  const d = live.delayMinutes(l.live.delay);
-  const txt = d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
-  return `<div class="muted"><span class="live ${l.live.stale ? 'unsure' : 'ok'}">${esc(txt)}${l.live.stale ? ' ?' : ''}</span></div>`;
-}
-function journeyCard(j, q, alts, options, idx = null) {
-  const d = document.createElement('div');
-  d.className = 'journey';
-  const rides = j.legs.map((l, i) => ({ l, i })).filter((x) => x.l.type === 'ride');
-  const nowS = live.nowOn(q.day), dep = rides.length && j.depart < nowS && rides[0].l.depart >= nowS - 60 ? Math.min(nowS, rides[0].l.depart) : j.depart;
-  d.innerHTML = `<div class="top"><span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="dur">${dur(j.arrive - j.depart)} · ${transfersText(j.transfers)}</span></div>` +
-    `<div class="chips">${j.legs.map((l, i) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l, alts && alts[i])}</span>`).join('<span class="muted">›</span>')}</div>` +
-    `<div class="sub">${rides.map(({ l }) => `${esc(lineText(l.line))} ${t('toward', { headsign: esc(l.headsign) })}`).join(' · ')}</div>` +
-    (options && options.length > 1 ? `<div class="opts"><span class="muted">${t('alsoAt')}</span>${options.slice(1).map((o, k) => `<button type="button" class="opt" data-k="${k + 1}">${fmt(o.depart)}</button>`).join('')}</div>` : '') +
-    `<div class="leave${rides.length && rides[0].l.live ? (rides[0].l.live.stale ? ' unsure' : ' live') : ''}" data-dep="${dep}" data-day="${q.day}">${leaveText(dep, q.day)}</div>` + liveLine(rides.length ? rides[0].l : null);
-  if (leaveText(dep, q.day) === t('departed')) d.querySelector('.leave').classList.add('past');
-  for (const b of d.querySelectorAll('.opt')) {
-    const o = options[+b.dataset.k];
-    if (leaveText(o.depart, q.day) === t('departed')) b.classList.add('past');
-    b.addEventListener('click', (e) => { e.stopPropagation(); openDetail(o, q); });
-  }
-  d.addEventListener('click', () => openDetail(j, q));
-  d.dataset.depAt = dep;   // not data-dep: that marks the countdown spans the timer rewrites
-  if (idx != null) {
-    const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'mapbtn'; mb.title = t('onMap'); mb.setAttribute('aria-label', t('onMap')); mb.innerHTML = ic('map');
-    mb.addEventListener('click', (e) => { e.stopPropagation(); toggleAlt(idx); });
-    d.appendChild(mb);
-  }
-  return d;
-}
-/** A route on the map is highlighted: its card too, the peek line says which, the map redraws. */
-function applyAlt() {
-  for (const c of resultCards) { c.el.classList.toggle('sel', c.idx === altSel && altShown.has(c.idx)); c.el.querySelector('.mapbtn').classList.toggle('on', altShown.has(c.idx)); }
-  renderPeek();
-  redrawMap(true);
-}
-function selectAlt(idx) { altSel = idx; altShown.add(idx); applyAlt(); }
-/** The card's map button: show the route (highlighted), highlight a shown one, hide the highlighted one. */
-function toggleAlt(idx) {
-  if (altShown.has(idx) && altSel === idx) { altShown.delete(idx); altSel = altShown.size ? [...altShown][0] : -1; }
-  else { altShown.add(idx); altSel = idx; }
-  applyAlt();
-}
-let lastResultsAt = null;
-const SORTS = ['depart', 'arrive', 'fast', 'changes'];
-const sortKey = { depart: (j) => j.depart, arrive: (j) => j.arrive, fast: (j) => j.arrive - j.depart, changes: (j) => j.transfers * 1e6 + j.depart };
-/** Filters (direct, with a train) and the sort order over the results; remembered across plans. */
-function filterChips(box) {
-  const s = settings.get();
-  const row = document.createElement('div'); row.className = 'filters';
-  const chip = (label, on, fn, icon = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn' + (on ? ' on' : ''); b.innerHTML = (icon ? ic(icon) + ' ' : '') + esc(label); b.addEventListener('click', () => { fn(); renderResults(lastResult, lastQuery, lastResultsAt); }); row.appendChild(b); };
-  chip(t('fDirect'), s.fDirect, () => settings.set({ fDirect: !s.fDirect }));
-  chip(t('fTrain'), s.fTrain, () => settings.set({ fTrain: !s.fTrain }), 'train');
-  const so = SORTS.includes(s.resultSort) ? s.resultSort : 'depart';
-  chip(t('sort' + so[0].toUpperCase() + so.slice(1)), so !== 'depart', () => settings.set({ resultSort: SORTS[(SORTS.indexOf(so) + 1) % SORTS.length] }), 'sliders');
-  box.appendChild(row);
-}
-function renderResults(r, q, resultsAt = null) {
-  const box = $('results');
-  box.innerHTML = '';
-  lastResultsAt = resultsAt;
-  resultCards = []; altShown = new Set(); altSel = -1;
-  $('recentBox').hidden = true;
-  lastQuery = q;
-  search.barOpen.value = false;
-  $('sheetBody').scrollTop = 0;
-  const note = q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
-  const head = document.createElement('div');
-  head.className = 'results-head muted';
-  const n = (r.groups || r.journeys).length;
-  const clock = (ms) => new Date(ms).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
-  const liveNote = q.liveTried ? (q.liveAsOf ? ` · <span class="live ok">${t('livePlanned', { time: clock(q.liveAsOf) })}</span>` : ` · <span class="live">${t('schedOnly')}</span>`) : '';
-  head.innerHTML = `<span>${resultsAt ? t('resultsFrom', { time: clock(resultsAt) }) + ' · ' : ''}${t('found', { n })}${note}${q.arriveBy ? ' · ' + t('arriveByNote', { time: q.at }) : ''}${liveNote}</span><span class="spacer"></span>`;
-  if (resultsAt) { const b = document.createElement('button'); b.type = 'button'; b.className = 'linkbtn'; b.textContent = t('planAgain'); b.addEventListener('click', () => { search.resetNow(); plan(); }); head.appendChild(b); }
-  box.appendChild(head);
-  if (r.bikeOnly) {
-    const b = document.createElement('div');
-    b.className = 'journey';
-    b.innerHTML = `<div class="top"><span class="times"><span class="chip bike">${ic('bike')}</span> ${t('bikeOnly', { min: Math.round(r.bikeOnly.seconds / 60), km: (r.bikeOnly.metres / 1000).toFixed(1) })}</span></div>`;
-    b.addEventListener('click', () => openDetail({ depart: 0, arrive: r.bikeOnly.seconds, transfers: 0, legs: [{ type: 'access', mode: 'bike', seconds: r.bikeOnly.seconds, path: r.bikeOnly.path, to: { name: describePlace(q.to) } }] }, q, true));
-    box.appendChild(b);
-  } else if (q.bike !== 'none' && r.streets && !q.from.stops && !q.to.stops) {
-    const b = document.createElement('div'); b.className = 'muted'; b.textContent = t('noBikeOnly'); box.appendChild(b);
-  }
-  if (!r.journeys.length) {
-    const e = document.createElement('div'); e.className = 'empty'; e.textContent = t(r.reason || 'noJourney'); box.appendChild(e);
-    const foot = document.createElement('div'); foot.className = 'results-foot';
-    const later = document.createElement('button'); later.type = 'button'; later.className = 'ghost'; later.textContent = t('tryLater');
-    later.addEventListener('click', () => { search.setAt(search.atSeconds() + 3600); plan(); });
-    foot.appendChild(later);
-    if (r.reason && q.maxWalk < 30) { const w = document.createElement('button'); w.type = 'button'; w.className = 'ghost'; w.textContent = t('tryMoreWalk'); w.addEventListener('click', () => plan({ maxWalk: 30 })); foot.appendChild(w); }
-    box.appendChild(foot);
-    applyLiveShow(); renderPeek(); redrawMap(true);
-    return;
-  }
-  let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
-  if (q.arriveBy) groups = groups.slice().reverse();
-  filterChips(box);
-  const fs = settings.get(), first = (g) => r.journeys[q.arriveBy ? g.options[g.options.length - 1] : g.options[0]];
-  if (fs.fDirect) groups = groups.filter((g) => first(g).transfers === 0);
-  if (fs.fTrain) groups = groups.filter((g) => first(g).legs.some((l) => l.type === 'ride' && l.routeType === 2));
-  const sk = sortKey[fs.resultSort] || sortKey.depart;
-  if (fs.resultSort && fs.resultSort !== 'depart') groups = groups.slice().sort((a, b) => sk(first(a)) - sk(first(b)));
-  if (!groups.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = t('filterNone'); box.appendChild(e); }
-  // planned from now: what left in the last ten minutes goes in a strip of its own ("on board?"), the list stays from now
-  const nowSec = live.nowOn(q.day), rideDep = (j) => { const fr = j.legs.find((l) => l.type === 'ride'); return fr ? fr.depart : j.depart; };
-  const isGone = (j) => q.isNow && rideDep(j) < nowSec - 60;   // the first ride has left
-  const onStrip = (j) => rideDep(j) >= nowSec - 600 || (resultsAt && j.arrive > nowSec);   // left lately, or (restored results) still under way
-  const gone = [];
-  for (const g of groups) {
-    let opts = g.options.map((i) => r.journeys[i]);
-    if (q.arriveBy) opts = opts.slice().reverse();
-    for (const j of opts) if (isGone(j) && onStrip(j) && !gone.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) gone.push(j);
-    opts = opts.filter((j) => !isGone(j));
-    if (opts.length) {
-      const idx = resultCards.length, card = journeyCard(opts[0], q, g.lines, opts, idx);
-      resultCards.push({ idx, j: opts[0], q, el: card, dep: +card.dataset.depAt });
-      box.appendChild(card);
-    }
-  }
-  // the first three ways are drawn on the map, the first of them highlighted; the cards' map buttons change that
-  for (const c of resultCards.slice(0, 3)) altShown.add(c.idx);
-  altSel = resultCards.length ? resultCards[0].idx : -1;
-  for (const c of resultCards) { c.el.classList.toggle('sel', c.idx === altSel); c.el.querySelector('.mapbtn').classList.toggle('on', altShown.has(c.idx)); }
-  // Rides that just left: on a fresh plan one quiet line that opens on a tap (most riders want the next departures);
-  // on a plan restored from earlier they are shown, since the rider is likely on the way already.
-  if (gone.length) {
-    const strip = document.createElement('div'); strip.className = 'gone-strip';
-    const rows = document.createElement('div'); rows.className = 'gone-rows';
-    for (const j of gone.sort((a, b) => b.depart - a.depart).slice(0, 4)) {   // the four most recent: the one the rider is on is among them
-      const d = document.createElement('div'); d.className = 'gone';
-      d.innerHTML = `<div class="txt"><span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="chips">${j.legs.filter((l) => l.type === 'ride').map((l) => `<span class="${chipClass(l)}"${chipAttr(l)}>${chipText(l)}</span>`).join('')}</span><span class="muted">${t('leftAgo', { n: Math.max(1, Math.round((nowSec - rideDep(j)) / 60)) })}</span></div><button type="button" class="ghost">${ic('play')} ${t('aboard')}</button>`;
-      d.querySelector('.txt').addEventListener('click', () => openDetail(j, q));
-      d.querySelector('button').addEventListener('click', (e) => { e.stopPropagation(); startTrip(j, q); });
-      rows.appendChild(d);
-    }
-    if (resultsAt) {
-      strip.innerHTML = `<div class="muted">${t('goneTitle')}</div>`;
-      strip.appendChild(rows);
-    } else {
-      const open = document.createElement('button'); open.type = 'button'; open.className = 'gone-hint';
-      open.innerHTML = `${esc(gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length }))} ${ic('chevronDown')}`;
-      open.addEventListener('click', () => { const on = rows.hidden; rows.hidden = !on; open.classList.toggle('open', on); });
-      rows.hidden = true;
-      strip.append(open, rows);
-    }
-    box.insertBefore(strip, head.nextSibling);
-  }
-  const foot = document.createElement('div'); foot.className = 'results-foot';
-  const earlier = document.createElement('button'); earlier.type = 'button'; earlier.className = 'ghost'; earlier.textContent = t('earlier');
-  earlier.addEventListener('click', () => { search.setAt(Math.max(0, search.atSeconds() - 3600)); plan(); });
-  const later = document.createElement('button'); later.type = 'button'; later.className = 'ghost'; later.textContent = t('later');
-  later.addEventListener('click', () => { search.setAt(search.atSeconds() + 3600); plan(); });
-  foot.append(earlier, later);
-  box.appendChild(foot);
-  if (!topPanel() && screen === 'plan' && sheet.state === 'peek') sheet.set('half');
-  applyLiveShow(); renderPeek(); redrawMap(true);
-}
-/** Recent searches, under the form while there are no results. */
-function renderRecent() {
-  const box = $('recentBox');
-  box.innerHTML = '';
-  const l = recentTrips.list();
-  if (!l.length) return;
-  const h = document.createElement('h2'); h.className = 'sec'; h.textContent = t('recentTitle'); box.appendChild(h);
-  for (const r of l) {
-    const d = document.createElement('div');
-    d.className = 'recent';
-    d.innerHTML = `<span class="ic">${ic('history')}</span><span class="txt"><span class="name">${esc(r.from.name)} ← ${esc(r.to.name)}</span><small>${esc(dayLabel(r.day || calToday()))} ${esc(r.time || '')}${r.bike && r.bike !== 'none' ? ' · ' + ic('bike') : ''}${r.arriveBy ? ' · ' + t('arriveBy') : ''}</small></span>`;
-    if (lang !== 'he') d.querySelector('.name').textContent = `${r.from.name} → ${r.to.name}`;
-    d.addEventListener('click', () => { applyQuery(r); search.resetNow(); nav.closeAll(); showScreen('plan'); plan(); });
-    box.appendChild(d);
-  }
-  box.hidden = !!$('results').children.length;
-  renderPeek();
-}
-/** The line the collapsed sheet shows: the journey highlighted on the map, with its countdown; nothing without results. */
-function renderPeek() {
-  const el = $('peekLine');
-  const c = resultCards.find((x) => x.idx === altSel && altShown.has(x.idx)) || null;
-  if (!c) { el.hidden = true; el.innerHTML = ''; }
-  else {
-    const j = c.j;
-    el.innerHTML = `<span class="times">${fmt(j.depart)} → ${fmt(j.arrive)}</span><span class="muted">${dur(j.arrive - j.depart)} · ${transfersText(j.transfers)}</span><span class="leave" data-dep="${c.dep}" data-day="${c.q.day}">${leaveText(c.dep, c.q.day)}</span>`;
-    el.hidden = false;
-  }
-  peekSync();
-}
-
 // ---------------------------------------------------------------- maps (MapLibre, OpenFreeMap vector tiles)
 // light Liberty everywhere; in dark mode, when chosen in settings, the same Liberty recoloured dark
 // (darkmap.js), so the dark map keeps every detail. (localStorage 'wayli-map-style' overrides, for trying others)
@@ -904,9 +706,9 @@ const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label'];
 let nearRoutes = null;   // {lat, lon, ids}: the lines serving stops within 500 m of the last position
 function liveShowFor(key) {
   if (key === 'detail' || key === 'lineDetail' || key === 'follow') return 'none';
-  if (key === 'screen-plan' && lastResult && lastResult.journeys && lastResult.journeys.length && $('results').children.length) {
+  if (key === 'screen-plan' && results.result.value && results.result.value.journeys && results.result.value.journeys.length && results.showing.value) {
     const ids = new Set();
-    for (const j of lastResult.journeys) for (const l of j.legs) if (l.type === 'ride' && l.routeId != null) ids.add(String(l.routeId));
+    for (const j of results.result.value.journeys) for (const l of j.legs) if (l.type === 'ride' && l.routeId != null) ids.add(String(l.routeId));
     if (ids.size) return Array.from(ids).sort();
   }
   // nothing searched: around you, the lines you can take from here; looking elsewhere, everything there
@@ -955,19 +757,6 @@ function fitMap(b, maxZoom) {
   m.fitBounds(b, { padding: { top, bottom, left: 24, right: 24 }, duration: 0, maxZoom });
 }
 const topPad = () => { const r = document.querySelector('.topbar').getBoundingClientRect(); return Math.round(r.bottom + 12); };
-// Line colours: trains navy, light rail red (both lines running are "the red line"), buses in their operator's
-// colour (approximate brand colours; the table is the one place to correct them), other operators slate green.
-const AGENCY_COLORS = [
-  ['אגד', '#008761'], ['דרך אגד', '#008761'], ['דן', '#2457d6'], ['מטרופולין', '#f07f1a'], ['קווים', '#7b2d90'], ['סופרבוס', '#d94e1f'],
-  ['נתיב אקספרס', '#8db600'], ['אלקטרה אפיקים', '#1d4f91'], ['תנופה', '#2a9fd6'], ['אקסטרה', '#c2185b'], ['גלים', '#3b8ea5'], ['בית שמש אקספרס', '#b06d1e'],
-];
-const BUS_DEFAULT = '#4f7a6a', TRAIN_COLOR = '#1b3a6b', LRT_COLOR = '#d7263d';
-const agencyColor = (agency) => { const a = String(agency || ''); for (const [k, c] of AGENCY_COLORS) if (a.startsWith(k)) return c; return BUS_DEFAULT; };
-function routeColor(type, agency) { return type === 2 ? TRAIN_COLOR : type === 0 ? LRT_COLOR : agencyColor(agency); }
-/** Dark text on light colours, white on the rest. */
-function textOn(hex) { const n = parseInt(hex.slice(1), 16); const lum = 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255); return lum > 150 ? '#1b1f24' : '#ffffff'; }
-const chipStyle = (type, agency) => { const c = routeColor(type, agency); return ` style="background:${c};color:${textOn(c)}"`; };
-const legColor = (l) => l.type === 'ride' ? routeColor(l.routeType, l.agency) : (l.mode === 'bike' ? '#1f5fa8' : '#2b3036');
 const EMPTY = { type: 'FeatureCollection', features: [] };
 /** The map's sources and layers for a journey, created once, bottom to top: the faded whole lines, then the journey. */
 function ensureJourneyLayers(m) {
@@ -982,7 +771,7 @@ function ensureJourneyLayers(m) {
   m.addLayer({ id: 'alt-ride', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': '#8d939c', 'line-width': 4.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'alt-walk', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': '#8d939c', 'line-width': 3.5, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'alt-hit', type: 'line', source: 'alts', paint: { 'line-color': '#000000', 'line-width': 18, 'line-opacity': 0.001 } });
-  m.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) selectAlt(+f.properties.idx); });
+  m.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) results.selectAlt(+f.properties.idx); });
   m.on('mouseenter', 'alt-hit', () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', 'alt-hit', () => { m.getCanvas().style.cursor = ''; });
   m.addLayer({ id: 'context-line', type: 'line', source: 'context', paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.3 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'context-stops', type: 'circle', source: 'context-stops', minzoom: 11, paint: { 'circle-radius': 3, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 1.5, 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 } });
@@ -1129,7 +918,8 @@ let journeyMarkers = [], liveMarkers = [], detailSeq = 0, detailFocus = -1;
  *  each with a badge of its minutes at the middle of its longest ride (a tap highlights that way). */
 mapOf['screen-plan'] = async (seq) => {
   const m = mainMap;
-  const shown = resultCards.filter((c) => altShown.has(c.idx));
+  const shown = results.list.value.cards.filter((c) => results.altShown.value.has(c.idx));
+  const altSel = results.altSel.value;
   if (!m || !shown.length) return;
   await Promise.all(shown.map((c) => withCourses(c.j)));
   if (stale(seq) || !mainMap) return;
@@ -1149,7 +939,7 @@ mapOf['screen-plan'] = async (seq) => {
     if (!at) continue;
     const el = document.createElement('button'); el.type = 'button'; el.className = 'wayli-alt' + (c.idx === altSel ? ' sel' : '');
     el.textContent = dur(c.j.arrive - c.j.depart);
-    el.addEventListener('click', (e) => { e.stopPropagation(); selectAlt(c.idx); });
+    el.addEventListener('click', (e) => { e.stopPropagation(); results.selectAlt(c.idx); });
     altMarkers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(at).addTo(m));
   }
   m.getSource('alts').setData({ type: 'FeatureCollection', features });
@@ -1469,7 +1259,7 @@ const stopKindProp = (stop) => (stopKinds.has(stop) ? { kind: stopKinds.get(stop
 function stationImage(kind) {
   const station = kind !== 'bus', size = station ? 44 : 30, c = document.createElement('canvas'); c.width = c.height = size;
   const ctx = c.getContext('2d');
-  const color = kind === 'rail' ? TRAIN_COLOR : kind === 'lrt' ? LRT_COLOR : station ? BUS_DEFAULT : '#5f6b72';
+  const color = kind === 'rail' ? routeColor(2) : kind === 'lrt' ? routeColor(0) : station ? routeColor(3) : '#5f6b72';
   ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2 - (station ? 2.5 : 2), 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff'; ctx.fill();
   ctx.lineWidth = station ? 3 : 2; ctx.strokeStyle = color; ctx.stroke();
@@ -1583,8 +1373,7 @@ function restoreLast(p) {
   if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > 3600e3) return false;
   if (!last.q.to || !p || last.q.to.name !== p.name || last.q.day !== search.day.value && !(manifest && manifest.days.some((d) => d.date === last.q.day))) return false;
   nav.closeAll(); showScreen('plan');
-  search.day.value = last.q.day; applyQuery(last.q); lastResult = last.result; lastQuery = last.q;
-  renderResults(last.result, last.q, last.at); sheet.set('half');
+  search.day.value = last.q.day; applyQuery(last.q); results.setResults(last.result, last.q, last.at); sheet.set('half');
   return true;
 }
 async function planTo(p) {
@@ -1592,12 +1381,12 @@ async function planTo(p) {
   nav.closeAll();
   showScreen('plan');
   search.setPlace('to', p);
-  $('results').innerHTML = `<div class="empty">${t('locating')}</div>`; $('recentBox').hidden = true;
+  results.status.value = 'locating';
   sheet.set('half');
   search.fromText.value = t('locating');
   try { const pos = await getPosition(); search.setPlace('from', myLocation(pos)); } catch (e) { if (!search.from.value || search.from.value.transient) search.setPlace('from', null); else search.fromText.value = search.from.value.name; }
   search.resetNow();
-  if (search.from.value) plan(); else { $('results').innerHTML = ''; showPlanError(t('noLocation')); search.focusBox('toQ'); }
+  if (search.from.value) plan(); else { results.status.value = 'idle'; showPlanError(t('noLocation')); search.focusBox('toQ'); }
 }
 function renderSaved() {
   const sp = savedPlaces.get();
@@ -1638,7 +1427,7 @@ function renderSaved() {
     tb.appendChild(d);
   }
   renderStops($('favStops'), Object.values(stops), false);
-  renderPeek();
+  
 }
 
 // ---------------------------------------------------------------- settings
@@ -1661,7 +1450,7 @@ $('setLive').addEventListener('change', () => settings.set({ live: $('setLive').
 $('setNotify').addEventListener('change', async () => { settings.set({ notify: $('setNotify').checked }); if ($('setNotify').checked) await requestAlertPermission(); });
 $('setSound').addEventListener('change', () => settings.set({ sound: $('setSound').checked }));
 $('testAlert').addEventListener('click', async () => { ensureAudio(); await requestAlertPermission(); alertUser(t('alertSoon'), t('testAlertMsg')); });
-$('clearHistory').addEventListener('click', () => { recentPlaces.clear(); recentTrips.clear(); lastSearch.clear(); renderRecent(); renderPeek(); toast(t('historyCleared')); });
+$('clearHistory').addEventListener('click', () => { recentPlaces.clear(); recentTrips.clear(); lastSearch.clear(); results.refreshRecent(); toast(t('historyCleared')); });
 
 // ---- alerts: vibration, a beep and a notification
 let audio = null;
@@ -2042,7 +1831,7 @@ let screen = 'plan';
 // screens that need no map are pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
 const PAGE_TITLE = { 'screen-more': 'settings', 'screen-saved': 'tabSaved', chooser: null };
 $('pageBack').addEventListener('click', () => { if (topPanel() === 'chooser') $('chCancel').click(); else if (nav.stack.length) history.back(); else showScreen('plan'); });
-const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || search.from.value || search.to.value ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
+const SHEET_FOR = { 'screen-plan': () => (results.showing.value || search.from.value || search.to.value ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
 /** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
 function renderPanels() {
   renderDrawer();
@@ -2065,7 +1854,6 @@ function showScreen(name, record = true) {
   screen = name;
   renderPanels();
   if (name === 'nearby' && ttReady && !$('nearbyList').querySelector('.stop')) loadNearby();
-  if (name === 'plan') $('recentBox').hidden = !!$('results').children.length;
 }
 // ---- touch feedback: a ripple from the finger on anything tappable (the browser's blue flash is turned off in CSS)
 document.addEventListener('pointerdown', (e) => {
@@ -2141,8 +1929,6 @@ const sheet = {
   },
   toggle() { this.set(this.state === 'peek' ? 'half' : this.state === 'half' ? 'full' : 'peek'); },
 };
-peekSync = () => { if (sheet.state === 'peek') sheet.set('peek'); };
-$('peekLine').addEventListener('click', () => { sheet.set('half'); const c = resultCards.find((x) => x.idx === altSel); if (c) c.el.scrollIntoView({ block: 'nearest' }); });
 {
   // Dragging: from anywhere on the sheet while it is collapsed or half open (the body does not scroll then;
   // the chip strip scrolls sideways, so a sideways start is left to it), from the handle and the top 96 px

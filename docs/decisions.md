@@ -625,3 +625,8 @@ so they are not re-litigated.
   can take over a hook without touching the others. The place chooser's
   search box stays on the legacy code until the pages move. One digit in
   line mode searches at once (a whole line number).
+- 2026-10-20: The results are the second Preact feature. The list is derived
+  (a computed over the result, the filters, the language), not rebuilt by
+  hand, so a filter, a language switch or a map toggle never re-renders the
+  wrong thing; the countdowns read one clock signal instead of a timer that
+  rewrites the DOM. A swap of From and To no longer plans by itself (Go does).

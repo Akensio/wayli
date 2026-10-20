@@ -126,9 +126,14 @@ existing shell while the rest of `app.js` keeps working around it, until
 `app.js` is empty. Done: the top bar (`features/topbar/`: the bar, a search
 box, the two popovers) over `state/search.ts`, signals for the places, the
 time, the bicycle and which parts are open, with the planner behind a
-`hooks` object the legacy app fills in at start; `time.ts` holds the day
-and time formatting. Next: the results, the sheet, the journey detail and
-following, the pages, the map. Files: `main.ts` (entry: the sprite, the
+`hooks` object the legacy app fills in at start; the results
+(`features/results/`: the list with its head, filters, the rides that just
+left, the cards, the recent trips and the peek line) over `state/results.ts`,
+where the cards are a computed over the result, the filters and the language,
+and the ways drawn on the map are two signals the map reads. Shared:
+`time.ts` (days and times), `journey/` (types, line colours, the words for
+journeys), `state/clock.ts` (a 20-second tick the countdowns read). Next: the
+sheet, the journey detail and following, the pages, the map. Files: `main.ts` (entry: the sprite, the
 components, then `app.js`), `index.html` (shell), `app.js` (the rest of the UI), `worker.js` (a Web Worker that holds the data and answers
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
 router and street graph, shared with the test harness), `places.js` (the

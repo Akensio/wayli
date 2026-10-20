@@ -83,8 +83,7 @@ export function foldBar(): void { barOpen.value = false; }
 export function clearPlaces(): void { from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
 export function swapPlaces(): void {
   const f = from.value, tt = to.value;
-  setPlace('from', tt); setPlace('to', f);
-  if (from.value && to.value) hooks.plan();
+  setPlace('from', tt); setPlace('to', f);   // Go plans; a swap by itself changes nothing else
 }
 /** Back from editing: to the summary of the plan that is shown, else to the plain pill. */
 export function back(): void {
