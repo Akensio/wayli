@@ -20,7 +20,7 @@ import { pickAt } from './picker';
 export { applyTheme, setBasemapLang } from './basemap';
 export { mapReady, stale, state as mapState, markers, stopKindProp, EMPTY } from './shared';
 export { ensureJourneyLayers, drawJourney, boundsOf, fitMap, withCourses } from './layers';
-export { lineVehicleMarkers, vehiclesForWorker } from './popups';
+export { lineVehicleMarkers, vehiclesForWorker, closePopup } from './popups';
 export { refreshLiveMap, applyLiveShow, loadStopsGeo, updateNearRoutes, liveOn, resetLive } from './live';
 export { pickOnMap, closePicker } from './picker';
 export { hooks } from './shared';
