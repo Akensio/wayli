@@ -661,3 +661,12 @@ so they are not re-litigated.
   instead of cycling. The logo in the search pill is drawn from the theme's
   colours, so it follows light and dark (the home-screen icon stays fixed:
   the system draws it).
+- 2026-10-20: The address book takes everyday places too (Gadi could not find
+  the restaurant האחים: it is in OpenStreetMap, but the pipeline kept only
+  landmarks). Added: food and drink, hotels, hostels and guest houses, any
+  named shop or office, pharmacies, banks, post offices, schools,
+  kindergartens, places of worship, galleries, gyms, pools, bike and car
+  rental: 16k places become 49k, 2.1 to 2.9 MB gzipped. They rank level with
+  streets (landmarks keep their lead), checked over twenty searches: street,
+  address and landmark answers are unchanged. Left out: fuel, parking,
+  playgrounds and the like (rarely named, rarely a destination by transit).

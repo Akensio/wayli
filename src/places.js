@@ -57,7 +57,8 @@ export function parsePlaces(ab) {
   return pl;
 }
 
-const KIND_HE = {
+/** Landmarks: the kinds the search ranks above streets (pipeline/places.py POI_TAGS). */
+const LANDMARK_HE = {
   'amenity=hospital': 'בית חולים', 'healthcare=hospital': 'בית חולים', 'amenity=clinic': 'מרפאה', 'amenity=university': 'אוניברסיטה',
   'amenity=college': 'מכללה', 'amenity=library': 'ספרייה', 'amenity=townhall': 'עירייה', 'amenity=cinema': 'קולנוע',
   'amenity=theatre': 'תיאטרון', 'amenity=courthouse': 'בית משפט', 'amenity=police': 'משטרה', 'amenity=community_centre': 'מתנ"ס',
@@ -69,7 +70,29 @@ const KIND_HE = {
   'aeroway=terminal': 'טרמינל', 'natural=beach': 'חוף', 'historic=archaeological_site': 'אתר עתיקות', 'historic=castle': 'מבצר',
   'historic=monument': 'אנדרטה', 'office=government': 'משרד ממשלתי',
 };
-export function kindLabel(kind, lang = 'he') { return lang === 'he' ? (KIND_HE[kind] || 'מקום') : kind.split('=')[1].replace(/_/g, ' '); }
+/** Everyday places (pipeline/places.py EVERYDAY_TAGS), ranked level with streets; shops and offices not named here get a general label. */
+const EVERYDAY_HE = {
+  'amenity=restaurant': 'מסעדה', 'amenity=cafe': 'בית קפה', 'amenity=fast_food': 'מזון מהיר', 'amenity=bar': 'בר', 'amenity=pub': 'פאב',
+  'amenity=ice_cream': 'גלידריה', 'amenity=food_court': 'מתחם אוכל', 'amenity=nightclub': 'מועדון', 'amenity=pharmacy': 'בית מרקחת',
+  'amenity=bank': 'בנק', 'amenity=post_office': 'דואר', 'amenity=school': 'בית ספר', 'amenity=kindergarten': 'גן ילדים',
+  'amenity=place_of_worship': 'בית תפילה', 'amenity=arts_centre': 'מרכז אמנויות', 'amenity=events_venue': 'אולם אירועים',
+  'amenity=dentist': 'מרפאת שיניים', 'amenity=doctors': 'רופא', 'amenity=veterinary': 'וטרינר', 'amenity=bicycle_rental': 'השכרת אופניים',
+  'amenity=car_rental': 'השכרת רכב', 'tourism=hotel': 'מלון', 'tourism=hostel': 'אכסניה', 'tourism=guest_house': 'צימר',
+  'tourism=gallery': 'גלריה', 'leisure=fitness_centre': 'חדר כושר', 'leisure=swimming_pool': 'בריכה', 'leisure=garden': 'גן',
+  'shop=bakery': 'מאפייה', 'shop=convenience': 'מכולת', 'shop=clothes': 'חנות בגדים', 'shop=books': 'חנות ספרים', 'shop=florist': 'חנות פרחים',
+  'shop=bicycle': 'חנות אופניים', 'shop=hairdresser': 'מספרה', 'shop=greengrocer': 'ירקן', 'shop=butcher': 'אטליז', 'shop=optician': 'אופטיקה',
+  'shop=electronics': 'אלקטרוניקה', 'shop=mobile_phone': 'טלפונים', 'shop=furniture': 'רהיטים', 'shop=hardware': 'כלי עבודה',
+  'shop=doityourself': 'עשה זאת בעצמך', 'shop=kiosk': 'קיוסק', 'shop=alcohol': 'משקאות', 'shop=beauty': 'קוסמטיקה', 'shop=jewelry': 'תכשיטים',
+  'shop=shoes': 'נעליים', 'shop=toys': 'צעצועים', 'shop=pet': 'חיות מחמד', 'shop=deli': 'מעדנייה', 'shop=pastry': 'קונדיטוריה',
+};
+const KIND_HE = { ...LANDMARK_HE, ...EVERYDAY_HE };
+const LANDMARK = new Set(Object.keys(LANDMARK_HE));
+/** A place's kind in words: the Hebrew label, else a general one ("חנות", "משרד", "מקום"); in English the tag's own value. */
+export function kindLabel(kind, lang = 'he') {
+  if (lang !== 'he') return kind.split('=')[1].replace(/_/g, ' ');
+  return KIND_HE[kind] || (kind.startsWith('shop=') ? 'חנות' : kind.startsWith('office=') ? 'משרד' : 'מקום');
+}
+
 
 // ---------------------------------------------------------------- names typed in Latin letters
 // Streets and places carry OpenStreetMap's English name beside the Hebrew; cities the feed's. Where there is
@@ -307,7 +330,7 @@ export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
       if (!score) continue;
       if (cityName) { if (pl.poiCity[p] === cityName) score += 3; else score -= 1.5; }
       const poi = pl.pois[p];
-      score += 1 + (IMPORTANT.has(poi[1]) ? 1.5 : 0) + proximity(near, poi[3], poi[4]);
+      score += (LANDMARK.has(poi[1]) ? 1 : 0) + (IMPORTANT.has(poi[1]) ? 1.5 : 0) + proximity(near, poi[3], poi[4]);
       out.push({ kind: 'poi', name: poiName(pl, p, lang), poiKind: poi[1], city: cityOf(pl, poi[2], lang), lat: poi[3], lon: poi[4], score });
     }
   }

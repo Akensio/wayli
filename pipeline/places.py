@@ -26,7 +26,7 @@ from collections import defaultdict
 import numpy as np
 import osmium
 
-FORMAT_VERSION = 2   # 2: English names beside the Hebrew (streets, places, cities)
+FORMAT_VERSION = 3   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...)
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {
@@ -42,6 +42,18 @@ POI_TAGS = {
     "office": {"government"},
     "healthcare": {"hospital"},
     "public_transport": {"station"},
+}
+# Everyday places a rider goes to by name: food and drink, hotels, shops, services, schools, synagogues, offices.
+# The search ranks them below the landmarks above, level with streets, so a street search is not buried in shops.
+# Left out: kinds that are rarely named or rarely a destination by transit (fuel, parking, playgrounds, benches).
+EVERYDAY_TAGS = {
+    "amenity": {"restaurant", "cafe", "fast_food", "bar", "pub", "ice_cream", "food_court", "nightclub", "pharmacy", "bank",
+                "post_office", "school", "kindergarten", "place_of_worship", "arts_centre", "events_venue", "dentist", "doctors",
+                "veterinary", "bicycle_rental", "car_rental"},
+    "tourism": {"hotel", "hostel", "guest_house", "gallery"},
+    "leisure": {"fitness_centre", "swimming_pool", "garden"},
+    "shop": None,     # any named shop
+    "office": None,   # any named office (people go to work there)
 }
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
 PUNCT = re.compile(r"[.'\"״׳`/()\-,:]+")
@@ -106,6 +118,10 @@ class Handler(osmium.SimpleHandler):
         for key, values in POI_TAGS.items():
             v = tags.get(key)
             if v and v in values:
+                return f"{key}={v}"
+        for key, values in EVERYDAY_TAGS.items():
+            v = tags.get(key)
+            if v and v not in ("yes", "no", "vacant") and (values is None or v in values):
                 return f"{key}={v}"
         return None
 

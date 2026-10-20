@@ -382,9 +382,13 @@ for fifteen minutes. The pure parts (origin, plan identity, splice) live in
 
 Search and addresses: `pipeline/places.py` compiles an offline address book
 from OpenStreetMap (streets with their city from the nearest transit stop,
-house numbers, cities from the feed, notable places such as hospitals,
-universities, malls, parks and stations): about 45k streets, 170k house
-numbers, 16k places, 1.8 MB. `app/places.js` parses free text ("הורדים 4,
+house numbers, cities from the feed, and named places: landmarks such as
+hospitals, universities, malls, parks and stations, and everyday places such
+as restaurants, cafés, bars, hotels, shops, pharmacies, banks, schools,
+synagogues and offices): about 45k streets, 212k house numbers, 49k places
+(16k landmarks, 33k everyday), 2.9 MB gzipped. Landmarks rank above streets
+at an equal match, everyday places level with them, so an exact name wins
+without burying street searches in shops. `src/places.js` parses free text ("הורדים 4,
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
 ranks stops, addresses, streets, places and cities together, nearer ones
 first when the user's location is known (distance breaks ties even among
