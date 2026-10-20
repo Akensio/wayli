@@ -16,6 +16,10 @@ import * as sheet from './state/sheet.ts';
 import * as detail from './state/detail.ts';   // the journey shown in detail
 import * as follow from './state/follow.ts';   // the trip being followed, as the screen sees it
 import { toast } from './ui/toast.ts';
+import * as appState from './state/app.ts';   // the build, install, the drawer
+import * as saved from './state/saved.ts';
+import * as nearby from './state/nearby.ts';
+import * as chooser from './state/chooser.ts';
 import { agencyName } from './journey/agencies.ts';   // the bottom sheet: peek, half or full
 import { topPad, fullPx as fullSheetPx } from './state/sheet.ts';   // the plan's results: the list, the ways on the map, the recent trips
 import { routeColor, textOn, chipStyle, legColor } from './journey/colors.ts';
@@ -28,14 +32,10 @@ function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
-  $('chQ').placeholder = t('toQ');
-  $('chLoc').innerHTML = ic('locate') + ' ' + t('btnLoc'); $('chMap').innerHTML = ic('map') + ' ' + t('btnMap');
-  renderAbout();
-  renderSettings();
 }
 function setLang(l) {
   lang = l; storeLang(l);
-  applyLang(); renderSaved(); results.refreshRecent();
+  applyLang(); saved.refresh(); results.refreshRecent();
   if (mainMap) setBasemapLang(mainMap);
   // stop names, headsigns and map labels come from the worker: ask again in the new language
   call('setLang', { lang }).then(() => {
@@ -124,9 +124,6 @@ function renderDays() {
   search.days.value = manifest.days.map((d) => d.date);
   if (!search.days.value.includes(search.day.value)) search.day.value = dayInfo ? dayInfo.date : manifest.days[0].date;
 }
-function renderAbout() {
-  $('aboutBox').innerHTML = t('about', { feed: manifest && manifest.feed ? `${manifest.feed.start || ''}–${manifest.feed.end || ''}, ${manifest.built || ''}` : '' });
-}
 async function loadDay(date) {
   const d = manifest.days.find((x) => x.date === date) || manifest.days[0];
   ttReady = false;
@@ -171,17 +168,17 @@ function startDay() {
 }
 
 let installPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; $('installBtn').hidden = false; });
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; appState.installable.value = true; });
 // iPhones and iPads never fire that event: the row shows there too and explains Safari's own way
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = navigator.standalone === true || (matchMedia('(display-mode: standalone)').matches);
-if (isIOS && !standalone) $('installBtn').hidden = false;
+if (isIOS && !standalone) appState.installable.value = true;
 /** The install hint for the browser in hand: Safari's share button sits at the bottom, Chrome's by the address bar. */
 function iosInstallHint() {
   const ua = navigator.userAgent, chrome = /CriOS/.test(ua), firefox = /FxiOS/.test(ua), edge = /EdgiOS/.test(ua);
   return t('iosInstall', { browser: chrome ? 'Chrome' : firefox ? 'Firefox' : edge ? 'Edge' : 'Safari', where: chrome ? t('shareAddr') : firefox || edge ? t('shareMenu') : t('shareBottom') });
 }
-$('installBtn').addEventListener('click', async () => { if (!installPrompt) { $('installHint').textContent = iosInstallHint(); $('installHint').hidden = !$('installHint').hidden; return; } installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; $('installBtn').hidden = true; });
+appState.hooks.install = async () => { if (!installPrompt) { appState.installHint.value = appState.installHint.value ? '' : iosInstallHint(); return; } installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; appState.installable.value = false; };
 const updateOnline = () => { $('offline').hidden = navigator.onLine !== false; };
 window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline);
 
@@ -201,15 +198,15 @@ async function init() {
   updateOnline();
   layoutTop();
   initMap();
-  renderSaved(); results.refreshRecent();
+  saved.refresh(); results.refreshRecent();
   // a trip in progress comes back first, timetable or not
   const active = activeTrip.get();
   if (active && !tripStale(active)) { updateResumeBar(); if (active.view === 'follow') openFollow(active); } else if (active) activeTrip.clear();
   try {
     manifest = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
-  renderAbout();
-  if (manifest.built) { const b = live.ilParts(new Date(manifest.built)); $('ver').textContent = t('build', { v: `${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')} ${String(b.h).padStart(2, '0')}:${String(b.mi).padStart(2, '0')}` }); $('drawerVer').textContent = $('ver').textContent; }
+  appState.feedInfo.value = manifest.feed ? { start: manifest.feed.start, end: manifest.feed.end, built: manifest.built } : null;
+  if (manifest.built) { const b = live.ilParts(new Date(manifest.built)); appState.version.value = t('build', { v: `${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')} ${String(b.h).padStart(2, '0')}:${String(b.mi).padStart(2, '0')}` }); }
   const params = new URLSearchParams(location.search);
   const shared = parseShared(params);
   const last = shared ? null : lastSearch.get();
@@ -239,104 +236,6 @@ function layoutTop() {
   document.documentElement.style.setProperty('--sheet-full', `${fullSheetPx()}px`);   // the sheet is always this tall; its slide uses it
 }
 window.addEventListener('resize', layoutTop);
-const fromResult = (g) => g.kind === 'stop' ? g : { name: g.city && g.kind !== 'city' ? `${g.name}, ${g.city}` : g.name, lat: g.lat, lon: g.lon };
-
-/**
- * A search box: free text over stops, addresses, streets, places and cities; when empty, the saved and
- * recent places. onPick gets the chosen place.
- */
-function attachSearch(input, drop, onPick, opts = {}) {
-  let timer = 0, seq = 0, focusedAt = 0;
-  const pick = (p) => { onPick(p); drop.hidden = true; };
-  const show = () => { drop.hidden = false; fitDrop(drop); };
-  // a small x inside the box while it has text and focus: clears the text, keeps the keyboard, shows the list again
-  const x = document.createElement('button'); x.type = 'button'; x.className = 'fieldx'; x.hidden = true; x.setAttribute('aria-label', t('clearText')); x.innerHTML = ic('close');
-  input.insertAdjacentElement('afterend', x);
-  const syncX = () => { x.hidden = !(input.value && document.activeElement === input); };
-  x.addEventListener('pointerdown', (e) => e.preventDefault());   // the box keeps its focus
-  x.addEventListener('click', () => { input.value = ''; onPick(null, true); focusedAt = Date.now(); input.focus(); quickMenu(); syncX(); });
-  input.addEventListener('input', syncX); input.addEventListener('focus', syncX); input.addEventListener('blur', () => setTimeout(syncX, 0));
-  const row = (html, cls = '') => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html; return b; };
-  function quickMenu() {
-    drop.innerHTML = '';
-    const icons = { home: ic('home'), work: ic('work'), more: ic('star') };
-    const saved = savedPlaces.all(), recent = recentPlaces.list().filter((r) => !savedPlaces.has(r));
-    if (opts.actions) {
-      const a1 = row(`<span class="ic">${ic('locate')}</span><span class="txt">${t('myLoc')}</span>`, 'quick');
-      a1.addEventListener('click', async () => { drop.hidden = true; if (opts.onLocate) { opts.onLocate(); return; } input.value = t('locating'); try { onPick(myLocation(await getPosition())); } catch (e) { input.value = ''; onPick(null, true); toast(t('noLocation')); } });
-      const a2 = row(`<span class="ic">${ic('map')}</span><span class="txt">${t('pickTitle')}</span>`, 'quick');
-      a2.addEventListener('click', () => { drop.hidden = true; input.blur(); if (opts.onMap) { opts.onMap(); return; } pickOnMap(search.from.value || search.to.value).then((p) => { if (p) onPick(p); }); });
-      drop.append(a1, a2);
-    } else if (!saved.length && !recent.length) { drop.hidden = true; return; }
-    for (const p of saved) {
-      const b = row(`<span class="ic">${icons[p.slot]}</span><span class="txt">${esc(p.slot === 'more' ? p.name : t(p.slot))}<small>${esc(p.slot === 'more' ? '' : p.name)}</small></span>`, 'quick');
-      b.addEventListener('click', () => pick(p));
-      drop.appendChild(b);
-    }
-    for (const p of recent.slice(0, 6)) {
-      const b = row(`<span class="ic">${ic('history')}</span><span class="txt">${esc(p.name)}</span>`, 'quick');
-      const star = document.createElement('span'); star.className = 'mini'; star.innerHTML = ic('star'); star.title = t('savePlace');
-      star.addEventListener('click', (e) => { e.stopPropagation(); savedPlaces.add(p); renderSaved(); toast(t('saved')); quickMenu(); });
-      b.appendChild(star);
-      b.addEventListener('click', () => pick(p));
-      drop.appendChild(b);
-    }
-    show();
-  }
-  input.addEventListener('input', () => {
-    onPick(null, true);
-    clearTimeout(timer);
-    const q = input.value.trim();
-    if (!q.length) { quickMenu(); return; }
-    if (q.length < 2 || !ttReady) { drop.hidden = true; return; }
-    timer = setTimeout(async () => {
-      const my = ++seq;
-      const [{ results, placesLoaded }, lines] = await Promise.all([
-        call('search', { q, limit: 10, lang, near: lastPos }),
-        opts.lines && q.length <= 5 ? call('searchLines', { q, limit: 6 }).catch(() => []) : [],
-      ]);
-      if (my !== seq) return;
-      drop.innerHTML = '';
-      const grp = (k) => { const g = document.createElement('div'); g.className = 'grp'; g.textContent = t(k); drop.appendChild(g); };
-      if (lines.length) {
-        grp('grpLines');
-        for (const r of lines) {
-          const b = row(`<span class="chip t${r.routeType}"${chipStyle(r.routeType, r.agency)}>${esc(lineText(r.line))}</span><span class="txt">${esc(t('toward', { headsign: r.headsign }))}<small> · ${esc(r.agency)} · ${t('tripsToday', { n: r.trips })}</small></span>`, 'line');
-          b.addEventListener('click', () => { drop.hidden = true; opts.onLine(r); });
-          drop.appendChild(b);
-        }
-        if (results.length) grp('grpPlaces');
-      }
-      for (const g of results) {
-        const kind = g.kind === 'stop' ? (g.platforms > 1 ? t('platforms', { n: g.platforms }) : t('kindStop'))
-          : g.kind === 'poi' ? (g.label || t('kindPoi')) : t('kind' + g.kind[0].toUpperCase() + g.kind.slice(1));
-        const extra = g.approx != null ? ' · ' + t('approxNo', { n: g.approx }) : '';
-        const b = row(`${esc(g.name)}<small>${esc(kind)}${g.city ? ' · ' + esc(g.city) : ''}${extra}</small>`);
-        b.addEventListener('click', () => pick(fromResult(g)));
-        drop.appendChild(b);
-      }
-      if (!results.length && !lines.length) { const n = row(placesLoaded ? t('noMatch') : t('placesPending')); n.disabled = true; drop.appendChild(n); }
-      show();
-    }, 150);
-  });
-  input.addEventListener('focus', () => { focusedAt = Date.now(); if (!input.value.trim() || opts.actions) { if (opts.actions) input.select(); quickMenu(); } else if (drop.children.length) show(); });
-  input.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    const first = drop.querySelector('button:not(:disabled)');
-    if (!drop.hidden && first && input.value.trim()) { first.click(); e.preventDefault(); }
-    else if (search.from.value && search.to.value) { plan(); e.preventDefault(); }
-  });
-  // a tap elsewhere closes the list, unless that tap is what focused the box (the clear or go button hands focus here)
-  document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input && !x.contains(e.target) && Date.now() - focusedAt > 500) drop.hidden = true; });
-}
-/** The list ends above the keyboard (the visual viewport), so it scrolls inside itself instead of panning the page. */
-function fitDrop(drop) {
-  const vv = window.visualViewport;
-  const bottom = vv ? vv.offsetTop + vv.height : innerHeight;
-  const top = drop.getBoundingClientRect().top;
-  drop.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
-}
-if (window.visualViewport) for (const ev of ['resize', 'scroll']) visualViewport.addEventListener(ev, () => document.querySelectorAll('.dropdown:not([hidden])').forEach(fitDrop));
 const myLocation = search.myLocation;
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 function clearPlan() {
@@ -347,15 +246,17 @@ function clearPlan() {
   results.refreshRecent();
   applyLiveShow(); renderPanels(); redrawMap(true);
 }
-// the menu under the user button
-// the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
-$('menuReload').addEventListener('click', () => location.reload());
-// search a line by number: the To box, numeric keyboard, until it is left
-$('menuLines').addEventListener('click', () => { nav.closeAll(); showScreen('plan'); search.lineMode(); });   // the rows, even over a plan's summary
-$('backdrop').addEventListener('click', () => nav.close('drawer'));
-$('menuClose').addEventListener('click', () => nav.close('drawer'));
-for (const b of $('menu').querySelectorAll('[data-screen]')) b.addEventListener('click', () => { nav.closeAll(); showScreen(b.dataset.screen); if (b.dataset.screen === 'plan') sheet.set('half'); });
-function renderDrawer() { const on = isOpen('drawer'); $('menu').classList.toggle('open', on); $('backdrop').classList.toggle('open', on); }
+// the drawer (features/pages/Drawer): the screens, the line search by number (the To box, numeric keyboard)
+Object.assign(appState.hooks, {
+  go: (name) => { nav.closeAll(); showScreen(name); if (name === 'plan') sheet.set('half'); },
+  lineSearch: () => { nav.closeAll(); showScreen('plan'); search.lineMode(); },   // the rows, even over a plan's summary
+  closeDrawer: () => nav.close('drawer'),
+  setLang: (l) => setLang(l),
+  appearanceChanged: () => { applyMapStyle(); applyTheme(); },
+  requestAlertPermission: () => requestAlertPermission(),
+  testAlert: async () => { ensureAudio(); await requestAlertPermission(); alertUser(t('alertSoon'), t('testAlertMsg')); },
+});
+function renderDrawer() { appState.drawerOpen.value = isOpen('drawer'); }
 
 // ---- pick a point on the map
 // Picking a place on the map: a tap drops a pin with a bubble (the place's name, a Choose button); another
@@ -403,21 +304,16 @@ function getPosition() {
     navigator.geolocation.getCurrentPosition((p) => { notePos(p.coords.latitude, p.coords.longitude); resolve(lastPos); }, fallback, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
   });
 }
-// ---- choose a place for home / work / saved (search, my location or the map)
-let chooserResolve = null;
-function choosePlace(title) {
-  return new Promise((resolve) => {
-    chooserResolve = resolve;
-    $('chTitle').textContent = title; $('chQ').value = ''; $('chDrop').hidden = true;
-    showOverlay('chooser');
-    setTimeout(() => $('chQ').focus(), 50);
-  });
-}
-const closeChooser = (p) => { const r = chooserResolve; chooserResolve = null; nav.close('chooser'); if (r) r(p); };
-attachSearch($('chQ'), $('chDrop'), (p, typing) => { if (!typing && p) closeChooser(p); }, { actions: true, onLocate: () => $('chLoc').click(), onMap: () => $('chMap').click() });
-$('chCancel').addEventListener('click', () => closeChooser(null));
-$('chLoc').addEventListener('click', async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); closeChooser({ name: r.name, lat: pos.lat, lon: pos.lon }); } catch (e) { toast(t('noLocation')); } });
-$('chMap').addEventListener('click', async () => { const p = await pickOnMap(null); if (p) closeChooser(p); });
+// ---- choose a place for home / work / saved (features/pages/Chooser: search, my location or the map)
+const choosePlace = (title) => chooser.open(title);
+Object.assign(chooser.hooks, {
+  show: () => showOverlay('chooser'),
+  close: () => nav.close('chooser'),
+  locate: async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); return { name: r.name, lat: pos.lat, lon: pos.lon }; } catch (e) { toast(t('noLocation')); return null; } },
+  pickOnMap: () => pickOnMap(null),
+});
+Object.assign(saved.hooks, { planTo: (p) => planTo(p), choosePlace, openStop: (stop) => openStop(stop), openLine: (route) => openLine(route) });
+Object.assign(nearby.hooks, { load: () => loadNearby(), openStop: (stop) => openStop(stop), openLine: (route) => openLine(route) });
 
 function showPlanError(msg) { results.error.value = msg; if (msg && sheet.state.value === 'peek') sheet.set('half'); }
 
@@ -441,7 +337,6 @@ Object.assign(search.hooks, {
   toast: (msg) => toast(msg),
   ttReady: () => ttReady,
   lastPos: () => lastPos,
-  afterSaved: () => renderSaved(),
 });
 // What the results need (state/results.ts `hooks`): the detail and follow screens, planning again, the sheet and the map.
 Object.assign(results.hooks, {
@@ -969,7 +864,7 @@ Object.assign(detail.hooks, {
   redraw: () => redrawMap(true),
   openLine: (route) => openLine(route),
   startTrip: (j, q) => startTrip(j, q),
-  favChanged: () => renderSaved(),
+  favChanged: () => saved.refresh(),
 });
 /** Live badges on the ride legs of a journey happening around now; every vehicle of those lines on the map. */
 async function liveForJourney(j, day, seq, focus = -1) {
@@ -1003,19 +898,16 @@ let lastPos = null;
     if (known) lastPos = await getPosition();
   } catch (e) { /* no location, no problem */ }
 })();
-$('nearbyRefresh').addEventListener('click', loadNearby);
 async function loadNearby() {
-  const list = $('nearbyList');
-  list.innerHTML = `<div class="empty">${t('locating')}</div>`;
-  try { lastPos = await getPosition(); } catch (e) { list.innerHTML = `<div class="empty">${t('noLocation')}</div>`; return; }
+  nearby.status.value = 'locating';
+  try { lastPos = await getPosition(); } catch (e) { nearby.status.value = 'noLocation'; return; }
   const stops = await call('nearby', { lat: lastPos.lat, lon: lastPos.lon, limit: 20 });
-  renderStops(list, stops, true);
-  nearbyStops = stops; redrawMap(true);
+  nearby.stops.value = stops; nearby.status.value = 'ready';
+  redrawMap(true);
 }
-let nearbyStops = [];
 /** The nearby screen on the map: the rider's position, a ring out to the farthest listed stop, the stops highlighted. */
 mapOf['screen-nearby'] = async (seq) => {
-  const m = mainMap;
+  const m = mainMap, nearbyStops = nearby.stops.value;
   if (!m || !lastPos || !nearbyStops.length || stale(seq)) return;
   ensureJourneyLayers(m);
   const r = Math.max(150, nearbyStops[nearbyStops.length - 1].distance + 30), ring = [];
@@ -1026,19 +918,6 @@ mapOf['screen-nearby'] = async (seq) => {
   const b = new maplibregl.LngLatBounds(); ring.forEach((c) => b.extend(c));
   fitMap(b, 16);
 };
-function renderStops(container, stops, withDistance) {
-  container.innerHTML = '';
-  if (!stops.length) { container.innerHTML = `<div class="empty">${t('favEmptyStops')}</div>`; return; }
-  for (const s of stops) {
-    const d = document.createElement('div');
-    d.className = 'stop';
-    const walk = withDistance && s.distance != null ? ` · ${ic('walk')} ${Math.max(1, Math.round(s.distance * 1.25 / 1.2 / 60))} ${t('min')}` : '';
-    d.innerHTML = `<div class="name">${esc(s.name)}</div><div class="meta">${esc(s.city || '')}${withDistance && s.distance != null ? ` · ${s.distance} ${t('m')}${walk}` : ''}${s.code ? ` · ${esc(s.code)}` : ''}</div>` +
-      `<div class="chips">${(s.lines || []).map((l) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${esc(lineText(l.label))}</span>`).join('')}</div>`;
-    d.addEventListener('click', (e) => { const c = e.target.closest('.chip'); if (c && c.dataset.route !== '') { e.stopPropagation(); openLine(+c.dataset.route); } else openStop(s.stop); });
-    container.appendChild(d);
-  }
-}
 let currentStop = null, stopSeq = 0, stopTimer = 0;
 async function openStop(stop) {
   const my = ++stopSeq;
@@ -1056,7 +935,7 @@ async function openStop(stop) {
   $('stopMeta').textContent = `${info.city || ''}${info.code ? ' · ' + info.code : ''}`;
   $('stopLiveNote').textContent = '';
   updateStar('stopStar', 'stop:' + info.stop, 'stops');
-  $('stopStar').onclick = () => { favs.toggle('stops', 'stop:' + info.stop, { stop: info.stop, name: info.name, city: info.city, code: info.code, lat: info.lat, lon: info.lon, lines: info.lines.slice(0, 8) }); renderSaved(); updateStar('stopStar', 'stop:' + info.stop, 'stops'); };
+  $('stopStar').onclick = () => { favs.toggle('stops', 'stop:' + info.stop, { stop: info.stop, name: info.name, city: info.city, code: info.code, lat: info.lat, lon: info.lon, lines: info.lines.slice(0, 8) }); saved.refresh(); updateStar('stopStar', 'stop:' + info.stop, 'stops'); };
   const day = search.day.value;
   const svc = live.serviceDay();
   const isNow = day === svc.day || day === calToday();
@@ -1311,70 +1190,7 @@ async function planTo(p) {
   search.resetNow();
   if (search.from.value) plan(); else { results.status.value = 'idle'; showPlanError(t('noLocation')); search.focusBox('toQ'); }
 }
-function renderSaved() {
-  const sp = savedPlaces.get();
-  const box = $('savedPlaces');
-  box.innerHTML = '';
-  for (const slot of ['home', 'work']) {
-    const p = sp[slot];
-    const d = document.createElement('div');
-    d.className = 'saved-row';
-    d.innerHTML = `<span class="ic">${ic(slot === 'home' ? 'home' : 'work')}</span><span class="txt"><span class="name${p ? '' : ' unset'}">${esc(p ? p.name : t('notSet'))}</span><small>${t(slot)}</small></span><button type="button" class="ghost">${p ? t('change') : '+'}</button>`;
-    d.querySelector('.txt').addEventListener('click', async () => { if (p) planTo(p); else { const c = await choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork')); if (c) { savedPlaces.set(slot, c); renderSaved(); } } });
-    d.querySelector('button').addEventListener('click', async () => { const c = await choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork')); if (c) { savedPlaces.set(slot, c); renderSaved(); } });
-    box.appendChild(d);
-  }
-  for (const p of sp.more) {
-    const d = document.createElement('div');
-    d.className = 'saved-row';
-    d.innerHTML = `<span class="ic">${ic('star')}</span><span class="txt"><span class="name">${esc(p.name)}</span></span><button type="button" class="ghost">${ic('close')}</button>`;
-    d.querySelector('.txt').addEventListener('click', () => planTo(p));
-    d.querySelector('button').addEventListener('click', () => { savedPlaces.remove(p); renderSaved(); toast(t('removed')); });
-    box.appendChild(d);
-  }
-  const add = document.createElement('button'); add.type = 'button'; add.className = 'ghost'; add.textContent = t('addPlace'); add.style.marginBottom = '8px';
-  add.addEventListener('click', async () => { const c = await choosePlace(t('choosePlace')); if (c) { savedPlaces.add(c); renderSaved(); toast(t('saved')); } });
-  box.appendChild(add);
-
-  const trips = favs.get('trips'), stops = favs.get('stops');
-  const tb = $('favTrips');
-  tb.innerHTML = '';
-  const tk = Object.keys(trips);
-  if (!tk.length) tb.innerHTML = `<div class="empty">${t('favEmptyTrips')}</div>`;
-  for (const k of tk) {
-    const v = trips[k];
-    const d = document.createElement('div');
-    d.className = 'journey';
-    d.innerHTML = `<div class="top"><span class="times">${esc(v.from.name)} → ${esc(v.to.name)}</span></div><div class="sub">${v.bike !== 'none' ? ic('bike') + ' ' : ''}${esc(t(v.bike === 'along' ? 'bikeAlong' : v.bike === 'park' ? 'bikePark' : 'bikeNone'))}</div>`;
-    d.addEventListener('click', () => { applyQuery({ from: v.from, to: v.to, bike: v.bike, folding: v.folding }); search.resetNow(); nav.closeAll(); showScreen('plan'); plan(); });
-    tb.appendChild(d);
-  }
-  renderStops($('favStops'), Object.values(stops), false);
-  
-}
-
 // ---------------------------------------------------------------- settings
-function renderSettings() {
-  const s = settings.get();
-  const seg = (id, v) => { for (const b of $(id).querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === String(v))); };
-  seg('setLang', lang); seg('setMap', mapChoice()); seg('setTheme', s.theme || 'system'); seg('setTint', s.mapTint === 'neutral' ? 'neutral' : 'teal');
-  $('setWalk').value = s.maxWalk;
-  $('setLive').checked = !!s.live; $('setNotify').checked = !!s.notify; $('setSound').checked = !!s.sound;
-}
-for (const b of $('setLang').querySelectorAll('button')) b.addEventListener('click', () => setLang(b.dataset.v));
-for (const b of $('setMap').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ map: b.dataset.v }); applyMapStyle(); applyTheme(); renderSettings(); });
-for (const b of $('setTheme').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ theme: b.dataset.v }); applyTheme(); renderSettings(); });
-for (const b of $('setTint').querySelectorAll('button')) b.addEventListener('click', () => { settings.set({ mapTint: b.dataset.v }); applyMapStyle(); applyTheme(); renderSettings(); });
-const setWalk = (v) => { settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(+v) || 15)) }); renderSettings(); };
-$('setWalk').addEventListener('change', () => setWalk($('setWalk').value));
-$('walkMinus').addEventListener('click', () => setWalk(settings.get().maxWalk - 1));
-$('walkPlus').addEventListener('click', () => setWalk(settings.get().maxWalk + 1));
-$('setLive').addEventListener('change', () => settings.set({ live: $('setLive').checked }));
-$('setNotify').addEventListener('change', async () => { settings.set({ notify: $('setNotify').checked }); if ($('setNotify').checked) await requestAlertPermission(); });
-$('setSound').addEventListener('change', () => settings.set({ sound: $('setSound').checked }));
-$('testAlert').addEventListener('click', async () => { ensureAudio(); await requestAlertPermission(); alertUser(t('alertSoon'), t('testAlertMsg')); });
-$('clearHistory').addEventListener('click', () => { recentPlaces.clear(); recentTrips.clear(); lastSearch.clear(); results.refreshRecent(); toast(t('historyCleared')); });
-
 // ---- alerts: vibration, a beep and a notification
 let audio = null;
 function ensureAudio() { try { if (!audio && window.AudioContext) audio = new AudioContext(); if (audio && audio.state === 'suspended') audio.resume(); } catch (e) {} }
@@ -1667,7 +1483,7 @@ const nav = {
 const isOpen = (id) => nav.stack.some((e) => e.kind === 'overlay' && e.id === id);
 const topPanel = () => { for (let i = nav.stack.length - 1; i >= 0; i--) if (nav.stack[i].kind === 'overlay' && nav.stack[i].id !== 'drawer') return nav.stack[i].id; return null; };
 const OVERLAY_CLOSE = { detail: () => { detailSeq++; delete mapOf.detail; }, stopDetail: () => { clearInterval(stopTimer); stopSeq++; delete mapOf.stopDetail; }, lineDetail: () => { clearInterval(lineTimer); lineSeq++; lineCur = null; delete mapOf.lineDetail; },
-  picker: () => { const r = pickResolve; pickResolve = null; if (pickMarker) { pickMarker.remove(); pickMarker = null; } if (r) r(null); }, chooser: () => { const r = chooserResolve; chooserResolve = null; if (r) r(null); }, follow: () => { if (fol) closeFollow(false); delete mapOf.follow; } };
+  picker: () => { const r = pickResolve; pickResolve = null; if (pickMarker) { pickMarker.remove(); pickMarker = null; } if (r) r(null); }, chooser: () => chooser.finish(null, false), follow: () => { if (fol) closeFollow(false); delete mapOf.follow; } };
 const PANEL_EL = { picker: 'pickbar' };
 function showOverlay(id) {
   if (isOpen(id)) { redrawMap(true); return; }
@@ -1689,7 +1505,7 @@ let screen = 'plan';
 /** How open the sheet is when a panel or screen comes up. */
 // screens that need no map are pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
 const PAGE_TITLE = { 'screen-more': 'settings', 'screen-saved': 'tabSaved', chooser: null };
-$('pageBack').addEventListener('click', () => { if (topPanel() === 'chooser') $('chCancel').click(); else if (nav.stack.length) history.back(); else showScreen('plan'); });
+$('pageBack').addEventListener('click', () => { if (topPanel() === 'chooser') chooser.finish(null); else if (nav.stack.length) history.back(); else showScreen('plan'); });
 const SHEET_FOR = { 'screen-plan': () => (results.showing.value || search.from.value || search.to.value ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
 /** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
 function renderPanels() {
@@ -1704,7 +1520,7 @@ function renderPanels() {
   for (const el of document.querySelectorAll('#sheetBody > .screen, #sheetBody > .detail')) el.hidden = el.id !== show;
   const page = !picking && key in PAGE_TITLE;
   document.body.classList.toggle('page', page);
-  if (page) { $('pageTitle').textContent = PAGE_TITLE[key] ? t(PAGE_TITLE[key]) : $('chTitle').textContent; $('sheetBody').scrollTop = 0; }
+  if (page) { $('pageTitle').textContent = PAGE_TITLE[key] ? t(PAGE_TITLE[key]) : chooser.title.value; $('sheetBody').scrollTop = 0; }
   if (!picking) { const st = SHEET_FOR[key]; sheet.set(typeof st === 'function' ? st() : st || 'half'); }
   redrawMap();
 }
@@ -1712,7 +1528,7 @@ function showScreen(name, record = true) {
   if (record && name !== screen) nav.push({ kind: 'tab', from: screen });
   screen = name;
   renderPanels();
-  if (name === 'nearby' && ttReady && !$('nearbyList').querySelector('.stop')) loadNearby();
+  if (name === 'nearby' && ttReady && nearby.status.value !== 'ready') loadNearby();
 }
 sheet.hooks.changed = (prev, st) => {
   if (prev === 'full' && st !== 'full') refreshLiveMap();

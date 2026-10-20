@@ -3,24 +3,30 @@
 // and lines while typing. The list ends above the keyboard and scrolls inside itself.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
+import type { Signal } from '@preact/signals';
 import { t, lang } from '../../i18n';
 import { ic } from '../../ui/icons';
 import { Icon } from '../../ui/Icon';
 import { savedPlaces, recentPlaces } from '../../store.js';
 import * as search from '../../state/search';
+import * as saved from '../../state/saved';
 import type { Place } from '../../state/search';
 
 type Suggestion = { kind: string; name: string; city?: string; platforms?: number; label?: string; approx?: number | null; lat?: number; lon?: number; stops?: number[]; code?: string };
 type Props = {
-  id: 'toQ' | 'fromQ';
-  side: 'from' | 'to';
+  id: string;
+  dropId: string;
+  text: Signal<string>;           // what the box shows
+  place: Signal<Place | null>;    // the place chosen, cleared by typing
   placeholder: string;
+  onFocus?: () => void;           // the bar opens search mode
   inputMode?: '' | 'numeric';
   lines?: boolean;          // line numbers match too (the To box)
   onPick: (p: Place) => void;
   onLine?: (r: any) => void;
   onLocate?: () => void;    // custom "my location" and "pick on the map" (the place chooser), else the planner's own
   onMap?: () => void;
+  withUser?: boolean;       // the user button sits at the end (the To pill)
   children?: any;           // what else sits in the pill (the tag, the logo, the user button)
 };
 
@@ -35,8 +41,7 @@ function fitDrop(el: HTMLElement) {
   el.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
 }
 
-export function SearchField({ id, side, placeholder, inputMode = '', lines = false, onPick, onLine, onLocate, onMap, children }: Props) {
-  const text = search.texts[side];
+export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, onPick, onLine, onLocate, onMap, withUser = false, children }: Props) {
   const open = useSignal(false);
   const focused = useSignal(false);
   const [rows, setRows] = useState<{ quick: boolean; lines: any[]; results: Suggestion[]; placesLoaded: boolean } | null>(null);
@@ -51,7 +56,7 @@ export function SearchField({ id, side, placeholder, inputMode = '', lines = fal
   const show = () => { open.value = true; requestAnimationFrame(() => { if (dropRef.current) fitDrop(dropRef.current); }); };
   const quickMenu = () => { setRows({ quick: true, lines: [], results: [], placesLoaded: true }); show(); };
   const typed = (q: string) => {
-    search.sides[side].value = null;
+    place.value = null;
     clearTimeout(timer.current);
     if (!q.length) { quickMenu(); return; }
     if ((q.length < 2 && !(lines && /^\d+$/.test(q))) || !search.hooks.ttReady()) { open.value = false; return; }   // one digit is a whole line number
@@ -82,7 +87,7 @@ export function SearchField({ id, side, placeholder, inputMode = '', lines = fal
 
   const onFocus = () => {
     focusedAt.current = Date.now(); focused.value = true;
-    search.openBar();
+    onFocusProp?.();
     inputRef.current?.select();   // the quick entries first, whatever is in the box; typing replaces it
     quickMenu();
   };
@@ -96,7 +101,7 @@ export function SearchField({ id, side, placeholder, inputMode = '', lines = fal
     open.value = false;
     if (onLocate) { onLocate(); return; }
     text.value = t('locating');
-    try { onPick(search.myLocation(await search.hooks.getPosition())); } catch { text.value = ''; search.sides[side].value = null; search.hooks.toast(t('noLocation')); }
+    try { onPick(search.myLocation(await search.hooks.getPosition())); } catch { text.value = ''; place.value = null; search.hooks.toast(t('noLocation')); }
   };
   const pickMap = async () => {
     open.value = false; inputRef.current?.blur();
@@ -104,12 +109,12 @@ export function SearchField({ id, side, placeholder, inputMode = '', lines = fal
     const p = await search.hooks.pickOnMap(search.from.value || search.to.value);
     if (p) onPick(p);
   };
-  const saved = savedPlaces.all() as (Place & { slot: string })[];
+  const savedList = savedPlaces.all() as (Place & { slot: string })[];
   const recent = (recentPlaces.list() as Place[]).filter((r) => !savedPlaces.has(r));
   const xShown = focused.value && !!text.value;
 
   return (
-    <div class={`field search tagged${id === 'toQ' ? ' withuser' : ''}`}>
+    <div class={`field search tagged${withUser ? ' withuser' : ''}`}>
       {children}
       <input ref={inputRef} type="text" id={id} placeholder={placeholder} autocomplete="off" enterkeyhint="search" inputMode={inputMode || undefined}
         value={text.value}
@@ -117,14 +122,14 @@ export function SearchField({ id, side, placeholder, inputMode = '', lines = fal
         onFocus={onFocus} onBlur={() => setTimeout(() => { focused.value = false; }, 0)} onKeyDown={onKey} />
       <button type="button" id={`${id}-x`} class="fieldx" hidden={!xShown} aria-label={t('clearText')}
         onPointerDown={(e) => e.preventDefault()}
-        onClick={() => { text.value = ''; search.sides[side].value = null; focusedAt.current = Date.now(); inputRef.current?.focus(); quickMenu(); }}>
+        onClick={() => { text.value = ''; place.value = null; focusedAt.current = Date.now(); inputRef.current?.focus(); quickMenu(); }}>
         <Icon name="close" />
       </button>
-      <div ref={dropRef} class="dropdown" id={id === 'toQ' ? 'toDrop' : 'fromDrop'} hidden={!open.value}>
+      <div ref={dropRef} class="dropdown" id={dropId} hidden={!open.value}>
         {rows?.quick && <>
           <button type="button" class="quick" onClick={locate}><span class="ic"><Icon name="locate" /></span><span class="txt">{t('myLoc')}</span></button>
           <button type="button" class="quick" onClick={pickMap}><span class="ic"><Icon name="map" /></span><span class="txt">{t('pickTitle')}</span></button>
-          {saved.map((p) => (
+          {savedList.map((p) => (
             <button type="button" class="quick" onClick={() => pick(p)}>
               <span class="ic"><Icon name={p.slot === 'home' ? 'home' : p.slot === 'work' ? 'work' : 'star'} /></span>
               <span class="txt">{p.slot === 'more' ? p.name : t(p.slot)}<small>{p.slot === 'more' ? '' : p.name}</small></span>
@@ -133,7 +138,7 @@ export function SearchField({ id, side, placeholder, inputMode = '', lines = fal
           {recent.slice(0, 6).map((p) => (
             <button type="button" class="quick" onClick={() => pick(p)}>
               <span class="ic"><Icon name="history" /></span><span class="txt">{p.name}</span>
-              <span class="mini" title={t('savePlace')} onClick={(e) => { e.stopPropagation(); savedPlaces.add(p); search.hooks.afterSaved(); search.hooks.toast(t('saved')); quickMenu(); }}><Icon name="star" /></span>
+              <span class="mini" title={t('savePlace')} onClick={(e) => { e.stopPropagation(); savedPlaces.add(p); saved.refresh(); search.hooks.toast(t('saved')); quickMenu(); }}><Icon name="star" /></span>
             </button>
           ))}
         </>}

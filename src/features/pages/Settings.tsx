@@ -1,0 +1,76 @@
+// Settings and more: language, the map's and the menus' look, the longest walk, live data and alerts,
+// install, clearing history, about.
+import { Icon } from '../../ui/Icon';
+import { t, lang } from '../../i18n';
+import { toast } from '../../ui/toast';
+import { recentPlaces, recentTrips, lastSearch } from '../../store.js';
+import * as settings from '../../state/settings';
+import * as app from '../../state/app';
+import * as results from '../../state/results';
+import type { IconName } from '../../ui/icons';
+
+const Seg = ({ id, value, options, onPick }: { id: string; value: string; options: { v: string; label: string }[]; onPick: (v: string) => void }) => (
+  <div class="seg pill" id={id}>{options.map((o) => <button type="button" data-v={o.v} aria-pressed={o.v === value} onClick={() => onPick(o.v)}>{o.label}</button>)}</div>
+);
+const Item = ({ icon, label, children }: { icon: IconName; label: any; children?: any }) => (
+  <div class="item"><span class="ii"><Icon name={icon} /></span><span class="lbl">{label}</span>{children}</div>
+);
+const Toggle = ({ icon, label, id, on, onChange }: { icon: IconName; label: any; id: string; on: boolean; onChange: (on: boolean) => void }) => (
+  <label class="item"><span class="ii"><Icon name={icon} /></span><span class="lbl">{label}</span><span class="switch"><input type="checkbox" id={id} checked={on} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} /><i /></span></label>
+);
+const Act = ({ icon, label, id, onClick, hidden = false }: { icon: IconName; label: string; id: string; onClick: () => void; hidden?: boolean }) => (
+  <button type="button" class="item act" id={id} hidden={hidden} onClick={onClick}><span class="ii"><Icon name={icon} /></span><span class="lbl">{label}</span><Icon name="chevronEnd" class="chev" /></button>
+);
+
+export function Settings() {
+  void lang.value; void settings.tick.value;
+  const s = settings.get();
+  const looks = [{ v: 'light', label: t('mapLight') }, { v: 'dark', label: t('mapDark') }, { v: 'system', label: t('mapSystem') }];
+  const setWalk = (v: number) => settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(v) || 15)) });
+  const look = (patch: Partial<settings.Settings>) => { settings.set(patch); app.hooks.appearanceChanged(); };
+  const feed = app.feedInfo.value;
+  return (
+    <>
+      <h2 class="sec">{t('settings')}</h2>
+      <div class="group">
+        <div class="grouphead">{t('grpGeneral')}</div>
+        <div class="list">
+          <Item icon="globe" label={t('setLang')}><Seg id="setLang" value={lang.value} options={[{ v: 'he', label: 'עברית' }, { v: 'en', label: 'English' }]} onPick={(v) => app.hooks.setLang(v as 'he' | 'en')} /></Item>
+          <Item icon="moon" label={t('setMap')}><Seg id="setMap" value={settings.mapChoice()} options={looks} onPick={(v) => look({ map: v })} /></Item>
+          <Item icon="sun" label={t('setTheme')}><Seg id="setTheme" value={s.theme || 'system'} options={looks} onPick={(v) => look({ theme: v })} /></Item>
+          <Item icon="map" label={t('setTint')}><Seg id="setTint" value={s.mapTint === 'neutral' ? 'neutral' : 'teal'} options={[{ v: 'teal', label: t('tintTeal') }, { v: 'neutral', label: t('tintNeutral') }]} onPick={(v) => look({ mapTint: v })} /></Item>
+        </div>
+      </div>
+      <div class="group">
+        <div class="grouphead">{t('grpPlan')}</div>
+        <div class="list">
+          <Item icon="walk" label={<><span>{t('setWalk')}</span><small>{t('setWalkHint')}</small></>}>
+            <div class="stepper"><button type="button" id="walkMinus" aria-label="-" onClick={() => setWalk(s.maxWalk - 1)}>−</button><input type="number" id="setWalk" min={3} max={45} inputMode="numeric" value={s.maxWalk} onChange={(e) => setWalk(+(e.currentTarget as HTMLInputElement).value)} /><button type="button" id="walkPlus" aria-label="+" onClick={() => setWalk(s.maxWalk + 1)}>+</button></div>
+          </Item>
+        </div>
+      </div>
+      <div class="group">
+        <div class="grouphead">{t('grpLive')}</div>
+        <div class="list">
+          <Toggle icon="live" id="setLive" label={<><span>{t('setLive')}</span><small>{t('liveNote')}</small></>} on={!!s.live} onChange={(on) => settings.set({ live: on })} />
+          <Toggle icon="bell" id="setNotify" label={t('setNotify')} on={!!s.notify} onChange={async (on) => { settings.set({ notify: on }); if (on) await app.hooks.requestAlertPermission(); }} />
+          <Toggle icon="sound" id="setSound" label={t('setSound')} on={!!s.sound} onChange={(on) => settings.set({ sound: on })} />
+          <Act icon="bell" id="testAlert" label={t('testAlert')} onClick={() => app.hooks.testAlert()} />
+        </div>
+      </div>
+      <div class="group">
+        <div class="grouphead">{t('grpApp')}</div>
+        <div class="list">
+          <Act icon="download" id="installBtn" label={t('install')} hidden={!app.installable.value} onClick={() => app.hooks.install()} />
+          <div class="item text" id="installHint" hidden={!app.installHint.value}>{app.installHint.value}</div>
+          <Act icon="trash" id="clearHistory" label={t('clearHistory')} onClick={() => { recentPlaces.clear(); recentTrips.clear(); lastSearch.clear(); results.refreshRecent(); toast(t('historyCleared')); }} />
+        </div>
+      </div>
+      <div class="group">
+        <div class="grouphead">{t('grpAbout')}</div>
+        <div class="list"><div class="item text" id="aboutBox" dangerouslySetInnerHTML={{ __html: t('about', { feed: feed ? `${feed.start || ''}–${feed.end || ''}, ${feed.built || ''}` : '' }) }} /></div>
+      </div>
+      <div class="muted center" id="ver">{app.version.value}</div>
+    </>
+  );
+}

@@ -65,12 +65,12 @@ export function TopBar() {
       <div class="pair" id="pair" hidden={sum}>
         <button type="button" class="iconbtn small" id="barBack" hidden={!edit} aria-label={t('back')} onClick={search.back}><Icon name="back" class="chev" /></button>
         <div class="trow origin" id="fromRow" hidden={!edit}>
-          <SearchField id="fromQ" side="from" placeholder={t('fromQ')} onPick={(p) => { (document.getElementById('fromQ') as HTMLInputElement | null)?.blur(); search.chooseFrom(p); }}>
+          <SearchField id="fromQ" dropId="fromDrop" text={search.fromText} place={search.from} onFocus={search.openBar} placeholder={t('fromQ')} onPick={(p) => { (document.getElementById('fromQ') as HTMLInputElement | null)?.blur(); search.chooseFrom(p); }}>
             <span class="tag">{t('tagFrom')}</span>
           </SearchField>
         </div>
         <div class="trow" id="toRow" hidden={sum} onPointerDownCapture={(e) => { if ((e.target as HTMLElement).id === 'toQ') onToPointerDown(e); }} onFocusOut={search.leaveLineMode}>
-          <SearchField id="toQ" side="to" placeholder={t(search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines
+          <SearchField id="toQ" dropId="toDrop" text={search.toText} place={search.to} onFocus={search.openBar} withUser placeholder={t(search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
             onLine={(r) => { search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); }}>
             <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><Icon name="user" /></button>

@@ -65,7 +65,6 @@ export const hooks = {
   toast: (_msg: string) => {},
   ttReady: () => false,
   lastPos: (): { lat: number; lon: number } | null => null,
-  afterSaved: () => {},
 };
 
 // ---- actions

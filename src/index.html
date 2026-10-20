@@ -22,20 +22,7 @@
 <div id="mainMap"></div>
 
 <div id="topbar-root"></div>
-<div class="backdrop" id="backdrop"></div>
-<nav class="drawer" id="menu" aria-label="תפריט">
-  <div class="head">
-    <div class="who"><span class="avatar"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg></span><div class="txt"><div class="brand">Wayli</div><div class="sub" data-t="menuNote">בלי חשבון. הכול נשאר בטלפון.</div></div></div>
-    <button type="button" class="iconbtn flat" id="menuClose" aria-label="סגירה"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
-  </div>
-  <button type="button" data-screen="plan"><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-route"/></svg></span><span data-t="tabPlan">תכנון מסלול</span></button>
-  <button type="button" data-screen="nearby"><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-locate"/></svg></span><span data-t="tabNearby">תחנות בקרבתי</span></button>
-  <button type="button" id="menuLines"><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-bus"/></svg></span><span data-t="lineSearch">חיפוש קו לפי מספר</span></button>
-  <button type="button" data-screen="saved"><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg></span><span data-t="tabSaved">שמורים</span></button>
-  <button type="button" data-screen="more"><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg></span><span data-t="tabMore">הגדרות ועוד</span></button>
-  <button type="button" id="menuReload"><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg></span><span data-t="reload">רענון האפליקציה</span></button>
-  <div class="foot muted" id="drawerVer"></div>
-</nav>
+<div id="drawer-root" style="display:contents"></div>
 <div class="floating">
   <div class="status" id="status" hidden><span id="statusText">טוען…</span><div class="bar" id="statusBar"><div></div></div></div>
   <span class="offline" id="offline" hidden data-t="offline">לא מקוון</span>
@@ -53,64 +40,11 @@
 
   <section class="screen" id="screen-plan"></section>
 
-  <section class="screen" id="screen-nearby" hidden>
-    <div class="row" style="margin-bottom:8px">
-      <h2 class="sec" style="margin:0" data-t="nearbyTitle">תחנות בקרבתי</h2>
-      <span class="spacer" style="flex:1"></span>
-      <button type="button" class="ghost" id="nearbyRefresh" data-t="refresh">רענון</button>
-    </div>
-    <div id="nearbyList" class="stops-list"><div class="empty" data-t="nearbyEmpty">לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.</div></div>
-  </section>
+  <section class="screen" id="screen-nearby" hidden></section>
 
-  <section class="screen" id="screen-saved" hidden>
-    <h2 class="sec" data-t="savedPlaces">מקומות שמורים</h2>
-    <div id="savedPlaces" class="stops-list"></div>
-    <h2 class="sec" data-t="favTrips">מסלולים שמורים</h2>
-    <div id="favTrips"></div>
-    <h2 class="sec" data-t="favStops">תחנות שמורות</h2>
-    <div id="favStops" class="stops-list"></div>
-  </section>
+  <section class="screen" id="screen-saved" hidden></section>
 
-  <section class="screen" id="screen-more" hidden>
-    <h2 class="sec" data-t="settings">הגדרות</h2>
-    <div class="group">
-      <div class="grouphead" data-t="grpGeneral">כללי</div>
-      <div class="list">
-        <div class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg></span><span class="lbl" data-t="setLang">שפה</span><div class="seg pill" id="setLang"><button type="button" data-v="he">עברית</button><button type="button" data-v="en">English</button></div></div>
-        <div class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-moon"/></svg></span><span class="lbl" data-t="setMap">מראה המפה</span><div class="seg pill" id="setMap"><button type="button" data-v="light" data-t="mapLight">בהיר</button><button type="button" data-v="dark" data-t="mapDark">כהה</button><button type="button" data-v="system" data-t="mapSystem">כמו המכשיר</button></div></div>
-        <div class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></span><span class="lbl" data-t="setTheme">מראה התפריטים</span><div class="seg pill" id="setTheme"><button type="button" data-v="light" data-t="mapLight">בהיר</button><button type="button" data-v="dark" data-t="mapDark">כהה</button><button type="button" data-v="system" data-t="mapSystem">כמו המכשיר</button></div></div>
-        <div class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-map"/></svg></span><span class="lbl" data-t="setTint">צבעי המפה</span><div class="seg pill" id="setTint"><button type="button" data-v="teal" data-t="tintTeal">טורקיז</button><button type="button" data-v="neutral" data-t="tintNeutral">ניטרלי</button></div></div>
-      </div>
-    </div>
-    <div class="group">
-      <div class="grouphead" data-t="grpPlan">תכנון</div>
-      <div class="list">
-        <div class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-walk"/></svg></span><span class="lbl"><span data-t="setWalk">הליכה מרבית</span><small data-t="setWalkHint">דקות, לכל היותר, לתחנה הראשונה ומהאחרונה</small></span><div class="stepper"><button type="button" id="walkMinus" aria-label="-">−</button><input type="number" id="setWalk" min="3" max="45" inputmode="numeric"><button type="button" id="walkPlus" aria-label="+">+</button></div></div>
-      </div>
-    </div>
-    <div class="group">
-      <div class="grouphead" data-t="grpLive">זמן אמת והתראות</div>
-      <div class="list">
-        <label class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-live"/></svg></span><span class="lbl"><span data-t="setLive">זמני אמת</span><small data-t="liveNote">זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון שולח לשרת שלהם את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.</small></span><span class="switch"><input type="checkbox" id="setLive"><i></i></span></label>
-        <label class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="lbl" data-t="setNotify">התראות בנסיעה (מתי לרדת)</span><span class="switch"><input type="checkbox" id="setNotify"><i></i></span></label>
-        <label class="item"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-sound"/></svg></span><span class="lbl" data-t="setSound">צליל ורטט בהתראה</span><span class="switch"><input type="checkbox" id="setSound"><i></i></span></label>
-        <button type="button" class="item act" id="testAlert"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></span><span class="lbl" data-t="testAlert">בדיקת התראה</span><svg class="i chev" aria-hidden="true"><use href="#i-chevronEnd"/></svg></button>
-      </div>
-    </div>
-    <div class="group">
-      <div class="grouphead" data-t="grpApp">האפליקציה</div>
-      <div class="list">
-        <button type="button" class="item act" id="installBtn" hidden><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg></span><span class="lbl" data-t="install">הוספה למסך הבית</span><svg class="i chev" aria-hidden="true"><use href="#i-chevronEnd"/></svg></button>
-        <div class="item text" id="installHint" hidden>ב-Safari: לחצו על כפתור השיתוף (ריבוע עם חץ למעלה) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.</div>
-        <button type="button" class="item act" id="clearHistory"><span class="ii"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg></span><span class="lbl" data-t="clearHistory">מחיקת היסטוריה</span><svg class="i chev" aria-hidden="true"><use href="#i-chevronEnd"/></svg></button>
-      </div>
-    </div>
-    <div class="group">
-      <div class="grouphead" data-t="grpAbout">על Wayli</div>
-      <div class="list"><div class="item text" id="aboutBox"></div></div>
-    </div>
-    <div class="muted center" id="ver"></div>
-  </section>
+  <section class="screen" id="screen-more" hidden></section>
 
   <div class="detail" id="detail" hidden></div>
 
@@ -157,20 +91,7 @@
     </div>
   </div>
 
-  <div class="detail" id="chooser" hidden>
-    <div class="bar">
-      <button type="button" class="ghost" id="chCancel" data-t="cancel">ביטול</button>
-      <h2 id="chTitle"></h2>
-    </div>
-    <div class="legs">
-      <div class="field">
-        <span class="icon"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg></span>
-        <input type="text" id="chQ" autocomplete="off" enterkeyhint="search">
-        <div class="dropdown" id="chDrop" hidden></div>
-      </div>
-      <div class="chips-row"><button type="button" class="chipbtn" id="chLoc"><svg class="i" aria-hidden="true"><use href="#i-locate"/></svg> המיקום שלי</button><button type="button" class="chipbtn" id="chMap"><svg class="i" aria-hidden="true"><use href="#i-map"/></svg> בחירה במפה</button></div>
-    </div>
-  </div>
+  <div class="detail" id="chooser" hidden></div>
 
   <div class="detail follow" id="follow" hidden></div>
 
