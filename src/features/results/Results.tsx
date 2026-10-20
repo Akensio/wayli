@@ -12,7 +12,7 @@ import * as results from '../../state/results';
 import { describePlace } from '../../journey/format';
 import { LegChips } from './LegChips';
 import { JourneyCard } from './JourneyCard';
-import { SortMenu } from './SortMenu';
+import { SortChip } from './SortMenu';
 import type { Journey, Query } from '../../journey/types';
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString(lang.value === 'he' ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
@@ -41,7 +41,7 @@ function Filters() {
     <div class="filters">
       <Chip label={t('fDirect')} on={f.fDirect} onClick={() => results.setFilter({ fDirect: !f.fDirect })} />
       <Chip label={t('fTrain')} on={f.fTrain} icon="train" onClick={() => results.setFilter({ fTrain: !f.fTrain })} />
-      <SortMenu />
+      <SortChip />
     </div>
   );
 }

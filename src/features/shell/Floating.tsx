@@ -4,6 +4,7 @@ import { t, lang } from '../../i18n';
 import * as app from '../../state/app';
 import * as nav from '../../state/nav';
 import { ResumeBar } from '../follow/ResumeBar';
+import { SortPopover } from '../results/SortMenu';
 
 export function Floating() {
   void lang.value;
@@ -27,4 +28,6 @@ export function PickBar() {
     </div>
   );
 }
+/** Menus drawn over everything (outside the sheet, so its scrolling never cuts them off). */
+export const Menus = () => <SortPopover />;
 export const LiveNote = () => <div class={`livenote${app.liveLag.value ? ' lag' : ''}`} id="liveNote">{app.liveNote.value}</div>;
