@@ -39,7 +39,7 @@
 <div class="floating">
   <div class="status" id="status" hidden><span id="statusText">טוען…</span><div class="bar" id="statusBar"><div></div></div></div>
   <span class="offline" id="offline" hidden data-t="offline">לא מקוון</span>
-  <button type="button" class="resume" id="resumeBar" hidden><span class="ic"><svg class="i" aria-hidden="true"><use href="#i-bus"/></svg></span><span class="txt" id="resumeText"></span><span class="go" data-t="resume">המשך</span></button>
+  <div id="resume-root" style="display:contents"></div>
 </div>
 <div class="livenote" id="liveNote"></div>
 <div class="pickbar" id="pickbar" hidden>
@@ -112,19 +112,7 @@
     <div class="muted center" id="ver"></div>
   </section>
 
-  <div class="detail" id="detail" hidden>
-    <div class="bar">
-      <button type="button" class="ghost" id="detailBack" data-t="back">חזרה</button>
-      <h2 id="detailTitle"></h2>
-      <button type="button" class="star" id="detailStar" title="שמירה"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg></button>
-    </div>
-    <div class="actions">
-      <button type="button" class="primary slim" id="detailStart"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg> <span data-t="startTrip">התחלת נסיעה</span></button>
-      <button type="button" class="ghost" id="detailShare"><svg class="i" aria-hidden="true"><use href="#i-share"/></svg> <span data-t="share">שיתוף</span></button>
-    </div>
-    <div class="muted center" id="detailNote"></div>
-    <div class="legs" id="detailLegs"></div>
-  </div>
+  <div class="detail" id="detail" hidden></div>
 
   <div class="detail" id="stopDetail" hidden>
     <div class="bar">
@@ -184,21 +172,7 @@
     </div>
   </div>
 
-  <div class="detail follow" id="follow" hidden>
-    <div class="bar">
-      <button type="button" class="ghost" id="followHide" title="הסתרה"><svg class="i" aria-hidden="true"><use href="#i-chevronDown"/></svg></button>
-      <button type="button" class="ghost" id="followEnd" data-t="endTrip">סיום</button>
-      <h2 id="followTitle"></h2>
-      <span class="livebadge" id="followLive" hidden></span>
-    </div>
-    <div class="nowcard" id="followCard">
-      <div class="big" id="followBig"></div>
-      <div class="small" id="followSmall"></div>
-      <div class="row" style="margin-top:8px"><button type="button" class="ghost" id="followSkip" data-t="nextStep">השלב הבא ›</button><span class="muted" id="followGps"></span></div>
-    </div>
-    <div class="altcard" id="followAlt" hidden></div>
-    <div class="legs" id="followNext"></div>
-  </div>
+  <div class="detail follow" id="follow" hidden></div>
 
   </div>
 </div>

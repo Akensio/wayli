@@ -1,6 +1,7 @@
 // Words for journeys: durations, transfers, line names, the countdown to a departure.
 import * as live from '../live.js';
 import { t } from '../i18n';
+import { fmt } from '../time';
 import type { Place } from '../state/search';
 
 export const dur = (sec: number): string => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
@@ -17,4 +18,18 @@ export function leaveText(sec: number, day: string): string {
   if (n < -1) return t('departed');
   if (n <= 0) return t('leaveNow');
   return t('leaveIn', { n });
+}
+/** "in n min" for the near future only; beyond two hours the clock time says enough. */
+export const inShort = (n: number): string => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
+/** A saved trip's key: the places and the bicycle choice. */
+export const tripKey = (q: { from: { name: string }; to: { name: string }; bike?: string; folding?: boolean }): string => `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`;
+export type LiveAt = { time: number; delay: number; passed?: boolean; stale?: boolean } | null;
+export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone' };
+/** A live vehicle's standing as a badge: its time at the stop and how late, passed, or no vehicle found. */
+export function liveBadge(at: LiveAt): Badge {
+  if (!at) return { text: t('liveNoVehicle'), cls: '' };
+  if (at.passed) return { text: t('livePassed'), cls: 'gone' };
+  const d = live.delayMinutes(at.delay);
+  const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
+  return { text, cls: at.stale ? 'unsure' : 'ok' };
 }

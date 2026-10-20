@@ -135,8 +135,16 @@ and the ways drawn on the map are two signals the map reads. Shared:
 journeys), `state/clock.ts` (a 20-second tick the countdowns read). The sheet's size
 is a signal in `state/sheet.ts` (the sizes in pixels, the slide), its gestures
 and the pull to refresh are `features/sheet/`, the ripple is `ui/ripple.ts`;
-the sheet's markup stays in `index.html` until the pages move. Next: the
-journey detail and following, the pages, the map. Files: `main.ts` (entry: the sprite, the
+the sheet's markup stays in `index.html` until the pages move. The journey
+detail (`features/detail/`, one `LegRow` shared with the follow screen) draws
+from `state/detail.ts`: the journey, the focused ride, the live badges as they
+come in. The follow screen (`features/follow/`, with the resume bar and the
+faster-way card) draws from `state/follow.ts`; the controller (the position
+watch, the timers, the live polls, the re-planning) still runs in `app.js`
+and publishes the trip there after every step. `ui/toast.ts`,
+`journey/share.ts` and `journey/agencies.ts` came out of `app.js` with them.
+Next: the pages (nearby, saved, settings, the drawer, line and stop detail,
+the choosers) with the navigation, then the map. Files: `main.ts` (entry: the sprite, the
 components, then `app.js`), `index.html` (shell), `app.js` (the rest of the UI), `worker.js` (a Web Worker that holds the data and answers
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
 router and street graph, shared with the test harness), `places.js` (the

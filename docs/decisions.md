@@ -630,3 +630,7 @@ so they are not re-litigated.
   hand, so a filter, a language switch or a map toggle never re-renders the
   wrong thing; the countdowns read one clock signal instead of a timer that
   rewrites the DOM. A swap of From and To no longer plans by itself (Go does).
+- 2026-10-20: The journey detail and the follow screen are components; the
+  follow controller stays in app.js for now and publishes the trip into
+  signals after each step, so the screen is a pure view of the state machine
+  (follow.js) and the controller moves later without touching it.

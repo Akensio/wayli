@@ -1,0 +1,54 @@
+// One leg of a journey as a row: the times down the side, a dot in the line's colour, and what to do:
+// ride a line toward its headsign (from, to, stops, operator), or walk or ride the bicycle somewhere.
+import { useState } from 'preact/hooks';
+import { t } from '../../i18n';
+import { fmt } from '../../time';
+import { routeColor, chipColors } from '../../journey/colors';
+import { lineText, stopsText } from '../../journey/format';
+import { agencyName } from '../../journey/agencies';
+import type { Leg } from '../../journey/types';
+import type { Badge } from '../../journey/format';
+
+type StopAlong = { arr: number; name: string };
+type Props = {
+  l: Leg;
+  mode: 'detail' | 'follow';   // the detail shows both times, a live badge, the stops along; the follow shows the departure
+  cls?: string;                // done, current, focus
+  badge?: Badge | null;
+  onChip?: () => void;         // the line chip opens the line
+  onClick?: () => void;        // a ride focuses on the map
+};
+
+const walkText = (l: Leg, mins: number) => {
+  if (l.type === 'egress') return l.mode === 'bike' ? t('bikeFrom', { min: mins, name: l.from!.name }) : t('walkFrom', { min: mins, name: l.from!.name });
+  return l.mode === 'bike' ? t('bikeTo', { min: mins, name: l.to!.name }) : t('walkTo', { min: mins, name: l.to!.name });
+};
+
+export function LegRow({ l, mode, cls = '', badge, onChip, onClick }: Props) {
+  const [stopsOpen, setStopsOpen] = useState(false);
+  const ride = l.type === 'ride';
+  const mins = Math.max(1, Math.round(l.seconds / 60));
+  const stopsAlong = (l.stopsAlong as StopAlong[] | undefined) || [];
+  const shifted = mode === 'detail' && ride && l.schedDepart != null && Math.abs((l.schedDepart as number) - l.depart!) >= 60;
+  const times = mode === 'follow' ? fmt(l.depart!)
+    : shifted ? <><s>{fmt(l.schedDepart as number)}</s><br /><b>{fmt(l.depart!)}</b><br />{fmt(l.arrive!)}</>
+    : <>{fmt(l.depart!)}{ride && <><br />{fmt(l.arrive!)}</>}</>;
+  return (
+    <div class={`leg ${l.type}${ride ? ' t' + l.routeType : ''}${cls ? ' ' + cls : ''}`}
+      onClick={onClick && ride ? (e) => { if ((e.target as HTMLElement).closest('.toggle, .stoplist')) return; onClick(); } : undefined}>
+      <span class="t">{times}</span>
+      <span class="dot" style={ride ? { background: routeColor(l.routeType, l.agency) } : undefined} />
+      <span class="what">
+        {ride ? <>
+          <span class={`chip${onChip && l.route != null && l.route !== '' ? ' btn' : ''} t${l.routeType}`} style={chipColors(l.routeType, l.agency)} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined}>{lineText(l.line)}</span>
+          {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? badge.text : ''}</span><small>{l.from!.name} → {l.to!.name} · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi></small></>
+            : <> {l.from!.name} → {l.to!.name} · {l.stops as number} {t('kindStop')}</>}
+          {mode === 'detail' && stopsAlong.length > 2 && <>
+            <button type="button" class="toggle" onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</button>
+            <div class="stoplist" hidden={!stopsOpen}>{stopsAlong.map((s) => <div><span>{fmt(s.arr)}</span><span>{s.name}</span></div>)}</div>
+          </>}
+        </> : walkText(l, mins)}
+      </span>
+    </div>
+  );
+}

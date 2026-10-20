@@ -12,10 +12,14 @@ import { ICONS, FILLED_ICONS, ic } from './ui/icons.ts';
 import * as search from './state/search.ts';   // the top bar's state: places, when, bike, which parts are open
 import { fmt, dateOf, calToday, dayLabel } from './time.ts';
 import * as results from './state/results.ts';
-import * as sheet from './state/sheet.ts';   // the bottom sheet: peek, half or full
+import * as sheet from './state/sheet.ts';
+import * as detail from './state/detail.ts';   // the journey shown in detail
+import * as follow from './state/follow.ts';   // the trip being followed, as the screen sees it
+import { toast } from './ui/toast.ts';
+import { agencyName } from './journey/agencies.ts';   // the bottom sheet: peek, half or full
 import { topPad, fullPx as fullSheetPx } from './state/sheet.ts';   // the plan's results: the list, the ways on the map, the recent trips
 import { routeColor, textOn, chipStyle, legColor } from './journey/colors.ts';
-import { dur, transfersText, lineText, stopsText, describePlace, minutesUntil, leaveText } from './journey/format.ts';
+import { dur, lineText, describePlace, minutesUntil, leaveText, inShort, tripKey, liveBadge } from './journey/format.ts';
 
 // ---------------------------------------------------------------- i18n
 import { t, lang as langSig, storeLang } from './i18n.ts';
@@ -96,24 +100,14 @@ function showProgress(m) {
   const mb = (m.got / 1e6).toFixed(1) + (m.total ? ' / ' + (m.total / 1e6).toFixed(1) : '') + ' MB';
   setStatus(`${label}: ${m.unpacking ? t('unpacking') : mb}`, false, m.total ? m.got / m.total : null);
 }
-let toastTimer = 0;
-function toast(msg, ms = 2500) {
-  $('toast').textContent = msg; $('toast').hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, ms);
-}
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // ---------------------------------------------------------------- time, days (Israel time, service days)
 const fmtPlus = (sec) => fmt(sec) + (sec >= 86400 ? '⁺' : '');   // past midnight, still this service day
 // the current results on the map: the first few journeys drawn together, one highlighted, the rest muted
 let altMarkers = [];   // the minutes badges of the ways drawn on the map
-const AGENCY_EN = { 'רכבת ישראל': 'Israel Railways', 'אגד': 'Egged', 'אלקטרה אפיקים תחבורה': 'Electra Afikim', 'אלקטרה אפיקים': 'Electra Afikim', 'דן': 'Dan', 'ש.א.מ': 'Sham',
-  'נסיעות ותיירות': 'Nesiot VeTayarut', 'גי.בי.טורס': 'GB Tours', 'מועצה אזורית אילות': 'Eilot Regional Council', 'נתיב אקספרס': 'Nateev Express', 'מטרופולין': 'Metropoline',
-  'סופרבוס': 'Superbus', 'קווים': 'Kavim', 'כרמלית': 'Carmelit', 'כפיר': 'Kfir', 'תבל': 'Tevel', 'גלים': 'Galim', 'מועצה אזורית גולן': 'Golan Regional Council', 'דן בדרום': 'Dan BaDarom',
-  'דן באר שבע': 'Dan Beer Sheva', 'כבל אקספרס': 'Cable Express', 'תנופה': 'Tnufa', 'בית שמש אקספרס': 'Beit Shemesh Express', 'אקסטרה': 'Extra', 'אקסטרה ירושלים': 'Extra Jerusalem',
-  'דן נתיבים בעמ': 'Dan Netivim', 'יונייטד טורס': 'United Tours', 'מוניות מטרו קו': 'Metro Kav', 'אודליה מוניות בעמ': 'Odelia', 'דרך אגד עוטף ירושלים': 'Egged Jerusalem Envelope' };
 /** An operator's name for display: English where known, else as the feed names it, isolated so a Hebrew name inside an English line keeps its place. */
-const agencyText = (a) => `<bdi>${esc(lang === 'he' ? a : AGENCY_EN[a] || a)}</bdi>`;
+const agencyText = (a) => `<bdi>${esc(agencyName(a))}</bdi>`;
 setInterval(() => {
   for (const el of document.querySelectorAll('[data-dep]')) {
     const txt = leaveText(+el.dataset.dep, el.dataset.day);
@@ -506,11 +500,6 @@ async function plan(opts = {}) {
   } catch (e) { showPlanError(e.message); results.result.value = null; results.status.value = 'idle'; }
   search.busy.value = false;
 }
-/** "in n min" for the near future only; beyond two hours the clock time says enough. */
-const inShort = (n) => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
-const chipClass = (l) => l.type === 'ride' ? `chip t${l.routeType}` : l.mode === 'bike' ? 'chip bike' : 'chip walk';
-const chipText = (l, alts) => l.type === 'ride' ? esc(alts && alts.length > 1 ? alts.map(lineText).join(' / ') : lineText(l.line)) : `${ic(l.mode === 'bike' ? 'bike' : 'walk')} ${Math.round(l.seconds / 60)}`;
-const chipAttr = (l) => (l.type === 'ride' ? chipStyle(l.routeType, l.agency) : '');
 // ---------------------------------------------------------------- maps (MapLibre, OpenFreeMap vector tiles)
 // light Liberty everywhere; in dark mode, when chosen in settings, the same Liberty recoloured dark
 // (darkmap.js), so the dark map keeps every detail. (localStorage 'wayli-map-style' overrides, for trying others)
@@ -912,7 +901,7 @@ function vehicleMarker(m, markers, v, label) {
 }
 
 // ---------------------------------------------------------------- journey detail
-let journeyMarkers = [], liveMarkers = [], detailSeq = 0, detailFocus = -1;
+let journeyMarkers = [], liveMarkers = [], detailSeq = 0;
 /** The results on the map: the ways switched on, the highlighted one in colour with its stops, the others grey,
  *  each with a badge of its minutes at the middle of its longest ride (a tap highlights that way). */
 mapOf['screen-plan'] = async (seq) => {
@@ -946,23 +935,8 @@ mapOf['screen-plan'] = async (seq) => {
   drawJourney(m, sel.j, journeyMarkers, -1, false);
   fitMap(b, 15);
 };
-/** Focus one ride of the journey being shown (or release it): its course alone, only its vehicles, the map on it. */
-function focusLeg(i) {
-  detailFocus = detailFocus === i ? -1 : i;
-  const legs = $('detailLegs');
-  legs.classList.toggle('focused', detailFocus >= 0);
-  legs.querySelectorAll(':scope > .leg').forEach((el, k) => el.classList.toggle('focus', k === detailFocus));
-  redrawMap(true);
-}
 const tripStopsCached = (trip) => { if (!tsCache.has(trip)) tsCache.set(trip, call('tripStops', { trip })); return tsCache.get(trip); };
 const liveOn = () => settings.get().live && navigator.onLine !== false;
-function liveBadge(at) {
-  if (!at) return { text: t('liveNoVehicle'), cls: '' };
-  if (at.passed) return { text: t('livePassed'), cls: 'gone' };
-  const d = live.delayMinutes(at.delay);
-  const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
-  return { text, cls: at.stale ? 'unsure' : 'ok' };
-}
 /** Ride legs planned before the shapes were loaded get their course now (in place). */
 async function withCourses(j) {
   if (!shReady || !ttReady) return;
@@ -976,62 +950,34 @@ async function withCourses(j) {
 function openDetail(j, q, bikeOnly = false) {
   const my = ++detailSeq;
   try { window.wayliDebug = { ...(window.wayliDebug || {}), journey: j }; } catch (e) {}
-  const legs = $('detailLegs');
   mapOf.detail = async (seq) => {
     const m = await mapReady();
     if (!m || my !== detailSeq || stale(seq)) return;
     if (!bikeOnly) await withCourses(j);
     if (my !== detailSeq || stale(seq)) return;
-    const b = drawJourney(m, j, journeyMarkers, detailFocus);
+    const focus = detail.focus.value;
+    const b = drawJourney(m, j, journeyMarkers, focus);
     for (const mk of liveMarkers.splice(0)) mk.remove();
-    fitMap(detailFocus >= 0 && j.legs[detailFocus] ? boundsOf(j.legs[detailFocus].path) : b, 16);
-    if (!bikeOnly) liveForJourney(j, q.day, legs, my, detailFocus);
+    fitMap(focus >= 0 && j.legs[focus] ? boundsOf(j.legs[focus].path) : b, 16);
+    if (!bikeOnly) liveForJourney(j, q.day, my, focus);
   };
-  detailFocus = -1;
-  showOverlay('detail');
-  $('detailTitle').textContent = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '') : `${fmt(j.depart)} → ${fmt(j.arrive)} · ${dur(j.arrive - j.depart)}`;
-  $('detailNote').textContent = bikeOnly ? '' : t('legHint');
-  legs.innerHTML = '';
-  legs.classList.remove('focused');
-  j.legs.forEach((l, idx) => {
-    const el = document.createElement('div');
-    el.className = `leg ${l.type}${l.type === 'ride' ? ' t' + l.routeType : ''}`;
-    let what = '';
-    const mins = Math.max(1, Math.round(l.seconds / 60));
-    if (l.type === 'ride') {
-      const planned = l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: l.live.stale }) : null;
-      what = `<span class="chip btn t${l.routeType}" data-route="${l.route ?? ''}"${chipStyle(l.routeType, l.agency)}>${esc(lineText(l.line))}</span> ${esc(l.headsign)}<span class="live${planned ? ' ' + planned.cls : ''}" data-live="${l.trip}">${planned ? esc(planned.text) : ''}</span><small>${esc(l.from.name)} → ${esc(l.to.name)} · ${stopsText(l.stops)} · ${agencyText(l.agency)}</small>`;
-      if (l.stopsAlong && l.stopsAlong.length > 2) what += `<button type="button" class="toggle">${t('showStops')}</button><div class="stoplist" hidden>${l.stopsAlong.map((s) => `<div><span>${fmt(s.arr)}</span><span>${esc(s.name)}</span></div>`).join('')}</div>`;
-    }
-    else if (l.type === 'access') what = (l.mode === 'bike' ? t('bikeTo', { min: mins, name: esc(l.to.name) }) : t('walkTo', { min: mins, name: esc(l.to.name) }));
-    else if (l.type === 'egress') what = (l.mode === 'bike' ? t('bikeFrom', { min: mins, name: esc(l.from.name) }) : t('walkFrom', { min: mins, name: esc(l.from.name) }));
-    else what = t('walkTo', { min: mins, name: esc(l.to.name) });
-    const shifted = l.type === 'ride' && l.schedDepart != null && Math.abs(l.schedDepart - l.depart) >= 60;
-    const timeCol = bikeOnly ? '' : shifted ? `<s>${fmt(l.schedDepart)}</s><br><b>${fmt(l.depart)}</b><br>${fmt(l.arrive)}` : `${fmt(l.depart)}${l.type === 'ride' ? '<br>' + fmt(l.arrive) : ''}`;
-    el.innerHTML = `<span class="t">${timeCol}</span><span class="dot"${l.type === 'ride' ? ` style="background:${routeColor(l.routeType, l.agency)}"` : ''}></span><span class="what">${what}</span>`;
-    const tg = el.querySelector('.toggle');
-    if (tg) tg.addEventListener('click', () => { const sl = el.querySelector('.stoplist'); sl.hidden = !sl.hidden; tg.textContent = sl.hidden ? t('showStops') : t('hideStops'); });
-    const ch = el.querySelector('.chip.btn');
-    if (ch && ch.dataset.route !== '') ch.addEventListener('click', (e) => { e.stopPropagation(); openLine(+ch.dataset.route); });
-    if (l.type === 'ride') el.addEventListener('click', (e) => { if (e.target.closest('.toggle, .stoplist')) return; focusLeg(idx); });
-    legs.appendChild(el);
-  });
-  updateStar('detailStar', q && !bikeOnly ? tripKey(q) : null, 'trips');
-  $('detailStar').onclick = () => { if (q && !bikeOnly) { favs.toggle('trips', tripKey(q), { from: q.from, to: q.to, bike: q.bike, folding: q.folding }); renderSaved(); } updateStar('detailStar', tripKey(q), 'trips'); };
-  $('detailStart').hidden = bikeOnly;
-  const over = live.nowOn(q.day) > j.arrive + 1800;
-  $('detailStart').disabled = over; $('detailStart').title = over ? t('tripOver') : '';
-  $('detailStart').onclick = () => startTrip(j, q);
-  $('detailShare').onclick = () => shareJourney(j, q, bikeOnly);
+  detail.open(j, q, bikeOnly);
 }
+Object.assign(detail.hooks, {
+  show: () => showOverlay('detail'),
+  close: () => nav.close('detail'),
+  redraw: () => redrawMap(true),
+  openLine: (route) => openLine(route),
+  startTrip: (j, q) => startTrip(j, q),
+  favChanged: () => renderSaved(),
+});
 /** Live badges on the ride legs of a journey happening around now; every vehicle of those lines on the map. */
-async function liveForJourney(j, day, container, seq, focus = -1) {
+async function liveForJourney(j, day, seq, focus = -1) {
   if (!liveOn() || !dayInfo || dayInfo.date !== day) return;   // trip indices belong to the loaded day
   const now = live.nowOn(day);
   if (j.depart - now > 5400 || now - j.arrive > 1800) return;
   const rides = j.legs.filter((l, i) => l.type === 'ride' && l.routeId != null && (focus < 0 || i === focus) && l.depart - now < 5400 && now - l.arrive < 900).slice(0, 4);
   await Promise.all(rides.map(async (l) => {
-    const badge = container.querySelector(`[data-live="${l.trip}"]`);
     try {
       const vs = await live.vehiclesByLine(l.routeId);
       if (seq !== detailSeq) return;
@@ -1039,36 +985,15 @@ async function liveForJourney(j, day, container, seq, focus = -1) {
       if (seq !== detailSeq) return;
       if (mainMap && drawnFor === 'detail') lineVehicleMarkers(mainMap, liveMarkers, vs, statuses, l.routeType, l.trip, { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route });
       const v = live.matchTrip(vs, l.routeId, l.firstDep, day);
-      if (!v) { if (badge) badge.textContent = t('liveNoVehicle'); return; }
+      if (!v) { detail.setBadge(l.trip, { text: t('liveNoVehicle'), cls: '' }); return; }
       const ts = await tripStopsCached(l.trip);
       const est = live.estimateDelay(v, ts.stops, day);
       const at = live.liveAt(est, ts.stops, l.boardPos);
       if (seq !== detailSeq) return;
-      const b = liveBadge(at);
-      if (badge) { badge.textContent = b.text; badge.className = 'live ' + b.cls; }
-    } catch (e) { if (badge) badge.textContent = t('liveFail'); }
+      detail.setBadge(l.trip, liveBadge(at));
+    } catch (e) { detail.setBadge(l.trip, { text: t('liveFail'), cls: '' }); }
   }));
 }
-function shareJourney(j, q, bikeOnly) {
-  const lines = [`${q.from.name} → ${q.to.name}`, `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`];
-  for (const l of j.legs) {
-    const mins = Math.max(1, Math.round(l.seconds / 60));
-    if (l.type === 'ride') lines.push(`${fmt(l.depart)} ${lineText(l.line)} ${l.from.name} → ${l.to.name} ${fmt(l.arrive)}`);
-    else lines.push(`${l.mode === 'bike' ? '🚲' : '🚶'} ${mins} ${t('min')}`);
-  }
-  const u = new URL(location.href); u.search = ''; u.hash = '';
-  const pt = (p) => `${(+p.lat).toFixed(5)},${(+p.lon).toFixed(5)},${encodeURIComponent(p.name)}`;
-  if (q.from.lat != null && q.to.lat != null && !bikeOnly) {
-    u.searchParams.set('from', pt(q.from)); u.searchParams.set('to', pt(q.to)); u.searchParams.set('day', q.day); u.searchParams.set('at', fmt(j.depart));
-    if (q.bike !== 'none') u.searchParams.set('bike', q.bike);
-    if (q.folding) u.searchParams.set('folding', '1');
-  }
-  const text = lines.join('\n');
-  if (navigator.share) navigator.share({ title: 'Wayli', text, url: u.toString() }).catch(() => {});
-  else if (navigator.clipboard) navigator.clipboard.writeText(`${text}\n${u}`).then(() => toast(t('copied'))).catch(() => {});
-}
-$('detailBack').addEventListener('click', () => nav.close('detail'));
-
 // ---------------------------------------------------------------- nearby and stop detail
 let lastPos = null;
 (async () => {
@@ -1364,7 +1289,6 @@ async function openTrip(trip, hereStop) {
 $('tripBack').addEventListener('click', () => nav.close('tripDetail'));
 
 // ---------------------------------------------------------------- saved: places, trips, stops (this device only)
-function tripKey(q) { return `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`; }
 function updateStar(id, key, kind) { const on = key && favs.has(kind, key); $(id).innerHTML = ic('star'); $(id).classList.toggle('on', on); }
 /** The last search, shown as it was (its own place and time), when it is under an hour old and went to this place. */
 function restoreLast(p) {
@@ -1503,7 +1427,7 @@ function openFollow(a) {
   if (!fol) {
     fol = { a, pos: null, watch: null, timer: 0, liveTimer: 0, replanTimer: 0, wake: null, liveEst: null, liveChecked: false, alt: null, dismissed: {}, replanAt: 0, replanning: false, toldKey: null };
     if (navigator.geolocation) {
-      fol.watch = navigator.geolocation.watchPosition((p) => { fol.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() }; notePos(fol.pos.lat, fol.pos.lon); stepFollow(); },
+      fol.watch = navigator.geolocation.watchPosition((p) => { fol.pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, at: Date.now() }; follow.pos.value = fol.pos; notePos(fol.pos.lat, fol.pos.lon); stepFollow(); },
         () => {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
     }
     fol.timer = setInterval(stepFollow, 5000);
@@ -1521,7 +1445,7 @@ function openFollow(a) {
     stepFollow(); followLive();
   };
   showOverlay('follow');
-  $('resumeBar').hidden = true;
+  follow.resumable.value = null;
   stepFollow();
 }
 async function requestWake() {
@@ -1546,53 +1470,11 @@ function onFollowEvent(e, a) {
   else if (e === 'arrived') alertUser(t('alertArrived'), t('arrived'));
   else if (e === 'boarded') toast(t('boarded', { line: lineText(v.leg ? v.leg.line : '') }));
 }
+/** The screen draws from the published trip (features/follow); the map gets the rider's dot here. */
 function renderFollow() {
   if (!fol) return;
-  const a = fol.a, j = a.journey, now = live.nowOn(a.day);
-  const v = followView(j, a.state, now);
-  const card = $('followCard'), big = $('followBig'), small = $('followSmall');
-  card.classList.remove('alert');
-  const dest = a.q.to.name;
-  const liveLine = fol.liveEst && fol.liveEst.at ? ` · ${liveBadge(fol.liveEst.at).text}` : '';
-  if (v.kind === 'done') {
-    $('followTitle').textContent = dest; big.textContent = t('arrived'); small.textContent = '';
-    $('followSkip').hidden = true;
-  } else if (v.kind === 'walk' || v.kind === 'final') {
-    const l = v.leg;
-    $('followTitle').textContent = v.toRide ? t('followTitle', { line: lineText(v.toRide.line), to: dest }) : t('walkTitle', { to: dest });
-    big.textContent = v.kind === 'final' ? t('walkToDest', { min: v.minutes, name: dest }) : (l.mode === 'bike' ? t('bikeTo', { min: v.minutes, name: l.to.name }) : t('walkTo', { min: v.minutes, name: l.to.name }));
-    small.textContent = v.toRide ? `${lineText(v.toRide.line)} ${t('departsAt', { time: fmt(v.toRide.depart) })}${inShort(v.departsIn)}${liveLine}` : t('arrivesAt', { time: fmt(l.arrive) });
-    $('followSkip').hidden = false;
-  } else if (v.kind === 'wait') {
-    const l = v.leg;
-    $('followTitle').textContent = t('followTitle', { line: lineText(l.line), to: dest });
-    big.textContent = t('waitFor', { line: lineText(l.line), stop: l.from.name });
-    small.textContent = `${t('departsAt', { time: fmt(l.depart) })}${inShort(v.departsIn)} · ${t('toward', { headsign: l.headsign })}${liveLine}`;
-    $('followSkip').hidden = false;
-  } else if (v.kind === 'ride') {
-    const l = v.leg;
-    $('followTitle').textContent = t('followTitle', { line: lineText(l.line), to: dest });
-    if (v.stopsLeft <= 1) { card.classList.add('alert'); big.textContent = t('getOffNext'); small.textContent = v.alight.name; }
-    else { big.textContent = t('getOffAt', { name: v.alight.name }); small.textContent = `${t('stopsLeft', { n: v.stopsLeft })} · ${t('nextStopIs', { name: v.nextStop.name })} · ${t('arrivesAt', { time: fmt(l.arrive) })}`; }
-    $('followSkip').hidden = false;
-  }
-  $('followGps').textContent = fol.pos && Date.now() - fol.pos.at < 90000 ? t('gpsOk', { acc: Math.round(fol.pos.acc || 0) }) : t('gpsNo');
-  renderAlt();
-  // the legs still ahead
-  const nx = $('followNext');
-  nx.innerHTML = '';
-  j.legs.forEach((l, i) => {
-    const el = document.createElement('div');
-    el.className = `leg ${l.type}${l.type === 'ride' ? ' t' + l.routeType : ''}${i < a.state.step ? ' done' : i === a.state.step ? ' current' : ''}`;
-    const mins = Math.max(1, Math.round(l.seconds / 60));
-    let what;
-    if (l.type === 'ride') what = `<span class="chip t${l.routeType}"${chipStyle(l.routeType, l.agency)}>${esc(lineText(l.line))}</span> ${esc(l.from.name)} → ${esc(l.to.name)} · ${l.stops} ${t('kindStop')}`;
-    else if (l.type === 'egress') what = l.mode === 'bike' ? t('bikeFrom', { min: mins, name: esc(l.from.name) }) : t('walkFrom', { min: mins, name: esc(l.from.name) });
-    else what = l.mode === 'bike' ? t('bikeTo', { min: mins, name: esc(l.to.name) }) : t('walkTo', { min: mins, name: esc(l.to.name) });
-    el.innerHTML = `<span class="t">${fmt(l.depart)}</span><span class="dot"${l.type === 'ride' ? ` style="background:${routeColor(l.routeType, l.agency)}"` : ''}></span><span class="what">${what}</span>`;
-    nx.appendChild(el);
-  });
-  // me on the map
+  const a = fol.a;
+  follow.publish(a, fol.alt);
   if (mainMap && mapStyled && drawnFor === 'follow' && fol.pos) {
     if (!meMarker) { const el = document.createElement('div'); el.className = 'wayli-me'; meMarker = new maplibregl.Marker({ element: el }).setLngLat([fol.pos.lon, fol.pos.lat]).addTo(mainMap); }
     else meMarker.setLngLat([fol.pos.lon, fol.pos.lat]);
@@ -1614,13 +1496,12 @@ async function followLive() {
     for (const mk of followVehicle.splice(0)) mk.remove();
     if (mainMap && drawnFor === 'follow') lineVehicleMarkers(mainMap, followVehicle, vs, statuses, leg.routeType, leg.trip, { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route });
     const v = live.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
-    if (!v) { fol.liveEst = null; $('followLive').hidden = true; renderFollow(); replanCheck(); return; }
+    if (!v) { fol.liveEst = null; follow.liveBadge.value = null; renderFollow(); replanCheck(); return; }
     const ts = await tripStopsCached(leg.trip);
     const est = live.estimateDelay(v, ts.stops, a.day);
     const at = live.liveAt(est, ts.stops, leg.boardPos);
     fol.liveEst = est ? { est, at } : null;
-    const b = liveBadge(at);
-    $('followLive').textContent = b.text; $('followLive').className = 'livebadge ' + b.cls; $('followLive').hidden = !at;
+    follow.liveBadge.value = at ? liveBadge(at) : null;
     renderFollow();
     replanCheck();
   } catch (e) { /* live is a bonus */ }
@@ -1671,30 +1552,6 @@ async function replanCheck(force = false) {
     if (best && best.key !== fol.toldKey) { fol.toldKey = best.key; toast(t('fasterWay'), 5000); try { if (settings.get().sound && navigator.vibrate) navigator.vibrate(200); } catch (e) {} }
   } catch (e) { replanSkip('failed: ' + (e && e.message)); } finally { if (fol) fol.replanning = false; }
 }
-/** The card proposing the alternative, rebuilt only when it changes. */
-function renderAlt() {
-  const ac = $('followAlt');
-  const alt = fol && fol.alt;
-  if (!alt) { ac.hidden = true; ac.dataset.key = ''; return; }
-  if (ac.dataset.key === alt.key && !ac.hidden) return;
-  const a = fol.a, j = alt.journey, o = alt.origin;
-  const rides = j.legs.filter((l) => l.type === 'ride');
-  const cur = a.journey.legs[a.state.step];
-  const sameVehicle = o.kind === 'ride' && rides[0] && rides[0].trip === cur.trip;
-  let first = '';
-  if (o.kind === 'ride') first = t('altGetOff', { stop: sameVehicle ? rides[0].to.name : o.offAt.name });
-  else if (o.kind === 'wait') first = t('altInstead', { line: lineText(cur.line) });
-  const nextRide = sameVehicle ? rides[1] : rides[0];
-  const then = nextRide ? t('altThen', { line: lineText(nextRide.line), headsign: nextRide.headsign, time: fmt(nextRide.depart) }) : '';
-  const chips = j.legs.map((l) => `<span class="${chipClass(l)}">${chipText(l)}</span>`).join('<span class="muted">›</span>');
-  ac.innerHTML = `<div class="title">${ic('bolt')} ${t('fasterWay')}</div><div>${esc(first)}${first && then ? ' · ' : ''}${esc(then)}</div><div class="chips">${chips}</div>` +
-    `<div class="muted">${esc(t('altArrive', { time: fmt(j.arrive), n: Math.round(alt.gain / 60) }))}</div>` +
-    `<div class="row"><button type="button" class="primary slim" data-act="go">${t('switchRoute')}</button><button type="button" class="ghost" data-act="no">${t('keepRoute')}</button></div>`;
-  ac.querySelector('[data-act="go"]').addEventListener('click', () => switchJourney(alt));
-  ac.querySelector('[data-act="no"]').addEventListener('click', () => { if (!fol) return; fol.dismissed[alt.key] = Date.now(); fol.alt = null; renderFollow(); });
-  ac.dataset.key = alt.key;
-  ac.hidden = false;
-}
 function switchJourney(alt) {
   if (!fol) return;
   const a = fol.a;
@@ -1702,13 +1559,13 @@ function switchJourney(alt) {
   a.journey = journey; a.state = state; a.replanned = (a.replanned || 0) + 1;
   fol.alt = null; fol.liveEst = null; fol.toldKey = null; fol.replanAt = Date.now();
   activeTrip.set(a);
-  $('followLive').hidden = true;
+  follow.liveBadge.value = null;
   redrawMap(true);
   stepFollow(); followLive();
   toast(t('routeSwitched'));
 }
 try { window.wayliDebug = { ...(window.wayliDebug || {}), replan: () => replanCheck(true), setReplanGain: (g) => { replanGain = g; } }; } catch (e) {}
-$('followSkip').addEventListener('click', () => {
+function skipStep() {
   if (!fol) return;
   const a = fol.a, legs = a.journey.legs, s = a.state;
   const leg = legs[s.step];
@@ -1716,7 +1573,7 @@ $('followSkip').addEventListener('click', () => {
   else if (s.step >= legs.length - 1) { s.done = true; }
   else { s.step++; s.onBoard = false; s.rideIdx = 0; }
   activeTrip.set(a); renderFollow();
-});
+}
 function finishFollow() { setTimeout(() => { if (fol && fol.a.state.done) { closeFollow(true); nav.close('follow'); toast(t('arrived'), 4000); } }, 15000); }
 function closeFollow(end) {
   if (fol) {
@@ -1725,23 +1582,26 @@ function closeFollow(end) {
     if (fol.wake) { try { fol.wake.release(); } catch (e) {} }
     if (end) activeTrip.clear(); else { fol.a.view = 'hidden'; activeTrip.set(fol.a); }
     fol = null;
+    follow.publish(null); follow.liveBadge.value = null;
   }
   for (const mk of followVehicle.splice(0)) mk.remove();
   if (meMarker) { meMarker.remove(); meMarker = null; }
   delete mapOf.follow;
   updateResumeBar();
 }
-$('followEnd').addEventListener('click', () => { closeFollow(true); nav.close('follow'); toast(t('tripEnded')); });
-$('followHide').addEventListener('click', () => nav.close('follow'));
 function updateResumeBar() {
   const a = activeTrip.get();
-  const bar = $('resumeBar');
-  if (!a || fol || tripStale(a)) { bar.hidden = true; if (a && tripStale(a)) activeTrip.clear(); return; }
-  const ride = a.journey.legs.find((l) => l.type === 'ride');
-  $('resumeText').textContent = `${ride ? lineText(ride.line) + ' · ' : ''}${a.q.to.name}`;
-  bar.hidden = false;
+  if (!a || fol || tripStale(a)) { follow.resumable.value = null; if (a && tripStale(a)) activeTrip.clear(); return; }
+  follow.resumable.value = a;
 }
-$('resumeBar').addEventListener('click', () => { const a = activeTrip.get(); if (a) { nav.closeAll(); openFollow(a); } });
+Object.assign(follow.hooks, {
+  skip: () => skipStep(),
+  end: () => { closeFollow(true); nav.close('follow'); toast(t('tripEnded')); },
+  hide: () => nav.close('follow'),
+  resume: () => { const a = activeTrip.get(); if (a) { nav.closeAll(); openFollow(a); } },
+  switchTo: (alt) => switchJourney(alt),
+  dismiss: (alt) => { if (!fol) return; fol.dismissed[alt.key] = Date.now(); fol.alt = null; renderFollow(); },
+});
 
 // ---------------------------------------------------------------- screens and the back button
 // Every overlay and every tab change is a history entry, so the phone's back button (or the browser's)
