@@ -113,55 +113,56 @@ Known gaps, in rough order of importance:
 - The 10-minute cap on stop-to-stop walks and the 15/20-minute caps on
   access are guesses to revisit with real use.
 
-## The app (v0.3, `app/`)
+## The app (v0.4, `src/`)
 
 An installable web app, Hebrew and right-to-left first with an English
-toggle. Built by Vite from `src/` into `dist/` (Preact with signals and
-TypeScript, both strict; `npm run check` lints and type-checks, `npm run
-build` bundles the shell, the worker and the data modules and writes the
-service worker with the list of built files, since their names carry
-content hashes); `pipeline/build_site.py` joins the build with the data.
-The move to components is incremental: Preact renders a feature inside the
-existing shell while the rest of `app.js` keeps working around it, until
-`app.js` is empty. Done: the top bar (`features/topbar/`: the bar, a search
-box, the two popovers) over `state/search.ts`, signals for the places, the
-time, the bicycle and which parts are open, with the planner behind a
-`hooks` object the legacy app fills in at start; the results
-(`features/results/`: the list with its head, filters, the rides that just
-left, the cards, the recent trips and the peek line) over `state/results.ts`,
-where the cards are a computed over the result, the filters and the language,
-and the ways drawn on the map are two signals the map reads. Shared:
-`time.ts` (days and times), `journey/` (types, line colours, the words for
-journeys), `state/clock.ts` (a 20-second tick the countdowns read). The sheet's size
-is a signal in `state/sheet.ts` (the sizes in pixels, the slide), its gestures
-and the pull to refresh are `features/sheet/`, the ripple is `ui/ripple.ts`;
-the sheet's markup stays in `index.html` until the pages move. The journey
-detail (`features/detail/`, one `LegRow` shared with the follow screen) draws
-from `state/detail.ts`: the journey, the focused ride, the live badges as they
-come in. The follow screen (`features/follow/`, with the resume bar and the
-faster-way card) draws from `state/follow.ts`; the controller (the position
-watch, the timers, the live polls, the re-planning) still runs in `app.js`
-and publishes the trip there after every step. `ui/toast.ts`,
-`journey/share.ts` and `journey/agencies.ts` came out of `app.js` with them.
-The pages (nearby, saved, settings, the stop, trip and line pages, the
-place chooser, the drawer) are `features/pages/` over one small state module
-each; the navigation (`state/nav.ts`: the stack of panels and screens, the
-history entries, what the sheet shows) and the shell (`features/shell/`: the
-sheet with every panel, the status pill, the live note, the pick bar) are
-components too, so `index.html` is roots only. What stays in `app.js`: the
-worker, loading, planning, the map and its live layer, the controllers of
-the stop, line, trip and follow pages (they publish into the state modules).
-Next: the map as a module of its own, then the controllers. Files: `main.ts` (entry: the sprite, the
-components, then `app.js`), `index.html` (shell), `app.js` (the rest of the UI), `worker.js` (a Web Worker that holds the data and answers
-every query, so the UI never blocks), `raptor.js` and `streets.js` (the
-router and street graph, shared with the test harness), `places.js` (the
-address book), `live.js` (real-time client and delay estimate), `follow.js`
-(the trip-following state machine, pure functions), `store.js` (settings,
-history, saved places and the trip in progress, all in localStorage),
-`sw.js` (service worker: the shell and every downloaded data file are
-cached, so the app works offline once loaded; a new build reloads the page
-once, and notification taps reopen the app), `styles.css`,
-`manifest.webmanifest`, icons. Maps are MapLibre GL (cdnjs) over OpenFreeMap
+toggle. Preact with signals and TypeScript, both strict, built by Vite into
+`dist/` (`npm run check` lints and type-checks, `npm run build` bundles the
+shell, the worker and the data modules and writes the service worker with
+the list of built files, since their names carry content hashes);
+`pipeline/build_site.py` joins the build with the data.
+
+Layout, one folder per concern:
+- `state/`: one small module per feature holding its signals and actions
+  (`search` the bar, `results` the plan with its cards as a computed,
+  `sheet` the bottom sheet's size, `nav` the stack of panels and screens with
+  their history entries, `detail`, `follow`, `stop`, `line`, `trip`,
+  `nearby`, `saved`, `chooser`, `settings`, `app`, `data` what is loaded,
+  `position`, `clock` a 20-second tick for countdowns). Each exports a
+  `hooks` object the app fills in at start with what the feature needs from
+  the rest (planning, the worker, panels to open), so a feature never
+  imports the app.
+- `features/`: the components, drawing from the state modules only
+  (`topbar/`, `results/`, `detail/`, `follow/`, `pages/`, `shell/` the sheet
+  with every panel, the floating pills, the pick bar; `sheet/` the gestures
+  and the pull to refresh). `index.html` is roots only; `main.ts` renders
+  the components, attaches the gestures, then imports `app.js`.
+- `map/`: the one map (`index.ts`: init, the layers, what each panel draws
+  through `mapOf`), `basemap` (Liberty recoloured, theme, labels' language),
+  `layers` (a journey with its stops and pins, the other ways muted under
+  it, fitting), `live` (the vehicles in view, the day's stops, the note),
+  `popups` (bubbles for a vehicle, a stop, a tapped place; a line's vehicle
+  markers), `picker` (a point on the map), `shared` (the map, its markers).
+- `journey/`: types, line colours, the words for journeys, operators'
+  English names, sharing. `ui/`: icons, the toast, the ripple. `time.ts`.
+- `worker/client.ts`: the UI's end of the data worker (`worker.js`, which
+  holds the data and answers every query, so the UI never blocks).
+- `app.js` (what is left of the old shell, ~800 lines): loading the data,
+  planning, and the controllers of the detail, stop, line, trip and follow
+  pages (the worker calls, the live polls, the position watch, the
+  re-planning), which publish into the state modules. Next to move: those
+  controllers, one module each, and then `app.js` is gone.
+- Pure modules shared with Node: `raptor.js` and `streets.js` (the router
+  and street graph), `places.js` (the address book), `live.js` (real-time
+  client and delay estimate), `follow.js` (the trip-following state
+  machine), `store.js` (settings, history, saved places and the trip in
+  progress, all in localStorage), `mapstyle.js`, `sw.template.js` (the
+  service worker: the shell and every downloaded data file are cached, so
+  the app works offline once loaded; a new build reloads the page once, and
+  notification taps reopen the app), `styles.css`, `public/` (manifest,
+  icons).
+
+Maps are MapLibre GL (cdnjs) over OpenFreeMap
 vector tiles (no key, no cost): the Liberty style, with every colour
 replaced on the device from one of two palettes by role and road class
 (`mapstyle.js`), so both maps keep all of Liberty's detail (road classes,

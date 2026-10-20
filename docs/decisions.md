@@ -634,3 +634,10 @@ so they are not re-litigated.
   follow controller stays in app.js for now and publishes the trip into
   signals after each step, so the screen is a pure view of the state machine
   (follow.js) and the controller moves later without touching it.
+- 2026-10-20: The map is a module of its own (`src/map/`), typed against
+  MapLibre's own types (a dev dependency for the types only; the script
+  still comes from the CDN). The highlighted way is drawn bolder (a wider
+  casing and ride) since Gadi found the operator colour too faint; the other
+  ways stay grey by design. With the pages, the navigation and the shell as
+  components, `index.html` is roots only and `app.js` keeps the loading, the
+  planning and the page controllers until those move too.

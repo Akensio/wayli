@@ -11,7 +11,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     files: ['src/**/*.{js,ts,tsx}', 'tools/**/*.mjs', 'vite.config.ts'],
-    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly' } },
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly', GeoJSON: 'readonly' } },
     rules: {
       'no-undef': 'error',
       'no-unused-vars': 'off',
