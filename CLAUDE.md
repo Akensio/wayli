@@ -62,8 +62,8 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `src/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
 | `src/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
 | `pipeline/places.py`, `src/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |
-| `src/index.html`, `src/main.ts`, `src/app.js`, `src/worker.js`, `src/sw.template.js`, `src/styles.css` | The app's shell: roots only, the entry that renders the components, what is left of the old shell (loading, planning, the page controllers), the data worker, the service worker template, the styles. Hebrew/RTL first, English toggle. |
-| `src/state/`, `src/features/`, `src/map/`, `src/journey/`, `src/ui/`, `src/worker/` | The app proper: one state module per feature with its `hooks`; the Preact components; the map; journey types, colours and words; icons, toast, ripple; the worker client. Layout in `docs/architecture.md`, "The app". |
+| `src/index.html`, `src/main.ts`, `src/boot.ts`, `src/worker.js`, `src/sw.template.js`, `src/styles.css` | The shell: roots only, the entry that renders the components, the start-up of the controllers, the data worker, the service worker template, the styles. Hebrew/RTL first, English toggle. |
+| `src/state/`, `src/features/`, `src/controllers/`, `src/map/`, `src/journey/`, `src/ui/`, `src/worker/` | The app proper: one state module per feature with its `hooks`; the Preact components; what happens behind them (loading, planning, live polling, follow mode, alerts), the only place that fills the hooks; the map; journey types, colours and words; icons, toast, ripple; the worker client. Layout in `docs/architecture.md`, "The app". |
 | `src/live.js`, `src/follow.js`, `src/store.js` | Real-time client (Hasadna Open Bus, delay estimate, Israel-time helpers); trip-following state machine (pure, testable in Node); on-device store (settings, history, saved places, trip in progress). |
 | `src/mapstyle.js` | The basemap, light and dark: OpenFreeMap's Liberty style with every colour replaced from one of two palettes at runtime. |
 | `src/public/` | Copied as is into the build: icons, the web manifest. |
@@ -102,5 +102,5 @@ fallback relay only if Hasadna proves unreliable. 2026-10-20: Gadi chose the sta
 TypeScript and a Vite build; the app was moved into components feature by
 feature while staying live (`docs/architecture.md`, "The app"): the bar, the
 results, the sheet, the detail and follow screens, the pages, the navigation
-and shell, the map. `app.js` keeps the loading, planning and page
-controllers until those move too.
+and shell, the map, and last the controllers behind them (`app.js` is
+gone; every UI module is type-checked).

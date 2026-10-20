@@ -1,7 +1,6 @@
 // The one map under everything. Panels register what they draw on it (`mapOf`); whichever panel is on top is
 // drawn, over the stops of the day and the live vehicles.
 import type { Map as MLMap, GeolocateControl } from 'maplibre-gl';
-import { ICONS } from '../ui/icons';
 import { dur } from '../journey/format';
 import * as nav from '../state/nav';
 import * as search from '../state/search';
@@ -9,12 +8,12 @@ import * as sheet from '../state/sheet';
 import * as results from '../state/results';
 import * as nearby from '../state/nearby';
 import { lastPos, notePos } from '../state/position';
-import { state, markers, popupState, EMPTY, mapReady, settleWaiters, stale, stopKindProp } from './shared';
-import { applyTheme, styleReady, mapStyle, makeMap, setBasemapLang, applySky, wantDarkMap } from './basemap';
+import { state, markers, popupState, EMPTY, settleWaiters, stale, stopKindProp } from './shared';
+import { styleReady, mapStyle, makeMap, setBasemapLang, applySky, wantDarkMap } from './basemap';
 import { BADGE_KINDS, stationImage } from './images';
 import { ensureJourneyLayers, drawJourney, fitMap, withCourses } from './layers';
 import { stopPopup, placeBubble } from './popups';
-import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetLive, resetShow } from './live';
+import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetShow } from './live';
 import { pickAt } from './picker';
 
 export { applyTheme, setBasemapLang } from './basemap';
@@ -28,7 +27,6 @@ export { hooks } from './shared';
 /** panel id (or 'screen-<name>') -> async function (token) drawing that panel's content on the map */
 export const mapOf: Record<string, (seq: number) => Promise<void> | void> = {};
 let geoCtl: GeolocateControl | null = null;
-void ICONS;
 
 export async function initMap(): Promise<void> {
   await styleReady();
@@ -194,4 +192,3 @@ mapOf['screen-nearby'] = async (seq) => {
   const b = new maplibregl.LngLatBounds(); ring.forEach((c) => b.extend(c));
   fitMap(b, 16);
 };
-void mapReady; void resetLive;

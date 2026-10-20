@@ -11,7 +11,11 @@ export type Leg = {
   line?: string; headsign?: string; agency?: string; route?: number | string; routeType?: number;
   from?: { name: string; [k: string]: unknown }; to?: { name: string; [k: string]: unknown };
   path?: LatLon[];
+  pathKind?: 'shape' | 'stops' | string;
   live?: LiveInfo | null;
+  // a ride's place in the timetable: its trip and pattern, where it boards and alights, the line's id for live data
+  trip?: number; pattern?: number | null; boardPos?: number; alightPos?: number; routeId?: number | string | null; firstDep?: number;
+  stops?: number; stopsAlong?: { stop: number; name: string; lat: number; lon: number; arr: number }[]; schedDepart?: number;
   [k: string]: unknown;
 };
 export type Journey = { depart: number; arrive: number; transfers: number; legs: Leg[]; [k: string]: unknown };

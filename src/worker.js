@@ -1,5 +1,5 @@
 // Wayli worker: holds the timetable and the street graph, answers every query off the main thread.
-import { parseTimetable, searchStops, profile, fmtTime, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
+import { parseTimetable, searchStops, profile, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode } from './places.js';
 import { estimateDelay, secondsOn } from './live.js';

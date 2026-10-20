@@ -3,6 +3,7 @@
 // a line with their delays.
 import type { Map as MLMap, Marker, LngLatLike } from 'maplibre-gl';
 import * as live from '../live.js';
+import { esc } from '../ui/html';
 import { t, lang } from '../i18n';
 import { ic } from '../ui/icons';
 import { chipStyle, routeColor } from '../journey/colors';
@@ -10,9 +11,8 @@ import { lineText } from '../journey/format';
 import { agencyName } from '../journey/agencies';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
-import { state, popupState, pick, hooks } from './shared';
+import { popupState, pick, hooks } from './shared';
 
-const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const clock = (d: Date): string => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 export const heading = (v: { bearing?: number | null; velocity?: number | null }): number => (v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1);
@@ -119,4 +119,3 @@ export function lineVehicleMarkers(m: MLMap, markers: Marker[], vs: any[], statu
     markers.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(m));
   });
 }
-void state;

@@ -117,7 +117,7 @@ Known gaps, in rough order of importance:
 
 An installable web app, Hebrew and right-to-left first with an English
 toggle. Preact with signals and TypeScript, both strict, built by Vite into
-`dist/` (`npm run check` lints and type-checks, `npm run build` bundles the
+`dist/` (`npm run check` lints and type-checks every UI module, `npm run build` bundles the
 shell, the worker and the data modules and writes the service worker with
 the list of built files, since their names carry content hashes);
 `pipeline/build_site.py` joins the build with the data.
@@ -136,7 +136,7 @@ Layout, one folder per concern:
   (`topbar/`, `results/`, `detail/`, `follow/`, `pages/`, `shell/` the sheet
   with every panel, the floating pills, the pick bar; `sheet/` the gestures
   and the pull to refresh). `index.html` is roots only; `main.ts` renders
-  the components, attaches the gestures, then imports `app.js`.
+  the components, attaches the gestures, then imports `boot.ts`.
 - `map/`: the one map (`index.ts`: init, the layers, what each panel draws
   through `mapOf`), `basemap` (Liberty recoloured, theme, labels' language),
   `layers` (a journey with its stops and pins, the other ways muted under
@@ -144,14 +144,19 @@ Layout, one folder per concern:
   `popups` (bubbles for a vehicle, a stop, a tapped place; a line's vehicle
   markers), `picker` (a point on the map), `shared` (the map, its markers).
 - `journey/`: types, line colours, the words for journeys, operators'
-  English names, sharing. `ui/`: icons, the toast, the ripple. `time.ts`.
+  English names, sharing. `ui/`: icons, the toast, the ripple, HTML
+  escaping. `time.ts`.
+- `controllers/`: what happens behind the screens, one module each, and the
+  only place that fills in the `hooks`: `loading` (the manifest, a day's
+  timetable, the other data files), `planner` (planning, a destination from
+  anywhere, the last search, clearing), `detail`, `stop`, `line`, `trip`,
+  `nearby` (each page's worker calls and live polls), `follow` (the trip
+  being followed: the position watch, the timers, the live vehicle, the
+  re-planning, the resume bar), `alerts`, `lang`, `status`, `shell`
+  (install, online, the drawer's actions, what closing each panel stops).
+  `boot.ts` starts them after the first paint.
 - `worker/client.ts`: the UI's end of the data worker (`worker.js`, which
   holds the data and answers every query, so the UI never blocks).
-- `app.js` (what is left of the old shell, ~800 lines): loading the data,
-  planning, and the controllers of the detail, stop, line, trip and follow
-  pages (the worker calls, the live polls, the position watch, the
-  re-planning), which publish into the state modules. Next to move: those
-  controllers, one module each, and then `app.js` is gone.
 - Pure modules shared with Node: `raptor.js` and `streets.js` (the router
   and street graph), `places.js` (the address book), `live.js` (real-time
   client and delay estimate), `follow.js` (the trip-following state
@@ -177,7 +182,7 @@ and dark styles were rejected as too bare. The RTL text plugin shapes
 Hebrew and Arabic labels. Lines are coloured by mode and
 operator: trains navy, light rail red (both lines running are "the red
 line"), buses in their operator's colour, approximate brand colours kept
-in one table in `app.js` (Egged green and Dan blue read off their sites;
+in one table in `journey/colors.ts` (Egged green and Dan blue read off their sites;
 Metropoline orange, Kavim purple, Superbus orange-red, Nateev Express lime,
 Electra Afikim dark blue, Tnufa light blue, Extra magenta, Galim teal, Bet
 Shemesh Express brown from memory, to be corrected as seen on the road),
@@ -262,7 +267,7 @@ in two rows. The basemap is restyled in place when the theme changes (a
 full style reload, after which the app's layers are added again).
 
 Icons are one hand-drawn stroke set on a 24-unit grid (`ICONS` in
-`app.js`): injected once as an inline SVG sprite and used as `<use>`
+`ui/icons.ts`): injected once as an inline SVG sprite and used as `<use>`
 references in markup and templates, and drawn with the same paths through
 `Path2D` on the canvases that become the map's station and stop badges. No
 emoji anywhere in the interface: emoji render differently on every phone

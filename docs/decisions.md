@@ -641,3 +641,11 @@ so they are not re-litigated.
   ways stay grey by design. With the pages, the navigation and the shell as
   components, `index.html` is roots only and `app.js` keeps the loading, the
   planning and the page controllers until those move too.
+- 2026-10-20: The move is finished: `app.js` is gone. What it still did
+  (loading, planning, each page's live polling, follow mode, alerts,
+  language, install) is `src/controllers/`, one typed module each, started
+  by `src/boot.ts`; every UI module is type-checked. Two things fell out on
+  the way: a stale copy of the plan screen's map drawing that overrode the
+  map module's own (its minute badges were never cleared when another panel
+  took the map), and a 20-second timer and a translation loop that had
+  nothing left to update.

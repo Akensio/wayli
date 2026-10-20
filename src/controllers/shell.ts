@@ -1,0 +1,108 @@
+// The shell around the screens: the top bar's height for the map and the sheet, install (Chrome's prompt or
+// Safari's steps), online and offline, the drawer's actions, and what closing each panel must stop.
+import { t } from '../i18n';
+import { call } from '../worker/client';
+import * as app from '../state/app';
+import * as nav from '../state/nav';
+import * as sheet from '../state/sheet';
+import * as search from '../state/search';
+import * as data from '../state/data';
+import * as nearby from '../state/nearby';
+import * as chooser from '../state/chooser';
+import * as saved from '../state/saved';
+import { getPosition, hooks as positionHooks } from '../state/position';
+import * as map from '../map/index';
+import { toast } from '../ui/toast';
+import type { Place } from '../state/search';
+import { clearPlan, planTo, planFrom } from './planner';
+import { closeDetail } from './detail';
+import { openStop, closeStop } from './stop';
+import { openLine, closeLine } from './line';
+import { openTrip } from './trip';
+import { loadNearby } from './nearby';
+import { isFollowing, closeFollow } from './follow';
+import { setLang } from './lang';
+import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
+
+/** The top bar's height, for the map controls, the status pill and the menu under it; the sheet's full size. */
+export function layoutTop(): void {
+  const bar = document.getElementById('topbar'); if (!bar) return;
+  document.documentElement.style.setProperty('--top-h', `${Math.round(bar.getBoundingClientRect().bottom + 6)}px`);
+  document.documentElement.style.setProperty('--sheet-full', `${sheet.fullPx()}px`);   // the sheet is always this tall; its slide uses it
+}
+window.addEventListener('resize', layoutTop);
+
+// ---- install: Chrome's own prompt; iPhones and iPads never fire it, so the row shows there too and explains Safari's way
+let installPrompt: any = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; app.installable.value = true; });
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = (navigator as any).standalone === true || matchMedia('(display-mode: standalone)').matches;
+if (isIOS && !standalone) app.installable.value = true;
+/** The install hint for the browser in hand: Safari's share button sits at the bottom, Chrome's by the address bar. */
+function iosInstallHint(): string {
+  const ua = navigator.userAgent, chrome = /CriOS/.test(ua), firefox = /FxiOS/.test(ua), edge = /EdgiOS/.test(ua);
+  return t('iosInstall', { browser: chrome ? 'Chrome' : firefox ? 'Firefox' : edge ? 'Edge' : 'Safari', where: chrome ? t('shareAddr') : firefox || edge ? t('shareMenu') : t('shareBottom') });
+}
+export const updateOnline = (): void => { app.online.value = navigator.onLine !== false; };
+window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline);
+
+/** A new build reloads the page once (the service worker took over), never in the middle of a followed trip. */
+export async function registerServiceWorker(): Promise<void> {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloading && !isFollowing()) { reloading = true; location.reload(); } });
+    const reg = await navigator.serviceWorker.register('sw.js');
+    reg.update().catch(() => {});
+  } catch { /* offline shell unavailable; fine */ }
+}
+
+// ---- the drawer and the settings' actions
+Object.assign(app.hooks, {
+  install: async () => {
+    if (!installPrompt) { app.installHint.value = app.installHint.value ? '' : iosInstallHint(); return; }
+    installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; app.installable.value = false;
+  },
+  go: (name: string) => { nav.closeAll(); nav.showScreen(name); if (name === 'plan') sheet.set('half'); },
+  lineSearch: () => { nav.closeAll(); nav.showScreen('plan'); search.lineMode(); },   // the rows, even over a plan's summary
+  closeDrawer: () => nav.close('drawer'),
+  setLang: (l: 'he' | 'en') => setLang(l),
+  appearanceChanged: () => { map.applyMapStyle(); map.applyTheme(); },
+  requestAlertPermission: () => requestAlertPermission(),
+  testAlert: async () => { ensureAudio(); await requestAlertPermission(); alertUser(t('alertSoon'), t('testAlertMsg')); },
+  pickCancel: () => map.closePicker(null),
+} satisfies typeof app.hooks);
+
+// ---- choosing a place (home, work, saved): search, my location named by reverse geocoding, or the map
+Object.assign(chooser.hooks, {
+  show: () => nav.showOverlay('chooser'),
+  close: () => nav.close('chooser'),
+  locate: async (): Promise<Place | null> => {
+    try { const pos = await getPosition(); const r = await call<{ name: string }>('reverse', pos); return { name: r.name, lat: pos.lat, lon: pos.lon }; }
+    catch { toast(t('noLocation')); return null; }
+  },
+  pickOnMap: () => map.pickOnMap(null),
+});
+Object.assign(saved.hooks, { planTo: (p: Place) => planTo(p), choosePlace: (title: string) => chooser.open(title), openStop: (stop: number) => openStop(stop), openLine: (route: number) => openLine(route) });
+// what the map's bubbles ask of the app
+Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(trip, stop), openLine: (route: number) => openLine(route), openStop: (stop: number) => openStop(stop), planTo: (p: Place) => planTo(p), planFrom: (p: Place) => planFrom(p) });
+positionHooks.moved = () => map.updateNearRoutes();
+
+// ---- panels: what closing each one stops (state/nav.ts keeps the stack and the history)
+const ON_CLOSE: Record<string, () => void> = {
+  detail: closeDetail, stopDetail: closeStop, lineDetail: closeLine,
+  picker: () => map.closePicker(null, false), chooser: () => chooser.finish(null, false),
+  follow: () => closeFollow(false),
+};
+Object.assign(nav.hooks, {
+  closed: (id: string) => { map.closePopup(); ON_CLOSE[id]?.(); },
+  clearPlan: () => clearPlan(),
+  changed: () => map.redrawMap(),
+  screenShown: (name: string) => { if (name === 'nearby' && data.ttReady.value && nearby.status.value !== 'ready') loadNearby(); },
+});
+sheet.hooks.changed = (prev, st) => {
+  if (prev === 'full' && st !== 'full') map.refreshLiveMap();
+  const body = document.getElementById('sheetBody');
+  if (body && st !== prev && map.mapState.main && (st === 'peek' || prev === 'peek')) body.scrollTop = 0;
+};

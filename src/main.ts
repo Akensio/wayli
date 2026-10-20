@@ -1,6 +1,6 @@
 // Wayli starts here: the icon sprite, the components (the top bar, what floats over the map, the sheet with
-// every screen and panel, the drawer), the sheet's gestures, then the rest of the app, which still runs as one
-// script and fills in what the components need (the `hooks` of state/*).
+// every screen and panel, the drawer), the sheet's gestures, then the controllers behind them (boot.ts), which
+// fill in what the components need (the `hooks` of state/*).
 import { render, h } from 'preact';
 import { installSprite } from './ui/icons';
 import { installRipple } from './ui/ripple';
@@ -25,4 +25,4 @@ attachSheetGestures(el('sheet'), el('sheetHandle'), el('sheetBody'));
 attachBarPull(el('topbar'));
 sheet.set('peek');
 document.body.classList.add('booted');   // the shell paints now, icons and all, in one go
-import('./app.js');
+import('./boot');   // after the first paint

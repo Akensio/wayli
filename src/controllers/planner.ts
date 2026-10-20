@@ -1,0 +1,153 @@
+// Planning: from the bar's places and options to results. "My location" is resolved at the moment of planning;
+// a plan from now takes the delays of the vehicles on the road into account. Also: a destination chosen
+// anywhere (a bubble, a saved place) planned from where you are, the last search shown again, the plan cleared.
+import * as live from '../live.js';
+import { settings, recentPlaces, recentTrips, lastSearch } from '../store.js';
+import { t, lang } from '../i18n';
+import { dateOf } from '../time';
+import { call } from '../worker/client';
+import * as data from '../state/data';
+import * as search from '../state/search';
+import * as results from '../state/results';
+import * as sheet from '../state/sheet';
+import * as nav from '../state/nav';
+import { lastPos, getPosition } from '../state/position';
+import * as map from '../map/index';
+import { chipStyle } from '../journey/colors';
+import { lineText } from '../journey/format';
+import { esc } from '../ui/html';
+import { toast } from '../ui/toast';
+import type { Place } from '../state/search';
+import type { Query, PlanResult } from '../journey/types';
+import { startDay, hasDay } from './loading';
+import { openLine } from './line';
+import { openDetail } from './detail';
+import { startTrip } from './follow';
+import { layoutTop } from './shell';
+
+type Shared = Parameters<typeof search.applyQuery>[0];
+const RESTORE_MS = 3600e3;   // the last search comes back as it was for an hour
+
+export function showPlanError(msg: string): void { results.error.value = msg; if (msg && sheet.state.value === 'peek') sheet.set('half'); }
+
+/** A shared link's plan: from and to as "lat,lon,name", the day, the time, the bicycle, arrive-by. */
+export function parseShared(params: URLSearchParams): Shared | null {
+  const pt = (s: string | null): Place | null => { if (!s) return null; const [lat, lon, ...rest] = s.split(','); const name = decodeURIComponent(rest.join(',')) || `${lat}, ${lon}`; return Number.isNaN(+lat) ? null : { name, lat: +lat, lon: +lon }; };
+  const from = pt(params.get('from')), to = pt(params.get('to'));
+  if (!from || !to) return null;
+  return { from, to, day: params.get('day') || '', at: params.get('at') || '', bike: params.get('bike') || 'none', folding: params.get('folding') === '1', arriveBy: params.get('mode') === 'arrive' };
+}
+
+export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
+  showPlanError('');
+  if (!search.from.value || !search.to.value) { showPlanError(t('pickBoth')); return; }
+  if (!data.ttReady.value) return;
+  for (const side of ['from', 'to'] as const) {   // "my location" is resolved now, not when it was chosen
+    const p = search.sides[side].value!;
+    if (p.transient && p.lat == null) {
+      search.texts[side].value = t('locating');
+      try { search.setPlace(side, search.myLocation(await getPosition())); } catch { search.texts[side].value = t('myLoc'); showPlanError(t('noLocation')); return; }
+    }
+  }
+  if (!search.timeTouched.value) { search.setDefaultTime(); if (data.manifest.value && search.day.value !== startDay()) search.day.value = startDay(); }
+  if (!nav.stack.value.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' });   // the back button clears the plan
+  const from = search.from.value!, to = search.to.value!, day = search.day.value;
+  const weekday = dateOf(day).getDay() <= 4;
+  const bike = search.bike.value, folding = search.folding.value, arriveBy = search.timeMode.value === 'arrive';
+  const at = search.atSeconds();
+  const isNow = !search.timeTouched.value && !arriveBy;   // a plan from now looks ten minutes back too: a ride just boarded can still be followed
+  const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at, toTime = arriveBy ? at : at + 3600;
+  const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
+  search.busy.value = true;
+  results.status.value = 'planning';
+  search.optOpen.value = '';
+  const q: Query = { from, to, day, at: search.at.value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
+  // a plan from now takes the delays of the vehicles on the road into account
+  const svc = live.serviceDay();
+  const liveTried = map.liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200;
+  let vehicles: unknown[] | null = null, liveAsOf: Date | null = null;
+  if (liveTried && from.lat != null) {
+    try { vehicles = await live.vehiclesForPlanning(from.lat, from.lon, { timeoutMs: 8000 }); liveAsOf = live.newest(vehicles); } catch { vehicles = null; }
+  }
+  q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null; q.liveTried = liveTried;
+  try {
+    const r = await call<PlanResult>('plan', { from, to, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
+    recentTrips.add(q); recentPlaces.add(from); recentPlaces.add(to);
+    lastSearch.set({ q, result: r, at: Date.now() });
+    results.setResults(r, q);
+    results.refreshRecent();
+  } catch (e) { showPlanError(e instanceof Error ? e.message : String(e)); results.result.value = null; results.status.value = 'idle'; }
+  search.busy.value = false;
+}
+
+/** The last search, shown as it was (its own place and time), when it is under an hour old and went to this place. */
+function restoreLast(p: Place): boolean {
+  const last = lastSearch.get();
+  if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > RESTORE_MS) return false;
+  if (!last.q.to || last.q.to.name !== p.name || (last.q.day !== search.day.value && !hasDay(last.q.day))) return false;
+  nav.closeAll(); nav.showScreen('plan');
+  search.day.value = last.q.day; search.applyQuery(last.q); results.setResults(last.result, last.q, last.at); sheet.set('half');
+  return true;
+}
+/** A destination chosen anywhere: planned from where you are, from now. */
+export async function planTo(p: Place): Promise<void> {
+  if (restoreLast(p)) return;
+  nav.closeAll();
+  nav.showScreen('plan');
+  search.setPlace('to', p);
+  results.status.value = 'locating';
+  sheet.set('half');
+  search.fromText.value = t('locating');
+  try { search.setPlace('from', search.myLocation(await getPosition())); }
+  catch { const f = search.from.value; if (!f || f.transient) search.setPlace('from', null); else search.fromText.value = f.name; }
+  search.resetNow();
+  if (search.from.value) plan(); else { results.status.value = 'idle'; showPlanError(t('noLocation')); search.focusBox('toQ'); }
+}
+/** An origin chosen anywhere: in the From box, the bar open for the destination. */
+export function planFrom(p: Place): void { nav.closeAll(); search.setPlace('from', p); nav.showScreen('plan'); search.barOpen.value = true; search.focusBox('toQ'); }
+
+/** Back to a clean bar: no places, no results, the sheet down to its strip. */
+export function clearPlan(): void {
+  search.clearPlaces();
+  results.clear();
+  const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true });
+  showPlanError('');
+  search.optOpen.value = ''; search.resetNow();
+  results.refreshRecent();
+  map.applyLiveShow(); nav.renderPanels(); map.redrawMap(true);
+}
+
+// What the bar needs: planning, searching, the map, the menu.
+Object.assign(search.hooks, {
+  plan: () => { nav.closeAll(); nav.showScreen('plan'); plan(); },
+  planTo: (p: Place) => planTo(p),
+  clearPlan: () => { if (nav.stack.value.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); },
+  hasResults: () => !!(results.result.value && results.query.value),
+  lastQuery: () => results.query.value,
+  search: (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos }),
+  searchLines: (q: string) => call('searchLines', { q, limit: 6 }),
+  lineChipHtml: (r: any) => `<span class="chip t${r.routeType}"${chipStyle(r.routeType, r.agency)}>${esc(lineText(r.line))}</span>`,
+  openLine: (r: any) => openLine(r.route),
+  getPosition: () => getPosition(),
+  pickOnMap: (start: Place | null) => map.pickOnMap(start),
+  openMenu: () => nav.showOverlay('drawer'),
+  layoutTop: () => layoutTop(),
+  toast: (msg: string) => toast(msg),
+  ttReady: () => data.ttReady.value,
+  lastPos: () => lastPos,
+});
+// What the results need: the detail and follow screens, planning again, the sheet and the map.
+Object.assign(results.hooks, {
+  openDetail: (j, q, bikeOnly) => openDetail(j, q, bikeOnly),
+  startTrip: (j, q) => startTrip(j, q),
+  plan: (opts) => plan(opts),
+  replan: (q) => { search.applyQuery(q); search.resetNow(); nav.closeAll(); nav.showScreen('plan'); plan(); },
+  afterResults: () => {
+    const body = document.getElementById('sheetBody'); if (body) body.scrollTop = 0;
+    if (!nav.topPanel() && nav.screen.value === 'plan' && sheet.state.value === 'peek') sheet.set('half');
+    map.applyLiveShow(); map.redrawMap(true);
+  },
+  redraw: () => map.redrawMap(true),
+  peekChanged: () => { if (sheet.state.value === 'peek') sheet.set('peek'); },
+  peekTap: () => sheet.set('half'),
+} satisfies typeof results.hooks);

@@ -11,7 +11,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     files: ['src/**/*.{js,ts,tsx}', 'tools/**/*.mjs', 'vite.config.ts'],
-    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly', GeoJSON: 'readonly' } },
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly' } },
     rules: {
       'no-undef': 'error',
       'no-unused-vars': 'off',
@@ -23,4 +23,6 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  // TypeScript itself rejects undeclared names, and knows type-only names (GeoJSON, DOM types) that this rule does not
+  { files: ['src/**/*.{ts,tsx}', 'vite.config.ts'], rules: { 'no-undef': 'off' } },
 );
