@@ -429,16 +429,24 @@ export const WALK_WEIGHT = 0.5;       // a minute walking costs this many minute
 
 export function cost(j) { return (j.arrive - j.depart) + TRANSFER_PENALTY * j.transfers + WALK_WEIGHT * j.walkSeconds; }
 
+/** A journey that rides a train, as a rider sees the choice: a train is never hidden behind a bus, nor a bus behind a train. */
+const byTrain = (j) => j.legs.some((l) => l.type === 'ride' && l.route && l.route[3] === 2);
+/** The same journey found twice (by two searches): its legs, trip by trip. */
+export const journeySig = (j) => j.legs.map((l) => (l.type === 'ride' ? `r${l.trip}:${l.from}-${l.to}` : `${l.type[0]}${l.from}-${l.to}`)).join('|');
+
 /**
  * Keep the journeys worth showing: Pareto by (later departure, earlier arrival,
- * fewer transfers), then drop ones whose extra transfers buy too little.
+ * fewer transfers), then drop ones whose extra transfers buy too little. Journeys
+ * by train and journeys without one are compared only among themselves: a bus that
+ * leaves a minute later and arrives a minute earlier must not hide the train.
  */
 export function rank(journeys) {
   const out = [];
   for (const j of journeys) {
     let dominated = false;
+    const train = byTrain(j);
     for (const o of journeys) {
-      if (o === j) continue;
+      if (o === j || byTrain(o) !== train) continue;
       const pareto = o.depart >= j.depart && o.arrive <= j.arrive && o.transfers <= j.transfers &&
         (o.depart > j.depart || o.arrive < j.arrive || o.transfers < j.transfers || cost(o) < cost(j));
       const penalty = o.depart >= j.depart - 60 && o.transfers < j.transfers &&

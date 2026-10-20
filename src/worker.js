@@ -1,5 +1,5 @@
 // Wayli worker: holds the timetable and the street graph, answers every query off the main thread.
-import { parseTimetable, searchStops, profile, rank, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
+import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode } from './places.js';
 import { estimateDelay, secondsOn } from './live.js';
@@ -326,10 +326,16 @@ const ops = {
       to: resolvePlace(to, bike === 'along' ? 'bike' : 'walk', bike === 'along' ? Math.max(1200, maxWalk) : maxWalk),
     };
     if (!q.from.places.length || !q.to.places.length) return { journeys: [], groups: [], reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops', live, ms: 0 };
+    // Two searches: everything, and trains only. The first keeps, per departure, only the earliest arrival, so a bus
+    // a minute faster leaves no trace of the train beside it; the second brings the trains back, ranked apart (rank).
+    const opts = { maxTransfers, bikeOnBoard: bike === 'along', folding, weekday, raw: true };
+    const r = profile(tt, q.from.places, q.to.places, fromTime, toTime, opts);
+    const byRail = profile(tt, q.from.places, q.to.places, fromTime, toTime, { ...opts, routeTypes: [2] });
+    const seen = new Set(), all = [];
+    for (const j of r.journeys.concat(byRail.journeys)) { const k = journeySig(j); if (!seen.has(k)) { seen.add(k); all.push(j); } }
     // arrive-by: the journeys arriving in time are ranked among themselves only; ranked with the rest, a later one with
     // fewer changes that arrives a few minutes past the deadline would knock out one that is in time, and then be dropped
-    const r = profile(tt, q.from.places, q.to.places, fromTime, toTime, { maxTransfers, bikeOnBoard: bike === 'along', folding, weekday, raw: arriveBy });
-    const found = arriveBy ? rank(r.journeys.filter((j) => j.arrive <= toTime)) : r.journeys;
+    const found = rank(arriveBy ? all.filter((j) => j.arrive <= toTime) : all);
     const journeys = found.map((j) => ({
       depart: j.depart, arrive: j.arrive, transfers: j.transfers, walkSeconds: j.walkSeconds,
       legs: j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q)),

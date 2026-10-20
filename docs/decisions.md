@@ -670,3 +670,13 @@ so they are not re-litigated.
   streets (landmarks keep their lead), checked over twenty searches: street,
   address and landmark answers are unchanged. Left out: fuel, parking,
   playgrounds and the like (rarely named, rarely a destination by transit).
+- 2026-10-20: Trains are never hidden behind buses (Gadi's arrive-by-19:00 trip
+  from Rehovot: the 17:34 and 17:56 trains were missing; only the 17:24 came
+  through). The router keeps, per departure, only the earliest arrival, and
+  ranking dropped a journey when another left later and arrived earlier or
+  saved a change: a bus 277 a minute faster hid each later train. Now every
+  plan also runs a train-only search, and journeys with a train and without
+  one are ranked apart. Measured over 70 random morning trips: 10.2 to 10.5
+  journeys on average, 6 trips gain a train option, planning time unchanged
+  (about 135 ms in Node). Rejected: lowering the transfer penalty (it would
+  not bring back the direct train, which a faster bus beats outright).

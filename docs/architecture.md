@@ -321,7 +321,9 @@ and within 300 m the straight walk with a 1.3 detour factor caps a network
 path that wanders off to reach the stop's node; the
 search box lists saved and recent places when empty. Depart-at or arrive-by
 (a two-hour window ending at the target, latest departure first; only the
-journeys arriving in time are ranked against each other); day
+journeys arriving in time are ranked against each other; every plan also runs a
+train-only search, and journeys with a train and without one are ranked
+apart, so a slightly faster bus never hides a train); day
 picker over the published service days, with "tonight" until 03:00 since a
 service day runs past midnight; bicycle choice; the longest walk to a stop
 is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that

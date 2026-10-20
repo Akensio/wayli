@@ -37,8 +37,9 @@ const depAt = (j: Journey, nowS: number): number => { const r = j.legs.filter((l
 function build(r: PlanResult | null, q: Query | null, at: number | null, f: Filters): { cards: Card[]; gone: Journey[]; filteredOut: boolean } {
   if (!r || !q || !r.journeys.length) return { cards: [], gone: [], filteredOut: false };
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
-  if (q.arriveBy) groups = groups.slice().reverse();
+  // the option a card shows: the earliest departure from the time asked, or for arrive-by the latest that is in time
   const first = (g: { options: number[] }) => r.journeys[q.arriveBy ? g.options[g.options.length - 1] : g.options[0]];
+  if (q.arriveBy) groups = groups.slice().sort((a, b) => first(b).depart - first(a).depart);   // latest departure first, by what each card shows
   if (f.fDirect) groups = groups.filter((g) => first(g).transfers === 0);
   if (f.fTrain) groups = groups.filter((g) => first(g).legs.some((l) => l.type === 'ride' && l.routeType === 2));
   if (f.resultSort !== 'depart') { const sk = sortKey[f.resultSort]; groups = groups.slice().sort((a, b) => sk(first(a)) - sk(first(b))); }
