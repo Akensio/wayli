@@ -618,3 +618,10 @@ so they are not re-litigated.
   tools/. The components follow feature by feature, the app staying live.
   Rejected: React itself (same API, ten times the size), Svelte or Solid
   (a different model for no gain here), a big-bang rewrite.
+- 2026-10-20: The top bar is the first Preact feature: its state (places,
+  when, bicycle, open parts) lives in signals in `state/search.ts`, the
+  legacy app reads and sets those instead of the DOM, and what the bar needs
+  from the planner goes through one `hooks` object, so each later feature
+  can take over a hook without touching the others. The place chooser's
+  search box stays on the legacy code until the pages move. One digit in
+  line mode searches at once (a whole line number).

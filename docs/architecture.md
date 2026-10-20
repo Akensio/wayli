@@ -123,10 +123,13 @@ service worker with the list of built files, since their names carry
 content hashes); `pipeline/build_site.py` joins the build with the data.
 The move to components is incremental: Preact renders a feature inside the
 existing shell while the rest of `app.js` keeps working around it, until
-`app.js` is empty. Order: the top bar (the search state machine, where the
-layout mishaps came from), the results, the sheet, the journey detail and
-following, the pages, the map. Files: `index.html` (shell),
-`app.js` (UI), `worker.js` (a Web Worker that holds the data and answers
+`app.js` is empty. Done: the top bar (`features/topbar/`: the bar, a search
+box, the two popovers) over `state/search.ts`, signals for the places, the
+time, the bicycle and which parts are open, with the planner behind a
+`hooks` object the legacy app fills in at start; `time.ts` holds the day
+and time formatting. Next: the results, the sheet, the journey detail and
+following, the pages, the map. Files: `main.ts` (entry: the sprite, the
+components, then `app.js`), `index.html` (shell), `app.js` (the rest of the UI), `worker.js` (a Web Worker that holds the data and answers
 every query, so the UI never blocks), `raptor.js` and `streets.js` (the
 router and street graph, shared with the test harness), `places.js` (the
 address book), `live.js` (real-time client and delay estimate), `follow.js`

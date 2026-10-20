@@ -21,63 +21,7 @@
 <body>
 <div id="mainMap"></div>
 
-<div class="topbar" id="topbar">
-  <div class="pair" id="pair">
-    <button type="button" class="iconbtn small" id="barBack" hidden aria-label="חזרה"><svg class="i chev" aria-hidden="true"><use href="#i-back"/></svg></button>
-    <div class="trow origin" id="fromRow" hidden>
-      <div class="field search tagged">
-        <span class="tag" data-t="tagFrom">מ־</span>
-        <input type="text" id="fromQ" placeholder="מאיפה? (ריק = המיקום שלי)" autocomplete="off" enterkeyhint="search">
-        <div class="dropdown" id="fromDrop" hidden></div>
-      </div>
-    </div>
-    <div class="trow" id="toRow">
-      <div class="field search tagged withuser">
-        <button type="button" class="userbtn" id="menuBtn" title="תפריט" aria-label="תפריט"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg></button>
-        <span class="tag" data-t="tagTo">אל</span>
-        <input type="text" id="toQ" placeholder="לאן רוצים להגיע?" autocomplete="off" enterkeyhint="search">
-        <button type="button" class="applogo" id="appLogo" aria-label="Wayli"><img src="icons/icon-192.png" alt=""></button>
-        <div class="dropdown" id="toDrop" hidden></div>
-      </div>
-    </div>
-    <button type="button" class="iconbtn small" id="swap" hidden title="החלף" aria-label="החלף"><svg class="i" aria-hidden="true"><use href="#i-swap"/></svg></button>
-  </div>
-  <div class="trow" id="sumRow" hidden>
-    <div class="sumbox">
-      <button type="button" class="userbtn" id="menuBtn2" title="תפריט" aria-label="תפריט"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg></button>
-      <button type="button" class="sumtxt" id="sumEdit"><span class="l1" id="sumTo"></span><span class="l2" id="sumMeta"></span></button>
-      <button type="button" class="clearbtn" id="sumClear" aria-label="נקה"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
-    </div>
-  </div>
-  <div class="trow opts" id="optRow" hidden>
-    <button type="button" class="chipbtn" id="optTime"></button>
-    <button type="button" class="chipbtn" id="optBike"></button>
-    <button type="button" class="primary slim go" id="goBtn" data-t="go">תכנון</button>
-  </div>
-  <div class="optpanel" id="formBody" hidden>
-    <div id="whenBody">
-      <div class="seg pill" id="timeMode">
-        <button type="button" data-mode="depart" aria-pressed="true" data-t="departAt">יציאה</button>
-        <button type="button" data-mode="arrive" aria-pressed="false" data-t="arriveBy">הגעה עד</button>
-      </div>
-      <div class="daypills" id="dayPills"></div>
-      <select id="day" hidden></select>
-      <div class="timerow">
-        <button type="button" class="chipbtn" id="nowBtn" data-t="now">עכשיו</button>
-        <input type="time" id="at" class="timepill">
-      </div>
-    </div>
-    <div id="bikeBody" hidden>
-      <div class="seg pill" id="bikeMode">
-        <button type="button" data-mode="none" aria-pressed="true" data-t="bikeNone">בלי</button>
-        <button type="button" data-mode="park" aria-pressed="false" data-t="bikePark">עד התחנה</button>
-        <button type="button" data-mode="along" aria-pressed="false" data-t="bikeAlong">לוקח/ת איתי</button>
-      </div>
-      <label class="check pilltoggle" id="foldingRow"><input type="checkbox" id="folding"> <span data-t="folding">מתקפלים</span></label>
-    </div>
-    <button type="button" class="primary slim" id="planBtn" data-t="plan" hidden>תכנון מסלול</button>
-  </div>
-</div>
+<div id="topbar-root"></div>
 <div class="backdrop" id="backdrop"></div>
 <nav class="drawer" id="menu" aria-label="תפריט">
   <div class="head">
@@ -266,6 +210,6 @@
 
 <div class="toast" id="toast" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js" crossorigin=""></script>
-<script type="module" src="./app.js"></script>
+<script type="module" src="./main.ts"></script>
 </body>
 </html>

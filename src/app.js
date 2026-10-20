@@ -8,9 +8,9 @@ import { styledLiberty, PALETTES } from './mapstyle.js';
 const $ = (id) => document.getElementById(id);
 
 // ---------------------------------------------------------------- icons: one stroke set on a 24-unit grid, as an inline SVG sprite (and drawn on canvas for the map)
-import { ICONS, FILLED_ICONS, ic, installSprite } from './ui/icons.ts';
-installSprite();
-document.body.classList.add('booted');   // the shell paints now, icons and all, in one go
+import { ICONS, FILLED_ICONS, ic } from './ui/icons.ts';
+import * as search from './state/search.ts';   // the top bar's state: places, when, bike, which parts are open
+import { fmt, dateOf, calToday, dayLabel } from './time.ts';
 
 // ---------------------------------------------------------------- i18n
 import { t, lang as langSig, storeLang } from './i18n.ts';
@@ -19,12 +19,10 @@ function applyLang() {
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
   for (const el of document.querySelectorAll('[data-t]')) el.textContent = t(el.dataset.t);
-  $('fromQ').placeholder = t('fromQ'); $('toQ').placeholder = t('goQ'); $('chQ').placeholder = t('toQ'); $('menuBtn').title = t('menu'); $('menuBtn2').title = t('menu');
+  $('chQ').placeholder = t('toQ');
   $('chLoc').innerHTML = ic('locate') + ' ' + t('btnLoc'); $('chMap').innerHTML = ic('map') + ' ' + t('btnMap');
-  renderDays();
   renderAbout();
   renderSettings();
-  renderOptionChips();
 }
 function setLang(l) {
   lang = l; storeLang(l);
@@ -35,7 +33,7 @@ function setLang(l) {
   call('setLang', { lang }).then(() => {
     lmStops = false; loadStopsGeo();
     const located = (p) => p && !(p.transient && p.lat == null);   // never a location prompt for a language switch
-    if (lastResult && lastQuery && located(place.from) && located(place.to)) plan();
+    if (lastResult && lastQuery && located(search.from.value) && located(search.to.value)) plan();
   }).catch(() => {});
 }
 /** The basemap's own labels (streets, places, water) in the rider's language: one name per label, not Latin plus Hebrew. */
@@ -102,7 +100,6 @@ function toast(msg, ms = 2500) {
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // ---------------------------------------------------------------- time, days (Israel time, service days)
-const fmt = (sec) => `${String(Math.floor(sec / 3600) % 24).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`;
 const fmtPlus = (sec) => fmt(sec) + (sec >= 86400 ? '⁺' : '');   // past midnight, still this service day
 // the current results on the map: the first few journeys drawn together, one highlighted, the rest muted
 let resultCards = [];   // [{ idx, j, q, el, dep }] the cards of the current results, in list order
@@ -117,29 +114,6 @@ const AGENCY_EN = { 'רכבת ישראל': 'Israel Railways', 'אגד': 'Egged',
 const agencyText = (a) => `<bdi>${esc(lang === 'he' ? a : AGENCY_EN[a] || a)}</bdi>`;
 const stopsText = (n) => (n === 1 ? t('stops1') : t('stopsN', { n }));
 const dur = (sec) => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
-const dateOf = (s) => new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
-const calToday = () => { const p = live.ilParts(); return live.dayStr(p.y, p.m, p.d); };
-function dayLabel(s) {
-  const d = dateOf(s), svc = live.serviceDay(), today = calToday();
-  const base = `${t('dayFmt')[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}`;
-  if (s === svc.day && svc.lateNight) return `${t('tonight')} · ${base}`;
-  if (s === today) return `${t('today')} · ${base}`;
-  if (s === live.shiftDay(today, 1)) return `${t('tomorrow')} · ${base}`;
-  return base;
-}
-/** The time field as seconds on the selected service day (a late-night time on "tonight" is past 24:00). */
-function atSeconds() {
-  const [h, m] = $('at').value.split(':').map(Number);
-  let sec = (Number.isNaN(h) ? 8 : h) * 3600 + (m || 0) * 60;
-  const svc = live.serviceDay();
-  if ($('day').value === svc.day && svc.lateNight && h < 3) sec += 86400;
-  return sec;
-}
-function setAt(sec) { $('at').value = fmt(Math.max(0, Math.min(sec, 86400 * 2 - 60))); timeTouched = true; }
-function setDefaultTime() {
-  const svc = live.serviceDay();
-  $('at').value = $('day').value === svc.day ? fmt(svc.seconds) : '08:00';
-}
 /** Minutes until a departure on a service day, from the real clock. */
 const minutesUntil = (sec, day) => Math.round((sec - live.nowOn(day)) / 60);
 function leaveText(sec, day) {
@@ -159,17 +133,11 @@ setInterval(() => {
 // ---------------------------------------------------------------- data manifest and days
 let manifest = null, dayInfo = null, ttReady = false, stReady = false, plReady = false, shReady = false;
 const tsCache = new Map();   // trip -> promise of tripStops, per loaded day
+/** The service days the data covers, for the day pills; the chosen day stays if it is one of them. */
 function renderDays() {
   if (!manifest) return;
-  const sel = $('day');
-  const cur = sel.value;
-  sel.innerHTML = '';
-  for (const d of manifest.days) {
-    const o = document.createElement('option');
-    o.value = d.date; o.textContent = dayLabel(d.date);
-    sel.appendChild(o);
-  }
-  sel.value = cur && manifest.days.some((d) => d.date === cur) ? cur : (dayInfo ? dayInfo.date : manifest.days[0].date);
+  search.days.value = manifest.days.map((d) => d.date);
+  if (!search.days.value.includes(search.day.value)) search.day.value = dayInfo ? dayInfo.date : manifest.days[0].date;
 }
 function renderAbout() {
   $('aboutBox').innerHTML = t('about', { feed: manifest && manifest.feed ? `${manifest.feed.start || ''}–${manifest.feed.end || ''}, ${manifest.built || ''}` : '' });
@@ -177,11 +145,11 @@ function renderAbout() {
 async function loadDay(date) {
   const d = manifest.days.find((x) => x.date === date) || manifest.days[0];
   ttReady = false;
-  $('planBtn').disabled = true;
+  search.busy.value = true;
   call('setLang', { lang });   // names come back in the rider's language where the timetable carries them
   const info = await call('loadTimetable', { url: `${DATA_URL}${d.file}?v=${encodeURIComponent(manifest.built || '')}` });
   dayInfo = info; ttReady = true; tsCache.clear(); lmLabels.clear(); lmStops = false;
-  $('planBtn').disabled = false; plannerBusy = false;
+  search.busy.value = false;
   nearRoutes = null; updateNearRoutes();
   loadStopsGeo(); refreshLiveMap();
   setStatus(t('ready', { trips: info.counts.trips.toLocaleString(), date: dayLabel(info.date) }));
@@ -192,7 +160,7 @@ async function loadPlaces() {
   try {
     await call('loadPlaces', { url: `${DATA_URL}${manifest.places.file}?v=${encodeURIComponent(manifest.places.built || manifest.built || '')}` });
     plReady = true;
-    for (const side of ['from', 'to']) if (!place[side] && $(side + 'Q').value.trim().length >= 2) $(side + 'Q').dispatchEvent(new Event('input'));
+    for (const side of ['from', 'to']) if (!search.sides[side].value && search.texts[side].value.trim().length >= 2) $(side + 'Q').dispatchEvent(new Event('input', { bubbles: true }));   // the box searches again, now with addresses
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); }
 }
 async function loadShapes() {
@@ -264,8 +232,8 @@ async function init() {
   if (shared && manifest.days.some((d) => d.date === shared.day)) start = shared.day;
   else if (last && last.q && manifest.days.some((d) => d.date === last.q.day) && Date.now() - last.at < 6 * 3600e3) start = last.q.day;
   renderDays();
-  $('day').value = start;
-  setDefaultTime();
+  search.day.value = start;
+  search.setDefaultTime();
   if (shared) applyQuery(shared);
   else if (last && last.q && !last.dismissed && last.q.day === start && Date.now() - last.at < 6 * 3600e3) { applyQuery(last.q); lastResult = last.result; lastQuery = last.q; renderResults(last.result, last.q, last.at); }
   try { await loadDay(start); } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
@@ -274,66 +242,12 @@ async function init() {
   await loadStreets();
   loadShapes();
 }
-$('day').addEventListener('change', () => { loadDay($('day').value).catch((e) => setStatus(t('loadFail', { msg: e.message }), true)); setDefaultTime(); });
-let timeTouched = false;   // the rider set a day, a time or "arrive by"; until then every plan is from now
-$('nowBtn').addEventListener('click', () => {
-  if (manifest) $('day').value = startDay();
-  setDefaultTime(); setTimeMode('depart');
-  timeTouched = false;
-  renderOptionChips();
-  if (dayInfo && dayInfo.date !== $('day').value) $('day').dispatchEvent(new Event('change'));
-});
-for (const id of ['at', 'day']) $(id).addEventListener('input', () => { timeTouched = true; });
-// after midnight the planner is still on "tonight" (yesterday's service day); a time from 03:00 on means the coming day
-$('at').addEventListener('change', () => {
-  const svc = live.serviceDay(), h = Number($('at').value.split(':')[0]);
-  if (svc.lateNight && $('day').value === svc.day && h >= 3 && manifest && manifest.days.some((d) => d.date === calToday())) { $('day').value = calToday(); renderOptionChips(); }
-});
-function setTimeMode(mode) { for (const o of $('timeMode').querySelectorAll('button')) o.setAttribute('aria-pressed', String(o.dataset.mode === mode)); }
-const timeMode = () => $('timeMode').querySelector('[aria-pressed="true"]').dataset.mode;
-for (const b of $('timeMode').querySelectorAll('button')) b.addEventListener('click', () => { setTimeMode(b.dataset.mode); timeTouched = true; });
+// the bar's day pills ask for the day's timetable
+search.hooks.dayChanged = (d) => { loadDay(d).catch((e) => setStatus(t('loadFail', { msg: e.message }), true)); search.setDefaultTime(); };
+search.hooks.startDay = () => (manifest ? startDay() : '');
 
 // ---------------------------------------------------------------- places and search
-const place = { from: null, to: null };   // {name, stops:[...], lat, lon} or {name, lat, lon}
 function describePlace(p) { return p ? p.name + (p.platforms > 1 ? ` (${t('platforms', { n: p.platforms })})` : '') : ''; }
-function setPlace(side, p) { place[side] = p; $(side + 'Q').value = p ? p.name : ''; updateFromRow(); }
-let barOpen = false;   // the rider is editing: both rows and the options show
-/** Three states of the bar: the prompt pill (nothing chosen), the two rows with options (editing), and one
- *  summary box of to, from, time and bike once a plan is made; a tap on the summary reopens the rows. */
-let leaveTimer = 0;
-function updateFromRow() {
-  const has = !!(place.to || (place.from && !place.from.auto)), edit = barOpen, sum = !barOpen && has;
-  const bar = $('topbar'), wasEdit = bar.classList.contains('two');
-  clearTimeout(leaveTimer); bar.classList.remove('leaving');
-  const settle = () => {
-    $('fromRow').hidden = !edit; $('optRow').hidden = !edit; $('barBack').hidden = !edit; $('swap').hidden = !edit;
-    $('pair').hidden = sum; $('toRow').hidden = sum; $('sumRow').hidden = !sum;
-    bar.classList.remove('leaving');
-    if (sum) renderSummary();
-    layoutTop();
-  };
-  bar.classList.toggle('two', edit);
-  if (!edit) setOptions(false);
-  if (wasEdit && !edit && !matchMedia('(prefers-reduced-motion: reduce)').matches) {   // leaving search mode: the rows slide away first
-    bar.classList.add('two', 'leaving'); bar.classList.toggle('two', true);
-    leaveTimer = setTimeout(() => { bar.classList.remove('two'); settle(); }, 480);
-    for (const d of bar.querySelectorAll('.dropdown')) d.hidden = true;
-  } else settle();
-}
-function renderSummary() {
-  const to = place.to ? place.to.name : $('toQ').value, from = place.from ? place.from.name : ($('fromQ').value || t('myLoc'));
-  $('sumTo').innerHTML = `<span class="tag">${t('tagTo')}</span>${esc(to)}`;
-  $('sumMeta').innerHTML = `<span class="tag">${t('tagFrom')}</span>${esc(from)}<span class="sep">·</span>${$('optTime').innerHTML}<span class="sep">·</span>${$('optBike').innerHTML}`;
-}
-function openBar() {
-  if (barOpen) return;
-  barOpen = true;
-  // the origin starts as "my location" (resolved when the plan is made); typing or the menu replaces it
-  if (!place.from) setPlace('from', { name: t('myLoc'), transient: true, auto: true });
-  updateFromRow();
-}
-function foldBar() { if (barOpen) { barOpen = false; updateFromRow(); } }
-$('sumEdit').addEventListener('click', () => { barOpen = true; updateFromRow(); });
 /** The top bar's height, for the map controls, the status pill and the menu under it. */
 /** The sheet's full size: the screen under the bar. */
 const fullSheetPx = () => Math.max(200, innerHeight - topPad() + 4);
@@ -369,7 +283,7 @@ function attachSearch(input, drop, onPick, opts = {}) {
       const a1 = row(`<span class="ic">${ic('locate')}</span><span class="txt">${t('myLoc')}</span>`, 'quick');
       a1.addEventListener('click', async () => { drop.hidden = true; if (opts.onLocate) { opts.onLocate(); return; } input.value = t('locating'); try { onPick(myLocation(await getPosition())); } catch (e) { input.value = ''; onPick(null, true); toast(t('noLocation')); } });
       const a2 = row(`<span class="ic">${ic('map')}</span><span class="txt">${t('pickTitle')}</span>`, 'quick');
-      a2.addEventListener('click', () => { drop.hidden = true; input.blur(); if (opts.onMap) { opts.onMap(); return; } pickOnMap(place.from || place.to).then((p) => { if (p) onPick(p); }); });
+      a2.addEventListener('click', () => { drop.hidden = true; input.blur(); if (opts.onMap) { opts.onMap(); return; } pickOnMap(search.from.value || search.to.value).then((p) => { if (p) onPick(p); }); });
       drop.append(a1, a2);
     } else if (!saved.length && !recent.length) { drop.hidden = true; return; }
     for (const p of saved) {
@@ -428,7 +342,7 @@ function attachSearch(input, drop, onPick, opts = {}) {
     if (e.key !== 'Enter') return;
     const first = drop.querySelector('button:not(:disabled)');
     if (!drop.hidden && first && input.value.trim()) { first.click(); e.preventDefault(); }
-    else if (place.from && place.to) { plan(); e.preventDefault(); }
+    else if (search.from.value && search.to.value) { plan(); e.preventDefault(); }
   });
   // a tap elsewhere closes the list, unless that tap is what focused the box (the clear or go button hands focus here)
   document.addEventListener('click', (e) => { if (!drop.contains(e.target) && e.target !== input && !x.contains(e.target) && Date.now() - focusedAt > 500) drop.hidden = true; });
@@ -441,55 +355,22 @@ function fitDrop(drop) {
   drop.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
 }
 if (window.visualViewport) for (const ev of ['resize', 'scroll']) visualViewport.addEventListener(ev, () => document.querySelectorAll('.dropdown:not([hidden])').forEach(fitDrop));
-// The top bar is the planner: the destination field (places and line numbers), and once a place is set,
-// the origin row under it. A destination plans at once, from the origin set or from where you are.
-attachSearch($('toQ'), $('toDrop'), (p, typing) => {
-  if (typing) { place.to = null; return; }
-  if (!p) return;
-  $('toQ').blur();
-  if (place.from && !place.from.transient) { setPlace('to', p); nav.closeAll(); showScreen('plan'); $('nowBtn').click(); plan(); }
-  else planTo(p);
-}, { actions: true, lines: true, onLine: (r) => { $('toQ').value = ''; $('toQ').blur(); openLine(r.route); } });
-attachSearch($('fromQ'), $('fromDrop'), (p, typing) => {
-  if (typing) { place.from = null; return; }
-  if (!p) return;
-  $('fromQ').blur();
-  setPlace('from', p);
-  if (place.to) { nav.closeAll(); showScreen('plan'); plan(); }
-}, { actions: true });
-const myLocation = (pos) => ({ name: t('myLoc'), lat: pos.lat, lon: pos.lon, transient: true });
-for (const id of ['toQ', 'fromQ']) $(id).addEventListener('focus', () => openBar());
-// a tap on the pill at rest opens search mode first and brings the keyboard once the pill has shortened, so the two never fight
-$('toQ').addEventListener('pointerdown', (e) => { if (barOpen || e.pointerType === 'mouse') return; e.preventDefault(); openBar(); setTimeout(() => $('toQ').focus(), 330); });
-$('goBtn').addEventListener('click', () => {
-  if (!place.to) { $('toQ').focus(); return; }
-  if (place.from && !place.from.transient) { nav.closeAll(); showScreen('plan'); plan(); } else planTo(place.to);
-});
-$('sumClear').addEventListener('click', () => { if (nav.stack.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); });
-// back from editing: to the summary of the plan that is shown, else to the plain pill
-$('barBack').addEventListener('click', () => { for (const id of ['toQ', 'fromQ']) $(id).blur(); if (lastResult && lastQuery) { setPlace('to', lastQuery.to); setPlace('from', lastQuery.from); foldBar(); } else clearPlan(); });
+const myLocation = search.myLocation;
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 function clearPlan() {
-  place.from = null; place.to = null; $('fromQ').value = ''; $('toQ').value = ''; barOpen = false;
+  search.clearPlaces();
   lastResult = null; lastQuery = null; { const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true }); }
   $('results').innerHTML = ''; showPlanError('');
   resultCards = []; altShown = new Set(); altSel = -1;
-  setOptions(false); $('nowBtn').click();
-  updateFromRow(); renderOptionChips(); renderRecent();
+  search.optOpen.value = ''; search.resetNow();
+  renderRecent();
   applyLiveShow(); renderPanels(); renderPeek(); redrawMap(true);
 }
 // the menu under the user button
 // the drawer is a history entry like any panel, so the back button closes it; it sits beside the panels, not in the sheet
 $('menuReload').addEventListener('click', () => location.reload());
-$('appLogo').addEventListener('click', () => $('toQ').focus());   // the logo is part of the pill: a tap starts a search
 // search a line by number: the To box, numeric keyboard, until it is left
-$('menuLines').addEventListener('click', () => {
-  nav.closeAll(); showScreen('plan'); barOpen = true; updateFromRow();   // the rows, even over a plan's summary
-  const q = $('toQ'); q.placeholder = t('lineNumber'); q.inputMode = 'numeric'; q.value = '';
-  q.addEventListener('blur', () => { q.placeholder = t('goQ'); q.inputMode = ''; }, { once: true });
-  setTimeout(() => q.focus(), 60);
-});
-for (const id of ['menuBtn', 'menuBtn2']) $(id).addEventListener('click', () => { $('toQ').blur(); showOverlay('drawer'); });
+$('menuLines').addEventListener('click', () => { nav.closeAll(); showScreen('plan'); search.lineMode(); });   // the rows, even over a plan's summary
 $('backdrop').addEventListener('click', () => nav.close('drawer'));
 $('menuClose').addEventListener('click', () => nav.close('drawer'));
 for (const b of $('menu').querySelectorAll('[data-screen]')) b.addEventListener('click', () => { nav.closeAll(); showScreen(b.dataset.screen); if (b.dataset.screen === 'plan') sheet.set('half'); });
@@ -506,7 +387,7 @@ function pickOnMap(startAt) {
     (async () => {
       const m = await mapReady();
       if (!m || !pickResolve) return;
-      const start = startAt && startAt.lat != null ? startAt : lastPos || place.from || place.to;
+      const start = startAt && startAt.lat != null ? startAt : lastPos || search.from.value || search.to.value;
       if (start) m.jumpTo({ center: [start.lon, start.lat], zoom: Math.max(m.getZoom(), 15.5) });
     })();
   });
@@ -557,28 +438,31 @@ $('chCancel').addEventListener('click', () => closeChooser(null));
 $('chLoc').addEventListener('click', async () => { try { const pos = await getPosition(); const r = await call('reverse', pos); closeChooser({ name: r.name, lat: pos.lat, lon: pos.lon }); } catch (e) { toast(t('noLocation')); } });
 $('chMap').addEventListener('click', async () => { const p = await pickOnMap(null); if (p) closeChooser(p); });
 
-$('swap').addEventListener('click', () => {
-  const a = place.from, b = place.to, va = $('fromQ').value, vb = $('toQ').value;
-  place.from = b; place.to = a; $('fromQ').value = vb; $('toQ').value = va;
-});
-for (const b of $('bikeMode').querySelectorAll('button')) b.addEventListener('click', () => setBike(b.dataset.mode));
-function setBike(mode) { for (const o of $('bikeMode').querySelectorAll('button')) o.setAttribute('aria-pressed', String(o.dataset.mode === mode)); }
-const bikeChoice = () => $('bikeMode').querySelector('[aria-pressed="true"]').dataset.mode;
 function showPlanError(msg) { $('planError').textContent = msg; $('planError').hidden = !msg; if (msg && sheet.state === 'peek') sheet.set('half'); }
 
 // ---------------------------------------------------------------- planning
 let lastResult = null, lastQuery = null;
-$('planBtn').addEventListener('click', () => plan());
-/** Fill the form from a query (a recent search, a shared link, a saved trip). */
-function applyQuery(q) {
-  setPlace('from', q.from); setPlace('to', q.to);
-  setBike(q.bike || 'none'); $('folding').checked = !!q.folding;
-  if (q.day && manifest && manifest.days.some((d) => d.date === q.day)) $('day').value = q.day;
-  if (q.at) $('at').value = q.at;
-  setTimeMode(q.arriveBy ? 'arrive' : 'depart');
-  timeTouched = !!(q.at || q.arriveBy);
-  renderOptionChips();
-}
+const applyQuery = search.applyQuery;   // fill the bar from a query (a recent search, a shared link, a saved trip)
+// What the bar needs from the rest of the app (state/search.ts `hooks`): planning, searching, the map, the menu.
+Object.assign(search.hooks, {
+  plan: () => { nav.closeAll(); showScreen('plan'); plan(); },
+  planTo: (p) => planTo(p),
+  clearPlan: () => { if (nav.stack.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); },
+  hasResults: () => !!(lastResult && lastQuery),
+  lastQuery: () => lastQuery,
+  search: (q) => call('search', { q, limit: 10, lang, near: lastPos }),
+  searchLines: (q) => call('searchLines', { q, limit: 6 }),
+  lineChipHtml: (r) => `<span class="chip t${r.routeType}"${chipStyle(r.routeType, r.agency)}>${esc(lineText(r.line))}</span>`,
+  openLine: (r) => openLine(r.route),
+  getPosition: () => getPosition(),
+  pickOnMap: (start) => pickOnMap(start),
+  openMenu: () => showOverlay('drawer'),
+  layoutTop: () => layoutTop(),
+  toast: (msg) => toast(msg),
+  ttReady: () => ttReady,
+  lastPos: () => lastPos,
+  afterSaved: () => renderSaved(),
+});
 function parseShared(params) {
   const pt = (s) => { if (!s) return null; const [lat, lon, ...rest] = s.split(','); const name = decodeURIComponent(rest.join(',')) || `${lat}, ${lon}`; return Number.isNaN(+lat) ? null : { name, lat: +lat, lon: +lon }; };
   const from = pt(params.get('from')), to = pt(params.get('to'));
@@ -587,44 +471,45 @@ function parseShared(params) {
 }
 async function plan(opts = {}) {
   showPlanError('');
-  if (!place.from || !place.to) { showPlanError(t('pickBoth')); return; }
+  if (!search.from.value || !search.to.value) { showPlanError(t('pickBoth')); return; }
   if (!ttReady) return;
   for (const side of ['from', 'to']) {   // "my location" is resolved now, not when it was chosen
-    if (place[side].transient && place[side].lat == null) {
-      $(side + 'Q').value = t('locating');
-      try { setPlace(side, myLocation(await getPosition())); } catch (e) { $(side + 'Q').value = t('myLoc'); showPlanError(t('noLocation')); return; }
+    const p = search.sides[side].value;
+    if (p.transient && p.lat == null) {
+      search.texts[side].value = t('locating');
+      try { search.setPlace(side, myLocation(await getPosition())); } catch (e) { search.texts[side].value = t('myLoc'); showPlanError(t('noLocation')); return; }
     }
   }
-  if (!timeTouched) { setDefaultTime(); if (manifest && $('day').value !== startDay() && manifest.days.some((d) => d.date === startDay())) { $('day').value = startDay(); } }
+  if (!search.timeTouched.value) { search.setDefaultTime(); if (manifest && search.day.value !== startDay()) search.day.value = startDay(); }
   if (!nav.stack.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' });   // the back button clears the plan
-  const day = $('day').value;
+  const day = search.day.value;
   const weekday = dateOf(day).getDay() <= 4;
-  const bike = bikeChoice(), folding = $('folding').checked, arriveBy = timeMode() === 'arrive';
-  const at = atSeconds();
-  const isNow = !timeTouched && !arriveBy;   // a plan from now looks ten minutes back too: a ride just boarded can still be followed
+  const bike = search.bike.value, folding = search.folding.value, arriveBy = search.timeMode.value === 'arrive';
+  const at = search.atSeconds();
+  const isNow = !search.timeTouched.value && !arriveBy;   // a plan from now looks ten minutes back too: a ride just boarded can still be followed
   const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at, toTime = arriveBy ? at : at + 3600;
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
-  $('planBtn').disabled = true; plannerBusy = true;
+  search.busy.value = true;
   $('results').innerHTML = `<div class="empty">${t('planning')}</div>`;
   $('recentBox').hidden = true;
-  setOptions(false); renderOptionChips();
-  const q = { from: place.from, to: place.to, day, at: $('at').value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
+  search.optOpen.value = '';
+  const q = { from: search.from.value, to: search.to.value, day, at: search.at.value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
   let vehicles = null, liveAsOf = null;
   const svc = live.serviceDay();
-  if (liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200 && place.from.lat != null) {
-    try { vehicles = await live.vehiclesForPlanning(place.from.lat, place.from.lon, { timeoutMs: 8000 }); liveAsOf = live.newest(vehicles); } catch (e) { vehicles = null; }
+  if (liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200 && search.from.value.lat != null) {
+    try { vehicles = await live.vehiclesForPlanning(search.from.value.lat, search.from.value.lon, { timeoutMs: 8000 }); liveAsOf = live.newest(vehicles); } catch (e) { vehicles = null; }
   }
   q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null; q.liveTried = !!(liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200);
   try {
-    const r = await call('plan', { from: place.from, to: place.to, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
+    const r = await call('plan', { from: search.from.value, to: search.to.value, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
     lastResult = r; lastQuery = q;
-    recentTrips.add(q); recentPlaces.add(place.from); recentPlaces.add(place.to);
+    recentTrips.add(q); recentPlaces.add(search.from.value); recentPlaces.add(search.to.value);
     lastSearch.set({ q, result: r, at: Date.now() });
     renderResults(r, q);
     renderRecent();
   } catch (e) { showPlanError(e.message); $('results').innerHTML = ''; }
-  $('planBtn').disabled = false; plannerBusy = false;
+  search.busy.value = false;
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
 const inShort = (n) => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
@@ -678,48 +563,6 @@ function toggleAlt(idx) {
   else { altShown.add(idx); altSel = idx; }
   applyAlt();
 }
-/** The options as two chips (when; bicycle); the details open under them on a tap and close after planning. */
-let optOpen = '', optDirty = false;   // which popover is open ('time' or 'bike'); whether an option changed while one was open
-/** Open the when or bicycle popover, or close whatever is open; closing after a change re-plans the trip on show. */
-function setOptions(open, which = optOpen || 'time') {
-  optOpen = open ? which : '';
-  $('formBody').hidden = !open; $('whenBody').hidden = which !== 'time'; $('bikeBody').hidden = which !== 'bike';
-  $('topbar').classList.toggle('open', open);
-  $('optTime').classList.toggle('open', open && which === 'time'); $('optBike').classList.toggle('open', open && which === 'bike');
-  if (open) renderDayPills();
-  layoutTop();
-  if (!open && optDirty) { optDirty = false; if (lastResult && place.from && place.to && !plannerBusy) plan(); }
-}
-let plannerBusy = false;
-/** The days the data covers, as pills; the hidden select stays the value the planner reads. */
-function renderDayPills() {
-  const box = $('dayPills');
-  if (!manifest) return;
-  if (box.children.length !== manifest.days.length) {   // built once; a tap only moves the mark (the tapped pill must stay in the document)
-    box.innerHTML = '';
-    for (const d of manifest.days) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn'; b.dataset.date = d.date;
-      b.addEventListener('click', () => { $('day').value = d.date; $('day').dispatchEvent(new Event('input')); $('day').dispatchEvent(new Event('change')); renderDayPills(); renderOptionChips(); });
-      box.appendChild(b);
-    }
-  }
-  for (const b of box.children) { b.textContent = dayLabel(b.dataset.date).split(' · ')[0]; b.classList.toggle('on', $('day').value === b.dataset.date); }
-  $('nowBtn').classList.toggle('on', !timeTouched);
-  $('foldingRow').hidden = bikeChoice() === 'none';
-}
-function renderOptionChips() {
-  const bike = bikeChoice(), day = $('day').value;
-  const dayShort = day ? esc(dayLabel(day).split(' · ')[0]) : '';
-  $('optTime').innerHTML = ic('clock') + ' ' + (timeTouched ? `${timeMode() === 'arrive' ? t('arriveBy') + ' ' : ''}${dayShort} ${esc($('at').value)}` : t('now'));
-  $('optBike').innerHTML = `${ic('bike')} ${t(bike === 'along' ? 'bikeAlong' : bike === 'park' ? 'bikePark' : 'bikeNone')}${bike !== 'none' && $('folding').checked ? ' · ' + t('folding') : ''}`;
-  if (!$('sumRow').hidden) renderSummary();
-}
-$('optTime').addEventListener('click', () => setOptions(optOpen !== 'time', 'time'));
-$('optBike').addEventListener('click', () => setOptions(optOpen !== 'bike', 'bike'));
-// a tap anywhere else closes the popover
-document.addEventListener('click', (e) => { if (optOpen && !e.target.closest('#formBody, #optTime, #optBike')) setOptions(false); });
-for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at'), $('nowBtn')]) for (const ev of ['click', 'change']) el.addEventListener(ev, () => { if (optOpen) { optDirty = true; renderDayPills(); } });
-for (const el of [$('timeMode'), $('bikeMode'), $('folding'), $('day'), $('at')]) { el.addEventListener('click', renderOptionChips); el.addEventListener('change', renderOptionChips); }
 let lastResultsAt = null;
 const SORTS = ['depart', 'arrive', 'fast', 'changes'];
 const sortKey = { depart: (j) => j.depart, arrive: (j) => j.arrive, fast: (j) => j.arrive - j.depart, changes: (j) => j.transfers * 1e6 + j.depart };
@@ -741,7 +584,7 @@ function renderResults(r, q, resultsAt = null) {
   resultCards = []; altShown = new Set(); altSel = -1;
   $('recentBox').hidden = true;
   lastQuery = q;
-  barOpen = false; updateFromRow(); renderOptionChips();
+  search.barOpen.value = false;
   $('sheetBody').scrollTop = 0;
   const note = q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
   const head = document.createElement('div');
@@ -750,7 +593,7 @@ function renderResults(r, q, resultsAt = null) {
   const clock = (ms) => new Date(ms).toLocaleTimeString(lang === 'he' ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
   const liveNote = q.liveTried ? (q.liveAsOf ? ` · <span class="live ok">${t('livePlanned', { time: clock(q.liveAsOf) })}</span>` : ` · <span class="live">${t('schedOnly')}</span>`) : '';
   head.innerHTML = `<span>${resultsAt ? t('resultsFrom', { time: clock(resultsAt) }) + ' · ' : ''}${t('found', { n })}${note}${q.arriveBy ? ' · ' + t('arriveByNote', { time: q.at }) : ''}${liveNote}</span><span class="spacer"></span>`;
-  if (resultsAt) { const b = document.createElement('button'); b.type = 'button'; b.className = 'linkbtn'; b.textContent = t('planAgain'); b.addEventListener('click', () => { $('nowBtn').click(); plan(); }); head.appendChild(b); }
+  if (resultsAt) { const b = document.createElement('button'); b.type = 'button'; b.className = 'linkbtn'; b.textContent = t('planAgain'); b.addEventListener('click', () => { search.resetNow(); plan(); }); head.appendChild(b); }
   box.appendChild(head);
   if (r.bikeOnly) {
     const b = document.createElement('div');
@@ -765,7 +608,7 @@ function renderResults(r, q, resultsAt = null) {
     const e = document.createElement('div'); e.className = 'empty'; e.textContent = t(r.reason || 'noJourney'); box.appendChild(e);
     const foot = document.createElement('div'); foot.className = 'results-foot';
     const later = document.createElement('button'); later.type = 'button'; later.className = 'ghost'; later.textContent = t('tryLater');
-    later.addEventListener('click', () => { setAt(atSeconds() + 3600); plan(); });
+    later.addEventListener('click', () => { search.setAt(search.atSeconds() + 3600); plan(); });
     foot.appendChild(later);
     if (r.reason && q.maxWalk < 30) { const w = document.createElement('button'); w.type = 'button'; w.className = 'ghost'; w.textContent = t('tryMoreWalk'); w.addEventListener('click', () => plan({ maxWalk: 30 })); foot.appendChild(w); }
     box.appendChild(foot);
@@ -827,9 +670,9 @@ function renderResults(r, q, resultsAt = null) {
   }
   const foot = document.createElement('div'); foot.className = 'results-foot';
   const earlier = document.createElement('button'); earlier.type = 'button'; earlier.className = 'ghost'; earlier.textContent = t('earlier');
-  earlier.addEventListener('click', () => { setAt(Math.max(0, atSeconds() - 3600)); plan(); });
+  earlier.addEventListener('click', () => { search.setAt(Math.max(0, search.atSeconds() - 3600)); plan(); });
   const later = document.createElement('button'); later.type = 'button'; later.className = 'ghost'; later.textContent = t('later');
-  later.addEventListener('click', () => { setAt(atSeconds() + 3600); plan(); });
+  later.addEventListener('click', () => { search.setAt(search.atSeconds() + 3600); plan(); });
   foot.append(earlier, later);
   box.appendChild(foot);
   if (!topPanel() && screen === 'plan' && sheet.state === 'peek') sheet.set('half');
@@ -847,7 +690,7 @@ function renderRecent() {
     d.className = 'recent';
     d.innerHTML = `<span class="ic">${ic('history')}</span><span class="txt"><span class="name">${esc(r.from.name)} ← ${esc(r.to.name)}</span><small>${esc(dayLabel(r.day || calToday()))} ${esc(r.time || '')}${r.bike && r.bike !== 'none' ? ' · ' + ic('bike') : ''}${r.arriveBy ? ' · ' + t('arriveBy') : ''}</small></span>`;
     if (lang !== 'he') d.querySelector('.name').textContent = `${r.from.name} → ${r.to.name}`;
-    d.addEventListener('click', () => { applyQuery(r); $('nowBtn').click(); nav.closeAll(); showScreen('plan'); plan(); });
+    d.addEventListener('click', () => { applyQuery(r); search.resetNow(); nav.closeAll(); showScreen('plan'); plan(); });
     box.appendChild(d);
   }
   box.hidden = !!$('results').children.length;
@@ -952,7 +795,7 @@ async function initMap() {
     if (hit.length || popup) return;   // the layer's own handler answers, or the open bubble closes
     const near = stopNear(m, e.point);
     if (near) { stopPopup(m, near.geometry.coordinates, +near.properties.stop, near.properties.station); return; }
-    if (sheet.state !== 'peek' || barOpen) { sheet.set('peek'); foldBar(); return; }
+    if (sheet.state !== 'peek' || search.barOpen.value) { sheet.set('peek'); search.foldBar(); return; }
     placeBubble(m, e);
   });
   lmTimer = setInterval(refreshLiveMap, 20000);
@@ -983,7 +826,7 @@ async function placeBubble(m, e) {
   const show = () => {
     openPopup(m, lngLat, `<div class="pop"><b>${esc(p.name)}</b><div class="row"><button type="button" class="primary slim" data-act="to">${t('toHere')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button></div></div>`, (el2) => {
       el2.querySelector('[data-act="to"]').addEventListener('click', () => { if (popup) popup.remove(); planTo(p); });
-      el2.querySelector('[data-act="from"]').addEventListener('click', () => { if (popup) popup.remove(); nav.closeAll(); setPlace('from', p); showScreen('plan'); barOpen = true; updateFromRow(); $('toQ').focus(); });
+      el2.querySelector('[data-act="from"]').addEventListener('click', () => { if (popup) popup.remove(); nav.closeAll(); search.setPlace('from', p); showScreen('plan'); search.barOpen.value = true; search.focusBox('toQ'); });
     });
     if (popup) popup.on('close', () => { if (pickMarker && !isOpen('picker')) { pickMarker.remove(); pickMarker = null; } });
   };
@@ -1231,7 +1074,7 @@ async function stopPopup(m, lngLat, stop, station) {
     `<div class="chips">${info.lines.slice(0, 10).map((l) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${esc(lineText(l.label))}</span>`).join('')}</div>` +
     `<div class="row"><button type="button" class="ghost" data-act="deps">${t('popDeps')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
-    const go = (side) => { if (popup) popup.remove(); if (side === 'to') planTo(stopPlace(info)); else { nav.closeAll(); setPlace('from', stopPlace(info)); showScreen('plan'); sheet.set('half'); } };
+    const go = (side) => { if (popup) popup.remove(); if (side === 'to') planTo(stopPlace(info)); else { nav.closeAll(); search.setPlace('from', stopPlace(info)); showScreen('plan'); sheet.set('half'); } };
     el.querySelector('[data-act="deps"]').addEventListener('click', () => { if (popup) popup.remove(); openStop(stop); });
     el.querySelector('[data-act="from"]').addEventListener('click', () => go('from'));
     el.querySelector('[data-act="to"]').addEventListener('click', () => go('to'));
@@ -1500,10 +1343,10 @@ async function openStop(stop) {
   $('stopLiveNote').textContent = '';
   updateStar('stopStar', 'stop:' + info.stop, 'stops');
   $('stopStar').onclick = () => { favs.toggle('stops', 'stop:' + info.stop, { stop: info.stop, name: info.name, city: info.city, code: info.code, lat: info.lat, lon: info.lon, lines: info.lines.slice(0, 8) }); renderSaved(); updateStar('stopStar', 'stop:' + info.stop, 'stops'); };
-  const day = $('day').value;
+  const day = search.day.value;
   const svc = live.serviceDay();
   const isNow = day === svc.day || day === calToday();
-  const fromTime = isNow ? live.nowOn(day) - 120 : atSeconds();
+  const fromTime = isNow ? live.nowOn(day) - 120 : search.atSeconds();
   const deps = await call('departures', { stop, fromTime, limit: 40 });
   if (my !== stopSeq) return;
   const box = $('stopDeps');
@@ -1561,7 +1404,7 @@ async function liveForStop(info, deps, day, seq) {
 $('stopLive').addEventListener('click', () => { if (currentStop) openStop(currentStop.stop); });
 $('stopBack').addEventListener('click', () => nav.close('stopDetail'));
 const stopPlace = (s) => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
-$('stopFrom').addEventListener('click', () => { if (!currentStop) return; const p = stopPlace(currentStop); nav.closeAll(); setPlace('from', p); showScreen('plan'); sheet.set('half'); });
+$('stopFrom').addEventListener('click', () => { if (!currentStop) return; const p = stopPlace(currentStop); nav.closeAll(); search.setPlace('from', p); showScreen('plan'); sheet.set('half'); });
 $('stopTo').addEventListener('click', () => { if (currentStop) planTo(stopPlace(currentStop)); });
 
 // ---- live vehicles on the map: every vehicle reporting in view, stops when zoomed in
@@ -1716,7 +1559,7 @@ async function openTrip(trip, hereStop) {
   $('tripTitle').textContent = t('tripStopsTitle', { line: lineText(ts.line), headsign: ts.headsign });
   $('tripMeta').textContent = `${ts.agency} · ${t('stopsCount', { n: ts.stops.length })}`;
   const box = $('tripStops');
-  const day = $('day').value;
+  const day = search.day.value;
   box.innerHTML = ts.stops.map((s, i) => `<div class="stopsrow${s.stop === hereStop ? ' here' : ''}" data-i="${i}"><span class="time">${fmt(s.arr)}</span><span>${esc(s.name)}</span></div>`).join('');
   for (const row of box.querySelectorAll('.stopsrow')) row.addEventListener('click', () => { nav.close('tripDetail'); openStop(ts.stops[+row.dataset.i].stop); });
   if (!liveOn() || ts.routeId == null) return;
@@ -1738,9 +1581,9 @@ function updateStar(id, key, kind) { const on = key && favs.has(kind, key); $(id
 function restoreLast(p) {
   const last = lastSearch.get();
   if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > 3600e3) return false;
-  if (!last.q.to || !p || last.q.to.name !== p.name || last.q.day !== $('day').value && !(manifest && manifest.days.some((d) => d.date === last.q.day))) return false;
+  if (!last.q.to || !p || last.q.to.name !== p.name || last.q.day !== search.day.value && !(manifest && manifest.days.some((d) => d.date === last.q.day))) return false;
   nav.closeAll(); showScreen('plan');
-  $('day').value = last.q.day; applyQuery(last.q); lastResult = last.result; lastQuery = last.q;
+  search.day.value = last.q.day; applyQuery(last.q); lastResult = last.result; lastQuery = last.q;
   renderResults(last.result, last.q, last.at); sheet.set('half');
   return true;
 }
@@ -1748,13 +1591,13 @@ async function planTo(p) {
   if (restoreLast(p)) return;
   nav.closeAll();
   showScreen('plan');
-  setPlace('to', p);
+  search.setPlace('to', p);
   $('results').innerHTML = `<div class="empty">${t('locating')}</div>`; $('recentBox').hidden = true;
   sheet.set('half');
-  $('fromQ').value = t('locating'); updateFromRow();
-  try { const pos = await getPosition(); setPlace('from', myLocation(pos)); } catch (e) { if (!place.from || place.from.transient) { $('fromQ').value = ''; place.from = null; } else $('fromQ').value = place.from.name; }
-  $('nowBtn').click();
-  if (place.from) plan(); else { $('results').innerHTML = ''; showPlanError(t('noLocation')); $('toQ').focus(); }
+  search.fromText.value = t('locating');
+  try { const pos = await getPosition(); search.setPlace('from', myLocation(pos)); } catch (e) { if (!search.from.value || search.from.value.transient) search.setPlace('from', null); else search.fromText.value = search.from.value.name; }
+  search.resetNow();
+  if (search.from.value) plan(); else { $('results').innerHTML = ''; showPlanError(t('noLocation')); search.focusBox('toQ'); }
 }
 function renderSaved() {
   const sp = savedPlaces.get();
@@ -1791,7 +1634,7 @@ function renderSaved() {
     const d = document.createElement('div');
     d.className = 'journey';
     d.innerHTML = `<div class="top"><span class="times">${esc(v.from.name)} → ${esc(v.to.name)}</span></div><div class="sub">${v.bike !== 'none' ? ic('bike') + ' ' : ''}${esc(t(v.bike === 'along' ? 'bikeAlong' : v.bike === 'park' ? 'bikePark' : 'bikeNone'))}</div>`;
-    d.addEventListener('click', () => { applyQuery({ from: v.from, to: v.to, bike: v.bike, folding: v.folding }); $('nowBtn').click(); nav.closeAll(); showScreen('plan'); plan(); });
+    d.addEventListener('click', () => { applyQuery({ from: v.from, to: v.to, bike: v.bike, folding: v.folding }); search.resetNow(); nav.closeAll(); showScreen('plan'); plan(); });
     tb.appendChild(d);
   }
   renderStops($('favStops'), Object.values(stops), false);
@@ -2199,7 +2042,7 @@ let screen = 'plan';
 // screens that need no map are pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
 const PAGE_TITLE = { 'screen-more': 'settings', 'screen-saved': 'tabSaved', chooser: null };
 $('pageBack').addEventListener('click', () => { if (topPanel() === 'chooser') $('chCancel').click(); else if (nav.stack.length) history.back(); else showScreen('plan'); });
-const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || place.from || place.to ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
+const SHEET_FOR = { 'screen-plan': () => ($('results').children.length || search.from.value || search.to.value ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full' };
 /** Show the panel on top of the stack, or the current screen; picking a point hides the sheet and shows the crosshair. */
 function renderPanels() {
   renderDrawer();
