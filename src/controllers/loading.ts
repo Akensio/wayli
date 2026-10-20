@@ -71,5 +71,6 @@ export async function loadStreets(): Promise<void> {
   try { await call('loadStreets', { url: fileUrl(f) }); data.stReady.value = true; setStatus(t('readyStreets')); } catch (e) { loadFailed(e); }
 }
 // the bar's day pills ask for the day's timetable
-search.hooks.dayChanged = (d) => { loadDay(d).catch(loadFailed); search.setDefaultTime(); };
+// a time the rider set stays (the wheels set day and time in either order); otherwise the new day starts at its default
+search.hooks.dayChanged = (d) => { loadDay(d).catch(loadFailed); if (!search.timeTouched.value) search.setDefaultTime(); };
 search.hooks.startDay = () => (data.manifest.value ? startDay() : '');

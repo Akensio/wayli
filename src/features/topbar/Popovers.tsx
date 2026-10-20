@@ -1,6 +1,8 @@
-// The two popovers under the option chips: when (depart or arrive, the days as pills, now or a time) and
-// bicycle (none, to the stop, take it along; folding once a bike is chosen). A change applies at once.
+// The two popovers under the option chips: when (now, depart at or arrive by; for the last two a day, an hour and a
+// minute on three wheels) and bicycle (none, to the stop, take it along; folding once a bike is chosen). A change
+// applies at once; the trip is planned again when the popover closes.
 import { Icon } from '../../ui/Icon';
+import { Wheel } from '../../ui/Wheel';
 import { t, lang } from '../../i18n';
 import { dayShort } from '../../time';
 import * as search from '../../state/search';
@@ -11,21 +13,37 @@ const Seg = <T extends string>({ id, value, options, onPick }: { id: string; val
   </div>
 );
 
+const two = (n: number) => String(n).padStart(2, '0');
+const HOURS = Array.from({ length: 24 }, (_, h) => ({ key: two(h), label: two(h) }));
+const MINUTES = Array.from({ length: 60 }, (_, m) => ({ key: two(m), label: two(m) }));
+type When = 'now' | 'depart' | 'arrive';
+
 export function WhenPopover() {
   void lang.value;
   const touch = () => { search.optDirty.value = true; };
+  const when: When = !search.timeTouched.value ? 'now' : search.timeMode.value;
+  const pick = (w: When) => {
+    if (w === 'now') search.resetNow();
+    else { search.timeMode.value = w; search.timeTouched.value = true; }
+    touch();
+  };
+  const [hh, mm] = search.at.value.split(':');
+  const setTime = (h: string, m: string) => { search.at.value = `${h}:${m}`; search.timeTouched.value = true; touch(); };
+  const rtl = lang.value === 'he';
+  const day = <Wheel id="dayWheel" class="day" label={t('wheelDay')} items={search.days.value.map((d) => ({ key: d, label: dayShort(d) }))} value={search.day.value} onChange={(d) => { search.chooseDay(d); touch(); }} />;
+  const time = <>
+    <Wheel id="hourWheel" class="num" label={t('wheelHour')} items={HOURS} value={hh} onChange={(h) => setTime(h, mm)} />
+    <span class="colon">:</span>
+    <Wheel id="minuteWheel" class="num" label={t('wheelMinute')} items={MINUTES} value={mm} onChange={(m) => setTime(hh, m)} />
+  </>;
   return (
     <div id="whenBody">
-      <Seg id="timeMode" value={search.timeMode.value} onPick={(v) => { search.timeMode.value = v; search.timeTouched.value = true; touch(); }}
-        options={[{ v: 'depart' as const, label: t('departAt') }, { v: 'arrive' as const, label: t('arriveBy') }]} />
-      <div class="daypills" id="dayPills">
-        {search.days.value.map((d) => <button type="button" class={`chipbtn${search.day.value === d ? ' on' : ''}`} data-date={d} onClick={() => { search.chooseDay(d); touch(); }}>{dayShort(d)}</button>)}
-      </div>
-      <select id="day" hidden value={search.day.value}>{search.days.value.map((d) => <option value={d}>{d}</option>)}</select>
-      <div class="timerow">
-        <button type="button" class={`chipbtn${search.timeTouched.value ? '' : ' on'}`} id="nowBtn" onClick={() => { search.resetNow(); touch(); }}>{t('now')}</button>
-        <input type="time" id="at" class="timepill" value={search.at.value} onInput={(e) => { search.at.value = (e.currentTarget as HTMLInputElement).value; search.timeTouched.value = true; touch(); }} onChange={(e) => search.typeAt((e.currentTarget as HTMLInputElement).value)} />
-      </div>
+      <Seg id="timeMode" value={when} onPick={pick}
+        options={[{ v: 'now' as const, label: t('now') }, { v: 'depart' as const, label: t('departAt') }, { v: 'arrive' as const, label: t('arriveBy') }]} />
+      {when !== 'now' && (
+        // the time reads left to right in every language; the day sits on the side the language starts from
+        <div class="wheels" dir="ltr"><div class="band" />{rtl ? <>{time}{day}</> : <>{day}{time}</>}</div>
+      )}
     </div>
   );
 }
@@ -44,11 +62,13 @@ export function BikePopover() {
   );
 }
 
-/** The chips' texts, shared with the summary box. */
+/** The chips' texts, shared with the summary box: short, so the bicycle chip keeps its room ("18:30", "By 19:00",
+ *  "Tomorrow 08:00"; the day only when it is not today's). */
 export function timeChipText(): string {
   const o = search.options();
   if (!o.timeTouched) return t('now');
-  return `${o.arriveBy ? t('arriveBy') + ' ' : ''}${o.day ? dayShort(o.day) : ''} ${o.at}`;
+  const day = o.day && o.day !== search.hooks.startDay() ? dayShort(o.day) + ' ' : '';
+  return `${o.arriveBy ? t('arriveByShort') + ' ' : ''}${day}${o.at}`;
 }
 export function bikeChipText(): string {
   const b = search.bike.value;

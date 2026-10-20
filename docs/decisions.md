@@ -692,3 +692,8 @@ so they are not re-litigated.
   and the screen restyled to the current design (round hide button, one-line
   title, End trip pill, the instruction in a card). Tested in
   tools/follow.test.mjs, which `npm run check` now runs.
+- 2026-10-20: From Gadi's notes: the time choice is Now / Depart at / Arrive
+  by; the last two show three scroll wheels (day, hour, minute) in one row,
+  like an alarm clock, replacing the day pills and the time field. The chip
+  stays short ("By 19:30", the day only when not today). Changing the day no
+  longer resets a chosen time to the default.
