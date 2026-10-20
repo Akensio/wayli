@@ -50,25 +50,49 @@ export async function loadDay(date: string): Promise<void> {
   setStatus(t('ready', { trips: info.counts.trips.toLocaleString(), date: dayLabel(info.date) }));
   renderDays();
 }
+/**
+ * The big background files fail mostly on a connection that drops mid-download (Chrome's "network error"
+ * on a phone). They are fetched again after 5, 20 and 60 s, sooner when the phone comes back online, and
+ * after that at the next time it does; the error shows only once the retries are spent.
+ */
+const RETRY_MS = [5000, 20000, 60000];
+const backOnline = (ms: number): Promise<void> => new Promise((res) => {
+  const done = (): void => { clearTimeout(timer); window.removeEventListener('online', done); res(); };
+  const timer = window.setTimeout(done, ms);
+  window.addEventListener('online', done);
+});
+async function retrying(load: () => Promise<void>, again: () => void): Promise<void> {
+  for (let i = 0; ; i++) {
+    try { await load(); return; } catch (e) {
+      if (i >= RETRY_MS.length) { loadFailed(e); window.addEventListener('online', again, { once: true }); return; }
+      await backOnline(RETRY_MS[i]);
+    }
+  }
+}
 export async function loadPlaces(): Promise<void> {
   const f = manifest().places;
   if (data.plReady.value || !f) return;
-  try {
+  await retrying(async () => {
     await call('loadPlaces', { url: fileUrl(f) });
     data.plReady.value = true;
     // a box with text in it searches again, now with addresses
     for (const side of ['from', 'to'] as const) if (!search.sides[side].value && search.texts[side].value.trim().length >= 2) document.getElementById(side + 'Q')?.dispatchEvent(new Event('input', { bubbles: true }));
-  } catch (e) { loadFailed(e); }
+  }, () => { loadPlaces(); });
 }
 export async function loadShapes(): Promise<void> {
   const f = manifest().shapes;
   if (data.shReady.value || !f) return;
-  try { await call('loadShapes', { url: fileUrl(f) }); data.shReady.value = true; } catch { /* straight lines between stops until then */ }
+  // straight lines between stops until then
+  await retrying(async () => { await call('loadShapes', { url: fileUrl(f) }); data.shReady.value = true; map.redrawMap(true); }, () => { loadShapes(); });
 }
 export async function loadStreets(): Promise<void> {
   const f = manifest().streets;
   if (data.stReady.value || !f) return;
-  try { await call('loadStreets', { url: fileUrl(f) }); data.stReady.value = true; setStatus(t('readyStreets')); } catch (e) { loadFailed(e); }
+  await retrying(async () => {
+    await call('loadStreets', { url: fileUrl(f) });
+    data.stReady.value = true; setStatus(t('readyStreets'));
+    map.redrawMap(true);   // walks drawn straight until now follow the streets
+  }, () => { loadStreets(); });
 }
 // the bar's day pills ask for the day's timetable
 // a time the rider set stays (the wheels set day and time in either order); otherwise the new day starts at its default

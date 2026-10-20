@@ -697,3 +697,16 @@ so they are not re-litigated.
   like an alarm clock, replacing the day pills and the time field. The chip
   stays short ("By 19:30", the day only when not today). Changing the day no
   longer resets a chosen time to the default.
+- 2026-10-20: From Gadi's screenshot (a walk drawn straight through the
+  buildings): the street graph had failed to download on 5G and nothing
+  retried, so the walk stayed the straight-line fallback. Background files
+  now retry (5, 20, 60 s and on reconnect) and walks drawn straight follow
+  the streets once the graph arrives. Walks also join the streets at the
+  segment in front of the point, several candidates within 150 m with
+  off-street metres counted three times, instead of the nearest
+  intersection (50 m away in his case, which drew a diagonal and a
+  backtrack). Over random Gush Dan pairs: 42% of walks over a minute
+  shorter, 2.5% longer (all off-road); access times unchanged at the
+  median. Rejected: nearest segment only (a dead-end path next to the point
+  gave hour-long detours). The service worker now drops older builds of a
+  data file instead of keeping every night's copy.

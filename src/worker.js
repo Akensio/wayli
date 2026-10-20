@@ -224,25 +224,30 @@ function legOut(l, q) {
       // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
       stopsAlong: l.via.map((s, i) => ({ stop: s, name: sName(s), lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + bp + i], dep: tt.dep[base + bp + i] })) });
   } else if (l.type === 'walk') {
-    Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), path: [[tt.stopLat[l.from], tt.stopLon[l.from]], [tt.stopLat[l.to], tt.stopLon[l.to]]] });
+    const path = streetPath([tt.stopLat[l.from], tt.stopLon[l.from]], [tt.stopLat[l.to], tt.stopLon[l.to]], 'walk');
+    Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), path: path || [[tt.stopLat[l.from], tt.stopLon[l.from]], [tt.stopLat[l.to], tt.stopLon[l.to]]], pathKind: path ? 'street' : 'straight' });
   } else if (l.type === 'access') {
     const p = q.from.places.find((x) => x.stop === l.to);
-    Object.assign(o, { to: stopOut(l.to), mode: p && p.mode === 'bike' ? 'bike' : 'walk', path: pathTo(q.from.point, l.to, p && p.mode) });
+    const path = pathTo(q.from.point, l.to, p && p.mode);
+    Object.assign(o, { to: stopOut(l.to), mode: p && p.mode === 'bike' ? 'bike' : 'walk', path, pathKind: path.length > 2 ? 'street' : 'straight' });
   } else if (l.type === 'egress') {
     const p = q.to.places.find((x) => x.stop === l.from);
-    Object.assign(o, { from: stopOut(l.from), mode: p && p.mode === 'bike' ? 'bike' : 'walk', path: pathTo(q.to.point, l.from, p && p.mode, true) });
+    const path = pathTo(q.to.point, l.from, p && p.mode, true);
+    Object.assign(o, { from: stopOut(l.from), mode: p && p.mode === 'bike' ? 'bike' : 'walk', path, pathKind: path.length > 2 ? 'street' : 'straight' });
   }
   return o;
 }
 
+/** The way along the streets from a to b ([lat, lon] each), both ends included, or null without the street graph. */
+function streetPath(a, b, mode) {
+  if (!st) return null;
+  const r = route(st, a[0], a[1], b[0], b[1], mode === 'bike' ? 'bike' : 'walk', 3600);
+  return r && r.path.length ? [a, ...r.path, b] : null;
+}
 function pathTo(point, stop, mode, reverse) {
   if (!point) return [];
-  let path = null;
-  if (st) {
-    const r = route(st, point.lat, point.lon, tt.stopLat[stop], tt.stopLon[stop], mode === 'bike' ? 'bike' : 'walk', 3600);
-    if (r && r.path.length) path = [[point.lat, point.lon], ...r.path, [tt.stopLat[stop], tt.stopLon[stop]]];
-  }
-  if (!path) path = [[point.lat, point.lon], [tt.stopLat[stop], tt.stopLon[stop]]];
+  const a = [point.lat, point.lon], b = [tt.stopLat[stop], tt.stopLon[stop]];
+  const path = streetPath(a, b, mode) || [a, b];
   return reverse ? path.reverse() : path;
 }
 
@@ -280,6 +285,8 @@ const ops = {
     sh = parseShapes(buf);
     return sh.header.counts;
   },
+  /** Street paths for walks drawn straight because the street graph was not there yet: null where there is none. */
+  streetPaths({ legs }) { return legs.map((l) => streetPath(l.from, l.to, l.mode)); },
   /** Courses for ride legs planned before the shapes were loaded: null where there is none. */
   ridePaths({ legs }) { return legs.map((l) => ridePath(l.pattern, l.boardPos, l.alightPos)); },
   /** The whole course of each pattern and all its stops, for drawing a line around a ride. */
@@ -343,7 +350,7 @@ const ops = {
     let bikeOnly = null;
     if (st && bike !== 'none' && q.from.point && q.to.point) {
       const br = route(st, q.from.point.lat, q.from.point.lon, q.to.point.lat, q.to.point.lon, 'bike', 3 * 3600);
-      if (br) bikeOnly = { seconds: br.seconds, metres: br.metres, path: br.path };
+      if (br) bikeOnly = { seconds: br.seconds, metres: br.metres, path: [[q.from.point.lat, q.from.point.lon], ...br.path, [q.to.point.lat, q.to.point.lon]] };
     }
     return { journeys, groups: groupJourneys(journeys), bikeOnly, candidates: r.candidates, streets: !!st, live, ms: performance.now() - t0 };
     }

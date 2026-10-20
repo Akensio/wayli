@@ -34,6 +34,7 @@ export async function initMap(): Promise<void> {
   let view: { lat: number; lon: number; zoom: number } | null = null; try { view = JSON.parse(localStorage.getItem('wayli-view') || 'null'); } catch { /* private mode */ }
   const start = view || lastPos || { lat: 32.08, lon: 34.78 };
   state.main = makeMap('mainMap', [start.lat, start.lon], view ? view.zoom : lastPos ? 14.5 : 11);
+  try { window.wayliDebug = { ...(window.wayliDebug || {}), map: state.main }; } catch { /* debugging only */ }
   if (!state.main) { state.failed = true; settleWaiters(null); return; }
   const m = state.main;
   geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15, linear: true, duration: 500 } });

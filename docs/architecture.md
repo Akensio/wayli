@@ -72,9 +72,14 @@ are a required mode. Built the same day:
   Ranking: Pareto by departure, arrival and transfers, then an extra
   transfer has to save at least 5 minutes. The departure shown is the latest
   that still makes the first vehicle.
-- **First and last mile** (`app/streets.js`): Dijkstra on the street graph
+- **First and last mile** (`src/streets.js`): Dijkstra on the street graph
   from a point, on foot (15 min) or by bike (20 min), to every stop it can
-  reach; those become the origins or destinations. A bike-only route is
+  reach; those become the origins or destinations. A point joins the
+  network on the street segments in front of it (the nearest, and others
+  up to 150 m further, their off-street metres counted three times so a
+  walk never cuts through a block), not at the nearest intersection, which
+  in a city is often half a block away; walks are drawn the same way, from
+  the door along the streets to the stop. A bike-only route is
   computed alongside when a bike is involved. Three bicycle choices: none,
   ride to the stop and park it (bike access, walking egress), take it along
   (bike at both ends, only vehicles and hours that allow it), plus a
@@ -455,7 +460,10 @@ midnight.
 Data: `data/manifest.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
 being planned), the street graph (10.7 MB, loaded after the first answer;
-until it is in, points use straight-line access with a detour factor), the
+until it is in, points use straight-line access with a detour factor, and
+walks drawn straight then follow the streets once it arrives; a download
+that drops is fetched again after 5, 20 and 60 s and when the phone comes
+back online, the same for the address book and the courses), the
 address book, and the courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749
 shapes simplified to 6 m, 1.26M points as int32 1e-5 degrees, loaded last).
 Each day's file says which shape every pattern runs on and where each of

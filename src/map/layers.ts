@@ -95,13 +95,26 @@ export function fitMap(b: LngLatBounds | null, maxZoom: number): void {
   const bottom = Math.min(sheet.px(sheet.state.value) + 20, innerHeight - top - 120);
   m.fitBounds(b, { padding: { top, bottom, left: 24, right: 24 }, duration: 0, maxZoom });
 }
-/** Ride legs planned before the courses were loaded get their course now (in place). */
+/** Legs planned before the courses or the street graph were loaded get their course or street path now (in place). */
 export async function withCourses(j: Journey): Promise<void> {
+  await Promise.all([withRideCourses(j), withStreetPaths(j)]);
+}
+async function withRideCourses(j: Journey): Promise<void> {
   if (!data.shReady.value || !data.ttReady.value) return;
   const rides = j.legs.filter((l) => l.type === 'ride' && l.pathKind !== 'shape' && l.pattern != null);
   if (!rides.length) return;
   try {
     const paths: any[] = await call('ridePaths', { legs: rides.map((l) => ({ pattern: l.pattern, boardPos: l.boardPos, alightPos: l.alightPos })) });
     rides.forEach((l, i) => { if (paths[i]) { l.path = paths[i]; l.pathKind = 'shape'; } });
+  } catch { /* straight lines then */ }
+}
+/** A walk drawn as a straight line (no street graph when it was planned) follows the streets once they are there. */
+async function withStreetPaths(j: Journey): Promise<void> {
+  if (!data.stReady.value) return;
+  const walks = j.legs.filter((l) => l.type !== 'ride' && l.pathKind !== 'street' && l.path && l.path.length === 2);
+  if (!walks.length) return;
+  try {
+    const paths: any[] = await call('streetPaths', { legs: walks.map((l) => ({ from: l.path![0], to: l.path![1], mode: l.mode === 'bike' ? 'bike' : 'walk' })) });
+    walks.forEach((l, i) => { if (paths[i]) { l.path = paths[i]; l.pathKind = 'street'; } });
   } catch { /* straight lines then */ }
 }

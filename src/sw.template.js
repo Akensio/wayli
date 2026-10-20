@@ -21,7 +21,11 @@ self.addEventListener('fetch', (e) => {
   }
   if (isData || url.origin === location.origin || url.hostname === 'cdnjs.cloudflare.com' || url.hostname === 'unpkg.com') {
     e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request).then((r) => {
-      if (r.ok) caches.open(isData ? DATA : SHELL).then((c) => c.put(e.request, r.clone()));
+      if (r.ok) caches.open(isData ? DATA : SHELL).then(async (c) => {
+        await c.put(e.request, r.clone());
+        // a data file is cached per build (?v=): the older builds of the same file go
+        if (isData) for (const k of await c.keys()) { const u = new URL(k.url); if (u.pathname === url.pathname && u.search !== url.search) c.delete(k); }
+      });
       return r;
     })));
   }
