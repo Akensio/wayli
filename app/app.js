@@ -443,7 +443,7 @@ function updateFromRow() {
   if (!edit) setOptions(false);
   if (wasEdit && !edit && !matchMedia('(prefers-reduced-motion: reduce)').matches) {   // leaving search mode: the rows slide away first
     bar.classList.add('two', 'leaving'); bar.classList.toggle('two', true);
-    leaveTimer = setTimeout(() => { bar.classList.remove('two'); settle(); }, 300);
+    leaveTimer = setTimeout(() => { bar.classList.remove('two'); settle(); }, 480);
     for (const d of bar.querySelectorAll('.dropdown')) d.hidden = true;
   } else settle();
 }
@@ -586,6 +586,8 @@ attachSearch($('fromQ'), $('fromDrop'), (p, typing) => {
 }, { actions: true });
 const myLocation = (pos) => ({ name: t('myLoc'), lat: pos.lat, lon: pos.lon, transient: true });
 for (const id of ['toQ', 'fromQ']) $(id).addEventListener('focus', () => openBar());
+// a tap on the pill at rest opens search mode first and brings the keyboard once the pill has shortened, so the two never fight
+$('toQ').addEventListener('pointerdown', (e) => { if (barOpen || e.pointerType === 'mouse') return; e.preventDefault(); openBar(); setTimeout(() => $('toQ').focus(), 330); });
 $('goBtn').addEventListener('click', () => {
   if (!place.to) { $('toQ').focus(); return; }
   if (place.from && !place.from.transient) { nav.closeAll(); showScreen('plan'); plan(); } else planTo(place.to);

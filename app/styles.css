@@ -297,21 +297,33 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .topbar:not(.two) .pair, .topbar:not(.two) #sumRow { margin-top: 52px; }
 /* search mode: a slow, soft ease in (rows slide, buttons grow, the pill narrows) and the same way out (.leaving) */
 :root { --ease-out: cubic-bezier(.22,.9,.3,1); --ease-in: cubic-bezier(.6,.05,.8,.4); }
-.topbar .trow { transition: padding .4s var(--ease-out); }
-.topbar.two #fromRow { animation: rowIn .42s var(--ease-out) both; }
-.topbar.two #optRow { animation: rowIn .42s .07s var(--ease-out) both; }
-.pair #barBack:not([hidden]), .pair #swap:not([hidden]) { animation: popIn .45s .12s var(--ease-out) both; }
+/* Entering search mode, in order: the pill shortens; the origin row slides in above it; the time chip, the bike chip and
+   Go grow in one after another; then the recents list unfolds (the keyboard is held until the pill has shortened).
+   Leaving plays it all back in reverse (.leaving). */
+.topbar .trow { transition: padding .45s var(--ease-out); }
+.topbar.two #fromRow { animation: rowIn .45s .08s var(--ease-out) both; }
+.topbar.two #optRow { animation: none; }
+.topbar.two #optTime { animation: popIn .36s .24s var(--ease-out) both; }
+.topbar.two #optBike { animation: popIn .36s .32s var(--ease-out) both; }
+.topbar.two #goBtn { animation: popIn .36s .4s var(--ease-out) both; }
+.pair #barBack:not([hidden]) { animation: popIn .4s .2s var(--ease-out) both; }
+.pair #swap:not([hidden]) { animation: popIn .4s .3s var(--ease-out) both; }
 #sumRow:not([hidden]) { animation: rowIn .4s .05s var(--ease-out) both; }
-.topbar .dropdown:not([hidden]) { animation: rowIn .34s .06s var(--ease-out) both; }
-.topbar.leaving .trow { transition-duration: .3s; transition-timing-function: var(--ease-in); }
-.topbar.leaving #fromRow { animation: rowOut .3s var(--ease-in) both; }
-.topbar.leaving #optRow { animation: rowOut .26s var(--ease-in) both; }
-.topbar.leaving #barBack, .topbar.leaving #swap { animation: popOut .26s var(--ease-in) both; }
-.topbar.leaving .dropdown { animation: rowOut .2s var(--ease-in) both; }
+.topbar .dropdown:not([hidden]) { animation: unfold .42s .08s var(--ease-out) both; }
+.topbar.leaving .trow { transition: padding .4s .12s var(--ease-in); }
+.topbar.leaving #fromRow { animation: rowOut .3s .16s var(--ease-in) both; }
+.topbar.leaving #optTime { animation: popOut .22s .1s var(--ease-in) both; }
+.topbar.leaving #optBike { animation: popOut .22s .05s var(--ease-in) both; }
+.topbar.leaving #goBtn { animation: popOut .22s var(--ease-in) both; }
+.topbar.leaving #barBack { animation: popOut .24s .14s var(--ease-in) both; }
+.topbar.leaving #swap { animation: popOut .24s .08s var(--ease-in) both; }
+.topbar.leaving .dropdown { animation: fold .22s var(--ease-in) both; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(-18px); } }
 @keyframes rowOut { to { opacity: 0; transform: translateY(-14px); } }
 @keyframes popIn { from { opacity: 0; scale: .5; } }
 @keyframes popOut { to { opacity: 0; scale: .5; } }
+@keyframes unfold { from { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-8px); } to { clip-path: inset(0 round 18px); } }
+@keyframes fold { from { clip-path: inset(0 round 18px); } to { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .topbar *, .topbar .trow, #sumRow, .pair #barBack, .pair #swap { animation: none !important; transition: none !important; } }
 /* the app's logo at the start of the pill (a tap starts a search), the user at its end (the menu) */
 .applogo { position: absolute; inset-inline-start: 7px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
@@ -323,8 +335,8 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .pair #barBack .i { width: 20px; height: 20px; }
 .topbar.two #fromRow .tag { inset-inline-start: 48px; }
 .topbar.two #fromRow input[type=text] { padding-inline-start: 106px; }
-.pair #swap { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; z-index: 3; }
-.topbar.two .pair .fieldx { inset-inline-end: 50px; }   /* the clear x keeps clear of the swap */
+.topbar.two .pair .trow { padding-inline-end: 48px; }   /* the pills shorten for the swap at their end */
+.pair #swap { position: absolute; inset-inline-end: 0; top: 50%; transform: translateY(-50%); z-index: 3; }
 .pair #barBack[hidden], .pair #swap[hidden] { display: none; }
 #pair, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
 .topbar.two .userbtn { display: none; }
@@ -336,11 +348,11 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .topbar:not(.two) .field.withuser input[type=text] { padding-inline-start: 52px; padding-inline-end: 52px; }
 /* the summary box: one pill with to, from, time and bike once a plan is made; a tap reopens the rows */
 .sumbox { position: relative; flex: 1; min-width: 0; background: var(--surface); border-radius: 28px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-height: 56px; display: flex; align-items: center; }
-.sumtxt { flex: 1; min-width: 0; background: none; border: 0; text-align: start; padding: 7px 44px 7px 44px; padding-inline-start: 52px; padding-inline-end: 44px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.sumtxt { flex: 1; min-width: 0; background: none; border: 0; text-align: start; padding: 7px 44px 7px 44px; padding-inline-start: 16px; padding-inline-end: 44px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
 .sumtxt .l1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sumtxt .l2 { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
 .sumtxt .l2 .i { width: 14px; height: 14px; } .sumtxt .sep { color: var(--line); padding: 0 1px; }
-.sumbox .userbtn { inset-inline-start: 5px; inset-inline-end: auto; }   /* the summary: the user at its start, its clear x at its end */
+.sumbox .userbtn { display: none; }   /* the summary carries no user button: its clear x at the end stays free */
 .sumbox .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
 .sumbox .tag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-inline-end: 6px; vertical-align: 1px; }
 .sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
@@ -465,7 +477,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .optpanel #whenBody[hidden], .optpanel #bikeBody[hidden] { display: none; }
 .topbar .trow.opts .chipbtn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 56vw; }
 .optpanel .seg.pill { align-self: flex-start; }
-.daypills { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.daypills { display: flex; gap: 6px; flex-wrap: wrap; }   /* every day in view, on two rows if need be */
 .daypills::-webkit-scrollbar { display: none; }
 .daypills .chipbtn { flex: none; white-space: nowrap; }
 .daypills .chipbtn.on { background: var(--ink); color: var(--bg); }

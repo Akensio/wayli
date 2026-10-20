@@ -599,3 +599,11 @@ so they are not re-litigated.
   cannot keep smooth while the keyboard rises. The pills now keep their
   width: the back arrow sits inside the origin pill, the swap floats over
   the pills' end between the rows, and only transforms and opacity animate.
+- 2026-10-20 Gadi: the user button hid the summary's X ("the person icon can
+  disappear for that"): gone from the summary box. Search mode is now a
+  sequence: the pill shortens, the origin row slides in, the time chip, the
+  bike chip and Go grow in one after another, then the recents list unfolds;
+  the keyboard is held for a third of a second so it never rises during the
+  layout change; leaving plays it back in reverse. The day pills wrap onto
+  two rows so every day shows (half seemed "blocked" off the edge of a
+  scroller); a calendar was considered and rejected for seven days of data.
