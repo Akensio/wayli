@@ -3,15 +3,16 @@
 // the list gives way to one line.
 import { useState } from 'preact/hooks';
 import { Icon } from '../../ui/Icon';
+import { TimeRange } from '../../ui/TimeRange';
 import type { IconName } from '../../ui/icons';
 import { t, lang } from '../../i18n';
-import { fmt } from '../../time';
 import * as live from '../../live.js';
 import * as search from '../../state/search';
 import * as results from '../../state/results';
 import { describePlace } from '../../journey/format';
 import { LegChips } from './LegChips';
 import { JourneyCard } from './JourneyCard';
+import { SortMenu } from './SortMenu';
 import type { Journey, Query } from '../../journey/types';
 
 const clock = (ms: number) => new Date(ms).toLocaleTimeString(lang.value === 'he' ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
@@ -36,12 +37,11 @@ function Filters() {
   const Chip = ({ label, on, icon, onClick }: { label: string; on: boolean; icon?: IconName; onClick: () => void }) => (
     <button type="button" class={`chipbtn${on ? ' on' : ''}`} onClick={onClick}>{icon && <><Icon name={icon} /> </>}{label}</button>
   );
-  const so = f.resultSort;
   return (
     <div class="filters">
       <Chip label={t('fDirect')} on={f.fDirect} onClick={() => results.setFilter({ fDirect: !f.fDirect })} />
       <Chip label={t('fTrain')} on={f.fTrain} icon="train" onClick={() => results.setFilter({ fTrain: !f.fTrain })} />
-      <Chip label={t('sort' + so[0].toUpperCase() + so.slice(1))} on={so !== 'depart'} icon="sliders" onClick={() => results.setFilter({ resultSort: results.SORTS[(results.SORTS.indexOf(so) + 1) % results.SORTS.length] })} />
+      <SortMenu />
     </div>
   );
 }
@@ -56,7 +56,7 @@ function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored:
       {gone.slice().sort((a, b) => b.depart - a.depart).slice(0, 4).map((j) => (   // the four most recent: the one the rider is on is among them
         <div class="gone">
           <div class="txt" onClick={() => results.hooks.openDetail(j, q)}>
-            <span class="times">{fmt(j.depart)} → {fmt(j.arrive)}</span>
+            <TimeRange from={j.depart} to={j.arrive} />
             <span class="chips"><LegChips legs={j.legs.filter((l) => l.type === 'ride')} /></span>
             <span class="muted">{t('leftAgo', { n: Math.max(1, Math.round((nowSec - results.rideDep(j)) / 60)) })}</span>
           </div>

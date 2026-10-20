@@ -84,11 +84,11 @@ export function swapPlaces(): void {
   const f = from.value, tt = to.value;
   setPlace('from', tt); setPlace('to', f);   // Go plans; a swap by itself changes nothing else
 }
-/** Back from editing: to the summary of the plan that is shown, else to the plain pill. */
+/** Back from editing ends the search, like the summary's X: no places, no results, the plain pill. (A tap on the map
+ *  folds the rows back to the summary instead.) */
 export function back(): void {
   for (const id of ['toQ', 'fromQ']) (document.getElementById(id) as HTMLInputElement | null)?.blur();
-  const q = hooks.hasResults() ? hooks.lastQuery() : null;
-  if (q) { setPlace('to', q.to); setPlace('from', q.from); foldBar(); } else hooks.clearPlan();
+  hooks.clearPlan();
 }
 /** The Go button: plan with what is set, or ask for a destination. */
 export function go(): void {

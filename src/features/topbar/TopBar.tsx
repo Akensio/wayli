@@ -5,6 +5,7 @@
 // shortened so the two never fight.
 import { useEffect, useRef } from 'preact/hooks';
 import { Icon } from '../../ui/Icon';
+import { Logo } from '../../ui/Logo';
 import { t, lang } from '../../i18n';
 import * as search from '../../state/search';
 import * as nav from '../../state/nav';
@@ -76,7 +77,7 @@ export function TopBar() {
             onLine={(r) => { search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); }}>
             <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><Icon name="user" /></button>
             <span class="tag">{t('tagTo')}</span>
-            <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><img src="icons/icon-192.png" alt="" /></button>
+            <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><Logo /></button>
           </SearchField>
         </div>
         <button type="button" class="iconbtn small" id="swap" hidden={!edit} title={t('swap')} aria-label={t('swap')} onClick={search.swapPlaces}><Icon name="swap" /></button>

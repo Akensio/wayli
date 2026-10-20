@@ -1,8 +1,8 @@
 // The journey detail panel: back, the times and duration, a star to save the trip, start and share, then the
 // legs; a tap on a ride focuses it on the map, a tap on its chip opens the line.
 import { Icon } from '../../ui/Icon';
+import { TimeRange } from '../../ui/TimeRange';
 import { t, lang } from '../../i18n';
-import { fmt } from '../../time';
 import * as live from '../../live.js';
 import { favs } from '../../store.js';
 import * as detail from '../../state/detail';
@@ -17,7 +17,8 @@ export function Detail() {
   if (!j || !q) return null;
   const key = tripKey(q), saved = !bikeOnly && favs.has('trips', key);
   const over = live.nowOn(q.day) > j.arrive + 1800;
-  const title = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '') : `${fmt(j.depart)} → ${fmt(j.arrive)} · ${dur(j.arrive - j.depart)}`;
+  const title = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '')
+    : <><TimeRange from={j.depart} to={j.arrive} class="" /> · {dur(j.arrive - j.depart)}</>;
   const toggleFav = () => { if (bikeOnly) return; favs.toggle('trips', key, { from: q.from, to: q.to, bike: q.bike, folding: q.folding }); detail.favTick.value++; detail.hooks.favChanged(); };
   return (
     <>

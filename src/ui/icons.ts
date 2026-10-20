@@ -25,6 +25,7 @@ export const ICONS = {
   work: 'M4 8h16a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a1 1 0 0 1 1-1zM9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18',
   play: 'M7 4.5v15l12-7.5z',
   chevronDown: 'M6 9.5l6 6 6-6',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
   chevronEnd: 'M9 6l6 6-6 6',
   back: 'M15 6l-6 6 6 6',
   bolt: 'M13 2.5L4.5 13.5h7l-1 8 9-11h-7z',

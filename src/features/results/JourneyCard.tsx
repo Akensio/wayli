@@ -3,6 +3,7 @@
 // button that draws it on the map or takes it off.
 import * as live from '../../live.js';
 import { Icon } from '../../ui/Icon';
+import { TimeRange } from '../../ui/TimeRange';
 import { t } from '../../i18n';
 import { fmt } from '../../time';
 import { now } from '../../state/clock';
@@ -33,7 +34,7 @@ export function JourneyCard({ card }: { card: Card }) {
   void now.value;   // the "also at" times grey out as they pass
   return (
     <div class={`journey${sel ? ' sel' : ''}`} data-idx={idx} onClick={() => results.hooks.openDetail(j, q)}>
-      <div class="top"><span class="times">{fmt(j.depart)} → {fmt(j.arrive)}</span><span class="dur">{dur(j.arrive - j.depart)} · {transfersText(j.transfers)}</span></div>
+      <div class="top"><TimeRange from={j.depart} to={j.arrive} /><span class="dur">{dur(j.arrive - j.depart)} · {transfersText(j.transfers)}</span></div>
       <div class="chips"><LegChips legs={j.legs} lines={lines} /></div>
       <div class="sub">{rides.map((l) => `${lineText(l.line)} ${t('toward', { headsign: l.headsign || '' })}`).join(' · ')}</div>
       {options.length > 1 && (

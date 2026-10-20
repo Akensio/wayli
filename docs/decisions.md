@@ -649,3 +649,15 @@ so they are not re-litigated.
   map module's own (its minute badges were never cleared when another panel
   took the map), and a 20-second timer and a translation loop that had
   nothing left to update.
+- 2026-10-20: From Gadi's test of an arrive-by-19:00 trip (Rehovot to Tzavta):
+  arrive-by now ranks only the journeys that arrive in time; ranked with the
+  rest, a later journey with fewer changes arriving a few minutes past the
+  deadline knocked out one in time and was then dropped itself, so the latest
+  workable departures went missing. The back arrow in search mode ends the
+  search like the summary's X (Gadi: leaving the boxes should clear it); a
+  tap on the map still folds the rows back to the summary. Departure and
+  arrival times read left to right with the arrow between them in both
+  languages (Gadi: early time on the left). The sort chip opens a small menu
+  instead of cycling. The logo in the search pill is drawn from the theme's
+  colours, so it follows light and dark (the home-screen icon stays fixed:
+  the system draws it).
