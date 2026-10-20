@@ -9,7 +9,7 @@ import * as search from '../state/search';
 import { lastPos } from '../state/position';
 import type { Place } from '../state/search';
 import { mapReady, pick } from './shared';
-import { openPopup, closePopup } from './popups';
+import { openPopup, closePopup, setPopupTitle } from './popups';
 
 let resolver: ((p: Place | null) => void) | null = null;
 
@@ -32,16 +32,14 @@ export async function pickAt(m: MLMap, lngLat: [number, number], stopHit: { stop
   const el = document.createElement('div'); el.className = 'wayli-pick';
   pick.marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(lngLat).addTo(m);
   let picked: Place = stopHit ? { name: stopHit.name, stops: [stopHit.stop], lat: lngLat[1], lon: lngLat[0] } : { name: '…', lat: lngLat[1], lon: lngLat[0] };
-  const show = () => openPopup(m, lngLat, `<div class="pop"><b>${esc(picked.name)}</b>${stopHit ? `<div class="muted">${t('kindStop')}</div>` : ''}<div class="row"><button type="button" class="primary slim" data-act="choose">${t('choose')}</button></div></div>`,
+  openPopup(m, lngLat, `<div class="pop"><b>${esc(picked.name)}</b>${stopHit ? `<div class="muted">${t('kindStop')}</div>` : ''}<div class="row"><button type="button" class="primary slim" data-act="choose">${t('choose')}</button></div></div>`,
     (el2) => el2.querySelector('[data-act="choose"]')?.addEventListener('click', () => { closePopup(); closePicker(picked); }));
-  show();
   if (stopHit) return;
   try {
     const r: any = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
-    if (my !== pick.seq || !nav.isOpen('picker')) return;
     picked = { ...picked, name: r.kind === 'point' ? t('pointName') : r.distance > 40 ? t('nearName', { name: r.name }) : r.name };
-  } catch { if (my !== pick.seq) return; picked = { ...picked, name: t('pointName') }; }
-  show();
+  } catch { picked = { ...picked, name: t('pointName') }; }
+  if (my === pick.seq && nav.isOpen('picker')) setPopupTitle(picked.name);   // the name fills in; reopening the bubble would flicker
 }
 /** Done, with a place or none; the panel closes (unless the history already did it). */
 export function closePicker(p: Place | null, closing = true): void {

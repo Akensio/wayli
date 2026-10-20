@@ -11,7 +11,7 @@ import { metres } from './live.js';
 const AT_STOP = 60;        // m: close enough to count as being at a stop or the destination
 const NEAR_ALIGHT = 350;   // m: when the alighting stop is this close, say "get off at the next stop"
 
-export function initialState() { return { step: 0, onBoard: false, rideIdx: 0, alerted: {}, done: false, startedAt: Date.now() }; }
+export function initialState() { return { step: 0, onBoard: false, rideIdx: 0, alerted: {}, done: false, hold: -1, startedAt: Date.now() }; }
 /** The state for a rider who starts following once already on board: on the ride that has departed (the last
  *  one to have, else the first), so the walk to the stop is not waited for. */
 export function aboardState(journey, nowSec) {
@@ -44,10 +44,12 @@ export function advance(journey, state, pos, nowSec) {
   while (!s.done && s.step < legs.length && guard++ < 10) {
     const leg = legs[s.step];
     const last = s.step === legs.length - 1;
+    // a step the rider chose by hand (back or next) is not left on the clock's word, only on the position's
+    const clock = s.hold !== s.step;
     if (leg.type !== 'ride') {
       const end = legEnd(journey, leg);
       const there = near(pos, end, AT_STOP);
-      const overdue = nowSec > leg.arrive + (pos ? 900 : 180);
+      const overdue = clock && nowSec > leg.arrive + (pos ? 900 : 180);
       if (!there && !overdue) break;
       if (last) { s.done = true; events.push('arrived'); break; }
       s.step++; events.push('reached');
@@ -61,14 +63,14 @@ export function advance(journey, state, pos, nowSec) {
       let idx = 0;
       if (pos && stops.length > 1) idx = nearestStop(pos, stops, 0);
       const moved = pos && idx >= 1 && !near(pos, stops[0], 150);
-      const gone = nowSec > leg.depart + (pos ? 600 : 90);
+      const gone = clock && nowSec > leg.depart + (pos ? 600 : 90);
       if (!moved && !gone) break;
       s.onBoard = true; s.rideIdx = Math.max(0, idx); events.push('boarded');
     }
     if (pos && stops.length > 1) {
       const idx = nearestStop(pos, stops, s.rideIdx);
       if (idx > s.rideIdx) s.rideIdx = idx;
-    } else if (stops.length > 1) {
+    } else if (stops.length > 1 && clock) {
       // no position: follow the clock
       let idx = s.rideIdx;
       while (idx < lastIdx && nowSec >= stops[idx + 1].arr) idx++;
@@ -76,7 +78,7 @@ export function advance(journey, state, pos, nowSec) {
     }
     const alightSoon = s.rideIdx >= lastIdx - 1 || (pos && near(pos, stops[lastIdx], NEAR_ALIGHT)) || (!pos && nowSec >= leg.arrive - 120);
     if (alightSoon && !s.alerted['soon' + s.step]) { s.alerted['soon' + s.step] = true; events.push('getOffNext'); }
-    const atAlight = (pos && near(pos, stops[lastIdx], AT_STOP + 20)) || (!pos && nowSec >= leg.arrive + 30) || (pos && nowSec >= leg.arrive + 900);
+    const atAlight = (pos && near(pos, stops[lastIdx], AT_STOP + 20)) || (clock && ((!pos && nowSec >= leg.arrive + 30) || (pos && nowSec >= leg.arrive + 900)));
     if (!atAlight) break;
     if (!s.alerted['off' + s.step]) { s.alerted['off' + s.step] = true; events.push('getOff'); }
     s.onBoard = false; s.rideIdx = 0;
@@ -86,6 +88,29 @@ export function advance(journey, state, pos, nowSec) {
   if (s.step >= legs.length && !s.done) { s.done = true; events.push('arrived'); }
   return { state: s, events };
 }
+
+/** "Next step" by hand: on board the vehicle being waited for, else on to the next leg (or done). The step reached is
+ *  held: the clock does not move it on, a position still can. */
+export function stepForward(journey, state) {
+  const s = { ...state, alerted: { ...state.alerted } }, legs = journey.legs, leg = legs[s.step];
+  if (s.done) return s;
+  if (leg && leg.type === 'ride' && !s.onBoard) { s.onBoard = true; s.rideIdx = 0; }
+  else if (s.step >= legs.length - 1) s.done = true;
+  else { s.step++; s.onBoard = false; s.rideIdx = 0; }
+  s.hold = s.step;
+  return s;
+}
+/** "Back" by hand: the exact reverse of stepForward, held the same way. */
+export function stepBack(journey, state) {
+  const s = { ...state, alerted: { ...state.alerted } }, legs = journey.legs;
+  if (s.done) s.done = false;
+  else if (legs[s.step] && legs[s.step].type === 'ride' && s.onBoard) { s.onBoard = false; s.rideIdx = 0; }
+  else if (s.step > 0) { s.step--; s.onBoard = legs[s.step].type === 'ride'; s.rideIdx = 0; }
+  s.hold = s.step;
+  return s;
+}
+/** Whether there is a step to go back to. */
+export const canStepBack = (state) => state.done || state.step > 0 || state.onBoard;
 
 /** The stop of a ride the rider is at or has just passed; never behind where they already were. */
 export function nearestStop(pos, stops, fromIdx) {

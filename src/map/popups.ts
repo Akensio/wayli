@@ -27,6 +27,8 @@ export function openPopup(m: MLMap, lngLat: LngLatLike, html: string, wire?: (el
   if (wire && el) wire(el);
   p.on('close', () => { if (popupState.current === p) popupState.current = null; });
 }
+/** The open bubble's title, changed in place (a name that arrives later): reopening it would flicker. */
+export function setPopupTitle(text: string): void { const b = popupState.current?.getElement()?.querySelector('.pop b'); if (b) b.textContent = text; }
 export type VehicleInfo = { line: string; routeType: number; headsign: string; agency: string; delay?: number | null; stale: boolean; seen: Date; velocity?: number | null; trip: number; route: number | null };
 /** A vehicle's bubble: line, direction, delay, when it reported, speed; its trip's stops and its line page. */
 export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void {
@@ -58,8 +60,8 @@ export async function stopPopup(m: MLMap, lngLat: LngLatLike, stop: number, stat
     for (const c of el.querySelectorAll<HTMLElement>('.chip[data-route]')) if (c.dataset.route !== '') c.addEventListener('click', () => { closePopup(); hooks.openLine(+c.dataset.route!); });
   });
 }
-/** A tap on the bare map (sheet collapsed): a pin and a bubble naming the spot, a place of the basemap under the
- *  finger by its name, anything else by reverse geocoding, with "to here" and "from here". */
+/** A tap on the bare map (sheet collapsed): a bubble pointing at the spot, naming a place of the basemap under the
+ *  finger, anything else by reverse geocoding (the name fills in when it arrives), with "to here" and "from here". */
 export async function placeBubble(m: MLMap, e: { point: { x: number; y: number }; lngLat: { lng: number; lat: number } }): Promise<void> {
   const my = ++pick.seq;
   const poiLayers = ((m.getStyle().layers || []) as any[]).filter((l) => l.type === 'symbol' && /^poi/.test(l.id) && l.id !== 'poi_transit').map((l) => l.id);
@@ -67,24 +69,17 @@ export async function placeBubble(m: MLMap, e: { point: { x: number; y: number }
   const poi = pois.find((f) => f.properties && f.properties.name);
   const lngLat: [number, number] = poi ? ((poi.geometry as any).coordinates.slice() as [number, number]) : [e.lngLat.lng, e.lngLat.lat];
   let p = { name: poi ? (lang.value === 'he' ? poi.properties['name:he'] || poi.properties.name : poi.properties['name:en'] || poi.properties['name:latin'] || poi.properties.name) : '…', lat: lngLat[1], lon: lngLat[0] };
-  if (pick.marker) pick.marker.remove();
-  const el = document.createElement('div'); el.className = 'wayli-pick';
-  pick.marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(lngLat).addTo(m);
-  const show = () => {
-    openPopup(m, lngLat, `<div class="pop"><b>${esc(p.name)}</b><div class="row"><button type="button" class="primary slim" data-act="to">${t('toHere')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button></div></div>`, (el2) => {
-      el2.querySelector('[data-act="to"]')?.addEventListener('click', () => { closePopup(); hooks.planTo(p); });
-      el2.querySelector('[data-act="from"]')?.addEventListener('click', () => { closePopup(); hooks.planFrom(p); });
-    });
-    popupState.current?.on('close', () => { if (pick.marker && !nav.isOpen('picker')) { pick.marker.remove(); pick.marker = null; } });
-  };
-  show();
+  openPopup(m, lngLat, `<div class="pop"><b>${esc(p.name)}</b><div class="row"><button type="button" class="primary slim" data-act="to">${t('toHere')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button></div></div>`, (el2) => {
+    el2.querySelector('[data-act="to"]')?.addEventListener('click', () => { closePopup(); hooks.planTo(p); });
+    el2.querySelector('[data-act="from"]')?.addEventListener('click', () => { closePopup(); hooks.planFrom(p); });
+  });
   if (poi) return;
+  const mine = popupState.current;
   try {
     const g: any = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
-    if (my !== pick.seq || !popupState.current) return;
     p = { ...p, name: g.kind === 'point' ? t('pointName') : g.distance > 40 ? t('nearName', { name: g.name }) : g.name };
-  } catch { if (my !== pick.seq || !popupState.current) return; p = { ...p, name: t('pointName') }; }
-  show();
+  } catch { p = { ...p, name: t('pointName') }; }
+  if (my === pick.seq && popupState.current === mine) setPopupTitle(p.name);
 }
 /** Stop dots on a journey or line map answer a tap with the stop's bubble. */
 export function wireStopLayers(m: MLMap, layers: string[]): void {

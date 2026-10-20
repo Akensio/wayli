@@ -3,7 +3,7 @@
 // way; the trip kept in the store so it survives a reload, with a bar to come back to it when hidden. The
 // screen (features/follow) draws what is published into state/follow.ts.
 import * as live from '../live.js';
-import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney } from '../follow.js';
+import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney, stepForward, stepBack } from '../follow.js';
 import { settings, activeTrip } from '../store.js';
 import { t } from '../i18n';
 import { dateOf } from '../time';
@@ -195,14 +195,11 @@ function switchJourney(alt: Alt): void {
   toast(t('routeSwitched'));
 }
 try { window.wayliDebug = { ...(window.wayliDebug || {}), replan: () => replanCheck(true), setReplanGain: (g: number) => { replanGain = g; } }; } catch { /* debugging only */ }
-/** "Next step": the rider says the state machine lags behind. */
-function skipStep(): void {
+/** "Next step" or "Back": the rider corrects the state machine by hand (the step reached is held from the clock). */
+function step(dir: 1 | -1): void {
   if (!fol) return;
-  const a = fol.a, legs = a.journey.legs, s = a.state;
-  const leg = legs[s.step];
-  if (leg && leg.type === 'ride' && !s.onBoard) { s.onBoard = true; s.rideIdx = 0; }
-  else if (s.step >= legs.length - 1) { s.done = true; }
-  else { s.step++; s.onBoard = false; s.rideIdx = 0; }
+  const a = fol.a;
+  a.state = (dir > 0 ? stepForward(a.journey, a.state) : stepBack(a.journey, a.state)) as FollowState;
   activeTrip.set(a); publish();
 }
 /** Stop following: `end` forgets the trip; otherwise it stays stored and the resume bar offers it. */
@@ -232,7 +229,8 @@ export function resumeAtStart(): void {
 }
 
 Object.assign(follow.hooks, {
-  skip: () => skipStep(),
+  skip: () => step(1),
+  back: () => step(-1),
   end: () => { closeFollow(true); nav.close('follow'); toast(t('tripEnded')); },
   hide: () => nav.close('follow'),
   resume: () => { const a = stored(); if (a) { nav.closeAll(); openFollow(a); } },

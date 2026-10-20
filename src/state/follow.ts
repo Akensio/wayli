@@ -6,7 +6,7 @@ import { signal } from '@preact/signals';
 import type { Journey, Query } from '../journey/types';
 import type { Badge } from '../journey/format';
 
-export type FollowState = { step: number; onBoard: boolean; rideIdx: number; done: boolean; [k: string]: unknown };
+export type FollowState = { step: number; onBoard: boolean; rideIdx: number; done: boolean; hold?: number; [k: string]: unknown };
 export type ActiveTrip = { journey: Journey; q: Pick<Query, 'from' | 'to' | 'bike' | 'folding'>; day: string; state: FollowState; view: 'follow' | 'hidden'; startedAt?: number; replanned?: number };
 export type Position = { lat: number; lon: number; acc?: number; at: number };
 export type Alt = { journey: Journey; origin: { kind: string; offAt?: { name: string }; [k: string]: unknown }; key: string; gain: number };
@@ -20,6 +20,7 @@ export const resumable = signal<ActiveTrip | null>(null);  // a trip in progress
 
 export const hooks = {
   skip: () => {},                  // "next step": the rider says the state machine lags
+  back: () => {},                  // "back": a step too far
   end: () => {},
   hide: () => {},
   resume: () => {},

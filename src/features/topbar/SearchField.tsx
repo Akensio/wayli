@@ -43,6 +43,7 @@ function fitDrop(el: HTMLElement) {
 
 export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, onPick, onLine, onLocate, onMap, withUser = false, children }: Props) {
   const open = useSignal(false);
+  const closing = useSignal(false);   // the list folds away before it hides
   const focused = useSignal(false);
   const [rows, setRows] = useState<{ quick: boolean; lines: any[]; results: Suggestion[]; placesLoaded: boolean } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,12 +86,27 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
   // search mode ending folds the list with it
   useEffect(() => { if (search.leaving.value) open.value = false; }, [search.leaving.value]);
 
+  // "My location" is a value, not text: the box shows it as a tag while idle, and empties to its placeholder when
+  // focused (someone tapping it means to change it); left without typing, it comes back.
+  const magic = !!place.value?.transient;
   const onFocus = () => {
     focusedAt.current = Date.now(); focused.value = true;
     onFocusProp?.();
-    inputRef.current?.select();   // the quick entries first, whatever is in the box; typing replaces it
+    if (place.value?.transient) text.value = '';
+    else inputRef.current?.select();   // the quick entries first, whatever is in the box; typing replaces it
     quickMenu();
   };
+  const onBlur = () => setTimeout(() => {
+    focused.value = false;
+    if (!text.value && place.value?.transient) text.value = place.value.name;
+  }, 0);
+  // a closing list folds away first
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open.value) { closing.value = true; const id = window.setTimeout(() => { closing.value = false; }, 220); wasOpen.current = false; return () => clearTimeout(id); }
+    if (open.value) closing.value = false;
+    wasOpen.current = open.value;
+  }, [open.value]);
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     const first = dropRef.current?.querySelector('button:not(:disabled)') as HTMLButtonElement | null;
@@ -119,13 +135,13 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
       <input ref={inputRef} type="text" id={id} placeholder={placeholder} autocomplete="off" enterkeyhint="search" inputMode={inputMode || undefined}
         value={text.value}
         onInput={(e) => { text.value = (e.currentTarget as HTMLInputElement).value; typed(text.value.trim()); }}
-        onFocus={onFocus} onBlur={() => setTimeout(() => { focused.value = false; }, 0)} onKeyDown={onKey} />
+        class={magic && !focused.value ? 'magic' : ''} onFocus={onFocus} onBlur={onBlur} onKeyDown={onKey} />
       <button type="button" id={`${id}-x`} class="fieldx" hidden={!xShown} aria-label={t('clearText')}
         onPointerDown={(e) => e.preventDefault()}
         onClick={() => { text.value = ''; place.value = null; focusedAt.current = Date.now(); inputRef.current?.focus(); quickMenu(); }}>
         <Icon name="close" />
       </button>
-      <div ref={dropRef} class="dropdown" id={dropId} hidden={!open.value}>
+      <div ref={dropRef} class={`dropdown${closing.value ? ' closing' : ''}`} id={dropId} hidden={!open.value && !closing.value}>
         {rows?.quick && <>
           <button type="button" class="quick" onClick={locate}><span class="ic"><Icon name="locate" /></span><span class="txt">{t('myLoc')}</span></button>
           <button type="button" class="quick" onClick={pickMap}><span class="ic"><Icon name="map" /></span><span class="txt">{t('pickTitle')}</span></button>

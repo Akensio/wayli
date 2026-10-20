@@ -227,7 +227,28 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .wayli-bus .i { width: 16px; height: 16px; stroke-width: 2.2; }
 .wayli-bus.lbl .i { width: 14px; height: 14px; }
 .wayli-stop { width: 8px; height: 8px; border-radius: 50%; background: #fff; border: 2px solid #555; }
-.follow .bar h2 { font-size: 15px; }
+/* following: a round hide button, the title on one line, "End trip" as a soft red pill; the instruction in a card
+   with its live badge, back and next as a pair of pills, the position's state under them */
+.follow .fhead { display: flex; align-items: center; gap: 10px; padding: 2px 0 12px; }
+.follow .fhead h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.follow .endbtn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  background: color-mix(in srgb, #d23b32 12%, var(--surface)); color: #c0322a; }
+.follow .endbtn .i { width: 16px; height: 16px; }
+:root[data-theme="dark"] .follow .endbtn { color: #ff8a80; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .follow .endbtn { color: #ff8a80; } }
+.follow .nowcard { position: relative; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px 12px; margin-bottom: 4px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.follow .nowcard #followLive { float: inline-end; margin-inline-start: 8px; }
+.follow .stepper { display: flex; gap: 8px; margin-top: 14px; }
+.follow .stepper button { flex: 1; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 999px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: var(--chip); color: var(--ink); }
+.follow .stepper button .i { width: 18px; height: 18px; }
+.follow .stepper button.next { background: var(--accent); color: var(--accent-ink); }
+.follow .stepper button:disabled { opacity: .4; cursor: default; }
+.follow .stepper button[hidden] { display: none; }
+.nowcard.alert .stepper button { background: rgba(255,255,255,.22); color: var(--accent-ink); }
+.nowcard.alert .stepper button.next { background: var(--accent-ink); color: var(--accent); }
+.follow .gps { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.follow .gps .i { width: 14px; height: 14px; }
+.nowcard.alert .gps { color: var(--accent-ink); opacity: .9; }
 .follow .legs { padding-top: 8px; }
 .follow .leg { padding: 4px 0; } .follow .leg .what { font-size: 14px; }
 .leg.done { opacity: .45; }
@@ -270,7 +291,11 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 
 /* ---- bubbles on the map */
 .wayli-pop .maplibregl-popup-content { background: var(--surface); color: var(--ink); border-radius: 12px; padding: 10px 28px 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.25); font: 14px/1.4 var(--font); }
-.wayli-pop .maplibregl-popup-tip { border-top-color: var(--surface); border-bottom-color: var(--surface); }
+/* the pointer is a border triangle: colour only the side that faces the spot (two coloured sides draw a square) */
+.wayli-pop.maplibregl-popup-anchor-bottom .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--surface); }
+.wayli-pop.maplibregl-popup-anchor-top .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-top-left .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--surface); }
+.wayli-pop.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface); }
+.wayli-pop.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface); }
 .wayli-pop .maplibregl-popup-close-button { color: var(--ink-2); font-size: 20px; padding: 2px 8px; }
 .pop { display: flex; flex-direction: column; gap: 5px; min-width: 190px; }
 .pop .row { gap: 6px; }
@@ -328,7 +353,9 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .topbar.leaving #goBtn { animation: popOut .22s var(--ease-in) both; }
 .topbar.leaving #barBack { animation: popOut .24s .14s var(--ease-in) both; }
 .topbar.leaving #swap { animation: popOut .24s .08s var(--ease-in) both; }
-.topbar.leaving .dropdown { animation: fold .22s var(--ease-in) both; }
+.topbar.leaving .dropdown, .topbar .dropdown.closing { animation: fold .22s var(--ease-in) both; pointer-events: none; }
+/* "My location" in a box is a value, not typed text */
+.field input.magic { color: var(--accent-text); font-weight: 600; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(-18px); } }
 @keyframes rowOut { to { opacity: 0; transform: translateY(-14px); } }
 @keyframes popIn { from { opacity: 0; scale: .5; } }

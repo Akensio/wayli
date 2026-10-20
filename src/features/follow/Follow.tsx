@@ -4,7 +4,7 @@ import { Icon } from '../../ui/Icon';
 import { t, lang } from '../../i18n';
 import { fmt } from '../../time';
 import * as live from '../../live.js';
-import { view as followView } from '../../follow.js';
+import { view as followView, canStepBack } from '../../follow.js';
 import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
 import { lineText, inShort } from '../../journey/format';
@@ -63,16 +63,20 @@ export function Follow() {
   const alt = follow.alt.value;
   return (
     <>
-      <div class="bar">
-        <button type="button" class="ghost" id="followHide" title={t('hide')} onClick={follow.hooks.hide}><Icon name="chevronDown" /></button>
-        <button type="button" class="ghost" id="followEnd" onClick={follow.hooks.end}>{t('endTrip')}</button>
+      <div class="fhead">
+        <button type="button" class="iconbtn flat" id="followHide" title={t('hide')} aria-label={t('hide')} onClick={follow.hooks.hide}><Icon name="chevronDown" /></button>
         <h2 id="followTitle">{title}</h2>
-        <span class={`livebadge ${badge ? badge.cls : ''}`} id="followLive" hidden={!badge}>{badge ? badge.text : ''}</span>
+        <button type="button" class="endbtn" id="followEnd" onClick={follow.hooks.end}><Icon name="close" /> {t('endTripLong')}</button>
       </div>
       <div class={`nowcard${alert ? ' alert' : ''}`} id="followCard">
+        <span class={`livebadge ${badge ? badge.cls : ''}`} id="followLive" hidden={!badge}>{badge ? badge.text : ''}</span>
         <div class="big" id="followBig">{big}</div>
         <div class="small" id="followSmall">{small}</div>
-        <div class="row" style="margin-top:8px"><button type="button" class="ghost" id="followSkip" hidden={v.kind === 'done'} onClick={follow.hooks.skip}>{t('nextStep')}</button><span class="muted" id="followGps">{fresh ? t('gpsOk', { acc: Math.round(pos!.acc || 0) }) : t('gpsNo')}</span></div>
+        <div class="stepper">
+          <button type="button" id="followBack" disabled={!canStepBack(a.state)} onClick={follow.hooks.back}><Icon name="back" class="chev" /> {t('prevStep')}</button>
+          <button type="button" class="next" id="followSkip" hidden={v.kind === 'done'} onClick={follow.hooks.skip}>{t('nextStep')} <Icon name="chevronEnd" class="chev" /></button>
+        </div>
+        <div class="gps" id="followGps"><Icon name="locate" /> {fresh ? t('gpsOk', { acc: Math.round(pos!.acc || 0) }) : t('gpsNo')}</div>
       </div>
       {alt && <AltCard alt={alt} />}
       <div class="legs" id="followNext">

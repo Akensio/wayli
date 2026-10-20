@@ -680,3 +680,15 @@ so they are not re-litigated.
   journeys on average, 6 trips gain a train option, planning time unchanged
   (about 135 ms in Node). Rejected: lowering the transfer penalty (it would
   not bring back the direct train, which a faster bus beats outright).
+- 2026-10-20: From Gadi's notes: a tap on the map no longer drops a pin that
+  flashed and vanished (the bubble's pointer marks the spot; names arriving
+  late fill the open bubble instead of reopening it); the bubble's pointer
+  colours only its facing side (two coloured sides drew a white square when
+  it pointed sideways); "My location" is a value, not text: shown as a tag,
+  emptied to the placeholder when the box is tapped, back when left
+  untouched; the From placeholder asks like the To one; the suggestion list
+  folds away instead of vanishing. Following a trip: Back beside Next step,
+  both held from the clock (a step chosen by hand moves on by position only),
+  and the screen restyled to the current design (round hide button, one-line
+  title, End trip pill, the instruction in a card). Tested in
+  tools/follow.test.mjs, which `npm run check` now runs.
