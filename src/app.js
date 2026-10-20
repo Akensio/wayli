@@ -59,7 +59,7 @@ let statusTimer = 0;
 function setStatus(text, error = false, frac = null) {
   appState.status.value = { text, error, frac };
   clearTimeout(statusTimer);
-  if (!error && frac == null) statusTimer = setTimeout(() => { appState.status.value = null; }, 4000);
+  if (!error && frac == null) statusTimer = setTimeout(() => { appState.status.value = { text, error, frac, hidden: true }; }, 4000);
 }
 function showProgress(m) {
   if (m.label === 'shapes') return;   // quiet: the courses arrive in the background
@@ -166,7 +166,7 @@ async function init() {
   const active = activeTrip.get();
   if (active && !tripStale(active)) { updateResumeBar(); if (active.view === 'follow') openFollow(active); } else if (active) activeTrip.clear();
   try {
-    data.manifest.value = await (await fetch('data/data.manifest.value.json', { cache: 'no-cache' })).json();
+    data.manifest.value = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();
   } catch (e) { setStatus(t('loadFail', { msg: e.message }), true); return; }
   appState.feedInfo.value = data.manifest.value.feed ? { start: data.manifest.value.feed.start, end: data.manifest.value.feed.end, built: data.manifest.value.built } : null;
   if (data.manifest.value.built) { const b = live.ilParts(new Date(data.manifest.value.built)); appState.version.value = t('build', { v: `${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')} ${String(b.h).padStart(2, '0')}:${String(b.mi).padStart(2, '0')}` }); }

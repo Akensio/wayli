@@ -10,7 +10,7 @@ export function Floating() {
   const st = app.status.value;
   return (
     <div class="floating">
-      <div class={`status${st && st.error ? ' error' : ''}`} id="status" hidden={!st}>
+      <div class={`status${st && st.error ? ' error' : ''}`} id="status" hidden={!st || st.hidden}>
         <span id="statusText">{st ? st.text : ''}</span>
         <div class="bar" id="statusBar" hidden={!st || st.frac == null}><div style={{ width: st && st.frac != null ? `${Math.round(st.frac * 100)}%` : '0%' }} /></div>
       </div>
