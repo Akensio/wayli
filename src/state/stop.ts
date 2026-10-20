@@ -1,0 +1,30 @@
+// A stop's page: the stop, its next departures, and what the live data says about each as it comes in.
+import { signal } from '@preact/signals';
+import type { StopLine } from './nearby';
+
+export type StopInfo = { stop: number; name: string; city?: string; code?: string; lat: number; lon: number; lines: StopLine[] };
+export type Departure = { trip: number; time: number; routeType: number; agency?: string; line: string; headsign: string; routeId?: number | null; firstDep?: number };
+export type LiveDep = { passed: true } | { passed: false; time: number; stale?: boolean; delayMin: number };
+
+export const info = signal<StopInfo | null>(null);
+export const day = signal('');
+export const isNow = signal(false);                       // departures from now: countdowns and live times
+export const deps = signal<Departure[] | null>(null);     // null while loading
+export const liveDeps = signal<Record<string, LiveDep>>({});
+export const liveNote = signal('');
+export const favTick = signal(0);
+
+export const hooks = {
+  show: () => {},
+  close: () => {},
+  refresh: () => {},
+  openTrip: (_trip: number, _stop: number) => {},
+  fromHere: () => {},
+  toHere: () => {},
+  favChanged: () => {},
+};
+export function open(i: StopInfo, d: string, now: boolean): void {
+  info.value = i; day.value = d; isNow.value = now; deps.value = null; liveDeps.value = {}; liveNote.value = '';
+  hooks.show();
+}
+export function setLive(trip: number, lv: LiveDep): void { liveDeps.value = { ...liveDeps.value, [String(trip)]: lv }; }

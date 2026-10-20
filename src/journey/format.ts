@@ -33,3 +33,7 @@ export function liveBadge(at: LiveAt): Badge {
   const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
   return { text, cls: at.stale ? 'unsure' : 'ok' };
 }
+/** "now", "in n min" (up to two hours), or nothing. */
+export function inText(sec: number, day: string): string { const n = minutesUntil(sec, day); return n <= 0 ? t('nowDep') : n > 120 ? '' : t('inMin', { n }); }
+/** A time past midnight on the same service day gets a mark. */
+export const fmtPlus = (sec: number): string => fmt(sec) + (sec >= 86400 ? '⁺' : '');

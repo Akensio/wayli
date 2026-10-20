@@ -20,10 +20,13 @@ import * as appState from './state/app.ts';   // the build, install, the drawer
 import * as saved from './state/saved.ts';
 import * as nearby from './state/nearby.ts';
 import * as chooser from './state/chooser.ts';
+import * as stopPage from './state/stop.ts';
+import * as linePage from './state/line.ts';
+import * as tripPage from './state/trip.ts';
 import { agencyName } from './journey/agencies.ts';   // the bottom sheet: peek, half or full
 import { topPad, fullPx as fullSheetPx } from './state/sheet.ts';   // the plan's results: the list, the ways on the map, the recent trips
 import { routeColor, textOn, chipStyle, legColor } from './journey/colors.ts';
-import { dur, lineText, describePlace, minutesUntil, leaveText, inShort, tripKey, liveBadge } from './journey/format.ts';
+import { dur, lineText, describePlace, leaveText, inShort, tripKey, liveBadge, fmtPlus } from './journey/format.ts';
 
 // ---------------------------------------------------------------- i18n
 import { t, lang as langSig, storeLang } from './i18n.ts';
@@ -103,7 +106,6 @@ function showProgress(m) {
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // ---------------------------------------------------------------- time, days (Israel time, service days)
-const fmtPlus = (sec) => fmt(sec) + (sec >= 86400 ? '⁺' : '');   // past midnight, still this service day
 // the current results on the map: the first few journeys drawn together, one highlighted, the rest muted
 let altMarkers = [];   // the minutes badges of the ways drawn on the map
 /** An operator's name for display: English where known, else as the feed names it, isolated so a Hebrew name inside an English line keeps its place. */
@@ -930,38 +932,31 @@ async function openStop(stop) {
     journeyMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([info.lon, info.lat]).addTo(m));
     m.easeTo({ center: [info.lon, info.lat], zoom: Math.max(m.getZoom(), 15), offset: [0, -Math.round(sheet.px('half') / 2) + 30], duration: 500 });
   };
-  showOverlay('stopDetail');
-  $('stopTitle').textContent = info.name;
-  $('stopMeta').textContent = `${info.city || ''}${info.code ? ' · ' + info.code : ''}`;
-  $('stopLiveNote').textContent = '';
-  updateStar('stopStar', 'stop:' + info.stop, 'stops');
-  $('stopStar').onclick = () => { favs.toggle('stops', 'stop:' + info.stop, { stop: info.stop, name: info.name, city: info.city, code: info.code, lat: info.lat, lon: info.lon, lines: info.lines.slice(0, 8) }); saved.refresh(); updateStar('stopStar', 'stop:' + info.stop, 'stops'); };
   const day = search.day.value;
   const svc = live.serviceDay();
   const isNow = day === svc.day || day === calToday();
+  stopPage.open(info, day, isNow);
   const fromTime = isNow ? live.nowOn(day) - 120 : search.atSeconds();
   const deps = await call('departures', { stop, fromTime, limit: 40 });
   if (my !== stopSeq) return;
-  const box = $('stopDeps');
-  box.innerHTML = deps.length ? '' : `<div class="empty">${t('noDeps')}</div>`;
-  for (const d of deps) {
-    const el = document.createElement('div');
-    el.className = 'dep';
-    el.dataset.trip = d.trip;
-    el.innerHTML = `<span class="time">${fmt(d.time)}</span><span class="chip t${d.routeType}"${chipStyle(d.routeType, d.agency)}>${esc(lineText(d.line))}</span><span class="head">${esc(d.headsign)}</span><span class="in">${isNow ? inText(d.time, day) : ''}</span>`;
-    el.addEventListener('click', () => openTrip(d.trip, info.stop));
-    box.appendChild(el);
-  }
+  stopPage.deps.value = deps;
   clearInterval(stopTimer);
   if (isNow) {
     liveForStop(info, deps, day, my);
     stopTimer = setInterval(() => { if (!isOpen('stopDetail')) clearInterval(stopTimer); else liveForStop(info, deps, day, my); }, 45000);
   }
 }
-function inText(sec, day) { const n = minutesUntil(sec, day); return n <= 0 ? t('nowDep') : n > 120 ? '' : t('inMin', { n }); }
+Object.assign(stopPage.hooks, {
+  show: () => showOverlay('stopDetail'),
+  close: () => nav.close('stopDetail'),
+  refresh: () => { if (currentStop) openStop(currentStop.stop); },
+  openTrip: (trip, stop) => openTrip(trip, stop),
+  fromHere: () => { if (!currentStop) return; const p = stopPlace(currentStop); nav.closeAll(); search.setPlace('from', p); showScreen('plan'); sheet.set('half'); },
+  toHere: () => { if (currentStop) planTo(stopPlace(currentStop)); },
+});
 /** Live times for the departures of a stop: one request for the vehicles around it, then by line for what it missed. */
 async function liveForStop(info, deps, day, seq) {
-  if (!liveOn()) { $('stopLiveNote').textContent = t('liveOff'); return; }
+  if (!liveOn()) { stopPage.liveNote.value = t('liveOff'); return; }
   const now = live.nowOn(day);
   const soon = deps.filter((d) => d.routeId != null && d.time - now < 3600 && d.time - now > -300).slice(0, 16);
   if (!soon.length) return;
@@ -976,29 +971,20 @@ async function liveForStop(info, deps, day, seq) {
     if (seq !== stopSeq) return;
     for (const d of soon) {
       const v = live.matchTrip(vs, d.routeId, d.firstDep, day);
-      const el = $('stopDeps').querySelector(`[data-trip="${d.trip}"]`);
-      if (!v || !el) continue;
+      if (!v) continue;
       const ts = await tripStopsCached(d.trip);
       if (seq !== stopSeq) return;
       const idx = ts.stops.findIndex((s) => s.stop === info.stop && s.dep === d.time);
       const est = live.estimateDelay(v, ts.stops, day);
       const at = live.liveAt(est, ts.stops, idx < 0 ? 0 : idx);
       if (!at) continue;
-      const tm = el.querySelector('.time'), inEl = el.querySelector('.in');
-      if (at.passed) { tm.className = 'time gone'; inEl.textContent = t('livePassed'); continue; }
-      const dmin = live.delayMinutes(at.delay);
-      tm.textContent = fmt(at.time); tm.className = 'time ' + (at.stale ? 'unsure' : 'live');
-      inEl.innerHTML = `${esc(inText(at.time, day))} <span class="live ${at.stale ? 'unsure' : 'ok'}">⦿${dmin ? ` ${dmin > 0 ? '+' : ''}${dmin}` : ''}${at.stale ? '?' : ''}</span>`;
+      stopPage.setLive(d.trip, at.passed ? { passed: true } : { passed: false, time: at.time, stale: !!at.stale, delayMin: live.delayMinutes(at.delay) });
     }
     const nw = live.newest(vs);
-    $('stopLiveNote').textContent = nw ? t('liveUpdated', { time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) }) : t('liveNoVehicle');
-  } catch (e) { $('stopLiveNote').textContent = t('liveFail'); }
+    stopPage.liveNote.value = nw ? t('liveUpdated', { time: nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }) }) : t('liveNoVehicle');
+  } catch (e) { stopPage.liveNote.value = t('liveFail'); }
 }
-$('stopLive').addEventListener('click', () => { if (currentStop) openStop(currentStop.stop); });
-$('stopBack').addEventListener('click', () => nav.close('stopDetail'));
 const stopPlace = (s) => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
-$('stopFrom').addEventListener('click', () => { if (!currentStop) return; const p = stopPlace(currentStop); nav.closeAll(); search.setPlace('from', p); showScreen('plan'); sheet.set('half'); });
-$('stopTo').addEventListener('click', () => { if (currentStop) planTo(stopPlace(currentStop)); });
 
 // ---- live vehicles on the map: every vehicle reporting in view, stops when zoomed in
 let lmTimer = 0, lmMove = 0, lmSeq = 0, lmStops = false;
@@ -1108,23 +1094,12 @@ async function openLine(route) {
     fitMap(b, 15);
     lineLive();
   };
+  linePage.info.value = info; linePage.liveText.value = ''; linePage.liveOk.value = false;
   showOverlay('lineDetail');
-  $('lineTitle').textContent = `${t('lineTitle', { line: lineText(info.line) })} · ${t('toward', { headsign: info.headsign })}`;
-  $('lineMeta').textContent = `${info.agency} · ${t('tripsToday', { n: info.trips })} · ${fmtPlus(info.first)}–${fmtPlus(info.last)} · ${t('stopsCount', { n: info.stops.length })}`;
-  $('lineLive').hidden = true;
-  const dirs = $('lineDirs');
-  dirs.innerHTML = '';
-  for (const o of info.others) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'chipbtn'; b.innerHTML = `${ic('arrowsLR')} ${esc(t('otherDir', { headsign: o.headsign }))}`;
-    b.addEventListener('click', () => openLine(o.route));
-    dirs.appendChild(b);
-  }
-  const box = $('lineStops');
-  box.innerHTML = info.stops.map((st, i) => `<div class="linerow" data-i="${i}"><span class="idx">${i + 1}</span><span class="name">${esc(st.name)}<small class="muted"> ${esc(st.city || '')}</small></span></div>`).join('');
-  for (const row of box.querySelectorAll('.linerow')) row.addEventListener('click', () => openStop(info.stops[+row.dataset.i].stop));
   clearInterval(lineTimer);
   lineTimer = setInterval(lineLive, 20000);
 }
+Object.assign(linePage.hooks, { close: () => nav.close('lineDetail'), openLine: (route) => openLine(route), openStop: (stop) => openStop(stop) });
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive() {
   const info = lineCur;
@@ -1138,37 +1113,30 @@ async function lineLive() {
     for (const mk of lineVeh.splice(0)) mk.remove();
     if (mainMap && drawnFor === 'lineDetail') lineVehicleMarkers(mainMap, lineVeh, vs, st, info.routeType, null, { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route });
     const nw = live.newest(vs);
-    $('lineLive').textContent = vs.length ? `${t('vehiclesOnLine', { n: vs.length })} · ${nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}` : t('noLineVehicles');
-    $('lineLive').className = 'livebadge ' + (vs.length ? 'ok' : '');
-    $('lineLive').hidden = false;
+    linePage.liveText.value = vs.length ? `${t('vehiclesOnLine', { n: vs.length })} · ${nw.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' })}` : t('noLineVehicles');
+    linePage.liveOk.value = vs.length > 0;
   } catch (e) { /* the schedule stays */ }
 }
-$('lineBack').addEventListener('click', () => nav.close('lineDetail'));
 
 // ---- one trip: every stop with its time, and where the vehicle is
 async function openTrip(trip, hereStop) {
   const ts = await tripStopsCached(trip);
+  tripPage.ts.value = ts; tripPage.hereStop.value = hereStop; tripPage.vehicle.value = null; tripPage.noVehicle.value = false;
   showOverlay('tripDetail');
-  $('tripTitle').textContent = t('tripStopsTitle', { line: lineText(ts.line), headsign: ts.headsign });
-  $('tripMeta').textContent = `${ts.agency} · ${t('stopsCount', { n: ts.stops.length })}`;
-  const box = $('tripStops');
   const day = search.day.value;
-  box.innerHTML = ts.stops.map((s, i) => `<div class="stopsrow${s.stop === hereStop ? ' here' : ''}" data-i="${i}"><span class="time">${fmt(s.arr)}</span><span>${esc(s.name)}</span></div>`).join('');
-  for (const row of box.querySelectorAll('.stopsrow')) row.addEventListener('click', () => { nav.close('tripDetail'); openStop(ts.stops[+row.dataset.i].stop); });
   if (!liveOn() || ts.routeId == null) return;
   try {
     const vs = await live.vehiclesByLine(ts.routeId);
     const v = live.matchTrip(vs, ts.routeId, ts.firstDep, day);
     const est = v && live.estimateDelay(v, ts.stops, day);
-    if (!est) { $('tripMeta').textContent += ` · ${t('liveNoVehicle')}`; return; }
-    const row = box.querySelector(`[data-i="${est.index + (est.frac > 0.5 ? 1 : 0)}"]`);
-    if (row) { const tag = document.createElement('span'); tag.className = 'veh'; tag.innerHTML = `${ic('bus')} ${t('vehicleHere')}${est.delay ? ` (${live.delayMinutes(est.delay) > 0 ? '+' : ''}${live.delayMinutes(est.delay)})` : ''}`; row.appendChild(tag); row.scrollIntoView({ block: 'center' }); }
+    if (tripPage.ts.value !== ts) return;
+    if (!est) { tripPage.noVehicle.value = true; return; }
+    tripPage.vehicle.value = { index: est.index + (est.frac > 0.5 ? 1 : 0), delayMin: est.delay ? live.delayMinutes(est.delay) : 0 };
   } catch (e) { /* no live, no problem */ }
 }
-$('tripBack').addEventListener('click', () => nav.close('tripDetail'));
+Object.assign(tripPage.hooks, { close: () => nav.close('tripDetail'), openStop: (stop) => { nav.close('tripDetail'); openStop(stop); } });
 
 // ---------------------------------------------------------------- saved: places, trips, stops (this device only)
-function updateStar(id, key, kind) { const on = key && favs.has(kind, key); $(id).innerHTML = ic('star'); $(id).classList.toggle('on', on); }
 /** The last search, shown as it was (its own place and time), when it is under an hour old and went to this place. */
 function restoreLast(p) {
   const last = lastSearch.get();
