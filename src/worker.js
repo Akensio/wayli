@@ -323,17 +323,30 @@ function snapVehicles(j, t) {
   }
   return out;
 }
-async function snapshot(url) {
+let relayAt = 0;   // which of the relay's addresses answered last: tried first next time
+async function snapshot(urls) {
   if (snap && Date.now() - snap.at < SNAP_MS) return snap;
   if (!snapLoading) snapLoading = (async () => {
     // 15 s for the relay to start answering; reading the body then gets a minute: on a phone at start-up it competes
     // with the timetable and street downloads and waits behind their unpacking here (a 12 s limit on the whole read
     // aborted it on Gadi's phone every time, 2026-10-21)
-    const get = async (ago) => {
+    const fetchFrom = async (url, ago) => {
       const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(new Error('relay did not answer in 15 s')), 15000);
-      let r;
-      try { r = await fetch(ago ? `${url}?ago=${ago}` : url, { cache: 'no-store', signal: ctl.signal }); } finally { clearTimeout(timer); }
-      if (!r.ok) throw new Error(`relay HTTP ${r.status}`);
+      try { return await fetch(ago ? `${url}?ago=${ago}` : url, { cache: 'no-store', signal: ctl.signal }); } finally { clearTimeout(timer); }
+    };
+    const get = async (ago) => {
+      let r = null, err = null;
+      for (let k = 0; k < urls.length && !r; k++) {
+        const i = (relayAt + k) % urls.length;
+        try {
+          const res = await fetchFrom(urls[i], ago);
+          if (!res.ok) throw new Error(`relay HTTP ${res.status}`);
+          // an address not (yet) pointed at the relay answers with someone's page: a snapshot names itself
+          if (!res.headers.get('x-snapshot')) throw new Error('not the relay');
+          r = res; relayAt = i;
+        } catch (e) { err = e; }
+      }
+      if (!r) throw err || new Error('relay unavailable');
       const id = r.headers.get('x-snapshot') || '';
       let late;
       const j = await Promise.race([r.json(), new Promise((_, no) => { late = setTimeout(() => no(new Error('relay body took over 60 s')), 60000); })]).finally(() => clearTimeout(late));
@@ -408,8 +421,8 @@ const ops = {
     });
   },
   /** Live vehicles from the newest snapshot: of a line ({line}), in a box ({box}) or of an operator ({operator}). */
-  async liveQuery({ url, filter }) {
-    const s = await snapshot(url);
+  async liveQuery({ urls, filter }) {
+    const s = await snapshot(urls);
     let vs = s.vehicles;
     if (filter.line != null) vs = vs.filter((v) => v.lineRef === String(filter.line));
     else if (filter.box) { const b = filter.box; vs = vs.filter((v) => v.lat >= b.south && v.lat <= b.north && v.lon >= b.west && v.lon <= b.east); }

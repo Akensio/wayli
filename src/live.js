@@ -89,7 +89,9 @@ const window = (sinceSec) => ({ recorded_at_time_from: iso(new Date(Date.now() -
 // The newest snapshot, through Wayli's relay (worker/relay.js): about a minute old where Hasadna's database runs up
 // to 15 minutes behind at rush hour. The app points `snapshot.query` at it (through the data worker); every question
 // below asks it first, and Hasadna's database answers when it fails.
-export const RELAY_URL = 'https://wayli-relay.wayli.workers.dev/siri/latest';
+// Two addresses for the same relay, tried in this order: our own domain first (some mobile carriers block all of
+// workers.dev, Gadi's among them), then Cloudflare's default address.
+export const RELAY_URLS = ['https://relay.waynet.app/siri/latest', 'https://wayli-relay.wayli.workers.dev/siri/latest'];
 /** @type {{ query: null | ((filter: object) => Promise<any[]>) }} filter: {line} | {box} | {operator} */
 export const snapshot = { query: null };
 /** Where the last live answer came from: the relay, or Hasadna's database and why the relay was not used. */

@@ -14,7 +14,7 @@ import { setStatus, loadFailed } from './status';
 
 const manifest = (): Manifest => data.manifest.value!;
 // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
-live.snapshot.query = (filter: object) => call('liveQuery', { url: live.RELAY_URL, filter });
+live.snapshot.query = (filter: object) => call('liveQuery', { urls: live.RELAY_URLS, filter });
 // stored places shown in the other language are named again by the worker (state/names.ts)
 const WORDS = { he: { near: String(STR.he.nearName), point: String(STR.he.pointName) }, en: { near: String(STR.en.nearName), point: String(STR.en.pointName) } };
 names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });

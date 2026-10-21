@@ -789,3 +789,9 @@ so they are not re-litigated.
   body, and the first load fetches only the current snapshot (the one of 3
   minutes before follows in the background for frozen positions). The
   relay is not blocked: a phone gets 188 KB (brotli) or 255 KB (gzip).
+- 2026-10-21: Gadi's mobile carrier answers NXDOMAIN for
+  wayli-relay.wayli.workers.dev (Google's and Cloudflare's DNS resolve it),
+  so the relay also gets our own address, relay.waynet.app (waynet.app's DNS
+  moving to Cloudflare, the relay attached as a custom domain). The app tries
+  relay.waynet.app, then workers.dev, then Hasadna's database, and accepts
+  an address only when it answers with a snapshot (x-snapshot header).

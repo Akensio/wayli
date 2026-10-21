@@ -696,7 +696,8 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   UTC, about 250 KB brotli, 4.3 MB of SIRI JSON, the newest under a minute
   old, half the positions under 40 s) but carry no CORS header. The relay
   (`worker/relay.js`, a Cloudflare Worker on the free plan at
-  https://wayli-relay.wayli.workers.dev/siri/latest, deployed by
+  https://relay.waynet.app/siri/latest and, where carriers do not block
+  workers.dev, https://wayli-relay.wayli.workers.dev/siri/latest, deployed by
   `.github/workflows/relay.yml`) reads `daemon_status.json` for the newest
   minute and passes that file through untouched, labelled
   `Content-Encoding: br` so the browser unpacks it, with CORS; `?ago=N`
