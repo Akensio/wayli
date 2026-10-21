@@ -782,3 +782,10 @@ so they are not re-litigated.
   place names no longer wait for it. And the map's note now says when live
   data came from the database and why the relay was not used, so a failing
   relay on a phone shows instead of hiding behind the fallback.
+- 2026-10-21: On Gadi's phone the relay always failed with "signal is aborted":
+  the 12 s limit covered the whole read, and at start-up the read competes
+  with the data downloads and waits behind their unpacking in the same
+  worker. Now 15 s for the relay to start answering and a minute for the
+  body, and the first load fetches only the current snapshot (the one of 3
+  minutes before follows in the background for frozen positions). The
+  relay is not blocked: a phone gets 188 KB (brotli) or 255 KB (gzip).

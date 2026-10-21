@@ -286,7 +286,8 @@ function remember(j, t) {
     for (const x of d.MonitoredStopVisit || []) {
       const m = x.MonitoredVehicleJourney, l = m && m.VehicleLocation; if (!l) continue;
       const key = `${m.LineRef}/${m.OriginAimedDepartureTime}`, loc = `${l.Latitude},${l.Longitude}`, o = posSince.get(key);
-      if (o && o.loc === loc) o.seen = t; else posSince.set(key, { loc, since: t, seen: t });
+      // snapshots can come in out of order (the earlier one follows in the background): keep the earliest time at this place
+      if (o && o.loc === loc) { o.since = Math.min(o.since, t); o.seen = Math.max(o.seen, t); } else posSince.set(key, { loc, since: t, seen: t });
     }
   }
   for (const [k, o] of posSince) if (t - o.seen > SNAP_WINDOW_MS) posSince.delete(k);
@@ -325,22 +326,32 @@ function snapVehicles(j, t) {
 async function snapshot(url) {
   if (snap && Date.now() - snap.at < SNAP_MS) return snap;
   if (!snapLoading) snapLoading = (async () => {
+    // 15 s for the relay to start answering; reading the body then gets a minute: on a phone at start-up it competes
+    // with the timetable and street downloads and waits behind their unpacking here (a 12 s limit on the whole read
+    // aborted it on Gadi's phone every time, 2026-10-21)
     const get = async (ago) => {
-      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 12000);
-      try {
-        const r = await fetch(ago ? `${url}?ago=${ago}` : url, { cache: 'no-store', signal: ctl.signal });
-        if (!r.ok) throw new Error(`relay HTTP ${r.status}`);
-        const id = r.headers.get('x-snapshot') || '';
-        return { id, t: snapTime(id), j: await r.json() };
-      } finally { clearTimeout(timer); }
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(new Error('relay did not answer in 15 s')), 15000);
+      let r;
+      try { r = await fetch(ago ? `${url}?ago=${ago}` : url, { cache: 'no-store', signal: ctl.signal }); } finally { clearTimeout(timer); }
+      if (!r.ok) throw new Error(`relay HTTP ${r.status}`);
+      const id = r.headers.get('x-snapshot') || '';
+      let late;
+      const j = await Promise.race([r.json(), new Promise((_, no) => { late = setTimeout(() => no(new Error('relay body took over 60 s')), 60000); })]).finally(() => clearTimeout(late));
+      return { id, t: snapTime(id), j };
     };
     const first = !posSince.size;
-    const [cur, before] = await Promise.all([get(0), first ? get(3).catch(() => null) : null]);
+    const cur = await get(0);
     // a feed that stalled is no better than the database: then Hasadna's API answers instead
     if (!(Date.now() - cur.t <= 600e3)) throw new Error(`relay snapshot ${cur.id || '?'} is old`);
-    if (before && before.t < cur.t) remember(before.j, before.t);
     remember(cur.j, cur.t);
     snap = { at: Date.now(), id: cur.id, vehicles: snapVehicles(cur.j, cur.t) };
+    // the first time, the snapshot of 3 minutes before follows in the background, so frozen positions show at once:
+    // its positions count as seen first then, and the current vehicles are filtered again
+    if (first) get(3).then((before) => {
+      if (!(before.t < cur.t)) return;
+      remember(before.j, before.t); remember(cur.j, cur.t);
+      if (snap && snap.id === cur.id) snap = { ...snap, vehicles: snapVehicles(cur.j, cur.t) };
+    }).catch(() => {});
     return snap;
   })().finally(() => { snapLoading = null; });
   return snapLoading;
