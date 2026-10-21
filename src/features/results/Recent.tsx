@@ -3,7 +3,14 @@ import { Icon } from '../../ui/Icon';
 import { placeName, named } from '../../state/names';
 import { FromTo } from '../../ui/FromTo';
 import { t, lang } from '../../i18n';
-import { dayLabel, calToday } from '../../time';
+import { dayLabel, calToday, calendarOf, secOf } from '../../time';
+
+/** A recent trip's day and time as the rider reads them: the calendar day (a service day's night is the next day). */
+const whenText = (day?: string, time?: string): string => {
+  if (!time) return dayLabel(day || calToday());
+  const c = calendarOf(day || calToday(), secOf(time));
+  return `${dayLabel(c.cal)} ${c.time}`;
+};
 import { recentTrips } from '../../store.js';
 import * as results from '../../state/results';
 import type { Query } from '../../journey/types';
@@ -22,7 +29,7 @@ export function Recent() {
           <span class="ic"><Icon name="history" /></span>
           <span class="txt">
             <span class="name"><FromTo from={placeName(r.from)} to={placeName(r.to)} /></span>
-            <small>{dayLabel(r.day || calToday())} {r.time || ''}{r.bike && r.bike !== 'none' && <> · <Icon name="bike" /></>}{r.arriveBy ? ' · ' + t('arriveBy') : ''}</small>
+            <small>{whenText(r.day, r.time)}{r.bike && r.bike !== 'none' && <> · <Icon name="bike" /></>}{r.arriveBy ? ' · ' + t('arriveBy') : ''}</small>
           </span>
         </div>
       ))}

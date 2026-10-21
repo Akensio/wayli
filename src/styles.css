@@ -543,13 +543,14 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .topbar .trow.opts { padding-inline-start: 54px; gap: 6px; }
 .topbar .trow.opts .chipbtn { background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-weight: 600; }
 .topbar .trow.opts .chipbtn.open { background: var(--ink); color: var(--bg); }   /* only the chip whose popover is open */
-/* the option popovers under the chips: when (depart or arrive, day pills, now or a time) and bicycle; changes apply at once */
+/* the option popovers under the chips: when (now, depart or arrive, on wheels) and bicycle; Done closes them */
 .optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
 .optpanel[hidden], .optpanel > [hidden] { display: none; }
 .optpanel #whenBody, .optpanel #bikeBody { display: flex; flex-direction: column; gap: 10px; }
 .optpanel #whenBody[hidden], .optpanel #bikeBody[hidden] { display: none; }
 .topbar .trow.opts .chipbtn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 56vw; }
 .optpanel .seg.pill { align-self: flex-start; }
+.optpanel #optDone { align-self: flex-end; min-width: 96px; }
 /* the time wheels: day, hour and minute turning like an alarm clock's, the chosen values on a band across the middle */
 .wheels { position: relative; display: flex; justify-content: center; align-items: stretch; gap: 2px; padding: 0 4px; }
 .wheels .band { position: absolute; inset-inline: 4px; top: 72px; height: 36px; border-radius: 12px; background: var(--chip); pointer-events: none; }

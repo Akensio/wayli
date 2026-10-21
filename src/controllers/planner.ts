@@ -1,6 +1,7 @@
 // Planning: from the bar's places and options to results. "My location" is resolved at the moment of planning;
 // a plan from now takes the delays of the vehicles on the road into account. Also: a destination chosen
 // anywhere (a bubble, a saved place) planned from where you are, the last search shown again, the plan cleared.
+import { effect } from '@preact/signals';
 import * as live from '../live.js';
 import { settings, recentPlaces, recentTrips, lastSearch } from '../store.js';
 import { t, lang } from '../i18n';
@@ -38,10 +39,13 @@ export function parseShared(params: URLSearchParams): Shared | null {
   return { from, to, day: params.get('day') || '', at: params.get('at') || '', bike: params.get('bike') || 'none', folding: params.get('folding') === '1', arriveBy: params.get('mode') === 'arrive' };
 }
 
+let waiting = false;
+effect(() => { if (data.ttReady.value && waiting) plan(); });
 export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   showPlanError('');
   if (!search.from.value || !search.to.value) { showPlanError(t('pickBoth')); return; }
-  if (!data.ttReady.value) return;
+  if (!data.ttReady.value) { waiting = true; return; }   // a new day's timetable is loading: planned once it is in
+  waiting = false;
   for (const side of ['from', 'to'] as const) {   // "my location" is resolved now, not when it was chosen
     const p = search.sides[side].value!;
     if (p.transient && p.lat == null) {
@@ -99,9 +103,9 @@ function restoreLast(p: Place): boolean {
   search.day.value = last.q.day; search.applyQuery(last.q); results.setResults(last.result, last.q, last.at); sheet.set('half');
   return true;
 }
-/** A destination chosen anywhere: planned from where you are, from now. */
+/** A destination chosen anywhere: planned from where you are, from now (or at the time the rider set). */
 export async function planTo(p: Place): Promise<void> {
-  if (restoreLast(p)) return;
+  if (!search.timeTouched.value && restoreLast(p)) return;
   nav.closeAll();
   nav.showScreen('plan');
   search.setPlace('to', p);
@@ -110,7 +114,7 @@ export async function planTo(p: Place): Promise<void> {
   search.fromText.value = t('locating');
   try { search.setPlace('from', search.myLocation(await getPosition())); }
   catch { const f = search.from.value; if (!f || f.transient) search.setPlace('from', null); else search.fromText.value = f.name; }
-  search.resetNow();
+  if (!search.timeTouched.value) search.resetNow();   // from now, unless the rider set a time
   if (search.from.value) plan(); else { results.status.value = 'idle'; showPlanError(t('noLocation')); search.focusBox('toQ'); }
 }
 /** An origin chosen anywhere: in the From box, the bar open for the destination. */

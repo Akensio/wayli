@@ -7,6 +7,7 @@ import { TimeRange } from '../../ui/TimeRange';
 import type { IconName } from '../../ui/icons';
 import { t, lang } from '../../i18n';
 import * as live from '../../live.js';
+import { fmt, secOf } from '../../time';
 import * as search from '../../state/search';
 import * as results from '../../state/results';
 import { describePlace } from '../../journey/format';
@@ -23,7 +24,7 @@ function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
   return (
     <div class="results-head muted">
       <span>
-        {at ? t('resultsFrom', { time: clock(at) }) + ' · ' : ''}{t('found', { n })}{note}{q.arriveBy ? ' · ' + t('arriveByNote', { time: q.at }) : ''}
+        {at ? t('resultsFrom', { time: clock(at) }) + ' · ' : ''}{t('found', { n })}{note}{q.arriveBy ? ' · ' + t('arriveByNote', { time: fmt(secOf(q.at)) }) : ''}
         {q.liveTried && <> · <span class={`live${q.liveAsOf ? ' ok' : ''}`}>{q.liveAsOf ? t('livePlanned', { time: clock(q.liveAsOf) }) : t('schedOnly')}</span></>}
       </span>
       <span class="spacer" />

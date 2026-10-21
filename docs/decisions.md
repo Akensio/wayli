@@ -818,3 +818,10 @@ so they are not re-litigated.
   Chrome offers its prompt (it held the prompt back on his phone, and the
   row had only shown before through the empty-row bug); without the prompt
   a tap explains the browser menu's way.
+- 2026-10-22: From Gadi (the time didn't apply; "Tonight / Today / Tomorrow"
+  confused): Go after setting a time planned "from now" (it took the path of a
+  freshly picked destination); now Go and the popover plan with the time set.
+  The time popover gets a Done button and works on a draft, set on any close.
+  The day wheel shows calendar days only; the night after midnight is the
+  previous service day at 24:00+, internal ("25:30"). Rejected: keeping
+  "Tonight" as a separate day (it is the GTFS service day leaking out).

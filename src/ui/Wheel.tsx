@@ -1,5 +1,6 @@
 // A wheel of values, like an alarm clock's: a column that scrolls and snaps, the value at the centre chosen.
-// A tap on a value turns the wheel to it; the arrow keys step it. The value is reported once the wheel rests.
+// A tap on a value turns the wheel to it; the arrow keys step it. The value under the band is reported as the wheel
+// turns (what it sets is a draft, cheap to change), so a confirm right after a flick never misses it.
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 export const ROW = 36;    // px: one value
@@ -9,20 +10,22 @@ type Props = { id: string; label: string; items: Item[]; value: string; onChange
 
 export function Wheel({ id, label, items, value, onChange, class: cls = '' }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const settle = useRef(0);
   const index = Math.max(0, items.findIndex((i) => i.key === value));
   const [centre, setCentre] = useState(index);   // the value under the band while the wheel turns
-  // the wheel follows a value set from outside (another wheel, "now"), unless a finger is turning it
+  const turning = useRef(0);   // a timer while the wheel turns: the values it reports come back late, never turn it back
+  // the wheel follows a value set from outside ("now", the popover opening), not while it turns
   useEffect(() => {
-    const el = ref.current; if (!el) return;
+    const el = ref.current; if (!el || turning.current) return;
     if (Math.round(el.scrollTop / ROW) !== index) el.scrollTop = index * ROW;
     setCentre(index);
   }, [index, items.length]);
+  useEffect(() => () => clearTimeout(turning.current), []);
   const onScroll = () => {
-    const el = ref.current!; const i = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / ROW)));
+    const el = ref.current; if (!el) return;   // a last scroll event after the popover closed
+    const i = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / ROW)));
     setCentre(i);
-    clearTimeout(settle.current);
-    settle.current = window.setTimeout(() => { if (items[i] && items[i].key !== value) onChange(items[i].key); }, 140);
+    clearTimeout(turning.current); turning.current = window.setTimeout(() => { turning.current = 0; }, 200);
+    if (items[i] && items[i].key !== value) onChange(items[i].key);
   };
   const turnTo = (i: number) => { const el = ref.current; if (!el) return; const j = Math.max(0, Math.min(items.length - 1, i)); el.scrollTo({ top: j * ROW, behavior: 'smooth' }); };
   return (

@@ -1,7 +1,7 @@
 // Sharing a journey: its legs as text and a link that opens the same plan.
 import { t } from '../i18n';
 import { placeName } from '../state/names';
-import { fmt } from '../time';
+import { fmt, hm } from '../time';
 import { toast } from '../ui/toast';
 import { dur, lineText } from './format';
 import type { Journey, Query } from './types';
@@ -16,7 +16,7 @@ export function shareJourney(j: Journey, q: Query, bikeOnly = false): void {
   const u = new URL(location.href); u.search = ''; u.hash = '';
   const pt = (p: { lat?: number | null; lon?: number | null; name: string }) => `${(+p.lat!).toFixed(5)},${(+p.lon!).toFixed(5)},${encodeURIComponent(p.name)}`;
   if (q.from.lat != null && q.to.lat != null && !bikeOnly) {
-    u.searchParams.set('from', pt(q.from)); u.searchParams.set('to', pt(q.to)); u.searchParams.set('day', q.day); u.searchParams.set('at', fmt(j.depart));
+    u.searchParams.set('from', pt(q.from)); u.searchParams.set('to', pt(q.to)); u.searchParams.set('day', q.day); u.searchParams.set('at', hm(j.depart));   // past 24:00 for the night, as the planner keeps it
     if (q.bike !== 'none') u.searchParams.set('bike', q.bike);
     if (q.folding) u.searchParams.set('folding', '1');
   }

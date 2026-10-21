@@ -5,7 +5,7 @@
 import { signal, computed, effect } from '@preact/signals';
 import * as live from '../live.js';
 import { t } from '../i18n';
-import { fmt, calToday } from '../time';
+import { calToday, hm, secOf, calendarOf } from '../time';
 
 export type Place = { name: string; lat?: number | null; lon?: number | null; stops?: number[]; platforms?: number; code?: string; kind?: string; transient?: boolean; auto?: boolean };
 export type Side = 'from' | 'to';
@@ -33,7 +33,7 @@ export const busy = signal(true);       // the planner is not ready, or planning
 // ---- when and how
 export const timeMode = signal<'depart' | 'arrive'>('depart');
 export const day = signal('');          // YYYYMMDD, one of `days`
-export const at = signal('08:00');      // HH:MM on that day
+export const at = signal('08:00');      // HH:MM on that day, past 24:00 for its night ("25:10")
 export const bike = signal<'none' | 'park' | 'along'>('none');
 export const folding = signal(false);
 export const timeTouched = signal(false);   // the rider set a day, a time or "arrive by"; until then every plan is from now
@@ -107,14 +107,39 @@ export function back(): void {
   for (const id of ['toQ', 'fromQ']) (document.getElementById(id) as HTMLInputElement | null)?.blur();
   hooks.clearPlan();
 }
-/** The Go button: plan with what is set, or ask for a destination. */
-export function go(): void {
-  if (!to.value) { (document.getElementById('toQ') as HTMLInputElement | null)?.focus(); return; }
-  if (from.value && !from.value.transient) hooks.plan(); else hooks.planTo(to.value);
+/** Plan with what is set: the places (where you are now, for "my location"), the time and the bicycle. */
+function planSet(): void {
+  const f = from.value;
+  if (!f || f.transient) setPlace('from', { name: t('myLoc'), transient: true, auto: !f || f.auto });   // located afresh
+  hooks.plan();
 }
-/** A destination chosen in the To box: plans at once (from now), from the origin set or from where you are. */
+/** The Go button: plan with what is set, an open popover's choice included, or ask for a destination. */
+export function go(): void {
+  setOpt('', false);
+  if (!to.value) { (document.getElementById('toQ') as HTMLInputElement | null)?.focus(); return; }
+  planSet();
+}
+/** A destination chosen in the To box: plans at once, from the origin set or from where you are, at the time set
+ *  (from now unless the rider chose one). */
 export function chooseTo(p: Place): void {
-  if (from.value && !from.value.transient) { setPlace('to', p); resetNow(); hooks.plan(); } else hooks.planTo(p);
+  if (from.value && !from.value.transient) { setPlace('to', p); if (!timeTouched.value) resetNow(); hooks.plan(); } else hooks.planTo(p);
+}
+/**
+ * Open an option popover, or close it (''). The time popover works on a draft: closing it in any way (Done, a tap
+ * elsewhere, Go) sets what it shows. Closing after a change plans again when there is a destination.
+ */
+export const whenDraft = signal<When | null>(null);
+export function setOpt(which: OptPanel, replan = true): void {
+  const was = optOpen.value;
+  if (was === which) return;
+  if (was === 'time' && whenDraft.value) {
+    const d = whenDraft.value;
+    if (JSON.stringify(d) !== JSON.stringify(whenNow())) { setWhen(d); optDirty.value = true; }
+    whenDraft.value = null;
+  }
+  if (which === 'time') whenDraft.value = whenNow();
+  optOpen.value = which;
+  if (!which && optDirty.value) { optDirty.value = false; if (replan && to.value) planSet(); }
 }
 export function chooseFrom(p: Place): void { setPlace('from', p); if (to.value) hooks.plan(); }
 /** Search a line by number: the To box with a numeric keyboard until it is left. */
@@ -125,23 +150,41 @@ export function lineMode(): void {
 export function leaveLineMode(): void { toPlaceholder.value = 'goQ'; toInputMode.value = ''; }
 
 // ---- when
-/** The time field as seconds on the selected service day (a late-night time on "tonight" is past 24:00). */
-export function atSeconds(): number {
-  const [h, m] = at.value.split(':').map(Number);
-  let sec = (Number.isNaN(h) ? 8 : h) * 3600 + (m || 0) * 60;
-  const svc = live.serviceDay();
-  if (day.value === svc.day && svc.lateNight && h < 3) sec += 86400;
-  return sec;
-}
-export function setAt(sec: number): void { at.value = fmt(Math.max(0, Math.min(sec, 86400 * 2 - 60))); timeTouched.value = true; }
-/** A time typed by the rider: after midnight the planner is still on "tonight", so a time from 03:00 on means the coming day. */
-export function typeAt(v: string): void {
-  at.value = v; timeTouched.value = true;
-  const svc = live.serviceDay(), h = Number(v.split(':')[0]);
-  if (svc.lateNight && day.value === svc.day && h >= 3 && days.value.includes(calToday())) chooseDay(calToday());
-}
-export function setDefaultTime(): void { const svc = live.serviceDay(); at.value = day.value === svc.day ? fmt(svc.seconds) : '08:00'; }
+/** The time as seconds on the selected service day. */
+export const atSeconds = (): number => secOf(at.value);
+export function setAt(sec: number): void { at.value = hm(Math.max(0, Math.min(sec, 86400 * 2 - 60))); timeTouched.value = true; }
+/** The time now on the selected day ("25:10" on the night's day, "01:10" on a day that starts now), else 08:00. */
+export function setDefaultTime(): void { const n = live.nowOn(day.value); at.value = n >= 0 && n < 86400 * 2 ? hm(n) : '08:00'; }
 export function chooseDay(d: string): void { if (d === day.value) return; day.value = d; timeTouched.value = true; hooks.dayChanged(d); }
+
+/** What the time popover shows and sets: the calendar day and the clock, never the service day behind them. */
+export type When = { mode: 'now' | 'depart' | 'arrive'; cal: string; hh: string; mm: string };
+export function whenNow(): When {
+  const { cal, time } = calendarOf(day.value || calToday(), atSeconds()), [hh, mm] = time.split(':');
+  return { mode: timeTouched.value ? timeMode.value : 'now', cal, hh, mm };
+}
+/** The calendar days the wheel offers: those the data covers from today on (today also after midnight, when the night
+ *  is still in yesterday's timetable). */
+export const calDays = computed(() => {
+  const today = calToday(), svc = live.serviceDay();
+  const s = new Set(days.value.filter((d) => d >= today));
+  if (svc.lateNight && days.value.includes(svc.day)) s.add(today);
+  return s.size ? [...s].sort() : days.value;
+});
+/**
+ * Set a calendar day and clock. Before 03:00 the service day is the one before, its night (a day's timetable carries
+ * the night after it, the next day's early trips included); otherwise the day itself, or the nearest day the data has.
+ */
+export function setWhen(w: When): void {
+  if (w.mode === 'now') { resetNow(); return; }
+  let sec = Number(w.hh) * 3600 + Number(w.mm) * 60, d = w.cal;
+  const eve = live.shiftDay(w.cal, -1);
+  if (sec < 3 * 3600 && days.value.includes(eve)) { d = eve; sec += 86400; }
+  else if (!days.value.includes(d)) d = days.value.find((x) => x >= d) || days.value[days.value.length - 1] || d;
+  timeMode.value = w.mode;
+  at.value = hm(sec); timeTouched.value = true;
+  if (d !== day.value) { day.value = d; hooks.dayChanged(d); }
+}
 /** Back to "now": the current service day, its time, departing. */
 export function resetNow(): void {
   const d = hooks.startDay();

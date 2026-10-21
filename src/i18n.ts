@@ -6,7 +6,7 @@ export type Lang = 'he' | 'en';
 export const STR: Record<Lang, Record<string, string | string[]>> = {
   he: {
     swap: 'החלף', now: 'עכשיו', bike: 'אופניים', bikeNone: 'בלי', bikePark: 'עד התחנה', bikeAlong: 'לוקח/ת איתי', folding: 'מתקפלים',
-    plan: 'תכנון מסלול', nearbyTitle: 'תחנות בקרבתי', refresh: 'רענון', nearbyEmpty: 'לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.',
+    plan: 'תכנון מסלול', done: 'אישור', nearbyTitle: 'תחנות בקרבתי', refresh: 'רענון', nearbyEmpty: 'לחצו על רענון כדי למצוא תחנות ליד המיקום שלכם.',
     favTrips: 'מסלולים שמורים', favStops: 'תחנות שמורות', savedPlaces: 'מקומות שמורים', tabPlan: 'תכנון מסלול', tabNearby: 'תחנות בקרבתי', tabSaved: 'שמורים', tabMore: 'הגדרות ועוד', goQ: 'לאן רוצים להגיע?', grpLines: 'קווים', grpPlaces: 'מקומות', menu: 'תפריט',
     back: 'חזרה', fromHere: 'מכאן', toHere: 'לכאן', nextDeps: 'היציאות הבאות', fromQ: 'מאיפה יוצאים?', toQ: 'לאן?', myLoc: 'המיקום שלי',
     loadingTT: 'טוען לוח זמנים', loadingST: 'טוען רשת רחובות (לאופניים ולהליכה מדויקת)', loadingPL: 'טוען כתובות ומקומות', unpacking: 'פורס…', ready: 'מוכן. {trips} נסיעות ליום {date}.',
@@ -22,7 +22,7 @@ export const STR: Record<Lang, Record<string, string | string[]>> = {
     foldingNote: ' · אופניים מתקפלים', parkNote: ' · האופניים נשארים בתחנה הראשונה', noLocation: 'אין גישה למיקום. אפשרו מיקום לאתר, או חפשו תחנה.',
     locating: 'מאתר…', m: 'מ\'', inMin: 'בעוד {n} דק\'', nowDep: 'עכשיו', noDeps: 'אין יציאות נוספות היום.', favEmptyTrips: 'עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.',
     favEmptyStops: 'עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', saved: 'נשמר', removed: 'הוסר', train: 'רכבת', lrt: 'רכבת קלה', platforms: '{n} רציפים',
-    dayFmt: ['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], today: 'היום', tomorrow: 'מחר', tonight: 'הלילה',
+    dayFmt: ['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], today: 'היום', tomorrow: 'מחר',
     offline: 'לא מקוון', resume: 'המשך', departAt: 'יציאה ב־', arriveByShort: 'עד', wheelDay: 'יום', wheelHour: 'שעה', wheelMinute: 'דקה', arriveBy: 'הגעה עד', settings: 'הגדרות', setLang: 'שפה', setMap: 'מראה המפה', setTint: 'צבעי המפה', tintTeal: 'טורקיז', tintNeutral: 'ניטרלי', setTheme: 'מראה התפריטים', mapLight: 'בהיר', mapDark: 'כהה', mapSystem: 'כמו המכשיר', grpGeneral: 'כללי', grpPlan: 'תכנון', grpLive: 'זמן אמת והתראות', grpApp: 'האפליקציה', grpAbout: 'על Wayli', menuNote: 'בלי חשבון. הכול נשאר בטלפון.', setWalkHint: 'דקות, לכל היותר, לתחנה הראשונה ומהאחרונה',
     setWalk: 'הליכה מרבית', setLive: 'זמני אמת', setNotify: 'התראות בנסיעה (מתי לרדת)', setSound: 'צליל ורטט בהתראה', testAlert: 'בדיקת התראה', install: 'הוספה למסך הבית', iosInstall: 'ב-{browser}: לחצו על כפתור השיתוף ({where}) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', shareBottom: 'ריבוע עם חץ למעלה, בתחתית המסך', shareAddr: 'ריבוע עם חץ למעלה, ליד שורת הכתובת', shareMenu: 'בתפריט הדפדפן', menuInstall: 'בתפריט הדפדפן (⋮ או ☰): "הוספה למסך הבית" או "התקנת אפליקציה". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', reload: 'רענון האפליקציה', clearHistory: 'מחיקת היסטוריה',
     liveNote: 'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון מוריד את מיקומי כל כלי הרכב בארץ דרך שרת ממסר של Wayli (שלא מקבל מכם שום מיקום או קו), וכשהוא לא זמין, שולח לשרת של הסדנא את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
@@ -43,7 +43,7 @@ export const STR: Record<Lang, Record<string, string | string[]>> = {
   },
   en: {
     swap: 'Swap', now: 'Now', bike: 'Bicycle', bikeNone: 'None', bikePark: 'To the stop', bikeAlong: 'Take it along', folding: 'Folding',
-    plan: 'Plan trip', nearbyTitle: 'Stops near me', refresh: 'Refresh', nearbyEmpty: 'Tap Refresh to find stops near your location.',
+    plan: 'Plan trip', done: 'Done', nearbyTitle: 'Stops near me', refresh: 'Refresh', nearbyEmpty: 'Tap Refresh to find stops near your location.',
     favTrips: 'Saved trips', favStops: 'Saved stops', savedPlaces: 'Saved places', tabPlan: 'Plan a trip', tabNearby: 'Stops near me', tabSaved: 'Saved', tabMore: 'Settings & more', goQ: 'Where do you want to go?', grpLines: 'Lines', grpPlaces: 'Places', menu: 'Menu',
     back: 'Back', fromHere: 'From here', toHere: 'To here', nextDeps: 'Next departures', fromQ: 'Where are you leaving from?', toQ: 'To?', myLoc: 'My location',
     loadingTT: 'Loading the timetable', loadingST: 'Loading the street network (bikes and exact walking)', loadingPL: 'Loading addresses and places', unpacking: 'unpacking…', ready: 'Ready. {trips} trips on {date}.',
@@ -59,7 +59,7 @@ export const STR: Record<Lang, Record<string, string | string[]>> = {
     foldingNote: ' · folding bike', parkNote: ' · bike stays at the first stop', noLocation: 'Location unavailable. Allow location access, or search for a stop.',
     locating: 'Locating…', m: 'm', inMin: 'in {n} min', nowDep: 'now', noDeps: 'No more departures today.', favEmptyTrips: 'No saved trips yet. Tap the star in a journey.',
     favEmptyStops: 'No saved stops yet. Tap the star in a stop.', saved: 'Saved', removed: 'Removed', train: 'Train', lrt: 'Light rail', platforms: '{n} platforms',
-    dayFmt: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], today: 'Today', tomorrow: 'Tomorrow', tonight: 'Tonight',
+    dayFmt: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], today: 'Today', tomorrow: 'Tomorrow',
     offline: 'offline', resume: 'Resume', departAt: 'Depart at', arriveByShort: 'By', wheelDay: 'Day', wheelHour: 'Hour', wheelMinute: 'Minute', arriveBy: 'Arrive by', settings: 'Settings', setLang: 'Language', setMap: 'Map look', setTint: 'Map colours', tintTeal: 'Turquoise', tintNeutral: 'Neutral', setTheme: 'Menus look', mapLight: 'Light', mapDark: 'Dark', mapSystem: 'Device', grpGeneral: 'General', grpPlan: 'Planning', grpLive: 'Live times and alerts', grpApp: 'The app', grpAbout: 'About Wayli', menuNote: 'No account. Everything stays on your phone.', setWalkHint: 'minutes at most, to the first stop and from the last',
     setWalk: 'Longest walk', setLive: 'Live times', setNotify: 'Trip alerts (when to get off)', setSound: 'Sound and vibration', testAlert: 'Test alert', install: 'Add to home screen', iosInstall: 'In {browser}: tap the Share button ({where}) and then "Add to Home Screen". The app then opens full screen, without the browser bar.', shareBottom: 'the square with an arrow, at the bottom of the screen', shareAddr: 'the square with an arrow, next to the address bar', shareMenu: 'in the browser menu', menuInstall: 'In the browser menu (⋮ or ☰): "Add to home screen" or "Install app". The app then opens full screen, without the browser bar.', reload: 'Reload the app', clearHistory: 'Clear history',
     liveNote: 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone downloads every vehicle\'s position in the country through Wayli\'s relay (which gets no place or line from you), and when that is unavailable, sends their server the line numbers and the area you are looking at. Nothing else.',

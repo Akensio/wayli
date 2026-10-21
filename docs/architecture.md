@@ -364,13 +364,18 @@ and within 300 m the straight walk with a 1.3 detour factor caps a network
 path that wanders off to reach the stop's node; the
 search box lists saved and recent places when empty. The time is Now,
 Depart at or Arrive by, the last two set on three wheels (day, hour, minute,
-like an alarm clock) over the published service days; Arrive by searches
+like an alarm clock); the popover edits a draft that is set when it closes
+(Done, a tap elsewhere, or Go) and plans again when there is a destination,
+and a chosen time holds when a destination is picked after it. The day wheel
+shows calendar days only (Today, Tomorrow, the date): a time before 03:00 is
+planned on the day before's timetable at 24:00 and later (a day's timetable
+carries its night, the next day's early trips included), and the planner
+keeps such a time as "25:30" (`state/search.ts`, `setWhen`). Arrive by searches
 a two-hour window ending at the target, latest departure first; only the
 journeys arriving in time are ranked against each other; every plan also runs a
 train-only search, and journeys with a train and without one are ranked
-apart, so a slightly faster bus never hides a train; the day wheel says
-"tonight" until 03:00 since a service day runs past midnight, and changing
-the day keeps the chosen time; bicycle choice; the longest walk to a stop
+apart, so a slightly faster bus never hides a train;
+changing the day keeps the chosen time; bicycle choice; the longest walk to a stop
 is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
 ("also at 08:17, 08:32") and the alternative lines of a leg shown together

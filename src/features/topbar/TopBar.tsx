@@ -36,20 +36,13 @@ export function TopBar() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // a tap anywhere else closes an option popover; closing after a change re-plans the trip on show
+  // a tap anywhere else closes an option popover, keeping what was set (state/search, setOpt)
   useEffect(() => {
     const onDoc = (e: MouseEvent) => { if (search.optOpen.value && !(e.target as HTMLElement).closest?.('#formBody, #optTime, #optBike')) setOpt(''); };
     document.addEventListener('click', onDoc);
     return () => document.removeEventListener('click', onDoc);
   }, []);
-  const setOpt = (which: search.OptPanel) => {
-    const closing = search.optOpen.value && !which;
-    search.optOpen.value = which;
-    if (closing && search.optDirty.value) {
-      search.optDirty.value = false;
-      if (search.hooks.hasResults() && search.from.value && search.to.value && !search.busy.value) search.hooks.plan();
-    }
-  };
+  const setOpt = search.setOpt;
   // a tap on the pill at rest opens search mode first and brings the keyboard once the pill has shortened
   const onToPointerDown = (e: PointerEvent) => {
     if (search.barOpen.value || e.pointerType === 'mouse') return;
@@ -94,7 +87,7 @@ export function TopBar() {
       <div class="optpanel" id="formBody" hidden={!opt}>
         {opt === 'time' && <WhenPopover />}
         {opt === 'bike' && <BikePopover />}
-        <button type="button" class="primary slim" id="planBtn" hidden disabled={search.busy.value}>{t('plan')}</button>
+        <button type="button" class="primary slim" id="optDone" onClick={() => setOpt('')}>{t('done')}</button>
       </div>
     </div>
   );
