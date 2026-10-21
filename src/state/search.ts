@@ -23,6 +23,7 @@ export const texts = { from: fromText, to: toText } as const;
 // ---- the bar
 export const barOpen = signal(false);   // editing: both rows and the options show
 export const leaving = signal(false);   // the moment after editing ends: the rows play out before they go
+export const settling = signal(false);  // then the pill's icons pop back in
 export const optOpen = signal<OptPanel>('');
 export const optDirty = signal(false);  // an option changed while its popover was open: re-plan on close
 export const toPlaceholder = signal<'goQ' | 'lineNumber'>('goQ');
@@ -40,14 +41,17 @@ export const days = signal<string[]>([]);   // the service days the data covers
 
 // Leaving search mode, the rows play out (`leaving`) before they go. Set in the same moment the bar closes:
 // set a frame later (after a render), the rows vanished for that frame and came back to play out.
-let wasOpen = false, leaveTimer = 0;
+let wasOpen = false, leaveTimer = 0, settleTimer = 0;
 effect(() => {
   const open = barOpen.value;
   if (wasOpen && !open && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     leaving.value = true;
-    clearTimeout(leaveTimer);
-    leaveTimer = window.setTimeout(() => { leaving.value = false; }, 480);
-  } else if (open) { clearTimeout(leaveTimer); leaving.value = false; }
+    clearTimeout(leaveTimer); clearTimeout(settleTimer);
+    leaveTimer = window.setTimeout(() => {
+      leaving.value = false; settling.value = true;
+      settleTimer = window.setTimeout(() => { settling.value = false; }, 420);
+    }, 480);
+  } else if (open) { clearTimeout(leaveTimer); clearTimeout(settleTimer); leaving.value = false; settling.value = false; }
   wasOpen = open;
 });
 

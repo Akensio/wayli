@@ -267,7 +267,9 @@ asked, so a push made meanwhile would be swallowed). The menu opens from a
 three-line menu button on a turquoise disc at the start of the search pill
 (the app's logo sits at its end; a tap on it starts a search). Pressed, the
 disc gives a little and the lines draw together; let go, both spring back
-past rest. The pill's buttons are centred with `translate`, not
+past rest. Opening search mode, the menu and the logo pop out before the
+pill shortens; closing, they pop back in once it has grown back. The pill's
+buttons are centred with `translate`, not
 `transform`, so the press shrink every button has no longer drops them by
 half their height. The menu is a drawer sliding in
 from the start edge over a dimmed map, a history entry like the panels,

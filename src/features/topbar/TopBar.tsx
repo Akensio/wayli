@@ -53,11 +53,11 @@ export function TopBar() {
   const onToPointerDown = (e: PointerEvent) => {
     if (search.barOpen.value || e.pointerType === 'mouse') return;
     e.preventDefault(); search.openBar();
-    setTimeout(() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus(), 330);
+    setTimeout(() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus(), 480);
   };
 
   return (
-    <div ref={barRef} class={`topbar${edit ? ' two' : ''}${search.leaving.value ? ' leaving' : ''}${opt ? ' open' : ''}`} id="topbar" hidden={nav.picking.value}>
+    <div ref={barRef} class={`topbar${edit ? ' two' : ''}${search.leaving.value ? ' leaving' : ''}${search.settling.value ? ' settle' : ''}${opt ? ' open' : ''}`} id="topbar" hidden={nav.picking.value}>
       <div class="pair" id="pair" hidden={sum}>
         <button type="button" class="iconbtn small" id="barBack" hidden={!edit} aria-label={t('back')} onClick={search.back}><Icon name="back" class="chev" /></button>
         <div class="trow origin" id="fromRow" hidden={!edit}>

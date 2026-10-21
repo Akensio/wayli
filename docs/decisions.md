@@ -748,3 +748,9 @@ so they are not re-litigated.
   differently (the database itself is behind); parsing in the relay (the
   free plan allows 10 ms of CPU per request). Hasadna could add the CORS
   header to their files; then the relay can go.
+- 2026-10-21: From Gadi: entering search mode, the menu button and the logo
+  pop out (the chips' effect) before the pill shortens, and the "to" tag pops
+  in where the menu was; the rest of the sequence moves 0.16 s later (the
+  keyboard too). Leaving, the pill grows back while the rows play out (the
+  rule meant for that never applied: the shortened padding stayed until the
+  play-out ended) and the icons pop back in once it is whole.

@@ -342,20 +342,25 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .topbar:not(.two) .pair, .topbar:not(.two) #sumRow { margin-top: 52px; }
 /* search mode: a slow, soft ease in (rows slide, buttons grow, the pill narrows) and the same way out (.leaving) */
 :root { --ease-out: cubic-bezier(.22,.9,.3,1); --ease-in: cubic-bezier(.6,.05,.8,.4); }
-/* Entering search mode, in order: the pill shortens; the origin row slides in above it; the time chip, the bike chip and
-   Go grow in one after another; then the recents list unfolds (the keyboard is held until the pill has shortened).
-   Leaving plays it all back in reverse (.leaving). */
-.topbar .trow { transition: padding .45s var(--ease-out); }
-.topbar.two #fromRow { animation: rowIn .45s .08s var(--ease-out) both; }
+/* Entering search mode, in order: the menu button and the logo pop out; the pill shortens and the "to" tag pops in
+   where the menu was; the origin row slides in above it; the time chip, the bike chip and Go grow in one after another;
+   then the recents list unfolds (the keyboard is held until the pill has shortened). Leaving plays it all back in
+   reverse (.leaving), and once the pill is whole again the two icons pop back in (.settle). */
+.topbar .trow { transition: padding .45s .16s var(--ease-out); }
+.topbar.two .applogo, .topbar.two .userbtn { animation: popOut .18s var(--ease-in) forwards; pointer-events: none; }
+.topbar.settle .applogo, .topbar.settle .userbtn { animation: popIn .32s .06s var(--ease-out) both; }   /* the pill whole again: the icons */
+.topbar.two #toRow .tag { animation: popIn .3s .16s var(--ease-out) both; }
+.topbar.two #fromRow { animation: rowIn .45s .24s var(--ease-out) both; }
 .topbar.two #optRow { animation: none; }
-.topbar.two #optTime { animation: popIn .36s .24s var(--ease-out) both; }
-.topbar.two #optBike { animation: popIn .36s .32s var(--ease-out) both; }
-.topbar.two #goBtn { animation: popIn .36s .4s var(--ease-out) both; }
-.pair #barBack:not([hidden]) { animation: popIn .4s .2s var(--ease-out) both; }
-.pair #swap:not([hidden]) { animation: popIn .4s .3s var(--ease-out) both; }
+.topbar.two #optTime { animation: popIn .36s .4s var(--ease-out) both; }
+.topbar.two #optBike { animation: popIn .36s .48s var(--ease-out) both; }
+.topbar.two #goBtn { animation: popIn .36s .56s var(--ease-out) both; }
+.pair #barBack:not([hidden]) { animation: popIn .4s .36s var(--ease-out) both; }
+.pair #swap:not([hidden]) { animation: popIn .4s .46s var(--ease-out) both; }
 #sumRow:not([hidden]) { animation: rowIn .4s .05s var(--ease-out) both; }
-.topbar .dropdown:not([hidden]) { animation: unfold .42s .08s var(--ease-out) both; }
+.topbar .dropdown:not([hidden]) { animation: unfold .42s .24s var(--ease-out) both; }
 .topbar.leaving .trow { transition: padding .4s .12s var(--ease-in); }
+.topbar.leaving #toRow .tag { animation: popOut .2s .2s var(--ease-in) both; }
 .topbar.leaving #fromRow { animation: rowOut .3s .16s var(--ease-in) both; }
 .topbar.leaving #optTime { animation: popOut .22s .1s var(--ease-in) both; }
 .topbar.leaving #optBike { animation: popOut .22s .05s var(--ease-in) both; }
@@ -377,7 +382,7 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .applogo .logo { width: 100%; height: 100%; display: block; }
 .logo .bg { fill: var(--accent); }
 .logo .mark { fill: var(--accent-ink); stroke: var(--accent-ink); }
-.topbar.two .applogo, .field:has(.fieldx:not([hidden])) .applogo { display: none; }
+.field:has(.fieldx:not([hidden])) .applogo { display: none; }
 /* the pills keep their width in search mode (nothing re-lays out, so the motion stays smooth): the back arrow sits
    inside the origin pill at its start, the swap floats over the pills' end between the two rows */
 .pair #barBack { position: absolute; inset-inline-start: 5px; top: 5px; width: 36px; height: 36px; z-index: 2; box-shadow: none; background: color-mix(in srgb, var(--ink) 7%, var(--surface)); }
@@ -385,10 +390,10 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .topbar.two #fromRow .tag { inset-inline-start: 48px; }
 .topbar.two #fromRow input[type=text] { padding-inline-start: 106px; }
 .topbar.two .pair .trow { padding-inline-end: 48px; }   /* the pills shorten for the swap at their end */
+.topbar.two.leaving .pair .trow { padding-inline-end: 0; }   /* and grow back while the rows play out */
 .pair #swap { position: absolute; inset-inline-end: 0; top: 50%; translate: 0 -50%; z-index: 3; }
 .pair #barBack[hidden], .pair #swap[hidden] { display: none; }
 #pair, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
-.topbar.two .userbtn { display: none; }
 .iconbtn.small { width: 40px; height: 40px; font-size: 18px; }
 .topbar .field { flex: 1; margin: 0; }
 .topbar .field input[type=text] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 46px; font-size: 16px; border-radius: 23px; padding-inline-end: 44px; }
