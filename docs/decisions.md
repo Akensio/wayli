@@ -812,3 +812,9 @@ so they are not re-litigated.
   tap; turning location off is the phone's permission). And a hidden settings
   row no longer draws as an empty row (the rows' own display overrode the
   hidden attribute: the install hint, empty, under "The app").
+- 2026-10-22: From Gadi: the drawer also swipes shut from the dimmed map
+  beside it, and the settings page swipes shut the way it came in. "Add to
+  home screen" shows whenever the app runs in the browser, not only when
+  Chrome offers its prompt (it held the prompt back on his phone, and the
+  row had only shown before through the empty-row bug); without the prompt
+  a tap explains the browser menu's way.

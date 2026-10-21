@@ -34,14 +34,17 @@ export function layoutTop(): void {
 }
 window.addEventListener('resize', layoutTop);
 
-// ---- install: Chrome's own prompt; iPhones and iPads never fire it, so the row shows there too and explains Safari's way
+// ---- install: Chrome's own prompt when it offers one; otherwise (iPhones and iPads never fire it, and Chrome holds
+// it back at times, e.g. after a dismissal) the row still shows outside the installed app and explains the browser's way
 let installPrompt: any = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; app.installable.value = true; });
+window.addEventListener('appinstalled', () => { installPrompt = null; app.installable.value = false; app.installHint.value = ''; });
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = (navigator as any).standalone === true || matchMedia('(display-mode: standalone)').matches;
-if (isIOS && !standalone) app.installable.value = true;
-/** The install hint for the browser in hand: Safari's share button sits at the bottom, Chrome's by the address bar. */
-function iosInstallHint(): string {
+if (!standalone) app.installable.value = true;
+/** The install hint for the browser in hand: Safari's share button sits at the bottom, Chrome's by the address bar; elsewhere the browser's menu. */
+function installHint(): string {
+  if (!isIOS) return t('menuInstall');
   const ua = navigator.userAgent, chrome = /CriOS/.test(ua), firefox = /FxiOS/.test(ua), edge = /EdgiOS/.test(ua);
   return t('iosInstall', { browser: chrome ? 'Chrome' : firefox ? 'Firefox' : edge ? 'Edge' : 'Safari', where: chrome ? t('shareAddr') : firefox || edge ? t('shareMenu') : t('shareBottom') });
 }
@@ -70,8 +73,8 @@ export async function registerServiceWorker(): Promise<void> {
 // ---- the drawer and the settings' actions
 Object.assign(app.hooks, {
   install: async () => {
-    if (!installPrompt) { app.installHint.value = app.installHint.value ? '' : iosInstallHint(); return; }
-    installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null; app.installable.value = false;
+    if (!installPrompt) { app.installHint.value = app.installHint.value ? '' : installHint(); return; }
+    installPrompt.prompt(); await installPrompt.userChoice.catch(() => {}); installPrompt = null;
   },
   go: (name: string) => { nav.closeAll(); nav.showScreen(name); if (name === 'plan') sheet.set('half'); },
   lineSearch: () => { nav.closeAll(); nav.showScreen('plan'); search.lineMode(); },   // the rows, even over a plan's summary

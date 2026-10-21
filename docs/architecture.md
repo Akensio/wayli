@@ -275,11 +275,16 @@ half their height. The menu is a drawer sliding in
 from the start edge over a dimmed map, a history entry like the panels,
 headed by the logo with "no account, everything stays on the phone", then
 the screens and the build time. It follows a finger swiping it back to its
-edge and closes past a third of its width or on a flick. Settings is a page
+edge, on the drawer or on the dimmed map beside it, and closes past a third
+of its width or on a flick (`ui/swipeClose`, `touch-action: pan-y` on the
+layers and on their scrolling bodies, since a scroller starts touch-action
+afresh). Settings is a page
 of its own over everything, the drawer included (`SettingsPage`, a layer
 beside the panels like the drawer, so the sheet and the map stay as they
 were): it slides in from the side the reading goes towards and out again,
-and back (the arrow or the phone's) returns to the drawer. Leaving search
+and back (the arrow, the phone's, or a swipe the way it came) returns to the
+drawer. The install row shows outside the installed app: Chrome's prompt
+when it offers one, otherwise the steps for the browser in hand. Leaving search
 mode starts the rows' play-out in the same moment the bar closes (an effect
 in `state/search.ts`), and a suggestion list starts folding in the same
 moment it closes (a signal effect in `SearchField`); set after a render,
