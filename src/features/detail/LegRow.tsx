@@ -3,6 +3,7 @@
 import { useState } from 'preact/hooks';
 import { t } from '../../i18n';
 import { fmt } from '../../time';
+import { FromTo } from '../../ui/FromTo';
 import { routeColor, chipColors } from '../../journey/colors';
 import { lineText, stopsText } from '../../journey/format';
 import { agencyName } from '../../journey/agencies';
@@ -42,7 +43,7 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick }: Props) {
         {ride ? <>
           <span class={`chip${onChip && l.route != null && l.route !== '' ? ' btn' : ''} t${l.routeType}`} style={chipColors(l.routeType, l.agency)} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined}>{lineText(l.line)}</span>
           {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? badge.text : ''}</span><small>{l.from!.name} → {l.to!.name} · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi></small></>
-            : <> {l.from!.name} → {l.to!.name} · {l.stops as number} {t('kindStop')}</>}
+            : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {l.stops as number} {t('kindStop')}</>}
           {mode === 'detail' && stopsAlong.length > 2 && <>
             <button type="button" class="toggle" onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</button>
             <div class="stoplist" hidden={!stopsOpen}>{stopsAlong.map((s) => <div><span>{fmt(s.arr)}</span><span>{s.name}</span></div>)}</div>

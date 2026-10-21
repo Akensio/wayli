@@ -1,5 +1,5 @@
 /* Wayli app. Layout (v0.3): the map under everything, a floating search bar, a bottom sheet. Hebrew first, RTL. */
-:root {
+:root { --spring: cubic-bezier(.34, 1.7, .5, 1);
   --bg: #f4f5f2; --surface: #ffffff; --ink: #1b1f24; --ink-2: #5b6470; --line: #dde0da;
   --accent: #12998b; --accent-ink: #ffffff; --accent-text: #0d7f72; --ok: #1f7a4d; --warn: #9a5b00; --chip: #eceee9;
   --train: #1f5fa8; --bus: #2a7d4f; --lrt: #8a3fb0; --bike: #1f5fa8;
@@ -152,7 +152,8 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .linkbtn { background: none; border: 0; color: var(--accent-text); font-weight: 600; cursor: pointer; padding: 4px 6px; font-size: 13px; }
 .recent { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
 .recent .ic { color: var(--ink-2); } .recent .txt { flex: 1; min-width: 0; } .recent .txt small { display: block; color: var(--ink-2); font-size: 12px; }
-.recent .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fromto .arrow { color: var(--ink-2); margin: 0 .35em; }
 .dropdown button.quick { display: flex; align-items: center; gap: 8px; }
 .dropdown button.quick .ic { width: 20px; text-align: center; color: var(--ink-2); flex: none; }
 .dropdown button.quick .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -371,12 +372,12 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 @keyframes unfold { from { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-8px); } to { clip-path: inset(0 round 18px); } }
 @keyframes fold { from { clip-path: inset(0 round 18px); } to { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .topbar *, .topbar .trow, #sumRow, .pair #barBack, .pair #swap { animation: none !important; transition: none !important; } }
-/* the app's logo at the start of the pill (a tap starts a search), the user at its end (the menu) */
-.applogo { position: absolute; inset-inline-start: 7px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
+/* the menu at the start of the pill (the side the drawer comes from), the app's logo at its end (a tap starts a search) */
+.applogo { position: absolute; inset-inline-end: 7px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
 .applogo .logo { width: 100%; height: 100%; display: block; }
 .logo .bg { fill: var(--accent); }
 .logo .mark { fill: var(--accent-ink); stroke: var(--accent-ink); }
-.topbar.two .applogo, .field:has(.fieldx:not([hidden])) .userbtn { display: none; }
+.topbar.two .applogo, .field:has(.fieldx:not([hidden])) .applogo { display: none; }
 /* the pills keep their width in search mode (nothing re-lays out, so the motion stays smooth): the back arrow sits
    inside the origin pill at its start, the swap floats over the pills' end between the two rows */
 .pair #barBack { position: absolute; inset-inline-start: 5px; top: 5px; width: 36px; height: 36px; z-index: 2; box-shadow: none; background: color-mix(in srgb, var(--ink) 7%, var(--surface)); }
@@ -384,7 +385,7 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .topbar.two #fromRow .tag { inset-inline-start: 48px; }
 .topbar.two #fromRow input[type=text] { padding-inline-start: 106px; }
 .topbar.two .pair .trow { padding-inline-end: 48px; }   /* the pills shorten for the swap at their end */
-.pair #swap { position: absolute; inset-inline-end: 0; top: 50%; transform: translateY(-50%); z-index: 3; }
+.pair #swap { position: absolute; inset-inline-end: 0; top: 50%; translate: 0 -50%; z-index: 3; }
 .pair #barBack[hidden], .pair #swap[hidden] { display: none; }
 #pair, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
 .topbar.two .userbtn { display: none; }
@@ -401,22 +402,30 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .sumtxt .l2 { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
 .sumtxt .l2 .i { width: 14px; height: 14px; } .sumtxt .sep { color: var(--line); padding: 0 1px; }
 .sumbox .userbtn { display: none; }   /* the summary carries no user button: its clear x at the end stays free */
-.sumbox .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
+.sumbox .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
 .sumbox .tag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-inline-end: 6px; vertical-align: 1px; }
 .sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
 /* the suggestions list hangs below all the boxes, never over the other field */
 .topbar .dropdown { position: fixed; top: var(--top-h); inset-inline: 10px; margin-top: 0; border-radius: 18px; max-height: calc(100vh - var(--top-h) - 16px); max-height: calc(100dvh - var(--top-h) - 16px); }
-.userbtn { position: absolute; inset-inline-end: 5px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 0; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; z-index: 1; padding: 0; }
-.userbtn .i { width: 22px; height: 22px; }
-.userbtn:active { background: var(--chip); }
+/* the menu button: a turquoise disc with three lines. Pressed, the disc gives a little and the lines draw together;
+   let go, both spring back past rest and settle while the drawer slides in */
+.userbtn { position: absolute; inset-inline-start: 5px; top: 50%; translate: 0 -50%; width: 36px; height: 36px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); display: grid; place-items: center; cursor: pointer; z-index: 1; padding: 0;
+  transition: scale .42s var(--spring), background-color .12s ease; }
+.userbtn .i { width: 21px; height: 21px; overflow: visible; }
+.userbtn .i path { transform-box: fill-box; transform-origin: center; transition: transform .42s var(--spring); }
+.field .userbtn:active { transform: none; scale: .88; background: color-mix(in srgb, var(--accent) 30%, var(--surface)); transition: scale .12s ease-out, background-color .12s ease; }
+.field .userbtn:active .i path { transition: transform .12s ease-out; }
+.field .userbtn:active .l1 { transform: translateY(3px); }
+.field .userbtn:active .l2 { transform: scaleX(.55); }
+.field .userbtn:active .l3 { transform: translateY(-3px); }
 .clearbtn .i { width: 16px; height: 16px; vertical-align: middle; }
 .iconbtn .i { width: 22px; height: 22px; vertical-align: middle; }
 .chipbtn .i { vertical-align: -.2em; }
 .field .tag { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 6px; pointer-events: none; width: 48px; text-align: center; white-space: nowrap; overflow: hidden; }
-.field .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
+.field .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
 .field .clearbtn[hidden] { display: none; }
 /* the small x inside a search box: clears the text while typing */
-.field .fieldx { position: absolute; inset-inline-end: 9px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--chip); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; padding: 0; z-index: 1; }
+.field .fieldx { position: absolute; inset-inline-end: 9px; top: 50%; translate: 0 -50%; width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--chip); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; padding: 0; z-index: 1; }
 .field .fieldx[hidden] { display: none; }
 .field .fieldx .i { width: 14px; height: 14px; }
 .field .fieldx:active { background: color-mix(in srgb, var(--accent) 20%, var(--chip)); }

@@ -719,3 +719,16 @@ so they are not re-litigated.
   place chooser and map picker live in the sheet and would open under a
   layer. Also: with only "my location" set, closing a panel leaves the sheet
   folded instead of half open and empty.
+- 2026-10-21: From Gadi: the menu button takes the old user button's look
+  (a turquoise disc), now with three lines, and moves to the start of the
+  pill with the logo at its end; its press is the disc giving and the lines
+  drawing together, springing back on release, instead of the "bump down"
+  (which was the press shrink replacing the centring transform; every
+  centred button in the bar had it).
+- 2026-10-21: From Gadi's screenshot: "from → to" lines (recent searches,
+  saved trips, a ride's summary) isolate each name (`ui/FromTo`, `<bdi>`), so
+  a Hebrew name in English or an English one in Hebrew no longer reorders
+  the line, and the arrow points the way the interface reads (it pointed
+  backwards in Hebrew on the ride summary); a recent search too long for its
+  card ends in an ellipsis instead of running past it. Names stay in the
+  language they were picked in.

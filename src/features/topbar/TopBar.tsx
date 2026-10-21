@@ -1,4 +1,4 @@
-// The top bar is the planner. Three looks: the prompt pill at rest (the app's logo at its start, the menu at
+// The top bar is the planner. Three looks: the prompt pill at rest (the menu at its start, the app's logo at
 // its end), the two rows while editing (origin above destination, a back arrow, the swap between them, the
 // option chips and Go under them), and the summary box once a plan is shown (a tap reopens the rows). Entering
 // search mode plays a sequence (the styles), leaving plays it back; the keyboard is held until the pill has
@@ -11,6 +11,11 @@ import * as search from '../../state/search';
 import * as nav from '../../state/nav';
 import { SearchField } from './SearchField';
 import { WhenPopover, BikePopover, TimeChipInner, BikeChipInner } from './Popovers';
+
+/** The menu's three lines, drawn inline (not from the sprite) so each can move on its own when pressed. */
+const MenuGlyph = () => (
+  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path class="l1" d="M4 7h16" /><path class="l2" d="M4 12h16" /><path class="l3" d="M4 17h16" /></svg>
+);
 
 export function TopBar() {
   void lang.value;
@@ -64,7 +69,7 @@ export function TopBar() {
           <SearchField id="toQ" dropId="toDrop" text={search.toText} place={search.to} onFocus={search.openBar} withUser placeholder={t(search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
             onLine={(r) => { search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); }}>
-            <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><Icon name="menu" /></button>
+            <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><MenuGlyph /></button>
             <span class="tag">{t('tagTo')}</span>
             <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><Logo /></button>
           </SearchField>

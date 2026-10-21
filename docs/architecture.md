@@ -263,7 +263,12 @@ edits the stack first and lets history catch up, so programmatic closes and
 the back button never disagree; an entry pushed while that catch-up is
 pending waits for it (the browser measures a step back from where it was
 asked, so a push made meanwhile would be swallowed). The menu opens from a
-three-line menu button at the end of the search pill: a drawer sliding in
+three-line menu button on a turquoise disc at the start of the search pill
+(the app's logo sits at its end; a tap on it starts a search). Pressed, the
+disc gives a little and the lines draw together; let go, both spring back
+past rest. The pill's buttons are centred with `translate`, not
+`transform`, so the press shrink every button has no longer drops them by
+half their height. The menu is a drawer sliding in
 from the start edge over a dimmed map, a history entry like the panels,
 headed by the logo with "no account, everything stays on the phone", then
 the screens and the build time. It follows a finger swiping it back to its
