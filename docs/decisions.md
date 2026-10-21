@@ -732,3 +732,8 @@ so they are not re-litigated.
   backwards in Hebrew on the ride summary); a recent search too long for its
   card ends in an ellipsis instead of running past it. Names stay in the
   language they were picked in.
+- 2026-10-21: From Gadi's screenshot: a trip started from its detail showed
+  no route on the map. The panel swap redrew the map before the follow
+  drawing existed, and the drawing's own redraw then saw the same panel and
+  skipped; now it forces the draw. Also "5 stop" is "5 stops" (and the
+  detail's ride line isolates its names like the rest).

@@ -73,7 +73,9 @@ export function openFollow(a: ActiveTrip): void {
     map.fitMap(map.drawJourney(m, a.journey, map.markers.journey), 16);
     stepFollow(); followLive();
   };
-  nav.showOverlay('follow');
+  // started from the detail, the panel is already 'follow' (swapped in before its drawing existed), and a plain
+  // redraw would see the same panel and skip it: draw it now
+  if (nav.isOpen('follow')) map.redrawMap(true); else nav.showOverlay('follow');
   follow.resumable.value = null;
   stepFollow();
 }

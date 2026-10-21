@@ -42,8 +42,8 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick }: Props) {
       <span class="what">
         {ride ? <>
           <span class={`chip${onChip && l.route != null && l.route !== '' ? ' btn' : ''} t${l.routeType}`} style={chipColors(l.routeType, l.agency)} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined}>{lineText(l.line)}</span>
-          {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? badge.text : ''}</span><small>{l.from!.name} → {l.to!.name} · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi></small></>
-            : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {l.stops as number} {t('kindStop')}</>}
+          {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? badge.text : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi></small></>
+            : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)}</>}
           {mode === 'detail' && stopsAlong.length > 2 && <>
             <button type="button" class="toggle" onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</button>
             <div class="stoplist" hidden={!stopsOpen}>{stopsAlong.map((s) => <div><span>{fmt(s.arr)}</span><span>{s.name}</span></div>)}</div>
