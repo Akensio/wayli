@@ -5,6 +5,10 @@
 // A close steps history back; the browser performs that later, and a pushState made meanwhile would be
 // swallowed by it (the traversal is measured from where the call was made). So while a step back is
 // pending, new entries wait in `queued` and are pushed once its popstate arrives.
+// On Android, Chrome plays its own "previous page" slide for every history step, which made closing a panel look
+// like one page leaving another, on an app that is one map with things on top. There, where the browser has
+// CloseWatcher, each entry gets one instead of a history entry: back closes the panel with the app's own
+// animation and the browser draws nothing. Everywhere else, history as above.
 import { signal, computed } from '@preact/signals';
 import { t } from '../i18n';
 import * as sheet from './sheet';
@@ -56,8 +60,26 @@ export function renderPanels(): void {
   hooks.changed();
 }
 
+const CW = (window as any).CloseWatcher;
+const WATCH = typeof CW === 'function' && /Android/i.test(navigator.userAgent);
+const watchers = new Map<Entry, any>();
+/** An entry's CloseWatcher: Android's back closes it, and whatever was opened over it. */
+function watch(entry: Entry): void {
+  try { const w = new CW(); w.onclose = () => { watchers.delete(entry); backTo(entry); }; watchers.set(entry, w); } catch { /* back leaves the app then */ }
+}
+function unwatch(entry: Entry): void { const w = watchers.get(entry); watchers.delete(entry); if (w) try { w.destroy(); } catch { /* already gone */ } }
+/** Close an entry and every entry above it, top first. */
+function backTo(entry: Entry): void {
+  const i = stack.value.indexOf(entry);
+  if (i < 0) return;
+  const above = stack.value.slice(i).reverse();
+  stack.value = stack.value.slice(0, i);
+  for (const e of above) { unwatch(e); undo(e); }
+}
+
 export function push(entry: Entry): void {
   stack.value = [...stack.value, entry];
+  if (WATCH) { watch(entry); return; }
   if (settling) { queued.push(entry); return; }
   try { history.pushState({ wayli: stack.value.length }, ''); } catch { /* history unavailable */ }
 }
@@ -84,13 +106,16 @@ export function close(id: string): void {
   const entry = stack.value[i];
   stack.value = stack.value.filter((_, k) => k !== i);
   if (entry.kind === 'plan') hooks.clearPlan(); else hideOverlay(id);
-  stepBack(1);
+  if (WATCH) unwatch(entry); else stepBack(1);
 }
 /** Replace one open panel by another in place (the trip detail becomes the trip being followed). */
 export function swap(oldId: string, newId: string): boolean {
   const i = stack.value.findIndex((e) => e.kind === 'overlay' && e.id === oldId);
   if (i < 0) return false;
-  stack.value = stack.value.map((e, k) => (k === i ? { kind: 'overlay', id: newId } : e));
+  const old = stack.value[i], next: Entry = { kind: 'overlay', id: newId };
+  stack.value = stack.value.map((e, k) => (k === i ? next : e));
+  const w = watchers.get(old);
+  if (w) { watchers.delete(old); watchers.set(next, w); w.onclose = () => { watchers.delete(next); backTo(next); }; }
   hooks.closed(oldId);
   renderPanels();
   return true;
@@ -104,7 +129,7 @@ export function closeAll(): void {
   if (base && base.kind === 'tab') screen.value = base.from;
   for (const e of old) if (e.kind === 'overlay') hooks.closed(e.id);
   renderPanels();
-  stepBack(old.length);
+  if (WATCH) for (const e of old) unwatch(e); else stepBack(old.length);
 }
 export function showOverlay(id: string): void {
   if (isOpen(id)) { hooks.changed(); return; }
@@ -119,9 +144,14 @@ export function showScreen(name: string, record = true): void {
   hooks.screenShown(name);
 }
 /** The page's back button: the chooser cancels, a panel closes, else the plan screen. */
-export function back(): void { if (topPanel() === 'chooser') chooser.finish(null); else if (stack.value.length) history.back(); else showScreen('plan'); }
+export function back(): void {
+  if (topPanel() === 'chooser') chooser.finish(null);
+  else if (stack.value.length) { if (WATCH) backTo(stack.value[stack.value.length - 1]); else history.back(); }
+  else showScreen('plan');
+}
 
 window.addEventListener('popstate', (e) => {
+  if (WATCH) return;   // no history entries of ours there
   if (settling) { settled(); return; }   // our own step back: the stack is already right
   const depth = e.state && e.state.wayli ? e.state.wayli : 0;
   while (stack.value.length > depth) { const top = stack.value[stack.value.length - 1]; stack.value = stack.value.slice(0, -1); undo(top); }

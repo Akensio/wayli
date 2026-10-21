@@ -294,6 +294,16 @@ address-book place by its exact position and stored name, a picked map
 point by the same nearest-address lookup that named it. "My location" is
 always the interface's own words.
 
+Back on Android: Chrome slides in a picture of the "previous page" for
+every history step, which does not fit one map with things on top. Where
+the browser has CloseWatcher (Chrome on Android), `state/nav.ts` gives each
+panel one instead of a history entry, so back closes it with the app's own
+animation; elsewhere every panel is a history entry. The sheet's box is the
+whole screen and only its slide (`--sheet-h`) moves; the bar growing or
+shrinking never resizes it. After a destination is picked the boxes stay
+open (a change to the time or bike plans again); a tap on the map, a result
+opened, a drag of the sheet, X or back folds them.
+
 Icons are one hand-drawn stroke set on a 24-unit grid (`ICONS` in
 `ui/icons.ts`): injected once as an inline SVG sprite and used as `<use>`
 references in markup and templates, and drawn with the same paths through

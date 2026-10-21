@@ -102,7 +102,6 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .error-box { color: var(--warn); font-size: 14px; margin: 6px 0; }
 .maplibregl-map { font: inherit; }
 .maplibregl-ctrl-attrib { font-size: 10px; }
-.maplibregl-ctrl-group button { width: 34px; height: 34px; }
 .wayli-pin { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 
 /* ---- v0.2: offline tag, resume bar, grouped journeys, settings, follow mode, live badges */
@@ -330,7 +329,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating, body:not(.booted) .livenote, body:not(.booted) .maplibregl-ctrl-bottom-right { opacity: 0; }
 #topbar, .floating, .livenote { transition: opacity .3s ease; }
 #fromRow, #optRow, #sumRow, .pair #barBack, .pair #swap, .topbar .dropdown { will-change: transform, opacity; }
-:root { --sheet-h: 118px; --sheet-full: 100vh; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); --sab: env(safe-area-inset-bottom, 0px); }
+:root { --sheet-h: 118px; --sheet-box: 100vh; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); --sab: env(safe-area-inset-bottom, 0px); }
 .topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); inset-inline: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
 .topbar .trow { display: flex; gap: 8px; align-items: center; }
 .topbar .trow[hidden] { display: none; }
@@ -488,9 +487,18 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { transition: bottom .25s, opacity .2s; }
 .livenote { max-width: calc(100vw - 80px); }
 .maplibregl-ctrl-group.wayli-hidden { display: none; }
-.maplibregl-ctrl-group button.maplibregl-ctrl-compass { width: 46px; height: 46px; perspective: 70px; border-radius: 50%; }
-.maplibregl-ctrl-group:has(.maplibregl-ctrl-compass) { border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
-.maplibregl-ctrl-compass .maplibregl-ctrl-icon { background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 44 44%22%3E%3Cdefs%3E%3ClinearGradient id=%22n%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ff7b7b%22/%3E%3Cstop offset=%22.5%22 stop-color=%22%23e03a3a%22/%3E%3Cstop offset=%221%22 stop-color=%22%239e1818%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22s%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23ffffff%22/%3E%3Cstop offset=%22.5%22 stop-color=%22%23dfe4ea%22/%3E%3Cstop offset=%221%22 stop-color=%22%239aa3ad%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22d%22 cx=%22.5%22 cy=%22.5%22 r=%22.5%22%3E%3Cstop offset=%22.7%22 stop-color=%22%231b1f24%22 stop-opacity=%22.06%22/%3E%3Cstop offset=%221%22 stop-color=%22%231b1f24%22 stop-opacity=%22.18%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx=%2222%22 cy=%2222%22 r=%2221%22 fill=%22url(%23d)%22/%3E%3Ccircle cx=%2222%22 cy=%2222%22 r=%2220.2%22 fill=%22none%22 stroke=%22%235b6470%22 stroke-opacity=%22.45%22 stroke-width=%221%22/%3E%3Cpath d=%22M22 3.5 29 22 15 22Z%22 fill=%22url(%23n)%22/%3E%3Cpath d=%22M22 40.5 29 22 15 22Z%22 fill=%22url(%23s)%22 stroke=%22%238d96a0%22 stroke-width=%22.5%22/%3E%3Ccircle cx=%2222%22 cy=%2222%22 r=%222.8%22 fill=%22%231b1f24%22/%3E%3Ccircle cx=%2221.2%22 cy=%2221.2%22 r=%22.9%22 fill=%22%23ffffff%22 fill-opacity=%22.7%22/%3E%3C/svg%3E") !important; background-size: 38px 38px; background-position: center; transform-style: preserve-3d; filter: drop-shadow(0 3px 3px rgba(0,0,0,.35)); transition: transform .15s; }
+/* the map's own buttons in the app's look: round surface buttons with the bar's shadow, light and dark. The locate icon
+   is the app's own, turquoise (on a turquoise disc while the map follows the position, amber when the position fails);
+   the compass needle is turquoise to the north and grey to the south */
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { border-radius: 50%; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); overflow: hidden; margin: 0 12px 10px 0; }
+.maplibregl-ctrl-group button.maplibregl-ctrl-geolocate, .maplibregl-ctrl-group button.maplibregl-ctrl-compass { width: 46px; height: 46px; border-radius: 50%; background: var(--surface); transition: background-color .2s ease; }
+.maplibregl-ctrl-group button.maplibregl-ctrl-compass { perspective: 70px; }
+.maplibregl-ctrl button:not(:disabled):hover { background-color: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon { background-image: none !important; background-color: var(--accent-text); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M12 17.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM12 13.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z'/%3E%3C/svg%3E") center / 23px 23px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M12 17.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM12 13.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z'/%3E%3C/svg%3E") center / 23px 23px no-repeat; }
+.maplibregl-ctrl-group button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active { background: var(--accent); }
+.maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon { background-color: var(--accent-ink); }
+.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon, .maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon { background-color: var(--warn); }
+.maplibregl-ctrl-compass .maplibregl-ctrl-icon { background-image: linear-gradient(to bottom, var(--accent) 50%, var(--ink-2) 50%) !important; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; }
 .wayli-pick { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg) translate(6px, -6px); background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 .crosshair-unused { position: fixed; left: 50%; top: 50%; width: 28px; height: 28px; margin: -28px 0 0 -14px; pointer-events: none; z-index: 25;
   background: radial-gradient(circle at 50% 35%, var(--accent) 0 7px, transparent 8px); }
@@ -501,7 +509,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .pickname { font-weight: 600; margin: 4px 0 8px; min-height: 22px; }
 .pickbar .row .primary { flex: 1; margin: 0; }
 /* always its full height, slid down by a transform so that only --sheet-h shows; the slide is composited */
-.sheet { position: fixed; inset-inline: 0; bottom: 0; height: var(--sheet-full); transform: translateY(calc(var(--sheet-full) - var(--sheet-h))); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); z-index: 20; display: flex; flex-direction: column; transition: transform .28s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+.sheet { position: fixed; inset-inline: 0; bottom: 0; height: var(--sheet-box); transform: translateY(calc(var(--sheet-box) - var(--sheet-h))); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); z-index: 20; display: flex; flex-direction: column; transition: transform .28s cubic-bezier(.2,.8,.2,1); will-change: transform; }
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
 .handle { flex: none; height: 36px; display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; }

@@ -795,3 +795,15 @@ so they are not re-litigated.
   moving to Cloudflare, the relay attached as a custom domain). The app tries
   relay.waynet.app, then workers.dev, then Hasadna's database, and accepts
   an address only when it answers with a snapshot (x-snapshot header).
+- 2026-10-21: From Gadi, four fixes. (1) Android's back no longer plays
+  Chrome's "previous page" slide: where the browser has CloseWatcher (Chrome
+  on Android), each panel gets one instead of a history entry; elsewhere,
+  history as before. (2) The sheet no longer jitters entering and leaving
+  search mode: its box is now the whole screen and only its slide moves (it
+  was as tall as the space under the bar, so the bar growing shrank it at
+  once while the slide eased after). (3) The locate and compass buttons take
+  the app's look: round surface buttons, the app's locate icon in turquoise
+  (a turquoise disc while following), a turquoise and grey needle. (4) After
+  picking a destination the boxes stay open (the time or bike can change and
+  plan again); they fold on a map tap, a result opened, a sheet drag, X or
+  back.

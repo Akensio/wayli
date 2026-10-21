@@ -5,7 +5,6 @@ import { signal, computed } from '@preact/signals';
 import * as live from '../live.js';
 import { settings } from '../store.js';
 import { lang } from '../i18n';
-import * as search from './search';
 import type { Journey, PlanResult, Query } from '../journey/types';
 
 export type Status = 'idle' | 'planning' | 'locating';
@@ -81,8 +80,9 @@ function resetAlts(): void {
   altSel.value = cards.length ? cards[0].idx : -1;
 }
 export function setResults(r: PlanResult, q: Query, at: number | null = null): void {
+  // the boxes stay open: picking a destination plans at once, and the time or the bike may still change (a change
+  // plans again). They fold when the rider moves on: a tap on the map, a result opened, the sheet dragged, X or back.
   result.value = r; query.value = q; resultsAt.value = at; status.value = 'idle'; error.value = '';
-  search.barOpen.value = false;
   resetAlts();
   hooks.afterResults();
 }

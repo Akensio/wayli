@@ -28,7 +28,9 @@ import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
 export function layoutTop(): void {
   const bar = document.getElementById('topbar'); if (!bar) return;
   document.documentElement.style.setProperty('--top-h', `${Math.round(bar.getBoundingClientRect().bottom + 6)}px`);
-  document.documentElement.style.setProperty('--sheet-full', `${sheet.fullPx()}px`);   // the sheet is always this tall; its slide uses it
+  document.documentElement.style.setProperty('--sheet-box', `${sheet.boxPx()}px`);   // the sheet's box: the whole screen
+  // fully open, the sheet reaches up to the bar: it follows the bar's height (an eased slide, never a jump)
+  if (sheet.state.value === 'full') document.documentElement.style.setProperty('--sheet-h', `${sheet.fullPx()}px`);
 }
 window.addEventListener('resize', layoutTop);
 

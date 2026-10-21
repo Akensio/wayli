@@ -2,6 +2,7 @@
 // from the handle and the top 96 px always. A short pull (40 px) steps one size in its direction; a long one
 // lands where it is let go. A tap on the handle steps through the sizes. A tap elsewhere stays a tap.
 import * as sheet from '../../state/sheet';
+import * as search from '../../state/search';
 import type { SheetState } from '../../state/sheet';
 import { pullRefresh } from './pullRefresh';
 
@@ -47,6 +48,7 @@ export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: 
     if (!moved) {
       if (Math.abs(dy) < 4 && Math.abs(dx) < 4) return;
       moved = true; el.classList.add('dragging'); try { el.setPointerCapture(e.pointerId); } catch { /* already released */ }
+      search.foldBar();   // dragging the results: the boxes fold away
     }
     track(e.clientY);
     sheet.drag(clampH(startH + dy));
@@ -79,7 +81,7 @@ export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: 
       if (!pMode) {
         if (Math.abs(up) < 6) return;
         pMode = up > 0 ? 'sheet' : 'refresh';
-        if (pMode === 'sheet') el.classList.add('dragging');
+        if (pMode === 'sheet') { el.classList.add('dragging'); search.foldBar(); }
       }
       if (pMode === 'refresh') pullRefresh.move(-up - 6);
       else { track(y); sheet.drag(clampH(pH + up)); }
@@ -113,6 +115,7 @@ export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: 
         if (Math.abs(down) < 5) return;
         if (!(down > 0 ? tTop : tBottom)) { tOn = false; return; }   // not at the edge in that direction: the list scrolls
         tMoved = true; el.classList.add('dragging');
+        search.foldBar();
       }
       track(e.touches[0].clientY);
       sheet.drag(clampH(tH - down));

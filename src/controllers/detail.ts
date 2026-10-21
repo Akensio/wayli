@@ -1,6 +1,7 @@
 // The journey detail: the journey on the map (one ride alone when focused), and for a journey happening around
 // now, a live badge on each ride and every vehicle of those lines on the map.
 import * as live from '../live.js';
+import * as search from '../state/search';
 import { t } from '../i18n';
 import { call, tripStopsCached } from '../worker/client';
 import * as data from '../state/data';
@@ -17,6 +18,7 @@ let seq = 0;   // the journey shown; a live answer for an older one is dropped
 
 export function openDetail(j: Journey, q: Query, bikeOnly = false): void {
   const my = ++seq;
+  search.foldBar();   // a result opened: the rider has moved on from the boxes
   try { window.wayliDebug = { ...(window.wayliDebug || {}), journey: j }; } catch { /* debugging only */ }
   map.mapOf.detail = async (drawSeq) => {
     const m = await map.mapReady();
