@@ -7,7 +7,6 @@ import * as sheet from '../../state/sheet';
 import { PlanScreen } from '../results/PlanScreen';
 import { Nearby } from '../pages/Nearby';
 import { Saved } from '../pages/Saved';
-import { Settings } from '../pages/Settings';
 import { Detail } from '../detail/Detail';
 import { StopDetail } from '../pages/StopDetail';
 import { TripDetail } from '../pages/TripDetail';
@@ -27,7 +26,6 @@ export function Sheet() {
         <section class="screen" id="screen-plan" hidden={!show('screen-plan')}><PlanScreen /></section>
         <section class="screen" id="screen-nearby" hidden={!show('screen-nearby')}><Nearby /></section>
         <section class="screen" id="screen-saved" hidden={!show('screen-saved')}><Saved /></section>
-        <section class="screen" id="screen-more" hidden={!show('screen-more')}><Settings /></section>
         <div class="detail" id="detail" hidden={!show('detail')}><Detail /></div>
         <div class="detail" id="stopDetail" hidden={!show('stopDetail')}><StopDetail /></div>
         <div class="detail" id="tripDetail" hidden={!show('tripDetail')}><TripDetail /></div>

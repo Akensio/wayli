@@ -28,23 +28,26 @@ export const hooks = {
 };
 
 export const isOpen = (id: string): boolean => stack.value.some((e) => e.kind === 'overlay' && e.id === id);
-/** The panel on top, if any (the drawer sits beside the panels, not over them). */
-export function topPanel(): string | null { const st = stack.value; for (let i = st.length - 1; i >= 0; i--) { const e = st[i]; if (e.kind === 'overlay' && e.id !== 'drawer') return e.id; } return null; }
+/** Layers beside the panels, not over them: the drawer and the settings page leave the sheet and the map as they are. */
+const LAYERS = new Set(['drawer', 'settings']);
+/** The panel on top, if any. */
+export function topPanel(): string | null { const st = stack.value; for (let i = st.length - 1; i >= 0; i--) { const e = st[i]; if (e.kind === 'overlay' && !LAYERS.has(e.id)) return e.id; } return null; }
 /** What the sheet shows: a panel id, or 'screen-<name>'. */
 export const key = computed(() => topPanel() || 'screen-' + screen.value);
 export const picking = computed(() => key.value === 'picker');   // picking a point: the sheet and the bar go, the crosshair bar shows
 // pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
-const PAGE_TITLE: Record<string, string | null> = { 'screen-more': 'settings', 'screen-saved': 'tabSaved', chooser: null };
+const PAGE_TITLE: Record<string, string | null> = { 'screen-saved': 'tabSaved', chooser: null };
 export const page = computed(() => !picking.value && key.value in PAGE_TITLE);
 export const pageTitle = (): string => { const k = key.value; return PAGE_TITLE[k] ? t(PAGE_TITLE[k]!) : chooser.title.value; };
 /** How open the sheet is when a panel or screen comes up. */
 const SHEET_FOR: Record<string, sheet.SheetState | (() => sheet.SheetState)> = {
-  'screen-plan': () => (results.showing.value || search.from.value || search.to.value ? 'half' : 'peek'), 'screen-nearby': 'half', 'screen-saved': 'full', 'screen-more': 'full', chooser: 'full',
+  'screen-plan': () => (results.showing.value || (search.from.value && !search.from.value.auto) || search.to.value ? 'half' : 'peek'),   // "my location" alone is no search 'screen-nearby': 'half', 'screen-saved': 'full', chooser: 'full',
 };
 
-/** Apply what is on top: the drawer, the page look, the sheet's size; the map follows. */
+/** Apply what is on top: the drawer, the settings page, the page look, the sheet's size; the map follows. */
 export function renderPanels(): void {
   app.drawerOpen.value = isOpen('drawer');
+  app.settingsOpen.value = isOpen('settings');
   document.body.classList.toggle('page', page.value);
   if (page.value) { const b = document.getElementById('sheetBody'); if (b) b.scrollTop = 0; }
   if (!picking.value) { const st = SHEET_FOR[key.value]; sheet.set(typeof st === 'function' ? st() : st || 'half'); }

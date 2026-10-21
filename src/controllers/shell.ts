@@ -67,6 +67,8 @@ Object.assign(app.hooks, {
   go: (name: string) => { nav.closeAll(); nav.showScreen(name); if (name === 'plan') sheet.set('half'); },
   lineSearch: () => { nav.closeAll(); nav.showScreen('plan'); search.lineMode(); },   // the rows, even over a plan's summary
   closeDrawer: () => nav.close('drawer'),
+  openSettings: () => nav.showOverlay('settings'),   // over the drawer, which stays open under it
+  closeSettings: () => nav.close('settings'),
   setLang: (l: 'he' | 'en') => setLang(l),
   appearanceChanged: () => { map.applyMapStyle(); map.applyTheme(); },
   requestAlertPermission: () => requestAlertPermission(),

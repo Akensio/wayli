@@ -1,5 +1,5 @@
 // Wayli starts here: the icon sprite, the components (the top bar, what floats over the map, the sheet with
-// every screen and panel, the drawer), the sheet's gestures, then the controllers behind them (boot.ts), which
+// every screen and panel, the drawer, the settings page), the sheet's gestures, then the controllers behind them (boot.ts), which
 // fill in what the components need (the `hooks` of state/*).
 import { render, h } from 'preact';
 import { installSprite } from './ui/icons';
@@ -8,6 +8,7 @@ import { TopBar } from './features/topbar/TopBar';
 import { Floating, PickBar, LiveNote, Menus } from './features/shell/Floating';
 import { Sheet } from './features/shell/Sheet';
 import { Drawer } from './features/pages/Drawer';
+import { SettingsPage } from './features/pages/SettingsPage';
 import { attachSheetGestures } from './features/sheet/gestures';
 import { attachBarPull } from './features/sheet/pullRefresh';
 import * as sheet from './state/sheet';
@@ -17,6 +18,7 @@ installSprite();
 installRipple();
 render(h(TopBar, {}), el('topbar-root'));
 render(h(Drawer, {}), el('drawer-root'));
+render(h(SettingsPage, {}), el('settings-root'));
 render(h(Floating, {}), el('floating-root'));
 render(h(LiveNote, {}), el('livenote-root'));
 render(h(PickBar, {}), el('pickbar-root'));

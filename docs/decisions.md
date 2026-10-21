@@ -710,3 +710,12 @@ so they are not re-litigated.
   median. Rejected: nearest segment only (a dead-end path next to the point
   gave hour-long detours). The service worker now drops older builds of a
   data file instead of keeping every night's copy.
+- 2026-10-21: From Gadi's notes: leaving search mode no longer flashes the
+  rows away for a frame before they play out (the play-out now starts in the
+  same moment); the user button is a three-line menu button and the drawer
+  is headed by the logo; the drawer closes with a swipe towards its edge;
+  settings is a page sliding in over everything and out again, leaving the
+  drawer open under it. Saved stays a screen in the sheet for now: its
+  place chooser and map picker live in the sheet and would open under a
+  layer. Also: with only "my location" set, closing a panel leaves the sheet
+  folded instead of half open and empty.

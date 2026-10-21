@@ -177,8 +177,16 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .stopsrow { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .stopsrow .time { min-width: 48px; color: var(--ink-2); } .stopsrow.here { color: var(--ok); font-weight: 700; }
 .stopsrow .veh { color: var(--ok); font-size: 12px; }
-#screen-more { background: var(--bg); margin: 0 -16px; padding: 10px 14px 24px; min-height: 100%; }
-#screen-more h2.sec { margin: 4px 4px 14px; font-size: 22px; }
+/* the settings page: its own layer over everything, the drawer included; it slides in from the side the
+   reading goes towards (the right in English, the left in Hebrew) and back out, the drawer staying under it */
+.pagelayer { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: var(--bg); transform: translateX(-100%); visibility: hidden;
+  transition: transform .3s var(--ease-in, ease), visibility 0s .3s; will-change: transform; }
+[dir="ltr"] .pagelayer { transform: translateX(100%); }
+.pagelayer.open { transform: none; visibility: visible; transition: transform .32s var(--ease-out, ease), visibility 0s; box-shadow: 0 0 40px rgba(0,0,0,.25); }
+body:not(.booted) .pagelayer { transition: none; }
+.pagelayer .pagehead { display: flex; background: var(--surface); }
+.pagelayer .pagebody { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+.pagelayer .pagebody > h2.sec { display: none; }   /* the page head carries the title */
 .group { margin-bottom: 18px; }
 .grouphead { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: .03em; padding: 0 14px 6px; }
 .list { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
@@ -398,9 +406,9 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
 /* the suggestions list hangs below all the boxes, never over the other field */
 .topbar .dropdown { position: fixed; top: var(--top-h); inset-inline: 10px; margin-top: 0; border-radius: 18px; max-height: calc(100vh - var(--top-h) - 16px); max-height: calc(100dvh - var(--top-h) - 16px); }
-.userbtn { position: absolute; inset-inline-end: 5px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); display: grid; place-items: center; cursor: pointer; z-index: 1; padding: 0; }
-.userbtn .i { width: 21px; height: 21px; }
-.userbtn:active { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
+.userbtn { position: absolute; inset-inline-end: 5px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 0; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; z-index: 1; padding: 0; }
+.userbtn .i { width: 22px; height: 22px; }
+.userbtn:active { background: var(--chip); }
 .clearbtn .i { width: 16px; height: 16px; vertical-align: middle; }
 .iconbtn .i { width: 22px; height: 22px; vertical-align: middle; }
 .chipbtn .i { vertical-align: -.2em; }
@@ -422,11 +430,13 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
   padding: calc(env(safe-area-inset-top, 0px) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 14px); box-shadow: 0 0 40px rgba(0,0,0,.3); transition: transform .2s ease; transform: translateX(100%); will-change: transform; }
 [dir="ltr"] .drawer { transform: translateX(-100%); }
 .drawer.open { transform: none; }
+.drawer { touch-action: pan-y; }
 body:not(.booted) .drawer { transition: none; }   /* no slide across the screen when the direction is set at start */
 .drawer .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 4px 14px 6px; }
 .drawer .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .drawer .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); flex: none; }
-.drawer .avatar .i { width: 26px; height: 26px; }
+.drawer .avatar { background: none; }
+.drawer .avatar .logo { width: 44px; height: 44px; }
 .drawer .brand { font-weight: 700; font-size: 20px; color: var(--accent-text); letter-spacing: .01em; line-height: 1.1; }
 .drawer .sub { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
 .iconbtn.flat { box-shadow: none; background: var(--chip); width: 36px; height: 36px; font-size: 15px; }
@@ -458,8 +468,7 @@ body.page #topbar, body.page .floating, body.page .livenote, body.page .handle, 
 body.page .pagehead { display: flex; }
 .pagehead h2 { margin: 0; font-size: 18px; flex: 1; }
 .pagehead .iconbtn.flat .i { width: 22px; height: 22px; }
-body.page #screen-more > h2.sec, body.page #chooser .bar { display: none; }
-body.page #screen-more { margin-top: -0; padding-top: 14px; }
+body.page #chooser .bar { display: none; }
 /* the map's own buttons live in the bottom corner above the sheet, and go with the map under a fully open sheet */
 body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-bottom-left, body.sheet-full .livenote { opacity: 0; pointer-events: none; }
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { transition: bottom .25s, opacity .2s; }

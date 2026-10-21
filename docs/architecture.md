@@ -219,7 +219,7 @@ states: the prompt pill when nothing is chosen; while editing (a focus on
 either field opens it), the origin row above the destination row, then the
 time and bike chips and the Go button, with the origin prefilled as "my
 location" (resolved when the plan is made; typing or the menu replaces it)
-and the user button out of the way; and, once a plan is made, one summary box (to, then from, time
+and the menu button out of the way; and, once a plan is made, one summary box (to, then from, time
 and bike on a second line) that a tap reopens into the rows and a map tap
 folds back. The suggestion list while typing hangs below all the rows, so
 it never covers the other field. A bottom sheet with three heights (a
@@ -263,11 +263,18 @@ edits the stack first and lets history catch up, so programmatic closes and
 the back button never disagree; an entry pushed while that catch-up is
 pending waits for it (the browser measures a step back from where it was
 asked, so a push made meanwhile would be swallowed). The menu opens from a
-round user button inside the search pill (at its start edge, where a
-hamburger used to float): a drawer sliding in from the start edge over a
-dimmed map, a history entry like the panels, headed by the same avatar with
-"no account, everything stays on the phone", then the four screens and the
-build time. The "to" tag on the search pill shows only once the bar is open
+three-line menu button at the end of the search pill: a drawer sliding in
+from the start edge over a dimmed map, a history entry like the panels,
+headed by the logo with "no account, everything stays on the phone", then
+the screens and the build time. It follows a finger swiping it back to its
+edge and closes past a third of its width or on a flick. Settings is a page
+of its own over everything, the drawer included (`SettingsPage`, a layer
+beside the panels like the drawer, so the sheet and the map stay as they
+were): it slides in from the side the reading goes towards and out again,
+and back (the arrow or the phone's) returns to the drawer. Leaving search
+mode starts the rows' play-out in the same moment the bar closes (an effect
+in `state/search.ts`); set after a render, the rows vanished for a frame
+first. The "to" tag on the search pill shows only once the bar is open
 in two rows. The basemap is restyled in place when the theme changes (a
 full style reload, after which the app's layers are added again).
 

@@ -2,7 +2,7 @@
 // One place for the state that used to live in the bar's DOM. Components read the signals; the rest of the
 // app sets them through the actions here. What the planner itself does (routing, results, the map) stays
 // behind `hooks`, which the app fills in at start.
-import { signal, computed } from '@preact/signals';
+import { signal, computed, effect } from '@preact/signals';
 import * as live from '../live.js';
 import { t } from '../i18n';
 import { fmt, calToday } from '../time';
@@ -37,6 +37,19 @@ export const bike = signal<'none' | 'park' | 'along'>('none');
 export const folding = signal(false);
 export const timeTouched = signal(false);   // the rider set a day, a time or "arrive by"; until then every plan is from now
 export const days = signal<string[]>([]);   // the service days the data covers
+
+// Leaving search mode, the rows play out (`leaving`) before they go. Set in the same moment the bar closes:
+// set a frame later (after a render), the rows vanished for that frame and came back to play out.
+let wasOpen = false, leaveTimer = 0;
+effect(() => {
+  const open = barOpen.value;
+  if (wasOpen && !open && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    leaving.value = true;
+    clearTimeout(leaveTimer);
+    leaveTimer = window.setTimeout(() => { leaving.value = false; }, 480);
+  } else if (open) { clearTimeout(leaveTimer); leaving.value = false; }
+  wasOpen = open;
+});
 
 /** The bar's three looks: the prompt pill, the two rows with options, or the summary of a plan. */
 export const mode = computed<'rest' | 'edit' | 'summary'>(() => {

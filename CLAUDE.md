@@ -90,7 +90,7 @@ Bus data (no key, no relay), has line pages and bubbles on the map, shares
 trips, proposes a faster way while following when delays appear (v0.3.1),
 and has settings. 2026-10-18 later: one vector icon set replaces every
 emoji (also the map badges), settings are grouped lists, the menu opens from
-a user button in the search pill, the sheet drags from anywhere, and train
+a user button (now a menu button) in the search pill, the sheet drags from anywhere, and train
 courses meet the track beside each station. 2026-10-19: stop names,
 headsigns, the address book and the basemap's labels follow the language
 setting (English from the feed's translations and OpenStreetMap); the first

@@ -1,4 +1,4 @@
-// The top bar is the planner. Three looks: the prompt pill at rest (the app's logo at its start, the user at
+// The top bar is the planner. Three looks: the prompt pill at rest (the app's logo at its start, the menu at
 // its end), the two rows while editing (origin above destination, a back arrow, the swap between them, the
 // option chips and Go under them), and the summary box once a plan is shown (a tap reopens the rows). Entering
 // search mode plays a sequence (the styles), leaving plays it back; the keyboard is held until the pill has
@@ -12,27 +12,16 @@ import * as nav from '../../state/nav';
 import { SearchField } from './SearchField';
 import { WhenPopover, BikePopover, TimeChipInner, BikeChipInner } from './Popovers';
 
-const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 export function TopBar() {
   void lang.value;
   const mode = search.mode.value;
   const edit = mode === 'edit', sum = mode === 'summary';
   const opt = search.optOpen.value;
   const barRef = useRef<HTMLDivElement>(null);
-  const wasOpen = useRef(false);
-  const leaveTimer = useRef(0);
 
-  // leaving search mode: the rows play out (`leaving`) before they go
+  // leaving search mode closes the option popovers and the line search (the rows' play-out is in the state)
   useEffect(() => {
-    const open = search.barOpen.value;
-    if (wasOpen.current && !open && !reducedMotion()) {
-      search.leaving.value = true;
-      clearTimeout(leaveTimer.current);
-      leaveTimer.current = window.setTimeout(() => { search.leaving.value = false; }, 480);
-    } else if (open) { clearTimeout(leaveTimer.current); search.leaving.value = false; }
-    if (!open) { search.optOpen.value = ''; search.leaveLineMode(); }
-    wasOpen.current = open;
+    if (!search.barOpen.value) { search.optOpen.value = ''; search.leaveLineMode(); }
   }, [search.barOpen.value]);
   // the bar's height drives the map controls and the sheet: measured after every change of shape
   useEffect(() => {
@@ -75,7 +64,7 @@ export function TopBar() {
           <SearchField id="toQ" dropId="toDrop" text={search.toText} place={search.to} onFocus={search.openBar} withUser placeholder={t(search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
             onLine={(r) => { search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); }}>
-            <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><Icon name="user" /></button>
+            <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><Icon name="menu" /></button>
             <span class="tag">{t('tagTo')}</span>
             <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><Logo /></button>
           </SearchField>
