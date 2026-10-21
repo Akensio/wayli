@@ -191,6 +191,7 @@ body:not(.booted) .pagelayer { transition: none; }
 .grouphead { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: .03em; padding: 0 14px 6px; }
 .list { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
 .item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font-size: 15px; text-align: start; margin: 0; }
+.item[hidden], .item.text[hidden] { display: none; }   /* the rows' own display would otherwise draw a hidden row (the empty install hint) */
 .item:last-child { border-bottom: 0; }
 .item.act { cursor: pointer; }
 .item.act:active { background: var(--chip); }

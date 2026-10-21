@@ -41,6 +41,17 @@ export async function initMap(): Promise<void> {
   let viewTimer = 0;   // the camera is remembered for the next start
   m.on('moveend', () => { clearTimeout(viewTimer); viewTimer = window.setTimeout(() => { try { const c = m.getCenter(); localStorage.setItem('wayli-view', JSON.stringify({ lat: +c.lat.toFixed(5), lon: +c.lng.toFixed(5), zoom: +m.getZoom().toFixed(2) })); } catch { /* private mode */ } }, 500); });
   m.addControl(geoCtl, 'bottom-right');
+  // The button only ever shows where you are. MapLibre's control turns location off on a tap while it follows you (or
+  // is still locating, or has failed); here that tap re-centres instead (nothing while still locating; a failure tries
+  // again). Turning location off is the phone's permission, not a map button.
+  const g: any = geoCtl;
+  g._geolocateButton.addEventListener('click', (e: Event) => {
+    const st = g._watchState;
+    if (!['ACTIVE_LOCK', 'WAITING_ACTIVE', 'ACTIVE_ERROR', 'BACKGROUND_ERROR'].includes(st)) return;   // on, or back to following: as MapLibre does
+    e.stopImmediatePropagation(); e.preventDefault();
+    if (st === 'ACTIVE_LOCK' && g._lastKnownPosition) g._updateCamera(g._lastKnownPosition);
+    else if (st !== 'WAITING_ACTIVE') { try { g.trigger(); g.trigger(); } catch { /* no geolocation */ } }   // off and on: a fresh try
+  }, { capture: true });
   // a compass under it: shows the rotation and the tilt, a tap sets north up and flat; hidden while there is nothing to reset
   const compass = new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true });
   m.addControl(compass, 'bottom-right');

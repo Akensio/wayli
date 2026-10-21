@@ -807,3 +807,8 @@ so they are not re-litigated.
   picking a destination the boxes stay open (the time or bike can change and
   plan again); they fold on a map tap, a result opened, a sheet drag, X or
   back.
+- 2026-10-22: From Gadi: the locate button only ever shows where you are (a tap
+  while following re-centres; MapLibre's control turned location off on that
+  tap; turning location off is the phone's permission). And a hidden settings
+  row no longer draws as an empty row (the rows' own display overrode the
+  hidden attribute: the install hint, empty, under "The app").
