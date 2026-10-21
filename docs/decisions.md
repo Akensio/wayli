@@ -776,3 +776,9 @@ so they are not re-litigated.
   once the trip is over (it waited for the next cold start), and coming back
   to the front checks for a new build (Gadi's phone kept the old one, live
   times 15 minutes behind, after the relay went live).
+- 2026-10-21: Gadi still saw live data 15 minutes old. Found: the data worker
+  refused every question until the day's timetable was in, so the map's
+  first live request at start went to Hasadna's database; live queries and
+  place names no longer wait for it. And the map's note now says when live
+  data came from the database and why the relay was not used, so a failing
+  relay on a phone shows instead of hiding behind the fallback.

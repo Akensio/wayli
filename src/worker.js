@@ -630,11 +630,14 @@ const ops = {
   },
 };
 
+const NO_TIMETABLE = new Set(['loadTimetable', 'setLang', 'liveQuery', 'localize']);
 self.onmessage = async (ev) => {
   const { id, op, args } = ev.data;
   try {
     if (!ops[op]) throw new Error('unknown op ' + op);
-    if (!tt && op !== 'loadTimetable' && op !== 'setLang') throw new Error('timetable not loaded');
+    // live vehicles and place names do not wait for the timetable (the map asks for vehicles before it is in, and a
+    // refusal sent it to Hasadna's database, 15 minutes behind at rush hour)
+    if (!tt && !NO_TIMETABLE.has(op)) throw new Error('timetable not loaded');
     const result = await ops[op](args || {});
     post({ id, result });
   } catch (e) {

@@ -92,13 +92,16 @@ const window = (sinceSec) => ({ recorded_at_time_from: iso(new Date(Date.now() -
 export const RELAY_URL = 'https://wayli-relay.wayli.workers.dev/siri/latest';
 /** @type {{ query: null | ((filter: object) => Promise<any[]>) }} filter: {line} | {box} | {operator} */
 export const snapshot = { query: null };
+/** Where the last live answer came from: the relay, or Hasadna's database and why the relay was not used. */
+export const source = { relay: true, why: '' };
 async function fromSnapshot(filter) {
-  if (!snapshot.query) return null;
+  if (!snapshot.query) { source.relay = false; source.why = 'not ready'; return null; }
   try {
     const vs = await snapshot.query(filter);
     for (const v of vs) if (v.recordedAt.getTime() > newestSeen) newestSeen = v.recordedAt.getTime();
+    source.relay = true; source.why = '';
     return vs;
-  } catch { return null; }
+  } catch (e) { source.relay = false; source.why = e instanceof Error ? e.message : String(e); return null; }
 }
 /** Vehicles of one line (GTFS route_id) seen in the last sinceSec seconds. */
 export async function vehiclesByLine(routeId, { sinceSec = 1800, limit = 200, timeoutMs } = {}) {

@@ -116,7 +116,9 @@ export async function refreshLiveMap(): Promise<void> {
     const shown = Array.isArray(liveShow) ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length : features.length;
     const scope = !Array.isArray(liveShow) ? '' : nearRoutes && liveShow === nearRoutes.ids ? t('liveScopeNear') : t('liveScopeSearch');
     const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
-    app.liveNote.value = shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw!.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope });
+    // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
+    const via = live.source.relay ? '' : t('liveViaDb', { why: live.source.why });
+    app.liveNote.value = (shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw!.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope })) + via;
     app.liveLag.value = !!shown && ageMin >= 4;
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch { /* debugging only */ }
   } catch { if (my === lm.seq) app.liveNote.value = t('liveFail'); }
