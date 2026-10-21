@@ -1,0 +1,26 @@
+# Deploys the real-time relay (worker/) to Cloudflare Workers when it changes, then checks it answers with a snapshot.
+name: relay
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/relay.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+      - name: Check the relay
+        env:
+          URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          echo "relay at $URL"
+          sleep 10
+          curl -sS --compressed -o snap.json -D - "$URL/siri/latest" | grep -i 'x-snapshot\|content-encoding\|access-control'
+          python3 -c "import json; d=json.load(open('snap.json')); v=[x for s in d['Siri']['ServiceDelivery']['StopMonitoringDelivery'] for x in s.get('MonitoredStopVisit', [])]; print(len(v), 'vehicles in', d['Siri']['ServiceDelivery']['ResponseTimestamp'])"
