@@ -765,3 +765,14 @@ so they are not re-litigated.
   OpenStreetMap has in one language only stay in it (צוותא). Also: a line
   page draws the line in its operator's colour and names the operator in
   the interface's language.
+- 2026-10-21: From Gadi (13 minutes' walk planned while standing on the
+  Rehovot platform; from there the walk is 0-30 s): "my location" no longer
+  falls back to a position up to 10 minutes old when GPS fails (inside a
+  station, often); it tries a coarse network fix first and then accepts the
+  last position only under 2 minutes old. And choosing the same destination
+  again reuses the last search from "my location" only while the rider is
+  still within 150 m of where it started and it is under 10 minutes old.
+- 2026-10-21: A new build that arrives while a trip is followed now goes in
+  once the trip is over (it waited for the next cold start), and coming back
+  to the front checks for a new build (Gadi's phone kept the old one, live
+  times 15 minutes behind, after the relay went live).

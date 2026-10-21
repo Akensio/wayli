@@ -10,12 +10,20 @@ export function notePos(lat: number, lon: number): void {
   try { localStorage.setItem('wayli-geo', '1'); } catch { /* private mode */ }
   hooks.moved();
 }
+/** The last position if it is at most `maxAgeMs` old, else null. */
+export const freshPos = (maxAgeMs: number): LatLon | null => (lastPos && Date.now() - lastPosAt <= maxAgeMs ? lastPos : null);
+/**
+ * Where the rider is now. GPS first; where it fails (inside a station, often), a coarse fix from the network; only then
+ * the last position, and only when it is under 2 minutes old: an older one plans from where the rider was, not is.
+ */
 export function getPosition(): Promise<LatLon> {
   return new Promise((resolve, reject) => {
     if (lastPos && Date.now() - lastPosAt < 20000) { resolve(lastPos); return; }
-    const fallback = (err: unknown) => { if (lastPos && Date.now() - lastPosAt < 600000) resolve(lastPos); else reject(err); };
+    const fallback = (err: unknown) => { if (lastPos && Date.now() - lastPosAt < 120000) resolve(lastPos); else reject(err); };
     if (!navigator.geolocation) { fallback(new Error('no geolocation')); return; }
-    navigator.geolocation.getCurrentPosition((p) => { notePos(p.coords.latitude, p.coords.longitude); resolve(lastPos!); }, fallback, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    const got = (p: GeolocationPosition) => { notePos(p.coords.latitude, p.coords.longitude); resolve(lastPos!); };
+    const coarse = () => navigator.geolocation.getCurrentPosition(got, fallback, { enableHighAccuracy: false, timeout: 6000, maximumAge: 30000 });
+    navigator.geolocation.getCurrentPosition(got, coarse, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
   });
 }
 /** Riders who allowed location before get it at start without a prompt. */

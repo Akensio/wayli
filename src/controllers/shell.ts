@@ -46,15 +46,22 @@ function iosInstallHint(): string {
 export const updateOnline = (): void => { app.online.value = navigator.onLine !== false; };
 window.addEventListener('online', updateOnline); window.addEventListener('offline', updateOnline);
 
-/** A new build reloads the page once (the service worker took over), never in the middle of a followed trip. */
+/**
+ * A new build reloads the page once (the service worker took over), never in the middle of a followed trip: one that
+ * arrived during a trip waits, and goes in when the trip is over (checked every 30 s) or the app comes back to the
+ * front. Coming back to the front also asks for a new build: a phone keeps the app open in the background for days.
+ */
 export async function registerServiceWorker(): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
   try {
     const hadController = !!navigator.serviceWorker.controller;
-    let reloading = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloading && !isFollowing()) { reloading = true; location.reload(); } });
+    let reloading = false, waiting = false;
+    const apply = () => { if (waiting && !reloading && !isFollowing()) { reloading = true; location.reload(); } };
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) { waiting = true; apply(); } });
     const reg = await navigator.serviceWorker.register('sw.js');
     reg.update().catch(() => {});
+    window.setInterval(apply, 30000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { apply(); reg.update().catch(() => {}); } });
   } catch { /* offline shell unavailable; fine */ }
 }
 

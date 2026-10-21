@@ -11,7 +11,7 @@ import * as search from '../state/search';
 import * as results from '../state/results';
 import * as sheet from '../state/sheet';
 import * as nav from '../state/nav';
-import { lastPos, getPosition } from '../state/position';
+import { lastPos, getPosition, freshPos } from '../state/position';
 import * as map from '../map/index';
 import { chipStyle } from '../journey/colors';
 import { lineText } from '../journey/format';
@@ -80,11 +80,21 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   search.busy.value = false;
 }
 
-/** The last search, shown as it was (its own place and time), when it is under an hour old and went to this place. */
+/**
+ * The last search, shown as it was (its own place and time), when it is under an hour old and went to this place. One
+ * from "my location" only while the rider is still there (a position under a minute old within 150 m of where it
+ * started) and it is under 10 minutes old: otherwise it showed the walk from where the rider had been, not where they
+ * are (a search from home came back on the station platform, 13 minutes' walk away; 2026-10-21).
+ */
 function restoreLast(p: Place): boolean {
   const last = lastSearch.get();
   if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > RESTORE_MS) return false;
   if (!last.q.to || last.q.to.name !== p.name || (last.q.day !== search.day.value && !hasDay(last.q.day))) return false;
+  const was = last.q.from;
+  if (was && was.transient) {
+    const now = freshPos(60000);
+    if (!now || was.lat == null || live.metres(now.lat, now.lon, was.lat, was.lon!) > 150 || Date.now() - last.at > 600e3) return false;
+  }
   nav.closeAll(); nav.showScreen('plan');
   search.day.value = last.q.day; search.applyQuery(last.q); results.setResults(last.result, last.q, last.at); sheet.set('half');
   return true;
