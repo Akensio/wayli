@@ -12,6 +12,8 @@ import type { Manifest } from '../state/data';
 import { setStatus, loadFailed } from './status';
 
 const manifest = (): Manifest => data.manifest.value!;
+// live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
+live.snapshot.query = (filter: object) => call('liveQuery', { url: live.RELAY_URL, filter });
 /** A data file's address, with the build in the query so a new build is fetched once and then cached. */
 const fileUrl = (f: { file: string; built?: string }): string => `${DATA_URL}${f.file}?v=${encodeURIComponent(f.built || manifest().built || '')}`;
 

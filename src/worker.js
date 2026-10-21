@@ -268,12 +268,99 @@ function groupJourneys(journeys) {
   return groups;
 }
 
+// ---------------------------------------------------------------- the newest SIRI snapshot, through the relay
+// The relay (worker/relay.js) serves Hasadna's newest raw snapshot of every vehicle in the country, about a minute
+// old where their database can be 15 minutes behind. It is downloaded here (4 MB of JSON once unpacked: parsing it
+// on the page would stall the screen), kept for 30 s, and every live question is answered from it.
+const SNAP_MS = 30000, SNAP_WINDOW_MS = 1800e3;
+let snap = null, snapLoading = null, stopByCode = null;
+// Frozen positions: a vehicle that reports speed but the same position for 2 minutes is repeating an old fix (37% of
+// trains with GPS did, and no bus, 2026-10-21 19:26; the stop it names froze with it). Read as current, it adds every
+// minute to its delay, so it is dropped and its trip shows the timetable. Each ride's position is remembered with when
+// it was first seen there; the first load also reads the snapshot of 3 minutes before, so this works at once.
+const FROZEN_MS = 120e3, MOVING_KMH = 5;
+const posSince = new Map();   // ride -> { loc, since: ms, seen: ms }
+const snapTime = (id) => { const m = /^(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)\/(\d\d)$/.exec(id || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : NaN; };
+function remember(j, t) {
+  for (const d of (j && j.Siri && j.Siri.ServiceDelivery && j.Siri.ServiceDelivery.StopMonitoringDelivery) || []) {
+    for (const x of d.MonitoredStopVisit || []) {
+      const m = x.MonitoredVehicleJourney, l = m && m.VehicleLocation; if (!l) continue;
+      const key = `${m.LineRef}/${m.OriginAimedDepartureTime}`, loc = `${l.Latitude},${l.Longitude}`, o = posSince.get(key);
+      if (o && o.loc === loc) o.seen = t; else posSince.set(key, { loc, since: t, seen: t });
+    }
+  }
+  for (const [k, o] of posSince) if (t - o.seen > SNAP_WINDOW_MS) posSince.delete(k);
+}
+function codeIndex() {
+  if (!stopByCode) { stopByCode = new Map(); for (let i = 0; i < tt.stops.length; i++) if (tt.stops[i][2]) stopByCode.set(String(tt.stops[i][2]), i); }
+  return stopByCode;
+}
+/** The snapshot's vehicles in live.js's shape. One with no position (most often a train) is put at the stop it
+ *  reports when it is at it; Hasadna's database drops those (about one train in eight, 2026-10-21). */
+function snapVehicles(j, t) {
+  const out = [], now = Date.now();
+  const codes = tt ? codeIndex() : null;
+  for (const d of (j && j.Siri && j.Siri.ServiceDelivery && j.Siri.ServiceDelivery.StopMonitoringDelivery) || []) {
+    for (const x of d.MonitoredStopVisit || []) {
+      const m = x.MonitoredVehicleJourney; if (!m) continue;
+      const recordedAt = new Date(x.RecordedAtTime), rt = recordedAt.getTime();
+      if (!(rt > now - SNAP_WINDOW_MS && rt < now + 600e3)) continue;   // gone quiet half an hour ago, or an impossible time
+      if (m.VehicleLocation && Number(m.Velocity) > MOVING_KMH) {
+        const o = posSince.get(`${m.LineRef}/${m.OriginAimedDepartureTime}`);
+        if (o && t - o.since >= FROZEN_MS) continue;   // t: the snapshot's minute
+      }
+      let lat = Number(m.VehicleLocation && m.VehicleLocation.Latitude), lon = Number(m.VehicleLocation && m.VehicleLocation.Longitude), atStop = false;
+      if (!lat || !lon) {
+        const c = m.MonitoredCall, s = codes && c ? codes.get(String(c.StopPointRef)) : undefined;
+        if (s === undefined || Number(c.DistanceFromStop) > 0) continue;
+        lat = tt.stopLat[s]; lon = tt.stopLon[s]; atStop = true;
+      }
+      out.push({ lineRef: String(m.LineRef), lat, lon, bearing: Number(m.Bearing) || 0, velocity: Number(m.Velocity) || 0, recordedAt,
+        scheduledStart: new Date(m.OriginAimedDepartureTime), rideId: `${m.LineRef}/${m.OriginAimedDepartureTime}`, vehicleRef: m.VehicleRef,
+        operator: Number(m.OperatorRef), atStop });
+    }
+  }
+  return out;
+}
+async function snapshot(url) {
+  if (snap && Date.now() - snap.at < SNAP_MS) return snap;
+  if (!snapLoading) snapLoading = (async () => {
+    const get = async (ago) => {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 12000);
+      try {
+        const r = await fetch(ago ? `${url}?ago=${ago}` : url, { cache: 'no-store', signal: ctl.signal });
+        if (!r.ok) throw new Error(`relay HTTP ${r.status}`);
+        const id = r.headers.get('x-snapshot') || '';
+        return { id, t: snapTime(id), j: await r.json() };
+      } finally { clearTimeout(timer); }
+    };
+    const first = !posSince.size;
+    const [cur, before] = await Promise.all([get(0), first ? get(3).catch(() => null) : null]);
+    // a feed that stalled is no better than the database: then Hasadna's API answers instead
+    if (!(Date.now() - cur.t <= 600e3)) throw new Error(`relay snapshot ${cur.id || '?'} is old`);
+    if (before && before.t < cur.t) remember(before.j, before.t);
+    remember(cur.j, cur.t);
+    snap = { at: Date.now(), id: cur.id, vehicles: snapVehicles(cur.j, cur.t) };
+    return snap;
+  })().finally(() => { snapLoading = null; });
+  return snapLoading;
+}
+
 const ops = {
   async loadTimetable({ url }) {
     const buf = await fetchContainer(url, 'timetable');
     tt = parseTimetable(buf);
-    routeById = routePats = stopRail = null;
+    routeById = routePats = stopRail = stopByCode = null;
     return { date: tt.header.date, counts: tt.counts, feed: tt.header.feed, streets: !!tt.header.streets };
+  },
+  /** Live vehicles from the newest snapshot: of a line ({line}), in a box ({box}) or of an operator ({operator}). */
+  async liveQuery({ url, filter }) {
+    const s = await snapshot(url);
+    let vs = s.vehicles;
+    if (filter.line != null) vs = vs.filter((v) => v.lineRef === String(filter.line));
+    else if (filter.box) { const b = filter.box; vs = vs.filter((v) => v.lat >= b.south && v.lat <= b.north && v.lon >= b.west && v.lon <= b.east); }
+    else if (filter.operator != null) vs = vs.filter((v) => v.operator === filter.operator);
+    return vs;
   },
   async loadStreets({ url }) {
     const buf = await fetchContainer(url, 'streets');

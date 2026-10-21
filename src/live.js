@@ -86,13 +86,29 @@ const window = (sinceSec) => ({ recorded_at_time_from: iso(new Date(Date.now() -
 // Hasadna's feed sometimes lags: the newest position can be 20 minutes old (measured 2026-10-18 morning).
 // Queries therefore look back half an hour and callers show the age; the newest rows come first, so
 // the limit only trims old reports. A delay seen twenty minutes ago is still worth more than the timetable alone.
+// The newest snapshot, through Wayli's relay (worker/relay.js): about a minute old where Hasadna's database runs up
+// to 15 minutes behind at rush hour. The app points `snapshot.query` at it (through the data worker); every question
+// below asks it first, and Hasadna's database answers when it fails.
+export const RELAY_URL = 'https://wayli-relay.wayli.workers.dev/siri/latest';
+/** @type {{ query: null | ((filter: object) => Promise<any[]>) }} filter: {line} | {box} | {operator} */
+export const snapshot = { query: null };
+async function fromSnapshot(filter) {
+  if (!snapshot.query) return null;
+  try {
+    const vs = await snapshot.query(filter);
+    for (const v of vs) if (v.recordedAt.getTime() > newestSeen) newestSeen = v.recordedAt.getTime();
+    return vs;
+  } catch { return null; }
+}
 /** Vehicles of one line (GTFS route_id) seen in the last sinceSec seconds. */
 export async function vehiclesByLine(routeId, { sinceSec = 1800, limit = 200, timeoutMs } = {}) {
+  const s = await fromSnapshot({ line: routeId }); if (s) return s;
   const rows = await get('/siri_vehicle_locations/list', { siri_routes__line_ref: routeId, ...window(sinceSec), order_by: 'recorded_at_time desc', limit }, timeoutMs);
   return latest(rows);
 }
 /** Vehicles inside a box {south, west, north, east}. */
 export async function vehiclesInBounds(b, { sinceSec = 1800, limit = 1200, timeoutMs } = {}) {
+  const s = await fromSnapshot({ box: { south: b.south, north: b.north, west: b.west, east: b.east } }); if (s) return s;
   const rows = await get('/siri_vehicle_locations/list', {
     ...window(sinceSec), order_by: 'recorded_at_time desc', limit,
     lat__greater_or_equal: b.south.toFixed(4), lat__lower_or_equal: b.north.toFixed(4),
@@ -107,6 +123,7 @@ export function vehiclesNear(lat, lon, radiusKm = 6, opts = {}) {
 }
 /** Every train in the country (Israel Railways is SIRI operator 2): one cheap query. */
 export async function trains({ sinceSec = 1800, limit = 500, timeoutMs } = {}) {
+  const s = await fromSnapshot({ operator: 2 }); if (s) return s;
   const rows = await get('/siri_vehicle_locations/list', { siri_routes__operator_ref: 2, ...window(sinceSec), order_by: 'recorded_at_time desc', limit }, timeoutMs);
   return latest(rows);
 }

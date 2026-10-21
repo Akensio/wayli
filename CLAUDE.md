@@ -71,10 +71,14 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `tools/` | The older routing harness: `feasibility.html`, `bench.mjs` (the router in Node), `browser_bench.mjs` (headless Chromium), `build_artifact.py`. |
 | `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |
+| `worker/`, `.github/workflows/relay.yml` | The real-time relay (Hasadna's newest raw SIRI snapshot with CORS) and its deploy. |
 | `data/`, `site/`, `dist/`, `node_modules/` | Gitignored: downloads, compiled files, the built site, the build, the toolchain. |
 
-Planned, not yet created: `worker/` (Cloudflare Worker for the real-time
-relay, reports and push). Create it when the work starts.
+`worker/relay.js` is the real-time relay, a Cloudflare Worker (free plan,
+https://wayli-relay.wayli.workers.dev), deployed by
+`.github/workflows/relay.yml` with the repo's `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` secrets whenever `worker/` changes. Reports and push
+will join it when that work starts.
 
 ## Current state
 
@@ -86,7 +90,7 @@ the live vehicles under a search bar and a bottom sheet), plans
 (depart/arrive-by, grouped results, countdowns, live delays shifted before
 routing), remembers (history, saved places, last search), follows a trip
 with get-off alerts and resumes it, shows live times from Hasadna's Open
-Bus data (no key, no relay), has line pages and bubbles on the map, shares
+Bus data (no key; since 2026-10-21 through our relay, about a minute old), has line pages and bubbles on the map, shares
 trips, proposes a faster way while following when delays appear (v0.3.1),
 and has settings. 2026-10-18 later: one vector icon set replaces every
 emoji (also the map badges), settings are grouped lists, the menu opens from

@@ -737,3 +737,14 @@ so they are not re-litigated.
   drawing existed, and the drawing's own redraw then saw the same panel and
   skipped; now it forces the draw. Also "5 stop" is "5 stops" (and the
   detail's ride line isolates its names like the rest).
+- 2026-10-21: Live data comes through a relay of our own (Gadi agreed): a
+  Cloudflare Worker passing Hasadna's newest raw SIRI snapshot through with
+  CORS, because their database runs 15 minutes behind at rush hour while
+  the raw files are a minute old. The browser unpacks the brotli file and
+  the data worker answers every live question from it; Hasadna's API stays
+  the fallback. Trains with no GPS are placed at the station they report;
+  frozen positions (moving speed, same fix for 2 minutes: over a third of
+  trains with GPS) are dropped. Rejected: asking for line or area queries
+  differently (the database itself is behind); parsing in the relay (the
+  free plan allows 10 ms of CPU per request). Hasadna could add the CORS
+  header to their files; then the relay can go.

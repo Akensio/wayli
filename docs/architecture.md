@@ -23,7 +23,8 @@ Three parts, in order of how much they matter:
    as static files (GitHub Pages or Cloudflare Pages).
 3. **The worker**: the smallest possible server (Cloudflare Workers + D1,
    free tier at first) for the three things that cannot run on the phone:
-   relaying real-time data (SIRI credentials cannot ship in a public app),
+   relaying real-time data (SIRI credentials cannot ship in a public app;
+   built 2026-10-21 as `worker/relay.js`, see "Real-time"),
    collecting and serving crowd reports, and sending push alerts.
 
 ## Trip planning on the device (leading option, under test)
@@ -678,9 +679,34 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   the pipeline's, not ours: the newest rows come first in every query. A
   position fifteen minutes old says little about where the bus is now; the
   delay it reports is still worth more than the timetable alone.
-- Privacy: while on, the phone sends Hasadna the line numbers and the area
-  it looks at, and Hasadna sees its IP, as any website does. The settings
-  screen says exactly this, and one switch turns live times off.
+- Fresher through the relay (2026-10-21): Hasadna's database loads each
+  minute's snapshot with one worker in about 90 s at rush hour (about 8,900
+  vehicles), so it falls behind through the morning: every answer at 09:48
+  was 15-16 minutes old, line and area queries alike. The raw snapshots are
+  public before that step (`open-bus-siri-requester.hasadna.org.il/YYYY/MM/DD/HH/MM.br`,
+  UTC, about 250 KB brotli, 4.3 MB of SIRI JSON, the newest under a minute
+  old, half the positions under 40 s) but carry no CORS header. The relay
+  (`worker/relay.js`, a Cloudflare Worker on the free plan at
+  https://wayli-relay.wayli.workers.dev/siri/latest, deployed by
+  `.github/workflows/relay.yml`) reads `daemon_status.json` for the newest
+  minute and passes that file through untouched, labelled
+  `Content-Encoding: br` so the browser unpacks it, with CORS; `?ago=N`
+  asks for N minutes earlier. The data worker downloads it, keeps it 30 s
+  and answers every live question from it (a line, a box, all trains);
+  Hasadna's API answers when the relay fails or its snapshot is over 10
+  minutes old. Two things only the raw file allows: a train with no GPS
+  (about one in eight; the database drops them) is placed at the station
+  it reports, which steps along its route; and a frozen position, the same
+  fix repeated with a speed above 5 km/h for 2 minutes (37% of trains with
+  GPS, no bus, at 19:26 that day; read as current it added a minute of
+  delay every minute, +37 min on one), is dropped so its trip shows the
+  timetable. The first load also reads the snapshot of 3 minutes before so
+  that works at once.
+- Privacy: while on, the phone downloads every vehicle's position in the
+  country through the relay (which sees its IP, as any website does, and
+  nothing else: the request carries no place or line), and when that
+  fails asks Hasadna for the line numbers and the area it looks at. The
+  settings screen says this, and one switch turns live times off.
 
 The Ministry's own SIRI feed stays a fallback: it would need a relay with
 credentials, worth building only if Hasadna's copy proves too stale or

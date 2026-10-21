@@ -1,6 +1,7 @@
 # The real-time relay (relay.js). Deployed by .github/workflows/relay.yml with the repository's CLOUDFLARE_API_TOKEN
-# and CLOUDFLARE_ACCOUNT_ID secrets; served at https://wayli-relay.<account subdomain>.workers.dev.
+# and CLOUDFLARE_ACCOUNT_ID secrets; served at https://wayli-relay.wayli.workers.dev.
 name = "wayli-relay"
 main = "relay.js"
 compatibility_date = "2025-06-01"
 workers_dev = true
+preview_urls = false
