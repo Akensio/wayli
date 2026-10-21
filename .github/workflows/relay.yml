@@ -16,6 +16,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
+          wranglerVersion: '4.151.3'   # 3.x (the action's default) failed to enable the workers.dev route right after the upload
       - name: Check the relay
         env:
           URL: ${{ steps.deploy.outputs.deployment-url }}
