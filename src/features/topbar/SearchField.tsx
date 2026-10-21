@@ -2,7 +2,7 @@
 // the quick entries (my location, pick on the map, home, work, recents) while empty, matching stops, places
 // and lines while typing. The list ends above the keyboard and scrolls inside itself.
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { useSignal } from '@preact/signals';
+import { useSignal, useSignalEffect } from '@preact/signals';
 import type { Signal } from '@preact/signals';
 import { t, lang } from '../../i18n';
 import { ic } from '../../ui/icons';
@@ -84,7 +84,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
     return () => { document.removeEventListener('click', onDoc); window.visualViewport?.removeEventListener('resize', refit); window.visualViewport?.removeEventListener('scroll', refit); };
   }, []);
   // search mode ending folds the list with it
-  useEffect(() => { if (search.leaving.value) open.value = false; }, [search.leaving.value]);
+  useSignalEffect(() => { if (search.leaving.value) open.value = false; });
 
   // "My location" is a value, not text: the box shows it as a tag while idle, and empties to its placeholder when
   // focused (someone tapping it means to change it); left without typing, it comes back.
@@ -100,13 +100,14 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
     focused.value = false;
     if (!text.value && place.value?.transient) text.value = place.value.name;
   }, 0);
-  // a closing list folds away first
-  const wasOpen = useRef(false);
-  useEffect(() => {
-    if (wasOpen.current && !open.value) { closing.value = true; const id = window.setTimeout(() => { closing.value = false; }, 220); wasOpen.current = false; return () => clearTimeout(id); }
-    if (open.value) closing.value = false;
-    wasOpen.current = open.value;
-  }, [open.value]);
+  // a closing list folds away first; set in the same moment it closes (after a render, it vanished for a frame)
+  const wasOpen = useRef(false), foldTimer = useRef(0);
+  useSignalEffect(() => {
+    const o = open.value;
+    if (wasOpen.current && !o) { closing.value = true; clearTimeout(foldTimer.current); foldTimer.current = window.setTimeout(() => { closing.value = false; }, 220); }
+    else if (o) { clearTimeout(foldTimer.current); closing.value = false; }
+    wasOpen.current = o;
+  });
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     const first = dropRef.current?.querySelector('button:not(:disabled)') as HTMLButtonElement | null;

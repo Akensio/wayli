@@ -41,7 +41,9 @@ export const page = computed(() => !picking.value && key.value in PAGE_TITLE);
 export const pageTitle = (): string => { const k = key.value; return PAGE_TITLE[k] ? t(PAGE_TITLE[k]!) : chooser.title.value; };
 /** How open the sheet is when a panel or screen comes up. */
 const SHEET_FOR: Record<string, sheet.SheetState | (() => sheet.SheetState)> = {
-  'screen-plan': () => (results.showing.value || (search.from.value && !search.from.value.auto) || search.to.value ? 'half' : 'peek'),   // "my location" alone is no search 'screen-nearby': 'half', 'screen-saved': 'full', chooser: 'full',
+  // "my location" alone is no search: the sheet stays folded
+  'screen-plan': () => (results.showing.value || (search.from.value && !search.from.value.auto) || search.to.value ? 'half' : 'peek'),
+  'screen-nearby': 'half', 'screen-saved': 'full', chooser: 'full',
 };
 
 /** Apply what is on top: the drawer, the settings page, the page look, the sheet's size; the map follows. */

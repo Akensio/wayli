@@ -273,8 +273,9 @@ beside the panels like the drawer, so the sheet and the map stay as they
 were): it slides in from the side the reading goes towards and out again,
 and back (the arrow or the phone's) returns to the drawer. Leaving search
 mode starts the rows' play-out in the same moment the bar closes (an effect
-in `state/search.ts`); set after a render, the rows vanished for a frame
-first. The "to" tag on the search pill shows only once the bar is open
+in `state/search.ts`), and a suggestion list starts folding in the same
+moment it closes (a signal effect in `SearchField`); set after a render,
+both vanished for a frame first. The "to" tag on the search pill shows only once the bar is open
 in two rows. The basemap is restyled in place when the theme changes (a
 full style reload, after which the app's layers are added again).
 
