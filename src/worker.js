@@ -1,7 +1,7 @@
 // Wayli worker: holds the timetable and the street graph, answers every query off the main thread.
 import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
-import { parsePlaces, searchPlaces, kindLabel, reverseGeocode } from './places.js';
+import { parsePlaces, searchPlaces, kindLabel, reverseGeocode, placeAt } from './places.js';
 import { estimateDelay, secondsOn } from './live.js';
 
 let tt = null, st = null, pl = null, sh = null;
@@ -346,12 +346,55 @@ async function snapshot(url) {
   return snapLoading;
 }
 
+/** What is at (lat, lon), named in `L`: the nearest address, place or street, else the nearest stop, else the point. */
+function reverseIn(lat, lon, L) {
+  if (pl) {
+    const r = reverseGeocode(pl, lat, lon, L);
+    if (r) return { name: r.city && r.kind !== 'city' ? `${r.name}, ${r.city}` : r.name, kind: r.kind, distance: r.distance };
+  }
+  let best = -1, bd = 600;
+  for (let s = 0; s < tt.stops.length; s++) {
+    const d = haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]);
+    if (d < bd) { bd = d; best = s; }
+  }
+  if (best >= 0) return { name: stopName(tt, best, L), kind: 'stop', distance: Math.round(bd) };
+  return { name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, kind: 'point', distance: 0 };
+}
+
 const ops = {
   async loadTimetable({ url }) {
     const buf = await fetchContainer(url, 'timetable');
     tt = parseTimetable(buf);
     routeById = routePats = stopRail = stopByCode = null;
     return { date: tt.header.date, counts: tt.counts, feed: tt.header.feed, streets: !!tt.header.streets };
+  },
+  /**
+   * Stored places named again in `lang`: a stop by its code (its station's name where it is part of one), an
+   * address-book place by its exact position. A name, null where neither finds it, or false while the data it needs
+   * is still loading (ask again later).
+   */
+  localize({ places, lang: L, words }) {
+    // a point picked on the map was named by reverseIn at that point ("near X" from 40 m): name it again the same way
+    const picked = (p) => {
+      const named = {};
+      for (const W of ['he', 'en']) {
+        const r = reverseIn(p.lat, p.lon, W);
+        named[W] = r.kind === 'point' ? words[W].point : r.distance > 40 ? words[W].near.replace('{name}', r.name) : r.name;
+      }
+      return named.he === p.name || named.en === p.name ? named[L] : null;
+    };
+    return places.map((p) => {
+      if (p.code != null && p.code !== '') {
+        if (!tt) return false;
+        const s = codeIndex().get(String(p.code));
+        if (s === undefined) return null;
+        const par = tt.stopParent[s];
+        return (par >= 0 && stationName(tt, par, L)) || stopName(tt, s, L);
+      }
+      if (p.lat == null || p.lon == null) return null;
+      if (!pl || !tt) return false;
+      return placeAt(pl, p.lat, p.lon, L, p.name) || picked(p);
+    });
   },
   /** Live vehicles from the newest snapshot: of a line ({line}), in a box ({box}) or of an operator ({operator}). */
   async liveQuery({ url, filter }) {
@@ -541,19 +584,7 @@ const ops = {
     return { trip, routeId: r[4] ?? null, line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
   },
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
-  reverse({ lat, lon }) {
-    if (pl) {
-      const r = reverseGeocode(pl, lat, lon, lang);
-      if (r) return { name: r.city && r.kind !== 'city' ? `${r.name}, ${r.city}` : r.name, kind: r.kind, distance: r.distance };
-    }
-    let best = -1, bd = 600;
-    for (let s = 0; s < tt.stops.length; s++) {
-      const d = haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]);
-      if (d < bd) { bd = d; best = s; }
-    }
-    if (best >= 0) return { name: sName(best), kind: 'stop', distance: Math.round(bd) };
-    return { name: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, kind: 'point', distance: 0 };
-  },
+  reverse({ lat, lon }) { return reverseIn(lat, lon, lang); },
   nearby({ lat, lon, limit = 15, radius = 1200 }) {
     const out = [];
     for (let s = 0; s < tt.stops.length; s++) {

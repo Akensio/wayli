@@ -1,5 +1,6 @@
 // Recent trips, under the bar while there are no results: a tap plans the same trip from now.
 import { Icon } from '../../ui/Icon';
+import { placeName, named } from '../../state/names';
 import { FromTo } from '../../ui/FromTo';
 import { t, lang } from '../../i18n';
 import { dayLabel, calToday } from '../../time';
@@ -17,10 +18,10 @@ export function Recent() {
     <div id="recentBox" hidden={hidden}>
       {l.length > 0 && <h2 class="sec">{t('recentTitle')}</h2>}
       {l.map((r) => (
-        <div class="recent" onClick={() => results.hooks.replan({ ...r, at: r.time || r.at || '' })}>
+        <div class="recent" onClick={() => results.hooks.replan({ ...r, from: named(r.from), to: named(r.to), at: r.time || r.at || '' })}>
           <span class="ic"><Icon name="history" /></span>
           <span class="txt">
-            <span class="name"><FromTo from={r.from.name} to={r.to.name} /></span>
+            <span class="name"><FromTo from={placeName(r.from)} to={placeName(r.to)} /></span>
             <small>{dayLabel(r.day || calToday())} {r.time || ''}{r.bike && r.bike !== 'none' && <> · <Icon name="bike" /></>}{r.arriveBy ? ' · ' + t('arriveBy') : ''}</small>
           </span>
         </div>

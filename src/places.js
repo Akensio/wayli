@@ -270,6 +270,36 @@ export function reverseGeocode(pl, lat, lon, lang = 'he') {
   return null;
 }
 
+/**
+ * A stored place named again in `lang`: the address-book entry exactly at (lat, lon) whose name, in either language and
+ * the way a chosen search result is written ("name, city"; a city alone), is the stored `name`. Several entries can share
+ * a point (house numbers of one building, a venue and its building's address), so the stored name picks among them.
+ * null when none matches.
+ */
+export function placeAt(pl, lat, lon, lang, name) {
+  const at = (a, b) => Math.abs(a - lat) < 2e-6 && Math.abs(b - lon) < 2e-6;
+  const withCity = (n, city) => (city ? `${n}, ${city}` : n);
+  const both = (f) => { const he = f('he'), en = f('en'); return he === name || en === name ? (lang === 'en' ? en : he) : null; };
+  let hit = null;
+  for (let i = 0; i < pl.addrLat.length && !hit; i++) {
+    if (!at(pl.addrLat[i], pl.addrLon[i])) continue;
+    const st = pl.addrStreet[i];
+    hit = both((L) => withCity(`${streetName(pl, st, L)} ${pl.addrNumber[i]}${pl.addrSuffix[i] || ''}`, cityOf(pl, pl.streets[st][1], L)));
+    // a number the map lacks was placed at the street's nearest one: same street and city, the number as typed
+    for (const L of ['he', 'en']) {
+      if (hit) break;
+      const head = streetName(pl, st, L) + ' ', city = cityOf(pl, pl.streets[st][1], L), tail = city ? ', ' + city : '';
+      if (!name.startsWith(head) || !name.endsWith(tail)) continue;
+      const num = name.slice(head.length, name.length - tail.length);
+      if (/^\d+\S{0,3}$/.test(num)) hit = withCity(`${streetName(pl, st, lang)} ${num}`, cityOf(pl, pl.streets[st][1], lang));
+    }
+  }
+  for (let p = 0; p < pl.pois.length && !hit; p++) if (at(pl.pois[p][3], pl.pois[p][4])) hit = both((L) => withCity(poiName(pl, p, L), cityOf(pl, pl.pois[p][2], L)));
+  for (let st = 0; st < pl.streets.length && !hit; st++) if (at(pl.streets[st][2], pl.streets[st][3])) hit = both((L) => withCity(streetName(pl, st, L), cityOf(pl, pl.streets[st][1], L)));
+  for (const c of pl.cities) if (!hit && at(c[1], c[2])) hit = both((L) => (L === 'en' && c[3]) || c[0]);
+  return hit;
+}
+
 /** Results: [{kind:'address'|'street'|'city'|'poi', name, city, lat, lon, score, approx?}], named in `lang` where the data allows. */
 export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
   const q = parseQuery(pl, text);

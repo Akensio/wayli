@@ -4,6 +4,7 @@
 // search mode plays a sequence (the styles), leaving plays it back; the keyboard is held until the pill has
 // shortened so the two never fight.
 import { useEffect, useRef } from 'preact/hooks';
+import { placeName } from '../../state/names';
 import { Icon } from '../../ui/Icon';
 import { Logo } from '../../ui/Logo';
 import { t, lang } from '../../i18n';
@@ -79,8 +80,8 @@ export function TopBar() {
       <div class="trow" id="sumRow" hidden={!sum}>
         <div class="sumbox">
           <button type="button" class="sumtxt" id="sumEdit" onClick={() => { search.barOpen.value = true; }}>
-            <span class="l1" id="sumTo"><span class="tag">{t('tagTo')}</span>{search.to.value ? search.to.value.name : search.toText.value}</span>
-            <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.from.value ? search.from.value.name : (search.fromText.value || t('myLoc'))}<span class="sep">·</span><TimeChipInner /><span class="sep">·</span><BikeChipInner /></span>
+            <span class="l1" id="sumTo"><span class="tag">{t('tagTo')}</span>{search.to.value ? placeName(search.to.value) : search.toText.value}</span>
+            <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.from.value ? placeName(search.from.value) : (search.fromText.value || t('myLoc'))}<span class="sep">·</span><TimeChipInner /><span class="sep">·</span><BikeChipInner /></span>
           </button>
           <button type="button" class="clearbtn" id="sumClear" aria-label={t('clearText')} onClick={search.hooks.clearPlan}><Icon name="close" /></button>
         </div>

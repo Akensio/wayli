@@ -22,7 +22,7 @@ export async function openLine(route: number): Promise<void> {
   map.mapOf.lineDetail = async (drawSeq) => {
     const m = await map.mapReady();
     if (!m || my !== seq || map.stale(drawSeq)) return;
-    const course: Journey = { depart: 0, arrive: 0, transfers: 0, legs: [{ type: 'ride', seconds: 0, routeType: info.routeType, path: info.path, pattern: null }] };
+    const course: Journey = { depart: 0, arrive: 0, transfers: 0, legs: [{ type: 'ride', seconds: 0, routeType: info.routeType, agency: info.agency, path: info.path, pattern: null }] };
     const b = map.drawJourney(m, course, map.markers.journey);
     // every stop of the line as a dot
     (m.getSource('stops') as any).setData({ type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop, ...map.stopKindProp(st.stop) }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });

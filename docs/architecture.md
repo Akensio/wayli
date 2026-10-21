@@ -287,6 +287,13 @@ both vanished for a frame first. The "to" tag on the search pill shows only once
 in two rows. The basemap is restyled in place when the theme changes (a
 full style reload, after which the app's layers are added again).
 
+Stored places keep the name they were picked with; shown in the other
+language they are named again through the data worker (`state/names.ts`,
+`localize` in the worker, `placeAt` in `places.js`): a stop by its code, an
+address-book place by its exact position and stored name, a picked map
+point by the same nearest-address lookup that named it. "My location" is
+always the interface's own words.
+
 Icons are one hand-drawn stroke set on a 24-unit grid (`ICONS` in
 `ui/icons.ts`): injected once as an inline SVG sprite and used as `<use>`
 references in markup and templates, and drawn with the same paths through

@@ -1,12 +1,13 @@
 // Sharing a journey: its legs as text and a link that opens the same plan.
 import { t } from '../i18n';
+import { placeName } from '../state/names';
 import { fmt } from '../time';
 import { toast } from '../ui/toast';
 import { dur, lineText } from './format';
 import type { Journey, Query } from './types';
 
 export function shareJourney(j: Journey, q: Query, bikeOnly = false): void {
-  const lines = [`${q.from.name} → ${q.to.name}`, `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`];
+  const lines = [`${placeName(q.from)} → ${placeName(q.to)}`, `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`];
   for (const l of j.legs) {
     const mins = Math.max(1, Math.round(l.seconds / 60));
     if (l.type === 'ride') lines.push(`${fmt(l.depart!)} ${lineText(l.line)} ${l.from!.name} → ${l.to!.name} ${fmt(l.arrive!)}`);

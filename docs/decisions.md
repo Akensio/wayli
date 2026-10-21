@@ -754,3 +754,14 @@ so they are not re-litigated.
   keyboard too). Leaving, the pill grows back while the rows play out (the
   rule meant for that never applied: the shortened padding stayed until the
   play-out ended) and the icons pop back in once it is whole.
+- 2026-10-21: From Gadi ("only full English or only full Hebrew"): stored
+  places (recent searches, saved places and trips, the bar, shared text)
+  are named in the interface's language when shown (`state/names.ts`): a
+  stop by its code in the timetable, an address-book place by its exact
+  position, the entry there whose Hebrew or English name is the stored one
+  (several share a point: a building's numbers, a venue and its address; a
+  house number the map lacks keeps its number on the same street), a point
+  picked on the map by naming that point again the same way. Names
+  OpenStreetMap has in one language only stay in it (צוותא). Also: a line
+  page draws the line in its operator's colour and names the operator in
+  the interface's language.

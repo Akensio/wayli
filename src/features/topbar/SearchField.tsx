@@ -2,6 +2,7 @@
 // the quick entries (my location, pick on the map, home, work, recents) while empty, matching stops, places
 // and lines while typing. The list ends above the keyboard and scrolls inside itself.
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { placeName, named } from '../../state/names';
 import { useSignal, useSignalEffect } from '@preact/signals';
 import type { Signal } from '@preact/signals';
 import { t, lang } from '../../i18n';
@@ -53,7 +54,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
   const timer = useRef(0);
   void lang.value;   // re-render on a language change: the quick entries and labels
 
-  const pick = (p: Place) => { open.value = false; onPick(p); };
+  const pick = (p: Place) => { open.value = false; onPick(named(p)); };
   const show = () => { open.value = true; requestAnimationFrame(() => { if (dropRef.current) fitDrop(dropRef.current); }); };
   const quickMenu = () => { setRows({ quick: true, lines: [], results: [], placesLoaded: true }); show(); };
   const typed = (q: string) => {
@@ -149,12 +150,12 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
           {savedList.map((p) => (
             <button type="button" class="quick" onClick={() => pick(p)}>
               <span class="ic"><Icon name={p.slot === 'home' ? 'home' : p.slot === 'work' ? 'work' : 'star'} /></span>
-              <span class="txt">{p.slot === 'more' ? p.name : t(p.slot)}<small>{p.slot === 'more' ? '' : p.name}</small></span>
+              <span class="txt">{p.slot === 'more' ? placeName(p) : t(p.slot)}<small>{p.slot === 'more' ? '' : placeName(p)}</small></span>
             </button>
           ))}
           {recent.slice(0, 6).map((p) => (
             <button type="button" class="quick" onClick={() => pick(p)}>
-              <span class="ic"><Icon name="history" /></span><span class="txt">{p.name}</span>
+              <span class="ic"><Icon name="history" /></span><span class="txt">{placeName(p)}</span>
               <span class="mini" title={t('savePlace')} onClick={(e) => { e.stopPropagation(); savedPlaces.add(p); saved.refresh(); search.hooks.toast(t('saved')); quickMenu(); }}><Icon name="star" /></span>
             </button>
           ))}

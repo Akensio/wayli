@@ -1,11 +1,12 @@
 // Loading the data: the manifest (which days, which files), a day's timetable, then the address book, the
 // street graph and the courses in the background. The worker downloads and unpacks; the pill shows how far.
 import * as live from '../live.js';
-import { t, lang } from '../i18n';
+import { t, lang, STR } from '../i18n';
 import { calToday, dayLabel } from '../time';
 import { call, DATA_URL, resetCaches } from '../worker/client';
 import * as data from '../state/data';
 import * as search from '../state/search';
+import * as names from '../state/names';
 import * as app from '../state/app';
 import * as map from '../map/index';
 import type { Manifest } from '../state/data';
@@ -14,6 +15,9 @@ import { setStatus, loadFailed } from './status';
 const manifest = (): Manifest => data.manifest.value!;
 // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
 live.snapshot.query = (filter: object) => call('liveQuery', { url: live.RELAY_URL, filter });
+// stored places shown in the other language are named again by the worker (state/names.ts)
+const WORDS = { he: { near: String(STR.he.nearName), point: String(STR.he.pointName) }, en: { near: String(STR.en.nearName), point: String(STR.en.pointName) } };
+names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });
 /** A data file's address, with the build in the query so a new build is fetched once and then cached. */
 const fileUrl = (f: { file: string; built?: string }): string => `${DATA_URL}${f.file}?v=${encodeURIComponent(f.built || manifest().built || '')}`;
 
