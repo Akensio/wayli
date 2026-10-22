@@ -856,3 +856,7 @@ so they are not re-litigated.
   rest. Rejected: handing back to the trip ending at the next one's first
   station (a quarter fitted, at an hour's delay), and taking the closest
   delay when several fit (two wrong in a day).
+- 2026-10-22: Gadi saw no buses on his map while friends did. The live site
+  showed them from his area with and without the relay; an empty map with no
+  word was possible only with live times off or the phone offline, and now
+  the note says which.

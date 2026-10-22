@@ -85,7 +85,8 @@ export async function refreshLiveMap(): Promise<void> {
   if (!m || !state.styled || document.hidden || sheet.state.value === 'full') return;
   if (nav.isOpen('picker') || liveShow === 'none') { app.liveNote.value = ''; return; }
   const veh = m.getSource('lm-veh') as any;
-  if (!liveOn()) { app.liveNote.value = ''; veh.setData(EMPTY); return; }
+  // no vehicles is never silent: the note says when live times are switched off, or the phone is offline
+  if (!liveOn()) { app.liveNote.value = t(settings.get().live ? 'liveOffline' : 'liveOff'); veh.setData(EMPTY); return; }
   if (m.getZoom() < 10) { app.liveNote.value = t('liveMapZoom'); veh.setData(EMPTY); return; }
   // requests overlap (a move, the 20 s timer): a slow answer still shows unless a newer one already has (on a slow
   // connection every answer came after the next request had started, and none ever showed); until the first, the note
