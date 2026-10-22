@@ -866,3 +866,10 @@ so they are not re-litigated.
   report there looked over five minutes old and was hidden. Reports stamped
   over 2 minutes after the snapshot are dropped, and the newest report
   skips a lone one far ahead of the rest.
+- 2026-10-22: Gadi's phone showed a blank page while the site loaded fine
+  elsewhere. MapLibre now comes bundled with the app instead of from cdnjs (a
+  network that cannot reach the CDN, or a cleared cache, left the page blank;
+  and one less third party), and a safety net in index.html says when the
+  app has not started after 12 s, shows the error, and offers "try again" and
+  "clear stored files and reload" (service worker and caches; history and
+  saved places stay).

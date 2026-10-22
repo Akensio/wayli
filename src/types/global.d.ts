@@ -1,3 +1,3 @@
-// MapLibre comes from the CDN as a global; its types come from the package (types only).
+// MapLibre is bundled and set as a global by src/map/maplibre.ts, first thing in main.ts.
 declare const maplibregl: typeof import('maplibre-gl');
 interface Window { wayliDebug?: Record<string, unknown> }
