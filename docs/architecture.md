@@ -656,7 +656,8 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   own amount. Measured on a day held out of the learning (2026-10-21, 8,000
   positions, against the arrivals the train actually made), arrivals within
   a minute: next station 86% (timetable pace 46%), two ahead 57% (32%),
-  three 44% (31%), five 37% (29%); a few rides that stood still for an hour
+  three 44% (31%), five 37% (29%); on 2026-10-20 held out, 86% (46%), 60%
+  (33%), 47% (31%), 34% (28%); a few rides that stood still for an hour
   are wrong either way. A section never seen keeps the timetable's pace.
   `npm test` checks the arithmetic, and the app gives the same times as the
   measurement to the second.
