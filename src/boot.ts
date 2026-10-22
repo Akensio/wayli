@@ -10,7 +10,7 @@ import * as map from './map/index';
 import { loadFailed } from './controllers/status';
 import { applyLang } from './controllers/lang';
 import { loadManifest, renderDays, startDay, hasDay, loadDay, loadPlaces, loadStreets, loadShapes, loadRailTimes } from './controllers/loading';
-import { plan, parseShared } from './controllers/planner';
+import { plan, parseShared, stillValid } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
 import { layoutTop, updateOnline, registerServiceWorker } from './controllers/shell';
 import './controllers/nearby';   // its hooks
@@ -39,7 +39,7 @@ async function boot(): Promise<void> {
   search.day.value = start;
   search.setDefaultTime();
   if (shared) search.applyQuery(shared);
-  else if (recent && !last.dismissed && last.q.day === start) { search.applyQuery(last.q); results.setResults(last.result, last.q, last.at); }
+  else if (recent && !last.dismissed && last.q.day === start && stillValid(last)) { search.applyQuery(last.q); results.setResults(last.result, last.q, last.at); }
   try { await loadDay(start); } catch (e) { loadFailed(e); return; }
   if (shared) { history.replaceState(null, '', location.pathname); plan(); }
   await loadPlaces();

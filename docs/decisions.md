@@ -929,3 +929,8 @@ so they are not re-litigated.
   with 2 to spare). (3) A card's map button only puts its way on the map or
   takes it off; the highlighted way changes only when it is the one taken
   off or none is highlighted.
+- 2026-10-22: From Gadi: a friend raised her longest walk from 15 to 30
+  minutes and the same search came back as before. Searching the same place
+  again within the hour shows the saved result; it now does so only when it
+  was planned by this build and with the same longest walk, and the same
+  holds for the result shown at start.

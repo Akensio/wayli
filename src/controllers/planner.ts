@@ -77,7 +77,7 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   try {
     const r = await call<PlanResult>('plan', { from, to, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
     recentTrips.add(q); recentPlaces.add(from); recentPlaces.add(to);
-    lastSearch.set({ q, result: r, at: Date.now() });
+    lastSearch.set({ q, result: r, at: Date.now(), built: data.manifest.value?.built ?? null });
     results.setResults(r, q);
     results.refreshRecent();
   } catch (e) { showPlanError(e instanceof Error ? e.message : String(e)); results.result.value = null; results.status.value = 'idle'; }
@@ -90,9 +90,15 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
  * started) and it is under 10 minutes old: otherwise it showed the walk from where the rider had been, not where they
  * are (a search from home came back on the station platform, 13 minutes' walk away; 2026-10-21).
  */
+/** A saved search is shown again only as this app would plan it now: made by this build (a new one may plan
+ *  differently) and with the same longest walk (a friend raised it to 30 minutes and kept getting the result planned
+ *  with 15; 2026-10-22). */
+export function stillValid(last: any): boolean {
+  return !!last && last.built === (data.manifest.value?.built ?? null) && (last.q?.maxWalk == null || last.q.maxWalk === settings.get().maxWalk);
+}
 function restoreLast(p: Place): boolean {
   const last = lastSearch.get();
-  if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > RESTORE_MS) return false;
+  if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > RESTORE_MS || !stillValid(last)) return false;
   if (!last.q.to || last.q.to.name !== p.name || (last.q.day !== search.day.value && !hasDay(last.q.day))) return false;
   const was = last.q.from;
   if (was && was.transient) {
