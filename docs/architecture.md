@@ -377,7 +377,9 @@ journeys arriving in time are ranked against each other; every plan also runs a
 train-only search, and journeys with a train and without one are ranked
 apart, so a slightly faster bus never hides a train;
 changing the day keeps the chosen time; bicycle choice; the longest walk to a stop
-is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
+(the whole walk at either end, a walk on to another stop included, shown as one
+walk; between the same two vehicles the change is made where there is time to
+spare and the least walking, `easierTransfers` in the worker) is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
 ("also at 08:17, 08:32"; a direct way also lists up to two earlier departures
 between the same stops that arrive later, marked "19:37→20:09", which the
