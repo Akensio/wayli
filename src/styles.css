@@ -502,6 +502,9 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .maplibregl-ctrl-group button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active { background: var(--accent); }
 .maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon { background-color: var(--accent-ink); }
 .maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon, .maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon { background-color: var(--warn); }
+/* where you are: the app's turquoise, not MapLibre's blue (its halo and accuracy circle with it) */
+.maplibregl-user-location-dot, .maplibregl-user-location-dot::before { background-color: var(--accent); }
+.maplibregl-user-location-accuracy-circle { background-color: color-mix(in srgb, var(--accent) 18%, transparent); }
 .maplibregl-ctrl-compass .maplibregl-ctrl-icon { background-image: linear-gradient(to bottom, var(--accent) 50%, var(--ink-2) 50%) !important; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; }
 .wayli-pick { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg) translate(6px, -6px); background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 .crosshair-unused { position: fixed; left: 50%; top: 50%; width: 28px; height: 28px; margin: -28px 0 0 -14px; pointer-events: none; z-index: 25;

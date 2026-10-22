@@ -902,3 +902,9 @@ so they are not re-litigated.
   last update. A web page gets no position with the phone locked and is
   paused in the background, so the line leads with clock times that stay
   true when it stops updating. Uses the trip alerts' permission and switch.
+- 2026-10-22: From Gadi: the locate button went grey after a tap, and the
+  position dot should be turquoise. Bundling MapLibre had put its styles
+  after ours; on a phone a tap leaves :hover on the button, and MapLibre's
+  hover grey then won the tie over the following button's turquoise. The
+  app's styles load after MapLibre's again (imported in main.ts), and the
+  position dot, its halo and its accuracy circle are the app's turquoise.
