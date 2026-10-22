@@ -387,8 +387,8 @@ router drops as beaten but a rider at the platform wants) and the alternative li
 fresh live report, orange when its report is older than four minutes,
 plain with the schedule alone) and departed options grey out;
 earlier/later buttons shift the window; no results offers an hour later or
-a longer walk. The last search and its results come back when the app is
-reopened within six hours, with one tap to plan it again from now; the
+a longer walk. The last search opens again, planned afresh, when the app is
+reopened within six hours; the
 eight most recent searches sit under the form and re-plan from now.
 
 Journey detail: the legs drawn on the map, pins at boarding and alighting stops and
