@@ -298,11 +298,17 @@ function codeIndex() {
   return stopByCode;
 }
 // A train takes its next trip's number some minutes before that trip starts: 18% of train fixes came before their
-// trip's start (2026-10-19 and 21), 94% of those from the train standing at its first station. The rest come from a
-// train still running somewhere else, typically 12 minutes before the start (up to 17), a median 12 km from that
-// station and mostly off the trip's path: an empty run, or a trip ending elsewhere. Giving them back to the trip
-// that ends where the next one starts fitted only a quarter, at implausible delays (an hour), so such a fix is
-// dropped: it is no position of the trip it names (a dot under that line far away, or a made-up delay).
+// trip's start (2026-10-19 to 21), 94% of those from the train standing at its first station. The rest come from a
+// train still running elsewhere, typically 12 minutes before the start (up to 17), a median 12 km away and mostly off
+// the trip's path: about 35 trips a day. Some are the train finishing its trip before under the next number (Gadi's
+// reading): another trip went quiet a couple of minutes earlier close by. The feed cannot say so outright (a train's
+// vehicle number is its trip number, not the set), so a fix goes back to such a trip only when it plainly continues
+// it: that trip has not reported for 2-15 minutes, the fix is on its path, further along it, no further from its last
+// report than a train runs in that time, the delay it gives that trip is within 5 minutes of its last one (it carried
+// over within 0.2 minutes in the median), and no other trip fits. A quarter of these fixes come with a twin, another
+// trip running reports from the same spot that minute: one train under two numbers, or two coupled; the running trip
+// has its own report, and the copy is dropped. The trip then shows the train to its end instead of going quiet. Any other such fix is dropped: it
+// is no position of the trip it names (a dot of that line far away, or a made-up delay).
 function notYetItsTrip(v) {
   if (v.operator !== 2 || v.atStop || !(v.velocity > 10) || !tt) return false;
   const day = tt.header.date, t = tripFor(v.lineRef, secondsOn(v.scheduledStart, day));
@@ -310,11 +316,35 @@ function notYetItsTrip(v) {
   const { stops } = tripStopList(t);
   return secondsOn(v.recordedAt, day) < stops[0].dep - 120 && metres(v.lat, v.lon, stops[0].lat, stops[0].lon) > 300;
 }
+function handedOver(early, trains) {
+  const day = tt.header.date, seen = early.recordedAt.getTime();
+  let best = null;
+  for (const o of trains) {
+    const gap = seen - o.recordedAt.getTime();
+    // quiet: two report cycles missed (trains report every minute; a running train a cycle late is no handover), and
+    // not over a quarter of an hour
+    if (o === early || !(gap >= 120e3 && gap <= 900e3)) continue;
+    // the same train going on: no further away than it could have run since (160 km/h)
+    if (metres(o.lat, o.lon, early.lat, early.lon) > 500 + (gap / 1000) * 45) continue;
+    const t = tripFor(o.lineRef, secondsOn(o.scheduledStart, day));
+    if (t < 0) continue;
+    const { stops } = tripStopList(t);
+    if (secondsOn(early.recordedAt, day) > stops[stops.length - 1].arr + 3600) continue;
+    const was = estimateDelay(o, stops, day), now = estimateDelay(early, stops, day);
+    if (!was || !now || now.index + now.frac < was.index + was.frac) continue;   // and further along its trip
+    const real = (d) => d > -900 && d < 5400;   // a delay at the estimate's bounds is no estimate (a trip far off its time)
+    if (!real(was.delay) || !real(now.delay) || Math.abs(now.delay - was.delay) > 300) continue;
+    if (best) return null;   // two trips fit: no guessing (a wrong one shows a train where it is not)
+    best = o;
+  }
+  return best;
+}
 /** The snapshot's vehicles in live.js's shape. One with no position (most often a train) is put at the stop it
  *  reports when it is at it; Hasadna's database drops those (about one train in eight, 2026-10-21). A train
- *  that has taken its next trip's number while still running elsewhere is left out (notYetItsTrip). */
+ *  that has taken its next trip's number while still running elsewhere goes back to the trip it is finishing when
+ *  that is clear (handedOver), and is left out otherwise. */
 function snapVehicles(j, t) {
-  const out = [], now = Date.now();
+  const out = [], early = [], now = Date.now();
   const codes = tt ? codeIndex() : null;
   for (const d of (j && j.Siri && j.Siri.ServiceDelivery && j.Siri.ServiceDelivery.StopMonitoringDelivery) || []) {
     for (const x of d.MonitoredStopVisit || []) {
@@ -334,10 +364,18 @@ function snapVehicles(j, t) {
       const v = { lineRef: String(m.LineRef), lat, lon, bearing: Number(m.Bearing) || 0, velocity: Number(m.Velocity) || 0, recordedAt,
         scheduledStart: new Date(m.OriginAimedDepartureTime), rideId: `${m.LineRef}/${m.OriginAimedDepartureTime}`, vehicleRef: m.VehicleRef,
         operator: Number(m.OperatorRef), atStop };
-      if (!notYetItsTrip(v)) out.push(v);
+      if (notYetItsTrip(v)) early.push(v); else out.push(v);
     }
   }
-  return out;
+  if (!early.length) return out;
+  const trains = out.filter((v) => v.operator === 2 && !v.atStop), gone = new Set();
+  for (const v of early) {
+    const o = handedOver(v, trains);
+    if (!o || gone.has(o)) continue;
+    gone.add(o);   // its own older report gives way to the newer one
+    out.push({ ...v, lineRef: o.lineRef, scheduledStart: o.scheduledStart, rideId: o.rideId, handedOver: true });
+  }
+  return gone.size ? out.filter((v) => !gone.has(v)) : out;
 }
 let relayAt = 0;   // which of the relay's addresses answered last: tried first next time
 async function snapshot(urls) {

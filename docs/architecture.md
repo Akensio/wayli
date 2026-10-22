@@ -662,12 +662,21 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   `npm test` checks the arithmetic, and the app gives the same times as the
   measurement to the second.
 - Trains take their next trip's number before it starts: 18% of train fixes
-  came before their trip's start, 94% of them at its first station; the
-  rest from a train still running elsewhere (typically 12 minutes before,
-  a median 12 km away, mostly off the trip's path), which the worker drops
-  rather than show a dot of that line far away or a made-up delay. Handing
-  them back to the trip ending where the next one starts fitted a quarter
-  of them, at an hour's delay: rejected.
+  came before their trip's start, 94% of them at its first station. The
+  rest (about 35 trips a day) come from a train still running elsewhere,
+  typically 12 minutes before: a quarter have a twin, another trip running
+  reports from the same spot that minute (one train under two numbers, or
+  two coupled), about a tenth plainly continue a trip that has gone quiet
+  (the train finishing it under the next number, usually with under 15
+  minutes left), and the rest have no trip near them (empty runs to the
+  start). The feed cannot say which train is which (a train's vehicle
+  number is its trip number), so the worker hands a fix back to the trip it
+  continues only when that trip has missed two reports (2-15 minutes), the
+  fix is on its path, further along it, no further than a train runs in the
+  time, gives it a real delay within 5 minutes of its last, and no other
+  trip fits; it drops every other such fix. Replayed through the worker on
+  rebuilt snapshots of 2026-10-20 and 21 (69 such fixes): 3 handed back to
+  the right trip, 5 handovers left out (dropped), none to a wrong trip.
 - Where it shows: badge per ride leg in a journey around now (and the
   vehicle on the map), live times for a stop's next departures (one area
   query, then by line for what it missed), the vehicle's place in a trip's

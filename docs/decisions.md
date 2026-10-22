@@ -847,5 +847,12 @@ so they are not re-litigated.
   lawsuit over it, 2026-09).
 - 2026-10-22: Gadi asked whether trains reuse old positions: they take the
   next trip's number early (18% of train fixes; 94% standing at the first
-  station). The 3% still running elsewhere are dropped; giving them back to
-  the trip before fitted too few. History learning skips them too.
+  station). Gadi: the rest look like a train finishing one trip and going on
+  as the next, handle it smartly. Measured: about a tenth do (another trip
+  goes quiet close by), a quarter are one train reporting two numbers at
+  once, the rest empty runs. The worker hands a fix back to the trip it
+  continues when time, place, path, progress and delay all agree and only
+  one trip fits (no wrong handover in two days replayed), and drops the
+  rest. Rejected: handing back to the trip ending at the next one's first
+  station (a quarter fitted, at an hour's delay), and taking the closest
+  delay when several fit (two wrong in a day).
