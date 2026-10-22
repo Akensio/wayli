@@ -879,3 +879,7 @@ so they are not re-litigated.
   earlier departures between the same two stops that arrive later (up to
   two, reachable, at most 30 minutes later), marked with their arrival: the
   train at the platform is never hidden.
+- 2026-10-22: From Gadi ("19:34 vs 19:38 next to each other?"): the trip
+  detail showed the planned departure (the delay when planning) in bold and
+  the live check's time in the badge. Now the newest live look sets the bold
+  time and the badge says only how late (and "?" when the report is old).

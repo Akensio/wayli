@@ -30,9 +30,13 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick }: Props) {
   const ride = l.type === 'ride';
   const mins = Math.max(1, Math.round(l.seconds / 60));
   const stopsAlong = (l.stopsAlong as StopAlong[] | undefined) || [];
-  const shifted = mode === 'detail' && ride && l.schedDepart != null && Math.abs((l.schedDepart as number) - l.depart!) >= 60;
+  // one departure time: the newest live look at the vehicle (the badge) when there is one, else the planned one; the
+  // badge then says only how late, so the planned and the live time never stand side by side (2026-10-22)
+  const liveTime = mode === 'detail' && ride && badge && badge.time != null ? badge.time : null;
+  const dep = liveTime ?? l.depart!;
+  const shifted = mode === 'detail' && ride && l.schedDepart != null && Math.abs((l.schedDepart as number) - dep) >= 60;
   const times = mode === 'follow' ? fmt(l.depart!)
-    : shifted ? <><s>{fmt(l.schedDepart as number)}</s><br /><b>{fmt(l.depart!)}</b><br />{fmt(l.arrive!)}</>
+    : shifted ? <><s>{fmt(l.schedDepart as number)}</s><br /><b>{fmt(dep)}</b><br />{fmt(l.arrive!)}</>
     : <>{fmt(l.depart!)}{ride && <><br />{fmt(l.arrive!)}</>}</>;
   return (
     <div class={`leg ${l.type}${ride ? ' t' + l.routeType : ''}${cls ? ' ' + cls : ''}`}
@@ -42,7 +46,7 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick }: Props) {
       <span class="what">
         {ride ? <>
           <span class={`chip${onChip && l.route != null && l.route !== '' ? ' btn' : ''} t${l.routeType}`} style={chipColors(l.routeType, l.agency)} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined}>{lineText(l.line)}</span>
-          {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? badge.text : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi></small></>
+          {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? (liveTime != null && badge.delayText ? badge.delayText : badge.text) : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi></small></>
             : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)}</>}
           {mode === 'detail' && stopsAlong.length > 2 && <>
             <button type="button" class="toggle" onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</button>

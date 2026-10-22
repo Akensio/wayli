@@ -24,14 +24,15 @@ export const inShort = (n: number): string => (n > 120 || n < 0 ? '' : ` (${t('d
 /** A saved trip's key: the places and the bicycle choice. */
 export const tripKey = (q: { from: { name: string }; to: { name: string }; bike?: string; folding?: boolean }): string => `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`;
 export type LiveAt = { time: number; delay: number; passed?: boolean; stale?: boolean } | null;
-export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone' };
+export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: number; delayText?: string };   // time: the live departure
 /** A live vehicle's standing as a badge: its time at the stop and how late, passed, or no vehicle found. */
 export function liveBadge(at: LiveAt): Badge {
   if (!at) return { text: t('liveNoVehicle'), cls: '' };
   if (at.passed) return { text: t('livePassed'), cls: 'gone' };
   const d = live.delayMinutes(at.delay);
+  const delayText = `⦿ ${d === 0 ? t('onTime') : `${d > 0 ? '+' : ''}${d}`}${at.stale ? ' ?' : ''}`;
   const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
-  return { text, cls: at.stale ? 'unsure' : 'ok' };
+  return { text, cls: at.stale ? 'unsure' : 'ok', time: at.time, delayText };
 }
 /** "now", "in n min" (up to two hours), or nothing. */
 export function inText(sec: number, day: string): string { const n = minutesUntil(sec, day); return n <= 0 ? t('nowDep') : n > 120 ? '' : t('inMin', { n }); }
