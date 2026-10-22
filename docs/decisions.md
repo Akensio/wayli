@@ -835,3 +835,17 @@ so they are not re-litigated.
   morning and the deploy failed, app change and all. The build keeps the last
   feed that downloaded (Actions cache, one a day) and builds with it, with a
   warning, when the download fails.
+- 2026-10-22: From Gadi ("trains don't move at the same speed between
+  stations; fit an expected ride time per section from recent data"): train
+  delays from learned section times (pipeline/railtimes.py, nightly, last 7
+  days of Hasadna's positions): running time and its spread along each
+  section, late trains' stands, and a learned 20 s made up per station.
+  Held-out day, arrivals within a minute: next station 86% vs 46%, two ahead
+  57% vs 32%, five ahead 37% vs 29%. Rejected: using the Ministry's
+  per-station SIRI predictions (a key and a fixed-IP server) for now, and
+  the railway's own API (Israel Railways threatened Better Rail with a
+  lawsuit over it, 2026-09).
+- 2026-10-22: Gadi asked whether trains reuse old positions: they take the
+  next trip's number early (18% of train fixes; 94% standing at the first
+  station). The 3% still running elsewhere are dropped; giving them back to
+  the trip before fitted too few. History learning skips them too.

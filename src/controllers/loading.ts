@@ -91,6 +91,15 @@ export async function loadShapes(): Promise<void> {
   // straight lines between stops until then
   await retrying(async () => { await call('loadShapes', { url: fileUrl(f) }); data.shReady.value = true; map.redrawMap(true); }, () => { loadShapes(); });
 }
+/** The learned running times of rail sections: train delays from where a train is, here and in the data worker. */
+export async function loadRailTimes(): Promise<void> {
+  const f = manifest().railtimes;
+  if (!f) return;
+  try {
+    const m = await (await fetch(fileUrl(f))).json();
+    live.setRailTimes(m); await call('setRailTimes', { m });
+  } catch { /* the timetable's own section times then */ }
+}
 export async function loadStreets(): Promise<void> {
   const f = manifest().streets;
   if (data.stReady.value || !f) return;

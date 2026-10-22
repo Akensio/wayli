@@ -3,7 +3,8 @@
 
     npm run build && python3 pipeline/build_site.py --out site
 
-Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz and shapes.bin.gz,
+Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz, shapes.bin.gz and
+railtimes.json (learned train section times),
 and writes site/data/manifest.json with the available days.
 """
 import argparse
@@ -69,6 +70,12 @@ def main():
         h = header_of(pp)
         shutil.copy(pp, out / "data" / pp.name)
         places = {"file": pp.name, "bytes": pp.stat().st_size, "counts": h["counts"], "built": h.get("built")}
+    railtimes = None
+    rp = data / "railtimes.json"
+    if rp.exists():
+        r = json.loads(rp.read_text(encoding="utf-8"))
+        shutil.copy(rp, out / "data" / rp.name)
+        railtimes = {"file": rp.name, "bytes": rp.stat().st_size, "built": r.get("built"), "days": r.get("days"), "sections": len(r.get("s", {}))}
     first = header_of(data / days[0]["file"])
     manifest = {
         "built": built,
@@ -78,6 +85,7 @@ def main():
         "streets": streets,
         "places": places,
         "shapes": shapes,
+        "railtimes": railtimes,
     }
     (out / "data" / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
     total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())

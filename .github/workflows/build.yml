@@ -97,6 +97,12 @@ jobs:
           for i in 0 1 2 3 4 5 6; do TZ=Asia/Jerusalem date -d "-3 hours +$i day" +%Y%m%d; done \
             | xargs -P 4 -I{} sh -c 'python3 -I pipeline/compile.py data/gtfs.zip --date {} --streets data/streets.bin.gz --shapes data/shapes.bin.gz --rail data/rail.bin.gz --out data/timetable-{}.bin.gz > data/compile-{}.log 2>&1 || { cat data/compile-{}.log; exit 1; }'
           for i in 0 1 2 3 4 5 6; do d=$(TZ=Asia/Jerusalem date -d "-3 hours +$i day" +%Y%m%d); [ -s "data/timetable-$d.bin.gz" ] || { echo "missing timetable-$d"; exit 1; }; done
+      - name: The newest learned train section times (.github/workflows/railtimes.yml), if any
+        uses: actions/cache/restore@v4
+        with:
+          path: data/railtimes.json
+          key: railtimes-none
+          restore-keys: railtimes-
       - run: python3 pipeline/build_site.py --out site
       - uses: actions/upload-pages-artifact@v3
         with:

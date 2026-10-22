@@ -1,0 +1,44 @@
+# Nightly: learn how long trains really take between stations from the last 7 days of positions
+# (pipeline/railtimes.py). The history and the result live in the Actions cache; the site build takes the newest result,
+# so a deploy never waits for this.
+name: Train section times
+on:
+  schedule:
+    - cron: "40 1 * * *"   # 04:40 in Israel in summer (03:40 in winter): the service day is over
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: railtimes
+  cancel-in-progress: false
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150   # the first run fetches 7 days (about 150 hours at two at a time); later ones one day
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: The train history so far (an hour per file)
+        uses: actions/cache@v4
+        with:
+          path: data/railhist
+          key: railhist-${{ github.run_id }}
+          restore-keys: railhist-
+      - name: The feed the site build last downloaded
+        uses: actions/cache/restore@v4
+        with:
+          path: data/gtfs-last.zip
+          key: gtfs-none
+          restore-keys: gtfs-
+      - name: The feed, from the Ministry if the build has none yet
+        run: |
+          if [ -f data/gtfs-last.zip ]; then cp data/gtfs-last.zip data/gtfs.zip
+          else curl -fsSL --retry 3 --connect-timeout 60 -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip; fi
+      - run: python3 -I pipeline/railtimes.py data/gtfs.zip --history data/railhist --days 7 --out data/railtimes.json
+      - name: Keep the result for the site build
+        uses: actions/cache/save@v4
+        with:
+          path: data/railtimes.json
+          key: railtimes-${{ github.run_id }}

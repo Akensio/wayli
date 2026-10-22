@@ -2,7 +2,7 @@
 import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode, placeAt } from './places.js';
-import { estimateDelay, secondsOn } from './live.js';
+import { estimateDelay, secondsOn, setRailTimes, metres } from './live.js';
 
 let tt = null, st = null, pl = null, sh = null;
 let lang = 'he';   // the language names are handed out in (setLang); the timetable carries what the feed translates
@@ -167,7 +167,7 @@ function tripFor(routeId, start) {
 function tripStopList(t) {
   const p = tt.tripPat[t], ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p], base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns;
   const out = [];
-  for (let i = 0; i < ns; i++) { const s = tt.patStops[tt.patStopsOff[p] + i]; out.push({ lat: tt.stopLat[s], lon: tt.stopLon[s], arr: tt.arr[base + i], dep: tt.dep[base + i] }); }
+  for (let i = 0; i < ns; i++) { const s = tt.patStops[tt.patStopsOff[p] + i]; out.push({ lat: tt.stopLat[s], lon: tt.stopLon[s], code: tt.stops[s][2], arr: tt.arr[base + i], dep: tt.dep[base + i] }); }
   return { p, ns, base, stops: out };
 }
 let liveEdits = [], tripLive = new Map();
@@ -188,11 +188,12 @@ function applyLive(vehicles) {
     const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: rec }, stops, day);
     if (!est) continue;
     tripLive.set(t, { delay: est.delay, index: est.index, seen: rec.getTime(), stale: est.ageSec > 240, lat: v.lat, lon: v.lon });
-    if (Math.abs(est.delay) < 60) continue;
+    if (Math.abs(est.delay) < 60 && !est.dep) continue;   // a train with learned sections has its own time at each station
     const prevBase = t > tt.patTripsOff[p] ? base - ns : -1, nextBase = t + 1 < tt.patTripsOff[p + 1] ? base + ns : -1;
     for (let i = est.index; i < ns; i++) {
       const idx = base + i;
-      let nd = tt.dep[idx] + est.delay, na = tt.arr[idx] + est.delay;
+      let nd = est.dep && est.dep[i] != null ? Math.round(est.dep[i]) : tt.dep[idx] + est.delay;
+      let na = est.arr && est.arr[i] != null ? Math.round(est.arr[i]) : est.dep && est.dep[i] != null ? nd : tt.arr[idx] + est.delay;
       if (nextBase >= 0) { nd = Math.min(nd, tt.dep[nextBase + i]); na = Math.min(na, tt.arr[nextBase + i]); }
       if (prevBase >= 0) { nd = Math.max(nd, tt.dep[prevBase + i]); na = Math.max(na, tt.arr[prevBase + i]); }
       if (na > nd) na = nd;
@@ -296,8 +297,22 @@ function codeIndex() {
   if (!stopByCode) { stopByCode = new Map(); for (let i = 0; i < tt.stops.length; i++) if (tt.stops[i][2]) stopByCode.set(String(tt.stops[i][2]), i); }
   return stopByCode;
 }
+// A train takes its next trip's number some minutes before that trip starts: 18% of train fixes came before their
+// trip's start (2026-10-19 and 21), 94% of those from the train standing at its first station. The rest come from a
+// train still running somewhere else, typically 12 minutes before the start (up to 17), a median 12 km from that
+// station and mostly off the trip's path: an empty run, or a trip ending elsewhere. Giving them back to the trip
+// that ends where the next one starts fitted only a quarter, at implausible delays (an hour), so such a fix is
+// dropped: it is no position of the trip it names (a dot under that line far away, or a made-up delay).
+function notYetItsTrip(v) {
+  if (v.operator !== 2 || v.atStop || !(v.velocity > 10) || !tt) return false;
+  const day = tt.header.date, t = tripFor(v.lineRef, secondsOn(v.scheduledStart, day));
+  if (t < 0) return false;
+  const { stops } = tripStopList(t);
+  return secondsOn(v.recordedAt, day) < stops[0].dep - 120 && metres(v.lat, v.lon, stops[0].lat, stops[0].lon) > 300;
+}
 /** The snapshot's vehicles in live.js's shape. One with no position (most often a train) is put at the stop it
- *  reports when it is at it; Hasadna's database drops those (about one train in eight, 2026-10-21). */
+ *  reports when it is at it; Hasadna's database drops those (about one train in eight, 2026-10-21). A train
+ *  that has taken its next trip's number while still running elsewhere is left out (notYetItsTrip). */
 function snapVehicles(j, t) {
   const out = [], now = Date.now();
   const codes = tt ? codeIndex() : null;
@@ -316,9 +331,10 @@ function snapVehicles(j, t) {
         if (s === undefined || Number(c.DistanceFromStop) > 0) continue;
         lat = tt.stopLat[s]; lon = tt.stopLon[s]; atStop = true;
       }
-      out.push({ lineRef: String(m.LineRef), lat, lon, bearing: Number(m.Bearing) || 0, velocity: Number(m.Velocity) || 0, recordedAt,
+      const v = { lineRef: String(m.LineRef), lat, lon, bearing: Number(m.Bearing) || 0, velocity: Number(m.Velocity) || 0, recordedAt,
         scheduledStart: new Date(m.OriginAimedDepartureTime), rideId: `${m.LineRef}/${m.OriginAimedDepartureTime}`, vehicleRef: m.VehicleRef,
-        operator: Number(m.OperatorRef), atStop });
+        operator: Number(m.OperatorRef), atStop };
+      if (!notYetItsTrip(v)) out.push(v);
     }
   }
   return out;
@@ -434,6 +450,8 @@ const ops = {
     st = parseStreets(buf);
     return { nodes: st.M };
   },
+  /** The learned running times of rail sections (pipeline/railtimes.py), for train delays. */
+  setRailTimes({ m }) { setRailTimes(m); return true; },
   async loadShapes({ url }) {
     const buf = await fetchContainer(url, 'shapes');
     sh = parseShapes(buf);

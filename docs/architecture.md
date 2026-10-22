@@ -604,6 +604,15 @@ station's platforms into one result.
   seven compiled days are cached by feed, graphs and compiler source, so
   an app-only push skips the six-minute compile and is live in about two
   minutes.
+- When the Ministry's server does not answer (it did not, for a morning in
+  October 2026), the build uses the last feed that downloaded, kept in the
+  Actions cache a day at a time, so an app change still deploys.
+- Train section times (`pipeline/railtimes.py`, its own nightly workflow
+  `.github/workflows/railtimes.yml` at 04:40): the last 7 days of train
+  positions from Hasadna's database, an hour per file kept in the Actions
+  cache so each night fetches one day (two requests at a time; the first
+  run fetches the week), learned into `railtimes.json` (about 150
+  sections), which the site build takes from the cache. See Real-time.
 - Hosting: GitHub Pages or Cloudflare Pages, both free. Torrent/IPFS were
   considered and rejected for now (a CDN is free; peer-to-peer in a browser
   still needs servers). An optional mirror can come later.
@@ -632,6 +641,32 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   its stop sequence gives no estimate; one older than four minutes is
   marked stale. Mismatches between the feed and the operator's actual
   schedule show up as implausible delays; rough, but honest about it.
+- Trains (since 2026-10-22): a train does not run at one speed between
+  stations, so the timetable's pace misplaces it in time. `railtimes.json`
+  holds, per section between two stations, the usual running time and the
+  share of it spent at each tenth of the way (on the same straight line
+  between the stations the app projects on), learned from the last week's
+  positions: each ride's arrival and departure at a station are when its
+  fixes come within 300 m of it and leave. Also the stand a late train makes
+  at each station, and what a late train makes up per station beyond the
+  next (about 20 s, which the usual times miss). From a train's position the
+  app then works out when it reaches the next station and, leaving each
+  station no earlier than the timetable, every later one; its delay is the
+  one at the next station, and the planner shifts each station's time by its
+  own amount. Measured on a day held out of the learning (2026-10-21, 8,000
+  positions, against the arrivals the train actually made), arrivals within
+  a minute: next station 86% (timetable pace 46%), two ahead 57% (32%),
+  three 44% (31%), five 37% (29%); a few rides that stood still for an hour
+  are wrong either way. A section never seen keeps the timetable's pace.
+  `npm test` checks the arithmetic, and the app gives the same times as the
+  measurement to the second.
+- Trains take their next trip's number before it starts: 18% of train fixes
+  came before their trip's start, 94% of them at its first station; the
+  rest from a train still running elsewhere (typically 12 minutes before,
+  a median 12 km away, mostly off the trip's path), which the worker drops
+  rather than show a dot of that line far away or a made-up delay. Handing
+  them back to the trip ending where the next one starts fitted a quarter
+  of them, at an hour's delay: rejected.
 - Where it shows: badge per ride leg in a journey around now (and the
   vehicle on the map), live times for a stop's next departures (one area
   query, then by line for what it missed), the vehicle's place in a trip's

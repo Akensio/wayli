@@ -9,7 +9,7 @@ import { warmPosition } from './state/position';
 import * as map from './map/index';
 import { loadFailed } from './controllers/status';
 import { applyLang } from './controllers/lang';
-import { loadManifest, renderDays, startDay, hasDay, loadDay, loadPlaces, loadStreets, loadShapes } from './controllers/loading';
+import { loadManifest, renderDays, startDay, hasDay, loadDay, loadPlaces, loadStreets, loadShapes, loadRailTimes } from './controllers/loading';
 import { plan, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
 import { layoutTop, updateOnline, registerServiceWorker } from './controllers/shell';
@@ -45,5 +45,6 @@ async function boot(): Promise<void> {
   await loadPlaces();
   await loadStreets();
   loadShapes();
+  loadRailTimes();
 }
 boot().catch(loadFailed);

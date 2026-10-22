@@ -12,7 +12,7 @@
     "lint": "eslint src tools worker",
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck && npm test",
-    "test": "node tools/follow.test.mjs"
+    "test": "node tools/follow.test.mjs && node tools/railtimes.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
