@@ -505,6 +505,14 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 /* where you are: the app's turquoise, not MapLibre's blue (its halo and accuracy circle with it) */
 .maplibregl-user-location-dot, .maplibregl-user-location-dot::before { background-color: var(--accent); }
 .maplibregl-user-location-accuracy-circle { background-color: color-mix(in srgb, var(--accent) 18%, transparent); }
+/* the way you face: a cone from the dot, turned by the compass (map/heading.ts), starting outside the dot so it stays
+   crisp and fading out with distance */
+.wayli-cone { display: none; position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; z-index: -1; pointer-events: none;
+  transform: translate(-50%, -50%) rotate(var(--heading, 0deg));
+  background: conic-gradient(from -32deg, color-mix(in srgb, var(--accent) 55%, transparent) 0deg 64deg, transparent 64deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 9px, #000 10px, rgba(0,0,0,.6) 28px, transparent 48px); mask: radial-gradient(circle, transparent 0 9px, #000 10px, rgba(0,0,0,.6) 28px, transparent 48px); }
+.wayli-cone.on { display: block; }
+.maplibregl-user-location-dot-stale .wayli-cone { display: none; }   /* an old position points nowhere */
 .maplibregl-ctrl-compass .maplibregl-ctrl-icon { background-image: linear-gradient(to bottom, var(--accent) 50%, var(--ink-2) 50%) !important; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; }
 .wayli-pick { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg) translate(6px, -6px); background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 .crosshair-unused { position: fixed; left: 50%; top: 50%; width: 28px; height: 28px; margin: -28px 0 0 -14px; pointer-events: none; z-index: 25;

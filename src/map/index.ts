@@ -15,6 +15,7 @@ import { ensureJourneyLayers, drawJourney, fitMap, withCourses } from './layers'
 import { stopPopup, placeBubble } from './popups';
 import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetShow } from './live';
 import { pickAt } from './picker';
+import { startHeading, attachHeading } from './heading';
 
 export { applyTheme, setBasemapLang } from './basemap';
 export { mapReady, stale, state as mapState, markers, stopKindProp, EMPTY } from './shared';
@@ -46,6 +47,7 @@ export async function initMap(): Promise<void> {
   // again). Turning location off is the phone's permission, not a map button.
   const g: any = geoCtl;
   g._geolocateButton.addEventListener('click', (e: Event) => {
+    startHeading();   // the compass for the cone on the dot; an iPhone asks for it here, on the tap
     const st = g._watchState;
     if (!['ACTIVE_LOCK', 'WAITING_ACTIVE', 'ACTIVE_ERROR', 'BACKGROUND_ERROR'].includes(st)) return;   // on, or back to following: as MapLibre does
     e.stopImmediatePropagation(); e.preventDefault();
@@ -58,6 +60,7 @@ export async function initMap(): Promise<void> {
   const compassVis = () => { const on = Math.abs(m.getBearing()) > 0.5 || m.getPitch() > 0.5; (compass as any)._container.classList.toggle('wayli-hidden', !on); };
   compassVis(); for (const ev of ['rotate', 'pitch', 'moveend', 'load'] as const) m.on(ev, compassVis);
   geoCtl.on('geolocate', (p: any) => notePos(p.coords.latitude, p.coords.longitude));
+  startHeading(); attachHeading(m);   // Android needs no tap for the compass
   m.once('load', () => { const a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show'); });
   m.on('style.load', () => {
     setupMapLayers(m);

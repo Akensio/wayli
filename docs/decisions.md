@@ -908,3 +908,9 @@ so they are not re-litigated.
   hover grey then won the tie over the following button's turquoise. The
   app's styles load after MapLibre's again (imported in main.ts), and the
   position dot, its halo and its accuracy circle are the app's turquoise.
+- 2026-10-22: From Gadi: a compass fan on the position dot. A turquoise cone
+  turned by the phone's compass (absolute orientation on Android; on an
+  iPhone after permission asked from the locate button's tap) and the map's
+  rotation, smoothed, hidden when no reading came for two seconds or the
+  position is stale. Its own element in the dot (the dot's ::after is its
+  ring). The heading never leaves the phone.
