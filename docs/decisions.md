@@ -888,3 +888,10 @@ so they are not re-litigated.
   *.workers.dev); switching Android's Private DNS to dns.google fixed it.
   Riders behind the same filter fall back to Hasadna's database (minutes
   behind); relay.waynet.app remains the fix for them, waiting on Gadi.
+- 2026-10-22: From Gadi on the 173: "get off at the next stop" came a stop
+  early. The follower took the nearest stop as reached, often the one ahead,
+  and also alerted within 350 m of the alighting stop whatever stood between.
+  Now the rider is placed on the stretch between two stops (the stop at its
+  start is reached, the one at its end once within 60 m), and the alert comes
+  once the stop before the last is passed. On board, the live badge gives the
+  time at the alighting stop, not "passed" for the boarding one.

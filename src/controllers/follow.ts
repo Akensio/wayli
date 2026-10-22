@@ -131,7 +131,7 @@ async function followLive(): Promise<void> {
     const ts = await tripStopsCached(leg.trip!);
     if (!fol) return;
     const est = live.estimateDelay(v, ts.stops, a.day);
-    const at = live.liveAt(est, ts.stops, leg.boardPos);
+    const at = live.liveAt(est, ts.stops, a.state.onBoard && leg.alightPos != null ? leg.alightPos : leg.boardPos);   // on board: when it reaches the stop to get off at
     fol.liveEst = est ? { est, at } : null;
     follow.liveBadge.value = at ? liveBadge(at) : null;
     publish();

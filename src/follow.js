@@ -9,7 +9,6 @@
 import { metres } from './live.js';
 
 const AT_STOP = 60;        // m: close enough to count as being at a stop or the destination
-const NEAR_ALIGHT = 350;   // m: when the alighting stop is this close, say "get off at the next stop"
 
 export function initialState() { return { step: 0, onBoard: false, rideIdx: 0, alerted: {}, done: false, hold: -1, startedAt: Date.now() }; }
 /** The state for a rider who starts following once already on board: on the ride that has departed (the last
@@ -60,9 +59,12 @@ export function advance(journey, state, pos, nowSec) {
     const lastIdx = stops.length - 1;
     if (!s.onBoard) {
       // on board once the rider has left the boarding stop along the route, or the vehicle should be gone
-      let idx = 0;
-      if (pos && stops.length > 1) idx = nearestStop(pos, stops, 0);
-      const moved = pos && idx >= 1 && !near(pos, stops[0], 150);
+      let idx = 0, moved = false;
+      if (pos && stops.length > 1) {
+        const p = along(pos, stops, 0);
+        idx = nearestStop(pos, stops, 0);
+        moved = p.d <= 400 && (p.i >= 1 || !near(pos, stops[0], 150));   // on the way, past the boarding stop
+      }
       const gone = clock && nowSec > leg.depart + (pos ? 600 : 90);
       if (!moved && !gone) break;
       s.onBoard = true; s.rideIdx = Math.max(0, idx); events.push('boarded');
@@ -76,7 +78,8 @@ export function advance(journey, state, pos, nowSec) {
       while (idx < lastIdx && nowSec >= stops[idx + 1].arr) idx++;
       s.rideIdx = idx;
     }
-    const alightSoon = s.rideIdx >= lastIdx - 1 || (pos && near(pos, stops[lastIdx], NEAR_ALIGHT)) || (!pos && nowSec >= leg.arrive - 120);
+    // the next stop is the one to get off at once the one before it is passed (by position, or by the clock without one)
+    const alightSoon = s.rideIdx >= lastIdx - 1 || (!pos && nowSec >= leg.arrive - 120);
     if (alightSoon && !s.alerted['soon' + s.step]) { s.alerted['soon' + s.step] = true; events.push('getOffNext'); }
     const atAlight = (pos && near(pos, stops[lastIdx], AT_STOP + 20)) || (clock && ((!pos && nowSec >= leg.arrive + 30) || (pos && nowSec >= leg.arrive + 900)));
     if (!atAlight) break;
@@ -112,16 +115,28 @@ export function stepBack(journey, state) {
 /** Whether there is a step to go back to. */
 export const canStepBack = (state) => state.done || state.step > 0 || state.onBoard;
 
-/** The stop of a ride the rider is at or has just passed; never behind where they already were. */
-export function nearestStop(pos, stops, fromIdx) {
-  let best = fromIdx, bd = Infinity;
-  for (let i = fromIdx; i < stops.length; i++) {
-    const d = metres(pos.lat, pos.lon, stops[i].lat, stops[i].lon);
-    if (d < bd) { bd = d; best = i; }
+/** Where the rider is along a ride's stops, from stop `fromIdx` on: the stretch between stop i and stop i+1 they are
+ *  nearest to, how far along it (f) and how far off it (d, metres). */
+function along(pos, stops, fromIdx) {
+  let best = { i: fromIdx, f: 0, d: Infinity };
+  const kx = 111320 * Math.cos(pos.lat * Math.PI / 180), ky = 110540;
+  for (let i = fromIdx; i < stops.length - 1; i++) {
+    const ax = (stops[i].lon - pos.lon) * kx, ay = (stops[i].lat - pos.lat) * ky;
+    const dx = (stops[i + 1].lon - stops[i].lon) * kx, dy = (stops[i + 1].lat - stops[i].lat) * ky, l2 = dx * dx + dy * dy;
+    const f = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+    const d = Math.hypot(ax + f * dx, ay + f * dy);
+    if (d < best.d) best = { i, f, d };
   }
-  // between two stops: count the one behind as reached once the next one is nearer than the previous
-  if (best > fromIdx && bd > 400) return fromIdx;
   return best;
+}
+/** The last stop of a ride the rider has reached: the one at the start of the stretch they are on, or the one at its
+ *  end once they are at it. Never behind where they already were. (The nearest stop was often the one ahead, and
+ *  "get off at the next stop" came a stop early, 2026-10-22.) */
+export function nearestStop(pos, stops, fromIdx) {
+  if (stops.length < 2 || fromIdx >= stops.length - 1) return fromIdx;
+  const p = along(pos, stops, fromIdx);
+  if (p.d > 400) return fromIdx;   // far off the route: no step taken on its word
+  return near(pos, stops[p.i + 1], AT_STOP) ? p.i + 1 : p.i;
 }
 
 /** What to show now. */
