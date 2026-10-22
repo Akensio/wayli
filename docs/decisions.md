@@ -934,3 +934,9 @@ so they are not re-litigated.
   again within the hour shows the saved result; it now does so only when it
   was planned by this build and with the same longest walk, and the same
   holds for the result shown at start.
+- 2026-10-22: Gadi: remove "the same search again shows the saved result":
+  live times change in between, one can never know. Removed; every search
+  plans afresh. At start the last search (six hours) opens again with its
+  places and options and is planned afresh too, from now if it was from now
+  and from where the rider is if it was from "my location"; its old results
+  are never shown. Rejected: keeping the reuse with tighter conditions.

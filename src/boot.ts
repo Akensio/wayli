@@ -9,14 +9,17 @@ import { warmPosition } from './state/position';
 import * as map from './map/index';
 import { loadFailed } from './controllers/status';
 import { applyLang } from './controllers/lang';
+import { t } from './i18n';
 import { loadManifest, renderDays, startDay, hasDay, loadDay, loadPlaces, loadStreets, loadShapes, loadRailTimes } from './controllers/loading';
-import { plan, parseShared, stillValid } from './controllers/planner';
+import { plan, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
 import { layoutTop, updateOnline, registerServiceWorker } from './controllers/shell';
 import './controllers/nearby';   // its hooks
 import './controllers/trip';
 
-const LAST_SEARCH_MS = 6 * 3600e3;   // the last search is shown again at start for six hours
+// the last search opens again at start for six hours: its places and options, planned afresh (never its old results:
+// live times change in between; 2026-10-22, Gadi)
+const LAST_SEARCH_MS = 6 * 3600e3;
 
 async function boot(): Promise<void> {
   map.applyTheme();
@@ -34,14 +37,20 @@ async function boot(): Promise<void> {
   const recent = last && last.q && Date.now() - last.at < LAST_SEARCH_MS;
   let start = startDay();
   if (shared && shared.day && hasDay(shared.day)) start = shared.day;
-  else if (recent && hasDay(last.q.day)) start = last.q.day;
+  else if (recent && hasDay(last.q.day) && !last.q.isNow) start = last.q.day;
   renderDays();
   search.day.value = start;
   search.setDefaultTime();
   if (shared) search.applyQuery(shared);
-  else if (recent && !last.dismissed && last.q.day === start && stillValid(last)) { search.applyQuery(last.q); results.setResults(last.result, last.q, last.at); }
+  const again = !shared && recent && !last.dismissed && (last.q.isNow || last.q.day === start);
+  if (again) { search.applyQuery(last.q); if (last.q.isNow) search.resetNow(); }   // a search from now starts from now
   try { await loadDay(start); } catch (e) { loadFailed(e); return; }
   if (shared) { history.replaceState(null, '', location.pathname); plan(); }
+  else if (again) {
+    const f = search.from.value;
+    if (!f || f.transient) search.setPlace('from', { name: t('myLoc'), transient: true, auto: !f || !!f.auto });   // where you are now
+    search.hooks.plan();
+  }
   await loadPlaces();
   await loadStreets();
   loadShapes();

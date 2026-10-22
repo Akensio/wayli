@@ -12,7 +12,7 @@ import * as search from '../state/search';
 import * as results from '../state/results';
 import * as sheet from '../state/sheet';
 import * as nav from '../state/nav';
-import { lastPos, getPosition, freshPos } from '../state/position';
+import { lastPos, getPosition } from '../state/position';
 import * as map from '../map/index';
 import { chipStyle } from '../journey/colors';
 import { lineText } from '../journey/format';
@@ -20,14 +20,13 @@ import { esc } from '../ui/html';
 import { toast } from '../ui/toast';
 import type { Place } from '../state/search';
 import type { Query, PlanResult } from '../journey/types';
-import { startDay, hasDay } from './loading';
+import { startDay } from './loading';
 import { openLine } from './line';
 import { openDetail } from './detail';
 import { startTrip } from './follow';
 import { layoutTop } from './shell';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
-const RESTORE_MS = 3600e3;   // the last search comes back as it was for an hour
 
 export function showPlanError(msg: string): void { results.error.value = msg; if (msg && sheet.state.value === 'peek') sheet.set('half'); }
 
@@ -77,41 +76,15 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   try {
     const r = await call<PlanResult>('plan', { from, to, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
     recentTrips.add(q); recentPlaces.add(from); recentPlaces.add(to);
-    lastSearch.set({ q, result: r, at: Date.now(), built: data.manifest.value?.built ?? null });
+    lastSearch.set({ q, result: r, at: Date.now() });
     results.setResults(r, q);
     results.refreshRecent();
   } catch (e) { showPlanError(e instanceof Error ? e.message : String(e)); results.result.value = null; results.status.value = 'idle'; }
   search.busy.value = false;
 }
 
-/**
- * The last search, shown as it was (its own place and time), when it is under an hour old and went to this place. One
- * from "my location" only while the rider is still there (a position under a minute old within 150 m of where it
- * started) and it is under 10 minutes old: otherwise it showed the walk from where the rider had been, not where they
- * are (a search from home came back on the station platform, 13 minutes' walk away; 2026-10-21).
- */
-/** A saved search is shown again only as this app would plan it now: made by this build (a new one may plan
- *  differently) and with the same longest walk (a friend raised it to 30 minutes and kept getting the result planned
- *  with 15; 2026-10-22). */
-export function stillValid(last: any): boolean {
-  return !!last && last.built === (data.manifest.value?.built ?? null) && (last.q?.maxWalk == null || last.q.maxWalk === settings.get().maxWalk);
-}
-function restoreLast(p: Place): boolean {
-  const last = lastSearch.get();
-  if (!last || !last.q || !last.result || !last.result.journeys || !last.result.journeys.length || Date.now() - last.at > RESTORE_MS || !stillValid(last)) return false;
-  if (!last.q.to || last.q.to.name !== p.name || (last.q.day !== search.day.value && !hasDay(last.q.day))) return false;
-  const was = last.q.from;
-  if (was && was.transient) {
-    const now = freshPos(60000);
-    if (!now || was.lat == null || live.metres(now.lat, now.lon, was.lat, was.lon!) > 150 || Date.now() - last.at > 600e3) return false;
-  }
-  nav.closeAll(); nav.showScreen('plan');
-  search.day.value = last.q.day; search.applyQuery(last.q); results.setResults(last.result, last.q, last.at); sheet.set('half');
-  return true;
-}
 /** A destination chosen anywhere: planned from where you are, from now (or at the time the rider set). */
 export async function planTo(p: Place): Promise<void> {
-  if (!search.timeTouched.value && restoreLast(p)) return;
   nav.closeAll();
   nav.showScreen('plan');
   search.setPlace('to', p);

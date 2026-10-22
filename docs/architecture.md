@@ -347,11 +347,10 @@ behind one quiet line ("already riding? 3 rides just left") that opens on
 a tap into rows with an "I'm on it" button (the four most recent). When a
 plan is restored from earlier the rows show at once, since that rider is
 likely on the way already.
-The last search is kept with its results for an hour and restored as it
-was (its own origin and time, the strip then holding every ride that has
-left but not arrived) on reopening the app or on tapping its destination
-in the recents, since the rider's "my location" may have moved with the
-vehicle since; "plan again from now" is one tap away;
+A search is always planned afresh, never shown from before (live times change in
+between); reopening the app within six hours opens the last search again with
+its places and options and plans it anew (from now, and from where the rider
+is, when it was so);
 starting any journey whose first ride has left begins the follower on
 board that ride (the last ride to have departed), not at the walk to the
 stop, with the position moving it along from there.
