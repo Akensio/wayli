@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "40 1 * * *"   # 04:40 in Israel in summer (03:40 in winter): the service day is over
   workflow_dispatch:
+  push:   # a change to the learning runs it at once
+    branches: [main]
+    paths: [pipeline/railtimes.py, .github/workflows/railtimes.yml]
 permissions:
   contents: read
 concurrency:

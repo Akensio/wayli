@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_run:   # new train section times go out as soon as they are learned
+    workflows: ["Train section times"]
+    types: [completed]
 permissions:
   contents: read
   pages: write
