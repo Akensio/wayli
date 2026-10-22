@@ -873,3 +873,9 @@ so they are not re-litigated.
   app has not started after 12 s, shows the error, and offers "try again" and
   "clear stored files and reload" (service worker and caches; history and
   saved places stay).
+- 2026-10-22: From Gadi on the HaHagana platform: the 19:30 to Moshe Dayan,
+  running at 19:37, was missing; late, it arrived after the 19:45 express,
+  so the router dropped it as beaten. A direct way's card now also lists the
+  earlier departures between the same two stops that arrive later (up to
+  two, reachable, at most 30 minutes later), marked with their arrival: the
+  train at the platform is never hidden.

@@ -253,6 +253,53 @@ function pathTo(point, stop, mode, reverse) {
 }
 
 /**
+ * The train in front of you: a direct way's earlier departures between the same two stops that arrive later. The
+ * router drops them, being beaten (an earlier departure arriving later), but a rider at the platform wants the one
+ * that is there (2026-10-22: Gadi at HaHagana, the 19:30 to Moshe Dayan running at 19:37, beaten on paper by the 19:45
+ * express, which was itself only on its timetable). They join their card's other times, marked (`slower`) with when
+ * they arrive: the two latest that can still be reached, arriving at most 30 minutes after the card's own.
+ */
+function slowerSiblings(journeys, fromTime, q) {
+  const out = [], seen = new Set();
+  for (const j of journeys) {
+    const rides = j.legs.filter((l) => l.type === 'ride');
+    if (rides.length !== 1) continue;
+    const R = rides[0], B = R.from.stop, A = R.to.stop, key = `${B}-${A}`;
+    if (seen.has(key)) continue;   // one search per pair of stops: the card's earliest option comes first
+    seen.add(key);
+    const lead = R.depart - j.depart;   // from setting out to boarding
+    const found = [];
+    for (let i = tt.stopPatsOff[B]; i < tt.stopPatsOff[B + 1]; i++) {
+      const p = tt.stopPats[2 * i], pos = tt.stopPats[2 * i + 1], ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
+      let k = -1;
+      for (let x = pos + 1; x < ns; x++) if (tt.patStops[tt.patStopsOff[p] + x] === A) { k = x; break; }
+      if (k < 0) continue;
+      const base = tt.tripTimesOff[p];
+      for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) {
+        const o = base + (t - tt.patTripsOff[p]) * ns, d = tt.dep[o + pos], a = tt.arr[o + k];
+        if (d >= R.depart || d < fromTime + lead || a <= R.arrive || a > R.arrive + 1800) continue;
+        if (journeys.some((x) => x.legs.some((l) => l.type === 'ride' && l.trip === t))) continue;
+        found.push({ p, t, pos, k, d, a });
+      }
+    }
+    found.sort((x, y) => y.d - x.d);
+    for (const f of found.slice(0, 2)) {
+      const via = []; for (let x = f.pos; x <= f.k; x++) via.push(tt.patStops[tt.patStopsOff[f.p] + x]);
+      const ride = legOut({ type: 'ride', pattern: f.p, trip: f.t, from: B, to: A, depart: f.d, arrive: f.a, seconds: f.a - f.d, stops: f.k - f.pos, via, route: tt.routes[tt.patRoute[f.p]] }, q);
+      const before = f.d - R.depart, after = f.a - R.arrive;
+      let seenRide = false;
+      const legs = j.legs.map((l) => {
+        if (l === R) { seenRide = true; return ride; }
+        const dt = seenRide ? after : before;
+        return { ...l, depart: l.depart + dt, arrive: l.arrive + dt };
+      });
+      out.push({ depart: j.depart + before, arrive: j.arrive + after, transfers: 0, walkSeconds: j.walkSeconds, legs, slower: true });
+    }
+  }
+  return out;
+}
+
+/**
  * Journeys that board and alight at the same stops, in the same order, are one way to go at several
  * times, possibly with different lines on a leg. Groups keep the journey order (earliest first) and list
  * the indices of their options and the distinct lines per leg.
@@ -560,6 +607,7 @@ const ops = {
       depart: j.depart, arrive: j.arrive, transfers: j.transfers, walkSeconds: j.walkSeconds,
       legs: j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q)),
     }));
+    if (!arriveBy) journeys.push(...slowerSiblings(journeys, fromTime, q));
     let bikeOnly = null;
     if (st && bike !== 'none' && q.from.point && q.to.point) {
       const br = route(st, q.from.point.lat, q.from.point.lon, q.to.point.lat, q.to.point.lon, 'bike', 3 * 3600);

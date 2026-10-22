@@ -109,6 +109,8 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .journey .opts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .journey .opt { background: var(--chip); border: 0; border-radius: 14px; padding: 3px 10px; font-size: 13px; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
 .journey .opt.past { opacity: .5; text-decoration: line-through; }
+.journey .opt.slower { background: none; border: 1px dashed var(--line); color: var(--ink-2); }   /* leaves earlier, arrives later: its arrival beside it */
+.journey .opt.slower small { margin-inline-start: 3px; font-size: 11px; }
 /* "leave in n min": green only when the first ride's vehicle is reporting live, plain otherwise */
 .journey .leave { margin-top: 6px; font-size: 13px; color: var(--ink); font-weight: 600; min-height: 0; }
 .journey .leave.live { color: var(--ok); }

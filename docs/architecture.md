@@ -378,7 +378,9 @@ apart, so a slightly faster bus never hides a train;
 changing the day keeps the chosen time; bicycle choice; the longest walk to a stop
 is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
-("also at 08:17, 08:32") and the alternative lines of a leg shown together
+("also at 08:17, 08:32"; a direct way also lists up to two earlier departures
+between the same stops that arrive later, marked "19:37→20:09", which the
+router drops as beaten but a rider at the platform wants) and the alternative lines of a leg shown together
 ("5 / 18"); "leave in 4 min" counts down (green when the first ride's vehicle has a
 fresh live report, orange when its report is older than four minutes,
 plain with the schedule alone) and departed options grey out;

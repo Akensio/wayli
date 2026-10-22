@@ -39,7 +39,11 @@ export function JourneyCard({ card }: { card: Card }) {
       <div class="sub">{rides.map((l) => `${lineText(l.line)} ${t('toward', { headsign: l.headsign || '' })}`).join(' · ')}</div>
       {options.length > 1 && (
         <div class="opts"><span class="muted">{t('alsoAt')}</span>
-          {options.slice(1).map((o) => <button type="button" class={`opt${leaveText(o.depart, q.day) === t('departed') ? ' past' : ''}`} onClick={(e) => { e.stopPropagation(); results.hooks.openDetail(o, q); }}>{fmt(o.depart)}</button>)}
+          {options.slice(1).sort((a, b) => a.depart - b.depart).map((o) => (
+            // an earlier one that arrives later (the train at the platform) says when it arrives
+            <button type="button" class={`opt${o.slower ? ' slower' : ''}${leaveText(o.depart, q.day) === t('departed') ? ' past' : ''}`} title={o.slower ? t('arrivesLater') : undefined}
+              onClick={(e) => { e.stopPropagation(); results.hooks.openDetail(o, q); }}>{fmt(o.depart)}{o.slower && <small dir="ltr">→{fmt(o.arrive)}</small>}</button>
+          ))}
         </div>
       )}
       <Leave sec={dep} day={q.day} liveInfo={rides[0]?.live} />
