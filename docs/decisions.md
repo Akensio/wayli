@@ -860,3 +860,9 @@ so they are not re-litigated.
   showed them from his area with and without the relay; an empty map with no
   word was possible only with live times off or the phone offline, and now
   the note says which.
+- 2026-10-22: Gadi's map lost its buses while friends elsewhere saw theirs:
+  a vehicle with a wrong clock (reports stamped up to two days ahead; 13 of
+  8,915 in one snapshot) became its area's "newest report", so every true
+  report there looked over five minutes old and was hidden. Reports stamped
+  over 2 minutes after the snapshot are dropped, and the newest report
+  skips a lone one far ahead of the rest.

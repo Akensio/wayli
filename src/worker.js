@@ -351,6 +351,9 @@ function snapVehicles(j, t) {
       const m = x.MonitoredVehicleJourney; if (!m) continue;
       const recordedAt = new Date(x.RecordedAtTime), rt = recordedAt.getTime();
       if (!(rt > now - SNAP_WINDOW_MS && rt < now + 600e3)) continue;   // gone quiet half an hour ago, or an impossible time
+      // a report stamped after the snapshot was taken is a vehicle's wrong clock (2026-10-22: 13 of 8,915, from a minute
+      // to two days ahead): read as the newest, it made every true report in its area look old, and the map hid them
+      if (rt > t + 120e3) continue;   // t: the snapshot's minute, the source's own clock
       if (m.VehicleLocation && Number(m.Velocity) > MOVING_KMH) {
         const o = posSince.get(`${m.LineRef}/${m.OriginAimedDepartureTime}`);
         if (o && t - o.since >= FROZEN_MS) continue;   // t: the snapshot's minute

@@ -61,7 +61,8 @@ function norm(v) {
 let newestSeen = 0;   // ms: the newest report any query returned; "fresh" is measured against it, not the clock
 /** A vehicle whose last report is within five minutes of the newest report of its own set (`ref`, a Date or ms;
  *  by default the newest seen anywhere). The feed lags unevenly, area by area and operator by operator (measured
- *  2026-10-19 15:34: Tel Aviv 20 min behind, the country 6), so a set is judged against its own newest report. */
+ *  2026-10-19 15:34: Tel Aviv 20 min behind, the country 6), so a set is judged against its own newest report.
+ *  @param {any} v @param {number} [windowSec] @param {Date|number|null} [ref] */
 export function isFresh(v, windowSec = 300, ref = null) {
   const r = ref ? (ref instanceof Date ? ref.getTime() : ref) : newestSeen || Date.now();
   return r - v.recordedAt.getTime() <= windowSec * 1000;
@@ -145,9 +146,12 @@ export async function vehiclesForPlanning(lat, lon, { timeoutMs = 8000, radiusKm
 }
 /** When the newest of these vehicles was seen, or null. */
 export function newest(vehicles) {
-  let m = null;
-  for (const v of vehicles) if (!m || v.recordedAt > m) m = v.recordedAt;
-  return m;
+  // the newest report, but not a lone one far ahead of the rest: a vehicle with a wrong clock would make every true
+  // report around it look old (and the map hid them all)
+  const ts = vehicles.map((v) => v.recordedAt.getTime()).filter((x) => !Number.isNaN(x)).sort((a, b) => b - a);
+  let i = 0;
+  while (i < ts.length - 1 && ts[i] - ts[i + 1] > 120e3) i++;
+  return ts.length ? new Date(ts[i]) : null;
 }
 
 // ------------------------------------------------------------------ matching vehicles to trips

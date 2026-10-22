@@ -698,7 +698,9 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   vehicles in the area in view, or the line's) is not drawn at all (the
   feed lags as a whole and unevenly by area; a single stale vehicle is
   noise, but a whole area twenty minutes behind the rest of the country is
-  still the best picture of that area). When
+  still the best picture of that area; the newest report skips a lone one far
+  ahead of the rest, and the worker drops reports stamped after the snapshot
+  was taken: vehicles with a wrong clock, which hid an area's buses). When
   the whole feed is four or more minutes behind the clock, every dot is
   drawn faded, the note says how old the data is and that the source is
   behind, and a vehicle's bubble gives the age next to the report time.
