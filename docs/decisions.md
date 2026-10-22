@@ -883,3 +883,8 @@ so they are not re-litigated.
   detail showed the planned departure (the delay when planning) in bold and
   the live check's time in the badge. Now the newest live look sets the bold
   time and the badge says only how late (and "?" when the report is old).
+- 2026-10-22: Confirmed with Gadi: his phone's DNS on mobile data answered
+  "no such name" for wayli-relay.wayli.workers.dev (a filter blocking
+  *.workers.dev); switching Android's Private DNS to dns.google fixed it.
+  Riders behind the same filter fall back to Hasadna's database (minutes
+  behind); relay.waynet.app remains the fix for them, waiting on Gadi.
