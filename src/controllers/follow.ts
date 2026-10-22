@@ -224,6 +224,9 @@ function updateResumeBar(): void {
   if (!a || fol || tripStale(a)) { follow.resumable.value = null; if (a && tripStale(a)) activeTrip.clear(); return; }
   follow.resumable.value = a;
 }
+// a phone keeps the app open for days: a trip over since goes from the resume bar on return and within a minute
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateResumeBar(); });
+window.setInterval(updateResumeBar, 60000);
 /** At start, a trip in progress comes back first, timetable or not: on screen if it was, else as the resume bar. */
 export function resumeAtStart(): void {
   const a = stored();

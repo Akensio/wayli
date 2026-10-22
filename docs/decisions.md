@@ -825,3 +825,9 @@ so they are not re-litigated.
   The day wheel shows calendar days only; the night after midnight is the
   previous service day at 24:00+, internal ("25:30"). Rejected: keeping
   "Tonight" as a separate day (it is the GTFS service day leaking out).
+- 2026-10-22: From Gadi (no live vehicles on the map for a friend's search,
+  on mobile data): the live note says "loading" until the first answer
+  instead of nothing, a slow answer still shows unless a newer one already
+  has (overlapping requests discarded every answer on a slow connection),
+  and a finished trip leaves the resume bar on return to the app and within
+  a minute (it was checked only at start, so an app open overnight kept it).

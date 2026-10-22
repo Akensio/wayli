@@ -23,7 +23,7 @@ const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label'];
 type Show = 'all' | 'none' | string[];
 let liveShow: Show | null = null;
 let nearRoutes: { lat: number; lon: number; ids: string[] } | null = null;   // the lines serving stops within 500 m of the last position
-export const lm = { seq: 0, stops: false, labels: new Map<string, any>(), moveTimer: 0 };
+export const lm = { seq: 0, applied: 0, stops: false, labels: new Map<string, any>(), moveTimer: 0 };
 export const resetLive = (): void => { lm.labels.clear(); lm.stops = false; nearRoutes = null; updateNearRoutes(); };
 export const resetShow = (): void => { liveShow = null; };
 
@@ -87,17 +87,23 @@ export async function refreshLiveMap(): Promise<void> {
   const veh = m.getSource('lm-veh') as any;
   if (!liveOn()) { app.liveNote.value = ''; veh.setData(EMPTY); return; }
   if (m.getZoom() < 10) { app.liveNote.value = t('liveMapZoom'); veh.setData(EMPTY); return; }
+  // requests overlap (a move, the 20 s timer): a slow answer still shows unless a newer one already has (on a slow
+  // connection every answer came after the next request had started, and none ever showed); until the first, the note
+  // says the positions are on their way
   const my = ++lm.seq;
+  if (!app.liveNote.value) app.liveNote.value = t('liveLoading');
   const b = m.getBounds();
   try {
     const vs: any[] = await live.vehiclesInBounds({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
-    if (my !== lm.seq || !state.main || !state.styled) return;
+    if (my < lm.applied || !state.main || !state.styled) return;
     const need = Array.from(new Set(vs.map((v) => String(v.lineRef)).filter((id) => !lm.labels.has(id))));
     if (need.length && data.ttReady.value) {
       const labels: Record<string, any> = await call('routeLabels', { ids: need });
       for (const id of need) lm.labels.set(id, labels[id] || null);
-      if (my !== lm.seq || !state.main || !state.styled) return;
+      if (my < lm.applied || !state.main || !state.styled) return;
     }
+    if ((liveShow as Show | null) === 'none') return;   // a journey or line drew its own while this was on its way
+    lm.applied = my;
     const now = Date.now();
     const nwAll = live.newest(vs);
     const feedLag = nwAll ? (now - nwAll.getTime()) / 60000 : 0;   // minutes the whole feed is behind the clock
@@ -121,7 +127,7 @@ export async function refreshLiveMap(): Promise<void> {
     app.liveNote.value = (shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw!.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope })) + via;
     app.liveLag.value = !!shown && ageMin >= 4;
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch { /* debugging only */ }
-  } catch { if (my === lm.seq) app.liveNote.value = t('liveFail'); }
+  } catch { if (my === lm.seq && my > lm.applied) app.liveNote.value = t('liveFail'); }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLiveMap(); });
 /** A tap on a live vehicle: which trip it runs and how late, in its bubble. */
