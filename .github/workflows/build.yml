@@ -33,15 +33,28 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install numpy osmium
+      - name: The first service day (until 03:00 the night belongs to the previous date)
+        id: day
+        run: echo "start=$(TZ=Asia/Jerusalem date -d '-3 hours' +%Y%m%d)" >> "$GITHUB_OUTPUT"
+      # the last feed that downloaded, kept a day at a time: when the Ministry's server does not answer (it does not, at
+      # times, for hours), the build goes on with it instead of failing, so an app change still deploys
+      - name: Cache the last good GTFS feed
+        uses: actions/cache@v4
+        with:
+          path: data/gtfs-last.zip
+          key: gtfs-${{ steps.day.outputs.start }}
+          restore-keys: gtfs-
       - name: Download the GTFS feed
         run: |
           mkdir -p data/osm
           # the Ministry's server resets connections now and then: retry, and insist on a real zip
-          for i in 1 2 3 4 5; do
-            curl -fsSL -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip && [ "$(stat -c %s data/gtfs.zip)" -gt 20000000 ] && break
+          for i in 1 2 3; do
+            curl -fsSL --connect-timeout 60 -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip && [ "$(stat -c %s data/gtfs.zip)" -gt 20000000 ] && break
             echo "download failed (try $i)"; rm -f data/gtfs.zip; sleep 30
           done
-          [ -f data/gtfs.zip ]
+          if [ -f data/gtfs.zip ]; then cp data/gtfs.zip data/gtfs-last.zip
+          elif [ -f data/gtfs-last.zip ]; then echo "::warning::the Ministry's server did not answer: building with the last feed that downloaded"; cp data/gtfs-last.zip data/gtfs.zip
+          else exit 1; fi
       - name: Cache the OpenStreetMap extract, street graph and address book (rebuilt weekly)
         id: osm
         uses: actions/cache@v4
@@ -66,9 +79,6 @@ jobs:
             python3 -I pipeline/rail.py data/osm/israel-and-palestine-latest.osm.pbf --out data/rail.bin.gz
           fi
       # The compiled days depend only on the feed, the graphs and the compiler: an app-only push reuses them.
-      - name: The first service day (until 03:00 the night belongs to the previous date)
-        id: day
-        run: echo "start=$(TZ=Asia/Jerusalem date -d '-3 hours' +%Y%m%d)" >> "$GITHUB_OUTPUT"
       - name: Cache the compiled timetables and courses (reused while the feed, the graphs and the compiler are unchanged)
         id: tt
         uses: actions/cache@v4

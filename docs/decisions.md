@@ -831,3 +831,7 @@ so they are not re-litigated.
   has (overlapping requests discarded every answer on a slow connection),
   and a finished trip leaves the resume bar on return to the app and within
   a minute (it was checked only at start, so an app open overnight kept it).
+- 2026-10-22: The Ministry's GTFS server did not answer GitHub's runners for a
+  morning and the deploy failed, app change and all. The build keeps the last
+  feed that downloaded (Actions cache, one a day) and builds with it, with a
+  warning, when the download fails.
