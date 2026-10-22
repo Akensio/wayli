@@ -1,5 +1,5 @@
 // Alerts while following a trip: vibration, three beeps and a notification (through the service worker, so a
-// tap reopens the app), and always a toast.
+// tap reopens the app), and always a toast. And the trip in the notification bar (tripStatus).
 import { settings } from '../store.js';
 import { t, lang } from '../i18n';
 import { toast } from '../ui/toast';
@@ -34,4 +34,25 @@ export function alertUser(title: string, body: string): void {
     else direct();
   }
   toast(`${title}${body ? ' · ' + body : ''}`, 7000);
+}
+
+/**
+ * The trip in the notification bar while following: how many stops are left and when to get off, silent and updated
+ * in place (one tag), gone when the trip ends. A web page gets no position with the phone locked, and the phone
+ * pauses it a while after it goes to the background, so the line leads with a clock time ("get off ~22:13"), which
+ * stays true when it stops updating, and says when it was last updated. `null` takes it away.
+ */
+let statusShown = '';
+export function tripStatus(title: string | null, body = ''): void {
+  if (!('Notification' in window) || Notification.permission !== 'granted' || !navigator.serviceWorker) return;
+  if (title && !settings.get().notify) title = null;
+  const key = title ? `${title}|${body}` : '';
+  if (key === statusShown) return;
+  statusShown = key;
+  navigator.serviceWorker.getRegistration().then(async (reg) => {
+    if (!reg) return;
+    if (!title) { for (const n of await reg.getNotifications({ tag: 'wayli-status' })) n.close(); return; }
+    await reg.showNotification(title, { body, tag: 'wayli-status', renotify: false, silent: true, requireInteraction: true,
+      icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', lang: lang.value } as NotificationOptions);
+  }).catch(() => { /* not allowed here */ });
 }

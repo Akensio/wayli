@@ -6,7 +6,7 @@ import * as live from '../live.js';
 import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney, stepForward, stepBack } from '../follow.js';
 import { settings, activeTrip } from '../store.js';
 import { t } from '../i18n';
-import { dateOf } from '../time';
+import { dateOf, fmt } from '../time';
 import { toast } from '../ui/toast';
 import { call, tripStopsCached } from '../worker/client';
 import * as data from '../state/data';
@@ -17,9 +17,9 @@ import * as map from '../map/index';
 import { lineText, liveBadge } from '../journey/format';
 import type { Journey, Query, PlanResult } from '../journey/types';
 import type { ActiveTrip, Alt, FollowState, Position } from '../state/follow';
-import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
+import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
 
-type LiveEst = { est: { delay: number; [k: string]: unknown } | null; at: unknown } | null;
+type LiveEst = { est: { delay: number; [k: string]: unknown } | null; at: { time: number; delay: number; passed: boolean; stale?: boolean } | null } | null;
 /** The trip being followed, with everything that runs while it is. */
 type Following = {
   a: ActiveTrip; pos: Position | null; watch: number | null; timers: number[]; wake: WakeLockSentinel | null;
@@ -104,9 +104,29 @@ function onFollowEvent(e: string, a: ActiveTrip): void {
   else if (e === 'boarded') toast(t('boarded', { line: lineText(v.leg ? v.leg.line : '') }));
 }
 /** The screen draws from the published trip; the map gets the rider's dot here. */
+/** The notification bar's line for the trip as it stands (alerts.ts, tripStatus). */
+function statusLine(): [string, string] | null {
+  if (!fol) return null;
+  const a = fol.a, now = live.nowOn(a.day), dest = a.q.to.name, v: any = followView(a.journey, a.state, now);
+  const asOf = t('statusAsOf', { time: fmt(now) });
+  if (v.kind === 'done') return null;
+  if (v.kind === 'ride') {
+    const l = v.leg, at = fol.liveEst && fol.liveEst.at && !fol.liveEst.at.passed ? fol.liveEst.at.time : l.arrive;   // on board: the live time at the stop to get off at
+    const body = v.stopsLeft <= 1 ? t('statusLast', { name: v.alight.name, time: fmt(at) }) : t('statusRide', { n: v.stopsLeft, name: v.alight.name, time: fmt(at) });
+    return [t('followTitle', { line: lineText(l.line), to: dest }), `${body} · ${asOf}`];
+  }
+  if (v.kind === 'wait') {
+    const l = v.leg, at = fol.liveEst && fol.liveEst.at && !fol.liveEst.at.passed ? fol.liveEst.at.time : l.depart;
+    return [t('followTitle', { line: lineText(l.line), to: dest }), `${t('statusWait', { line: lineText(l.line), stop: l.from.name, time: fmt(at) })} · ${asOf}`];
+  }
+  const l = v.leg;
+  return [v.toRide ? t('followTitle', { line: lineText(v.toRide.line), to: dest }) : t('walkTitle', { to: dest }),
+    `${v.kind === 'final' ? t('walkToDest', { min: v.minutes, name: dest }) : t('walkTo', { min: v.minutes, name: l.to.name })} · ${asOf}`];
+}
 function publish(): void {
   if (!fol) return;
   follow.publish(fol.a, fol.alt);
+  const sl = statusLine(); tripStatus(sl ? sl[0] : null, sl ? sl[1] : '');
   if (map.mapState.drawnFor === 'follow' && fol.pos) map.drawMe(fol.pos);
   if (fol.a.state.done) setTimeout(() => { if (fol && fol.a.state.done) { closeFollow(true); nav.close('follow'); toast(t('arrived'), 4000); } }, 15000);
 }
@@ -213,6 +233,7 @@ export function closeFollow(end: boolean): void {
     if (end) activeTrip.clear(); else { fol.a.view = 'hidden'; activeTrip.set(fol.a); }
     fol = null;
     follow.publish(null); follow.liveBadge.value = null;
+    tripStatus(null);
   }
   for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
   if (map.markers.me) { map.markers.me.remove(); map.markers.me = null; }

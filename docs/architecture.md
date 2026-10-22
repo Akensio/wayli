@@ -402,12 +402,16 @@ Following a trip draws the same, with the rider's position.
 Trip following ("start a trip"): the journey is stored on the device and
 followed with the geolocation watch, a screen wake lock and a five-second
 clock. `follow.js` advances through the legs from the rider's position
-(within 60 m of a stop, nearest stop along the ride with hysteresis, never
-backwards) and falls back to the timetable clock when there is no position.
-It raises "one more stop" when the alighting stop is next or within 350 m,
-"get off here" at the stop, and "arrived" at the end: vibration, a short
-beep and a notification (through the service worker, so it shows with the
-screen off), each switchable in settings. The screen shows the current
+(within 60 m of a stop; on a ride, the stretch between two stops the rider
+is on, a stop reached once passed or within 60 m, never backwards) and falls
+back to the timetable clock when there is no position. It raises "one more
+stop" once the stop before the alighting one is passed, "get off here" at
+the stop, and "arrived" at the end: vibration, a short beep and a
+notification (through the service worker, so it shows with the screen off),
+each switchable in settings. While following, a silent notification that
+stays and updates in place carries the step ("3 stops left · get off at Y
+~22:13 · as of 22:05"); a locked phone pauses the page, so it leads with
+clock times that stay true when it stops updating. The screen shows the current
 step in large type, the vehicle's live position and delay, the remaining
 legs and a "next step" button for when GPS is wrong. Closing the app does
 not end the trip: a floating bar at the top offers to resume it, and if the

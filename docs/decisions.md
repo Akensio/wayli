@@ -895,3 +895,10 @@ so they are not re-litigated.
   start is reached, the one at its end once within 60 m), and the alert comes
   once the stop before the last is passed. On board, the live badge gives the
   time at the alighting stop, not "passed" for the boarding one.
+- 2026-10-22: From Gadi: a notification that stays, with the stops left and
+  when to get off. While following, a silent notification (one tag, updated
+  in place, gone at the end) says the step: walking, waiting ("leaves X at
+  21:48"), riding ("3 stops left · get off at Y ~22:13"), with "as of" the
+  last update. A web page gets no position with the phone locked and is
+  paused in the background, so the line leads with clock times that stay
+  true when it stops updating. Uses the trip alerts' permission and switch.
