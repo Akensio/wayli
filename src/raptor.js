@@ -212,6 +212,10 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
   const patOk = (p) => (!allowed || allowed[patType[p]]) && (!bike || bike.folding || patType[p] === 2 || (patType[p] === 3 && tt.patIntercity && tt.patIntercity[p] === 1));
   const tripOk = (p, d) => !bike || bikeAllowed(tt, p, d, bike.folding, bike.weekday);
   const chainMax = opts.maxWalkChain ?? Math.min(tt.chainMax, 600);
+  // the whole walk at either end, the access or egress leg and any footpath chained to it, within the rider's longest
+  // walk (seconds; unset: the footpaths only bounded by chainMax). A 15-minute walk to one stop plus 2 to the next
+  // came out as a 17-minute start against a 15-minute setting (2026-10-22).
+  const accessMax = opts.maxAccess ?? null, egressMax = opts.maxEgress ?? null;
   const S = tt.stops.length, K = maxTransfers + 1;
   const { patStopsOff, patStops, patTripsOff, tripTimesOff, stopPatsOff, stopPats,
           trOff, trTo, trTime, dep, arr } = tt;
@@ -232,9 +236,9 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
   let markedList = [];
 
   const better = (k, s, t) => t < best[s] || (t === best[s] && k < bestK[s]);
-  const improve = (k, s, t) => {
+  const improve = (k, s, t, w = 0) => {
     tau[k][s] = t; best[s] = t; bestK[s] = k;
-    if (destWalk[s] >= 0 && t + destWalk[s] < bestDest) bestDest = t + destWalk[s];
+    if (destWalk[s] >= 0 && (egressMax == null || w + destWalk[s] <= egressMax) && t + destWalk[s] < bestDest) bestDest = t + destWalk[s];
     if (!marked[s]) { marked[s] = 1; markedList.push(s); }
   };
 
@@ -245,10 +249,11 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
       const tp = tau[k][p], wp = lblWalk[k][p];
       for (let i = trOff[p]; i < trOff[p + 1]; i++) {
         const w = wp + trTime[i];
-        if (w > chainMax) continue;
+        // round 0 walks on from the access leg: the whole of it within accessMax (lblWalk there includes the access)
+        if (k === 0 && accessMax != null ? w > accessMax : w > chainMax) continue;
         const q = trTo[i], tq = tp + trTime[i];
         if (tq < tau[k][q] && better(k, q, tq) && tq <= bestDest) {
-          improve(k, q, tq);
+          improve(k, q, tq, w);
           lblType[k][q] = 2; lblFrom[k][q] = p; lblWalk[k][q] = w; lblRide[k][q] = 0;
           queue.push(q);
         }
@@ -269,7 +274,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
     const p = queue[qi], tp = reach.get(p), cp = chainFrom.get(p) ?? 0;
     for (let i = trOff[p]; i < trOff[p + 1]; i++) {
       const c = cp + trTime[i];
-      if (c > chainMax) continue;
+      if (c > chainMax || (accessMax != null && tp + trTime[i] > accessMax)) continue;
       const q = trTo[i], tq = tp + trTime[i];
       if (!reach.has(q) || reach.get(q) > tq) { reach.set(q, tq); chainFrom.set(q, c); queue.push(q); }
     }
@@ -296,15 +301,18 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
 
   const journeys = [];
   const seen = new Set();
+  // the footpath walked into a stop at round k (the label may be inherited from an earlier round)
+  const walkIn = (k, s) => { while (k > 0 && lblType[k][s] === 0) k--; return lblType[k][s] === 2 ? lblWalk[k][s] : 0; };
+  const endOk = (k, d) => egressMax == null || walkIn(k, d.stop) + d.walk <= egressMax;
   const destArr = (k) => {
     let m = INF;
-    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < m) m = v + d.walk; }
+    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < m && endOk(k, d)) m = v + d.walk; }
     return m;
   };
   const extract = (k) => {
     // which destination stop gives the round-k arrival
     let bestD = null, bestT = INF;
-    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < bestT) { bestT = v + d.walk; bestD = d; } }
+    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < bestT && endOk(k, d)) { bestT = v + d.walk; bestD = d; } }
     if (!bestD) return;
     const legs = [];
     let s = bestD.stop, kk = k, guard = 0;
@@ -360,7 +368,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
       const o = origins[oi], t = depTime + o.walk;
       if (t < tau[0][o.stop] || (t === tau[0][o.stop] && lblType[0][o.stop] !== 3)) {
         improve(0, o.stop, t);
-        lblType[0][o.stop] = 3; lblFrom[0][o.stop] = oi; lblWalk[0][o.stop] = 0; lblRide[0][o.stop] = 0;
+        lblType[0][o.stop] = 3; lblFrom[0][o.stop] = oi; lblWalk[0][o.stop] = accessMax != null ? o.walk : 0; lblRide[0][o.stop] = 0;
       }
     }
     relaxWalks(0, markedList.slice());

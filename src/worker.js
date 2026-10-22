@@ -253,6 +253,71 @@ function pathTo(point, stop, mode, reverse) {
 }
 
 /**
+ * Where to change between the same two vehicles: the router keeps the first place it finds that works, and every other
+ * gives the same arrival. Of all the places where the second can be caught from the first (the same stop, or a short
+ * walk between stops), take one with time to spare (2 minutes or more, when there is one), then the least walking,
+ * then the most time to spare. (2026-10-22, Gadi: the 56 to Ibn Gabirol/Arlosoroff, a 3-minute walk and 2 minutes to
+ * catch the 61, when the 61 passes Rabin Square, on the 56's way, 9 minutes after the 56 is there.) Changes the
+ * journey's legs in place; the vehicles, and so the arrival, stay.
+ */
+function easierTransfers(j) {
+  const L = j.legs;
+  const pos = (l) => {   // the leg's boarding position on its pattern (a pattern can pass a stop twice: match the time)
+    const p = l.pattern, ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p], base = tt.tripTimesOff[p] + (l.trip - tt.patTripsOff[p]) * ns;
+    for (let i = 0; i < ns; i++) if (tt.patStops[tt.patStopsOff[p] + i] === l.from && tt.dep[base + i] === l.depart) return { p, ns, base, bp: i };
+    return null;
+  };
+  const stopsOf = (p, a, b) => Array.from(tt.patStops.subarray(tt.patStopsOff[p] + a, tt.patStopsOff[p] + b + 1));
+  for (let i = 0; i < L.length; i++) {
+    const A = L[i]; if (A.type !== 'ride') continue;
+    const w = L[i + 1] && L[i + 1].type === 'walk' ? L[i + 1] : null, B = L[i + (w ? 2 : 1)];
+    if (!B || B.type !== 'ride') continue;
+    const a = pos(A), b = pos(B); if (!a || !b) continue;
+    const apA = a.bp + A.stops, apB = b.bp + B.stops;
+    const score = (walk, spare) => [spare >= 120 ? 0 : 1, walk, -spare];
+    const cmp = (x, y) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+    let best = { score: score(w ? w.seconds : 0, B.depart - A.arrive - (w ? w.seconds : 0)), ia: apA, jb: b.bp, walk: w ? w.seconds : 0 };
+    for (let ia = a.bp + 1; ia < a.ns; ia++) {
+      const sa = tt.patStops[tt.patStopsOff[a.p] + ia], ta = tt.arr[a.base + ia];
+      for (let jb = 0; jb < apB; jb++) {
+        const sb = tt.patStops[tt.patStopsOff[b.p] + jb], tb = tt.dep[b.base + jb];
+        let walk = -1;
+        if (sa === sb) walk = 0;
+        else for (let x = tt.trOff[sa]; x < tt.trOff[sa + 1]; x++) if (tt.trTo[x] === sb) { walk = tt.trTime[x]; break; }
+        if (walk < 0) continue;
+        const spare = tb - ta - walk - (walk === 0 ? tt.slack : 0);   // as the router: a change at the same stop keeps a margin
+        if (spare < 0) continue;
+        const sc = score(walk, spare);
+        if (cmp(sc, best.score) < 0) best = { score: sc, ia, jb, walk };
+      }
+    }
+    if (best.ia === apA && best.jb === b.bp) continue;
+    const sa = tt.patStops[tt.patStopsOff[a.p] + best.ia], sb = tt.patStops[tt.patStopsOff[b.p] + best.jb];
+    Object.assign(A, { to: sa, arrive: tt.arr[a.base + best.ia], stops: best.ia - a.bp, seconds: tt.arr[a.base + best.ia] - A.depart, via: stopsOf(a.p, a.bp, best.ia) });
+    Object.assign(B, { from: sb, depart: tt.dep[b.base + best.jb], stops: apB - best.jb, seconds: B.arrive - tt.dep[b.base + best.jb], via: stopsOf(b.p, best.jb, apB) });
+    const walkLeg = best.walk > 0 ? { type: 'walk', from: sa, to: sb, seconds: best.walk, depart: A.arrive, arrive: A.arrive + best.walk } : null;
+    L.splice(i + 1, w ? 1 : 0, ...(walkLeg ? [walkLeg] : []));
+  }
+  j.walkSeconds = L.reduce((t, l) => t + (l.type === 'ride' ? 0 : l.seconds), 0);
+}
+
+/** Walks one after the other are one walk: to the first stop and on to the next is "walk 17 min to HaShalom", not two
+ *  lines (2026-10-22); likewise a walk to another stop and on from it to the destination. */
+function mergeWalks(legs) {
+  const out = [];
+  const join = (a, b) => (a || []).concat((b || []).slice(1));
+  for (const l of legs) {
+    const p = out[out.length - 1];
+    if (p && l.type === 'walk' && (p.type === 'access' || p.type === 'walk')) {
+      out[out.length - 1] = { ...p, to: l.to, seconds: p.seconds + l.seconds, arrive: l.arrive, path: join(p.path, l.path), pathKind: p.pathKind === 'street' && l.pathKind === 'street' ? 'street' : 'straight' };
+    } else if (p && l.type === 'egress' && p.type === 'walk') {
+      out[out.length - 1] = { ...l, from: p.from, seconds: p.seconds + l.seconds, depart: p.depart, path: join(p.path, l.path), pathKind: p.pathKind === 'street' && l.pathKind === 'street' ? 'street' : 'straight' };
+    } else out.push(l);
+  }
+  return out;
+}
+
+/**
  * The train in front of you: a direct way's earlier departures between the same two stops that arrive later. The
  * router drops them, being beaten (an earlier departure arriving later), but a rider at the platform wants the one
  * that is there (2026-10-22: Gadi at HaHagana, the 19:30 to Moshe Dayan running at 19:37, beaten on paper by the 19:45
@@ -595,17 +660,19 @@ const ops = {
     if (!q.from.places.length || !q.to.places.length) return { journeys: [], groups: [], reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops', live, ms: 0 };
     // Two searches: everything, and trains only. The first keeps, per departure, only the earliest arrival, so a bus
     // a minute faster leaves no trace of the train beside it; the second brings the trains back, ranked apart (rank).
-    const opts = { maxTransfers, bikeOnBoard: bike === 'along', folding, weekday, raw: true };
+    // on foot at either end, the whole walk (to the first stop and any walk on to another) is within the rider's longest
+    const opts = { maxTransfers, bikeOnBoard: bike === 'along', folding, weekday, raw: true,
+      maxAccess: bike === 'none' ? maxWalk : undefined, maxEgress: bike !== 'along' ? maxWalk : undefined };
     const r = profile(tt, q.from.places, q.to.places, fromTime, toTime, opts);
     const byRail = profile(tt, q.from.places, q.to.places, fromTime, toTime, { ...opts, routeTypes: [2] });
     const seen = new Set(), all = [];
-    for (const j of r.journeys.concat(byRail.journeys)) { const k = journeySig(j); if (!seen.has(k)) { seen.add(k); all.push(j); } }
+    for (const j of r.journeys.concat(byRail.journeys)) { easierTransfers(j); const k = journeySig(j); if (!seen.has(k)) { seen.add(k); all.push(j); } }
     // arrive-by: the journeys arriving in time are ranked among themselves only; ranked with the rest, a later one with
     // fewer changes that arrives a few minutes past the deadline would knock out one that is in time, and then be dropped
     const found = rank(arriveBy ? all.filter((j) => j.arrive <= toTime) : all);
     const journeys = found.map((j) => ({
       depart: j.depart, arrive: j.arrive, transfers: j.transfers, walkSeconds: j.walkSeconds,
-      legs: j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q)),
+      legs: mergeWalks(j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q))),
     }));
     if (!arriveBy) journeys.push(...slowerSiblings(journeys, fromTime, q));
     let bikeOnly = null;

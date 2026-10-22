@@ -92,10 +92,12 @@ export function clear(): void {
 }
 export function selectAlt(idx: number): void { altSel.value = idx; altShown.value = new Set([...altShown.value, idx]); hooks.redraw(); }
 /** The card's map button: show the way (highlighted), highlight a shown one, hide the highlighted one. */
+/** A card's map button: on the map or off it, nothing else. The highlighted way stays as it was (it is chosen on the
+ *  map, by its time label), unless it is the one taken off or none is highlighted yet (2026-10-22, Gadi). */
 export function toggleAlt(idx: number): void {
   const shown = new Set(altShown.value);
-  if (shown.has(idx) && altSel.value === idx) { shown.delete(idx); altSel.value = shown.size ? [...shown][0] : -1; }
-  else { shown.add(idx); altSel.value = idx; }
+  if (shown.has(idx)) { shown.delete(idx); if (altSel.value === idx) altSel.value = shown.size ? [...shown][0] : -1; }
+  else { shown.add(idx); if (!shown.has(altSel.value)) altSel.value = idx; }
   altShown.value = shown;
   hooks.redraw();
 }

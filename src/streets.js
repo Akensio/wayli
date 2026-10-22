@@ -201,7 +201,8 @@ export function accessStops(g, stopNode, lat, lon, mode, maxSeconds, extraPerSto
   const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
   const out = [];
   // the first metres to the street are always on foot (in the seeds)
-  reach(g, asSeeds(joins(g, points, mode, true)), mode, maxSeconds, (u, d) => {
+  // the extra seconds to reach the stop itself count within maxSeconds, so the whole walk keeps to the rider's setting
+  reach(g, asSeeds(joins(g, points, mode, true)), mode, Math.max(0, maxSeconds - extraPerStop), (u, d) => {
     const stops = byNode.get(u);
     if (!stops) return;
     for (const s of stops) {

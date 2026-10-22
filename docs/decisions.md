@@ -914,3 +914,18 @@ so they are not re-litigated.
   rotation, smoothed, hidden when no reading came for two seconds or the
   position is stale. Its own element in the dot (the dot's ::after is its
   ring). The heading never leaves the phone.
+- 2026-10-22: From Gadi and a friend's screenshot: (1) "walk 15 min, then walk
+  2 min" to a train against a 15-minute setting. The router counted only the
+  walk to the first stop; a footpath chained after it (or before the egress)
+  came on top. Now the whole walk at either end is within the setting, the
+  access walk's last 30 s to the stop included, and walks in a row show as
+  one. On 40 random trips in Tel Aviv: before, 92 of 605 journeys walked over
+  15 minutes at an end (up to 22) and 77 showed two walks in a row; after,
+  none. (2) "Why not change at Rabin Square?" Between the same two vehicles
+  the router kept the first place to change it found; the planner now picks,
+  of all the places that work, one with 2 minutes or more to spare, then the
+  least walking, then the most time to spare (the 56 to Rabin Square and a
+  2-minute walk with 9 minutes for the 61, not Arlosoroff, 3 minutes' walk
+  with 2 to spare). (3) A card's map button only puts its way on the map or
+  takes it off; the highlighted way changes only when it is the one taken
+  off or none is highlighted.
