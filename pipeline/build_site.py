@@ -48,6 +48,11 @@ def main():
         if not m:
             continue
         h = header_of(p)
+        # a build between midnight and 03:00 compiles the night's day too, but the feed downloaded then may already start
+        # the next day: that day would hold only the next morning's early trips (the app would show almost no stops)
+        if m.group(1) < h.get("feed", {}).get("feed_start_date", ""):
+            print(f"site: {m.group(1)} left out, the feed starts {h['feed']['feed_start_date']}")
+            continue
         shutil.copy(p, out / "data" / p.name)
         days.append({"date": m.group(1), "file": p.name, "bytes": p.stat().st_size, "trips": h["counts"]["trips"], "stops": h["counts"]["stops"]})
     if not days:
