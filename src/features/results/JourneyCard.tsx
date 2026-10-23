@@ -34,7 +34,7 @@ export function JourneyCard({ card }: { card: Card }) {
   void now.value;   // the "also at" times grey out as they pass
   return (
     <div class={`journey${sel ? ' sel' : ''}`} data-idx={idx} onClick={() => results.hooks.openDetail(j, q)}>
-      <div class="top"><TimeRange from={j.depart} to={j.arrive} /><span class="dur">{dur(j.arrive - j.depart)} · {transfersText(j.transfers)}</span></div>
+      <div class="top">{rides.some((l) => l.estimated) && <span class="est">~</span>}<TimeRange from={j.depart} to={j.arrive} /><span class="dur">{dur(j.arrive - j.depart)} · {transfersText(j.transfers)}</span></div>
       <div class="chips"><LegChips legs={j.legs} lines={lines} /></div>
       <div class="sub">{rides.map((l) => `${lineText(l.line)} ${t('toward', { headsign: l.headsign || '' })}`).join(' · ')}</div>
       {options.length > 1 && (
@@ -46,6 +46,7 @@ export function JourneyCard({ card }: { card: Card }) {
           ))}
         </div>
       )}
+      {rides.some((l) => l.estimated) && <div class="muted est">{t('estNote')}</div>}
       <Leave sec={dep} day={q.day} liveInfo={rides[0]?.live} />
       <LiveLine l={rides[0]} />
       <button type="button" class={`mapbtn${shown ? ' on' : ''}`} title={t('onMap')} aria-label={t('onMap')} onClick={(e) => { e.stopPropagation(); results.toggleAlt(idx); }}><Icon name="map" /></button>

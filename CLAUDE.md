@@ -69,6 +69,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `src/public/` | Copied as is into the build: icons, the web manifest. |
 | `package.json`, `vite.config.ts`, `tsconfig.json`, `eslint.config.mjs` | The toolchain: `npm run check` (lint and type-check) and `npm run build` (Vite, into `dist/`; the service worker is written there with the list of built files). Run `npm run check` before pushing app code; the workflow runs both before every build. |
 | `tools/` | The older routing harness: `feasibility.html`, `bench.mjs` (the router in Node), `browser_bench.mjs` (headless Chromium), `build_artifact.py`. |
+| `pipeline/weekend.py` | The municipalities' weekend lines (Na'im BeSofash), which no feed carries, merged into the GTFS from Tel Aviv's GIS with estimated times (a build step). |
 | `pipeline/bustimes.py`, `.github/workflows/bustimes.yml` | Bus section times by hour and kind of day, learned nightly from 14 days of passage logs read from Hasadna's minute snapshots (`bustimes.bin.gz`), for bus delays, the live correction and traffic on the map; `--score DAY` measures against a held-out day. |
 | `pipeline/railtimes.py`, `.github/workflows/railtimes.yml` | Train section times learned nightly from the last week of Hasadna's train positions (`railtimes.json`), for train delays; `--score DAY` measures against a held-out day. |
 | `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, `data/manifest.json`. |

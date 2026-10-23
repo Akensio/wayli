@@ -3,7 +3,7 @@ import { signal } from '@preact/signals';
 import type { StopLine } from './nearby';
 
 export type StopInfo = { stop: number; name: string; city?: string; code?: string; lat: number; lon: number; lines: StopLine[] };
-export type Departure = { trip: number; time: number; routeType: number; agency?: string; line: string; headsign: string; routeId?: number | null; firstDep?: number };
+export type Departure = { trip: number; time: number; routeType: number; agency?: string; line: string; headsign: string; routeId?: number | null; firstDep?: number; estimated?: boolean };
 export type LiveDep = { passed: true } | { passed: false; time: number; stale?: boolean; delayMin: number };
 
 export const info = signal<StopInfo | null>(null);

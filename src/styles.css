@@ -671,3 +671,6 @@ label.pilltoggle[hidden] { display: none; }
 #trainsTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* a part going away as its layout changes (ui/flip): a still copy that fades where it was; its entrances do not replay */
 .flip-ghost, .flip-ghost * { animation: none !important; transition: none !important; }
+.est { color: var(--warn); }
+.journey .top .est { font-weight: 700; margin-inline-end: 2px; }
+.dep .head small.est { display: block; font-size: 11px; }

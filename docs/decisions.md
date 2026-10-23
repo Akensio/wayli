@@ -989,3 +989,9 @@ so they are not re-litigated.
   plus words for where the line runs, words alone for the lines there
   (Hebrew spelling with or without the extra yod or vav matches); the switch
   and chips no longer take the focus. Rejected: switching keyboards by kind.
+- 2026-10-23 Gadi: add the weekend buses (Na'im BeSofash; the grassroots
+  "Sababus" shuttles have no data anywhere). Built from Tel Aviv's GIS
+  (routes, stops) with estimated times from the official hours and a 20
+  minute frequency, labelled as estimates wherever they show. Rejected: no
+  weekend lines until a timetable is published (riders use them every
+  weekend, and an honest estimate beats nothing); scraping an app.

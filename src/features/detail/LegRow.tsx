@@ -35,9 +35,10 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick }: Props) {
   const liveTime = mode === 'detail' && ride && badge && badge.time != null ? badge.time : null;
   const dep = liveTime ?? l.depart!;
   const shifted = mode === 'detail' && ride && l.schedDepart != null && Math.abs((l.schedDepart as number) - dep) >= 60;
-  const times = mode === 'follow' ? fmt(l.depart!)
+  const est = ride && l.estimated, tf = (sec: number) => (est ? '~' : '') + fmt(sec);   // an estimated time says so
+  const times = mode === 'follow' ? tf(l.depart!)
     : shifted ? <><s>{fmt(l.schedDepart as number)}</s><br /><b>{fmt(dep)}</b><br />{fmt(l.arrive!)}</>
-    : <>{fmt(l.depart!)}{ride && <><br />{fmt(l.arrive!)}</>}</>;
+    : <>{tf(l.depart!)}{ride && <><br />{tf(l.arrive!)}</>}</>;
   return (
     <div class={`leg ${l.type}${ride ? ' t' + l.routeType : ''}${cls ? ' ' + cls : ''}`}
       onClick={onClick && ride ? (e) => { if ((e.target as HTMLElement).closest('.toggle, .stoplist')) return; onClick(); } : undefined}>
@@ -46,7 +47,7 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick }: Props) {
       <span class="what">
         {ride ? <>
           <span class={`chip${onChip && l.route != null && l.route !== '' ? ' btn' : ''} t${l.routeType}`} style={chipColors(l.routeType, l.agency)} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined}>{lineText(l.line)}</span>
-          {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? (liveTime != null && badge.delayText ? badge.delayText : badge.text) : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi></small></>
+          {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? (liveTime != null && badge.delayText ? badge.delayText : badge.text) : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi>{est ? <span class="est"> · {t('estShort')}</span> : null}</small></>
             : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)}</>}
           {mode === 'detail' && stopsAlong.length > 2 && <>
             <button type="button" class="toggle" onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</button>

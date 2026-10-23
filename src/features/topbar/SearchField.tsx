@@ -72,7 +72,7 @@ function LineRow({ g, onLine }: { g: LineGroup; onLine: (r: { route: number }) =
       <button type="button" class="lhead" onClick={() => onLine(g.dirs[0])}>
         <LineChip line={g.line} routeType={g.routeType} agency={g.agency} mode={g.mode} />
         <span class="txt"><bdi>{rail ? g.area.join(' – ') : g.area.join(' – ') || agencyName(g.agency)}</bdi>
-          <small>{rail ? t('tripsToday', { n: g.trips }) : agencyName(g.agency)}{g.dist != null ? ' · ' + t('lineAway', { m: g.dist < 100 ? g.dist : Math.round(g.dist / 50) * 50 }) : ''}</small></span>
+          <small>{rail ? t('tripsToday', { n: g.trips }) : agencyName(g.agency)}{g.estimated ? ' · ' + t('estShort') : ''}{g.dist != null ? ' · ' + t('lineAway', { m: g.dist < 100 ? g.dist : Math.round(g.dist / 50) * 50 }) : ''}</small></span>
       </button>
       {g.dirs.map((d) => (
         <button type="button" class="ldir" onClick={() => onLine(d)}>

@@ -164,7 +164,7 @@ export function setOpt(which: OptPanel, replan = true): void {
 }
 export function chooseFrom(p: Place): void { setPlace('from', p); if (to.value) hooks.plan(); }
 /** A line as the line search lists it: its chip, where it runs, its directions (worker `lineGroups`). */
-export type LineGroup = { key: string; mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex'; line: string; agency: string; routeType: number; trips: number; area: string[]; dirs: { route: number; headsign: string; trips: number }[]; dist: number | null };
+export type LineGroup = { estimated?: boolean; key: string; mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex'; line: string; agency: string; routeType: number; trips: number; area: string[]; dirs: { route: number; headsign: string; trips: number }[]; dist: number | null };
 /** A stop as the stop search lists it (worker `stopGroups`): a station is one entry with its platforms. */
 export type StopGroup = { key: string; name: string; city?: string; code?: string; stops: number[]; lat: number; lon: number; mode: 'bus' | 'rail' | 'lrt'; dist: number | null; lines: { label: string; type: number; agency: string; route: number }[] };
 // The destination set before switching to the line or stop search, given back when switching to a trip again.

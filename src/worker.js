@@ -114,6 +114,9 @@ function railStops() {
   for (let p = 0; p < tt.patRoute.length; p++) if (tt.routes[tt.patRoute[p]][3] === 2) for (let i = tt.patStopsOff[p]; i < tt.patStopsOff[p + 1]; i++) stopRail[tt.patStops[i]] = 1;
   return stopRail;
 }
+/** A route's id in the real-time feed: its GTFS route id, or null for a line with estimated times (pipeline/weekend.py),
+ *  which no live feed carries. */
+const liveId = (r) => (r[6] ? null : r[4] ?? null);
 let stopLrt = null;
 function lrtStops() {
   if (stopLrt) return stopLrt;
@@ -234,7 +237,7 @@ function groupOut(n, dist) {
   let area = [];
   if (g.mode === 'rail') area = endNames(p) || [];
   else if (p >= 0) { const a = cName(tt.stops[tt.patStops[tt.patStopsOff[p]]][3]), b = cName(tt.stops[tt.patStops[tt.patStopsOff[p + 1] - 1]][3]); area = a === b ? [a] : [a, b]; }
-  return { key: g.key, mode: g.mode, line: g.label, agency: r[2], routeType: r[3], trips: g.trips, area: area.filter(Boolean), dirs: dirs.slice(0, 4), dist: Number.isFinite(dist) ? Math.round(dist) : null };
+  return { key: g.key, mode: g.mode, line: g.label, agency: r[2], routeType: r[3], estimated: !!r[6], trips: g.trips, area: area.filter(Boolean), dirs: dirs.slice(0, 4), dist: Number.isFinite(dist) ? Math.round(dist) : null };
 }
 /** The lines with a stop within `radius` m of a point, each with the distance to its nearest such stop. */
 function linesNear(lat, lon, radius) {
@@ -317,7 +320,7 @@ function legOut(l, q) {
     const raw = rawTimes(p, l.trip);   // the schedule: dep/arr may carry a live shift during a plan
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), stops: l.stops, line: routeLabel(l.route),
       headsign: headsign(tt.patRoute[p]), agency: l.route[2], routeType: l.route[3],
-      trip: l.trip, routeId: l.route[4] ?? null, route: tt.patRoute[p], firstDep: raw.dep[0], boardPos: bp, live: tripLive.get(l.trip) || null,
+      trip: l.trip, routeId: liveId(l.route), estimated: !!l.route[6], route: tt.patRoute[p], firstDep: raw.dep[0], boardPos: bp, live: tripLive.get(l.trip) || null,
       schedDepart: bp >= 0 ? raw.dep[bp] : l.depart, schedArrive: bp >= 0 ? raw.arr[bp + l.stops] : l.arrive,
       pattern: p, alightPos: bp + l.stops,
       path: ridePath(p, bp, bp + l.stops) || l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]), pathKind: hasCourse(p) ? 'shape' : 'stops',
@@ -1003,7 +1006,7 @@ const ops = {
           const base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns, dep = tt.dep[base + pos];
           if (dep < fromTime || seen.has(t)) continue;
           seen.add(t);
-          out.push({ trip: t, dep, arr: tt.arr[base + j], stops: j - pos, boardPos: pos, alightPos: j, line: routeLabel(r), routeType: r[3], agency: r[2], routeId: r[4] ?? null,
+          out.push({ trip: t, dep, arr: tt.arr[base + j], stops: j - pos, boardPos: pos, alightPos: j, line: routeLabel(r), routeType: r[3], agency: r[2], routeId: liveId(r), estimated: !!r[6],
             headsign: headsign(tt.patRoute[p]), firstDep: tt.dep[base], fromStop: s, toStop: tt.patStops[o + j] });
         }
       }
@@ -1034,8 +1037,8 @@ const ops = {
     // the other directions of the same line (same number and operator in the same area; for trains, the same two stations)
     const own = parseHeadsign(r[1]);
     const others = g ? lineDirs(g).filter((d) => parseHeadsign(tt.routes[d.route][1]) !== own).map((d) => ({ route: d.route, headsign: d.headsign })) : [];
-    const routeIds = sibs.map((ri) => tt.routes[ri][4]).filter((x) => x != null);
-    return { route, routeId: r[4] ?? null, routeIds, mode: g ? g.mode : modeOf(r[3]), line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    const routeIds = sibs.map((ri) => liveId(tt.routes[ri])).filter((x) => x != null);
+    return { route, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOf(r[3]), line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {
@@ -1085,7 +1088,7 @@ const ops = {
       const s = tt.patStops[tt.patStopsOff[p] + i];
       stops.push({ ...stopOut(s), arr: tt.arr[base + i], dep: tt.dep[base + i] });
     }
-    return { trip, routeId: r[4] ?? null, line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
+    return { trip, routeId: liveId(r), estimated: !!r[6], line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
   },
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
   reverse({ lat, lon }) { return reverseIn(lat, lon, lang); },
@@ -1126,7 +1129,7 @@ const ops = {
       const tFirst = tt.patTripsOff[p], tEnd = tt.patTripsOff[p + 1], base = tt.tripTimesOff[p];
       for (let t = tFirst; t < tEnd; t++) {
         const d = tt.dep[base + (t - tFirst) * ns + pos];
-        if (d >= fromTime) out.push({ time: d, line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], trip: t, routeId: r[4] ?? null, firstDep: tt.dep[base + (t - tFirst) * ns], last: pos === ns - 1 });
+        if (d >= fromTime) out.push({ time: d, line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], trip: t, routeId: liveId(r), estimated: !!r[6], firstDep: tt.dep[base + (t - tFirst) * ns], last: pos === ns - 1 });
       }
     }
     out.sort((a, b) => a.time - b.time);

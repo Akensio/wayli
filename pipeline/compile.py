@@ -434,9 +434,10 @@ def main():
         if route_id not in route_index:
             route_index[route_id] = len(route_list)
             short, long_, ag, rtype = routes_raw[route_id]
-            # the GTFS route_id next: it is the SIRI line_ref, which real-time data is keyed by; then the line's code
+            # the GTFS route_id next: it is the SIRI line_ref, which real-time data is keyed by; then the line's code, and
+            # 1 for a line whose times are estimates (pipeline/weekend.py: an agency id starting "est-")
             route_list.append([short, long_, agencies.get(ag, ag), rtype, int(route_id) if route_id.isdigit() else route_id,
-                               route_line.get(route_id, "")])
+                               route_line.get(route_id, ""), 1 if ag.startswith("est-") else 0])
 
     # ---- arrays ----
     P = len(patterns)

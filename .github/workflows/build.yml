@@ -58,6 +58,16 @@ jobs:
           if [ -f data/gtfs.zip ]; then cp data/gtfs.zip data/gtfs-last.zip
           elif [ -f data/gtfs-last.zip ]; then echo "::warning::the Ministry's server did not answer: building with the last feed that downloaded"; cp data/gtfs-last.zip data/gtfs.zip
           else exit 1; fi
+      # the weekend lines no feed carries (pipeline/weekend.py), from Tel Aviv's GIS server; its last answer is kept for
+      # the times it does not answer
+      - name: Cache the weekend lines' last answer
+        uses: actions/cache@v4
+        with:
+          path: data/weekend.json
+          key: weekend-${{ github.run_id }}
+          restore-keys: weekend-
+      - name: Weekend lines, with estimated times, into the feed
+        run: python3 -I pipeline/weekend.py data/gtfs.zip --cache data/weekend.json || echo "::warning::no weekend lines this time"
       - name: Cache the OpenStreetMap extract, street graph and address book (rebuilt weekly)
         id: osm
         uses: actions/cache@v4

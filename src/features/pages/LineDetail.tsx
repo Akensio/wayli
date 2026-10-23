@@ -22,6 +22,7 @@ export function LineDetail() {
       <div class="legs">
         <h2 id="lineTitle"><bdi>{info.mode === 'rail' && info.ends ? t('lineEnds', { a: info.ends[0], b: info.ends[1] }) : t('toward', { headsign: info.headsign })}</bdi></h2>
         <div class="muted" id="lineMeta"><bdi>{agencyName(info.agency || '')}</bdi> · {t('tripsToday', { n: info.trips })} · {fmtPlus(info.first)}–{fmtPlus(info.last)} · {t('stopsCount', { n: info.stops.length })}</div>
+        {info.estimated && <div class="muted est">{t('estNote')}</div>}
         <div class="chips" id="lineDirs" style="margin:8px 0">
           {info.others.map((o) => <button type="button" class="chipbtn" onClick={() => line.hooks.openLine(o.route)}><Icon name="arrowsLR" /> {t('otherDir', { headsign: o.headsign })}</button>)}
         </div>

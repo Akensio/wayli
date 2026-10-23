@@ -18,11 +18,11 @@ export function TripDetail() {
         <h2 id="tripTitle">{t('tripStopsTitle', { line: lineText(ts.line), headsign: ts.headsign })}</h2>
       </div>
       <div class="legs">
-        <div class="muted" id="tripMeta">{ts.agency} · {t('stopsCount', { n: ts.stops.length })}{trip.noVehicle.value ? ` · ${t('liveNoVehicle')}` : ''}</div>
+        <div class="muted" id="tripMeta">{ts.agency} · {t('stopsCount', { n: ts.stops.length })}{ts.estimated ? ` · ${t('estShort')}` : trip.noVehicle.value ? ` · ${t('liveNoVehicle')}` : ''}</div>
         <div id="tripStops">
           {ts.stops.map((s, i) => (
             <div class={`stopsrow${s.stop === trip.hereStop.value ? ' here' : ''}`} data-i={i} key={i} onClick={() => trip.hooks.openStop(s.stop)}>
-              <span class="time">{fmt(s.arr)}</span><span>{s.name}</span>
+              <span class="time">{ts.estimated ? '~' : ''}{fmt(s.arr)}</span><span>{s.name}</span>
               {v && v.index === i && <span class="veh"><Icon name="bus" /> {t('vehicleHere')}{v.delayMin ? ` (${v.delayMin > 0 ? '+' : ''}${v.delayMin})` : ''}</span>}
             </div>
           ))}

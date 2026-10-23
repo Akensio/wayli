@@ -644,6 +644,22 @@ station's platforms into one result.
 - Source: Israel Ministry of Transport GTFS, published daily at
   gtfs.mot.gov.il (`israel-public-transportation.zip`). Data terms still to
   be checked.
+- Weekend lines (`pipeline/weekend.py`, a build step after the download):
+  the municipalities' free Friday and Saturday buses in Gush Dan, "Na'im
+  BeSofash" (lines 705-729), are not licensed by the Ministry, so neither
+  its GTFS nor its SIRI carries them. Their routes and stops come from Tel
+  Aviv's GIS server behind the official map (layers 992 and 993; stops by
+  the Ministry's stop code), merged into the feed as an agency whose id
+  starts "est-" (the compiler sets the route's estimated flag). No
+  timetable is published: the hours are the official ones (Friday
+  16:30-02:00, Saturday 09:00-17:30, busofash.co.il), every 20 minutes
+  (Wikipedia), at an estimated 20 km/h on Friday evening and 24 on Saturday
+  stop to stop (Gush Dan buses measured 24 on a Saturday, 15 on a Thursday
+  evening). A stop goes with the direction travelling the way the feed's
+  own buses leave it, else the one passing it on the right; of 1,377 stops
+  12 land in both directions (ends), 51 in neither. The app shows their
+  times with "~" and says they are estimates with no live position. The
+  server's last answer is kept in the Actions cache for when it times out.
 - Nightly GitHub Action: fetch, validate, compile, publish static files plus
   a manifest (feed date, format version, checksums). The app reads the
   manifest and downloads only when something changed. Every push to `main`

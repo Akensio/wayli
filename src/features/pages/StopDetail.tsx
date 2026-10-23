@@ -39,9 +39,9 @@ export function StopDetail() {
             const timeCls = !lv ? 'time' : lv.passed ? 'time gone' : `time ${lv.stale ? 'unsure' : 'live'}`;
             return (
               <div class="dep" data-trip={d.trip} key={d.trip} onClick={() => stop.hooks.openTrip(d.trip, info.stop)}>
-                <span class={timeCls}>{lv && !lv.passed ? fmt(lv.time) : fmt(d.time)}</span>
+                <span class={timeCls}>{lv && !lv.passed ? fmt(lv.time) : (d.estimated ? '~' : '') + fmt(d.time)}</span>
                 <span class={`chip t${d.routeType}`} style={chipColors(d.routeType, d.agency)}>{lineText(d.line)}</span>
-                <span class="head">{d.headsign}</span>
+                <span class="head">{d.headsign}{d.estimated && <small class="est">{t('estShort')}</small>}</span>
                 <span class="in">
                   {lv ? (lv.passed ? t('livePassed') : <>{inText(lv.time, day)} <span class={`live ${lv.stale ? 'unsure' : 'ok'}`}>⦿{lv.delayMin ? ` ${lv.delayMin > 0 ? '+' : ''}${lv.delayMin}` : ''}{lv.stale ? '?' : ''}</span></>) : isNow ? inText(d.time, day) : ''}
                 </span>

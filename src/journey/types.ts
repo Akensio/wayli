@@ -15,6 +15,7 @@ export type Leg = {
   live?: LiveInfo | null;
   // a ride's place in the timetable: its trip and pattern, where it boards and alights, the line's id for live data
   trip?: number; pattern?: number | null; boardPos?: number; alightPos?: number; routeId?: number | string | null; firstDep?: number;
+  estimated?: boolean;   // a line with estimated times (the weekend lines no feed carries, pipeline/weekend.py)
   stops?: number; stopsAlong?: { stop: number; name: string; lat: number; lon: number; arr: number }[]; schedDepart?: number;
   [k: string]: unknown;
 };
