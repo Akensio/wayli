@@ -212,7 +212,10 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
   return (
     <div class={`field search tagged${withUser ? ' withuser' : ''}`}>
       {children}
-      <input ref={inputRef} type="text" id={id} placeholder={placeholder} autocomplete="off" enterkeyhint="search" inputMode={inputMode || undefined}
+      {/* a search box, said every way browsers and password managers listen: as a plain text box Chrome on Android offered
+          saved passwords over the keyboard (it ignores autocomplete="off" when it guesses at logins) */}
+      <input ref={inputRef} type="search" role="combobox" aria-expanded={open.value} aria-controls={dropId} name={`wayli-${id}`} id={id} placeholder={placeholder}
+        autocomplete="off" autocorrect="off" autocapitalize="off" data-1p-ignore="" data-lpignore="true" data-bwignore="" data-form-type="other" enterkeyhint="search" inputMode={inputMode || undefined}
         value={text.value}
         onInput={(e) => { text.value = (e.currentTarget as HTMLInputElement).value; typed(text.value.trim()); }}
         class={magic && !focused.value ? 'magic' : ''} onFocus={onFocus} onBlur={onBlur} onKeyDown={onKey} />

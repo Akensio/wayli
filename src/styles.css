@@ -40,13 +40,15 @@ button:focus-visible, .chipbtn:focus-visible { outline: 2px solid var(--accent);
 button, input, select { font: inherit; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
 .field { position: relative; margin-bottom: 8px; }
-.field input[type=text] { width: 100%; padding: 11px 40px 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+input[type=search] { -webkit-appearance: none; appearance: none; }
+input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-search-decoration { -webkit-appearance: none; display: none; }   /* the box has its own x */
+.field input[type=search] { width: 100%; padding: 11px 40px 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
 .field .icon { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-2); pointer-events: none; font-size: 14px; }
-.field input[type=text] { padding-inline-start: 34px; padding-inline-end: 12px; }
+.field input[type=search] { padding-inline-start: 34px; padding-inline-end: 12px; }
 .chips-row { display: flex; gap: 6px; margin: -2px 0 10px; }
 .chipbtn { background: var(--chip); border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; color: var(--ink); font-size: 13px; min-height: 34px; }
 .chipbtn:active { background: var(--line); }
-.field input[type=text] { padding-inline-end: 12px; }
+.field input[type=search] { padding-inline-end: 12px; }
 .dropdown { position: absolute; z-index: 20; inset-inline: 0; top: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-top: 4px; max-height: 360px; overflow: auto; overscroll-behavior: contain; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
 .dropdown[hidden] { display: none; }
 .dropdown button { display: block; width: 100%; text-align: start; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; color: var(--ink); cursor: pointer; }
@@ -382,6 +384,12 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 /* the menu at the start of the pill (the side the drawer comes from), the app's logo at its end (a tap starts a search) */
 .applogo { position: absolute; inset-inline-end: 7px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
 .applogo .logo { width: 100%; height: 100%; display: block; }
+.kindpill { position: absolute; inset-inline-end: 7px; top: 50%; translate: 0 -50%; height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 8px; border: 0; border-radius: 16px;
+  background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; animation: popIn .3s var(--ease-out) both; }
+.kindpill .i { width: 16px; height: 16px; } .kindpill .x { width: 13px; height: 13px; opacity: .8; margin-inline-start: 2px; }
+.topbar:not(.two) .field.withuser:has(.kindpill) input[type=search] { padding-inline-end: 112px; }
+.topbar.two .kindpill { display: none; }
+.field:has(.fieldx:not([hidden])) .kindpill { display: none; }
 .logo .bg { fill: var(--accent); }
 .logo .mark { fill: var(--accent-ink); stroke: var(--accent-ink); }
 .field:has(.fieldx:not([hidden])) .applogo { display: none; }
@@ -390,7 +398,7 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .pair #barBack { position: absolute; inset-inline-start: 5px; top: 5px; width: 36px; height: 36px; z-index: 2; box-shadow: none; background: color-mix(in srgb, var(--ink) 7%, var(--surface)); }
 .pair #barBack .i { width: 20px; height: 20px; }
 .topbar.two #fromRow .tag { inset-inline-start: 48px; }
-.topbar.two #fromRow input[type=text] { padding-inline-start: 106px; }
+.topbar.two #fromRow input[type=search] { padding-inline-start: 106px; }
 .topbar.two .pair .trow { padding-inline-end: 48px; }   /* the pills shorten for the swap at their end */
 .topbar.two.leaving .pair .trow { padding-inline-end: 0; }   /* and grow back while the rows play out */
 .pair #swap { position: absolute; inset-inline-end: 0; top: 50%; translate: 0 -50%; z-index: 3; }
@@ -398,10 +406,10 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 #pair, #sumRow { order: 1; } #optRow { order: 2; } #formBody { order: 3; }
 .iconbtn.small { width: 40px; height: 40px; font-size: 18px; }
 .topbar .field { flex: 1; margin: 0; }
-.topbar .field input[type=text] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 46px; font-size: 16px; border-radius: 23px; padding-inline-end: 44px; }
-.field.tagged input[type=text] { padding-inline-start: 70px; }
+.topbar .field input[type=search] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 46px; font-size: 16px; border-radius: 23px; padding-inline-end: 44px; }
+.field.tagged input[type=search] { padding-inline-start: 70px; }
 .topbar:not(.two) .field.withuser .tag { display: none; }
-.topbar:not(.two) .field.withuser input[type=text] { padding-inline-start: 52px; padding-inline-end: 52px; }
+.topbar:not(.two) .field.withuser input[type=search] { padding-inline-start: 52px; padding-inline-end: 52px; }
 /* the summary box: one pill with to, from, time and bike once a plan is made; a tap reopens the rows */
 .sumbox { position: relative; flex: 1; min-width: 0; background: var(--surface); border-radius: 28px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-height: 56px; display: flex; align-items: center; }
 .sumtxt { flex: 1; min-width: 0; background: none; border: 0; text-align: start; padding: 7px 44px 7px 44px; padding-inline-start: 16px; padding-inline-end: 44px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
@@ -643,7 +651,7 @@ label.pilltoggle[hidden] { display: none; }
 #lineTitle { font-size: 18px; margin: 0 0 4px; }
 /* in the line search the back arrow sits on the one box: its tag moves aside like the origin's */
 .topbar.two.linekind #toRow .tag { inset-inline-start: 48px; }
-.topbar.two.linekind #toRow input[type=text] { padding-inline-start: 106px; }
+.topbar.two.linekind #toRow input[type=search] { padding-inline-start: 106px; }
 /* the stop search's list: what stops there, the name, where and the sign's number, a bus stop's lines */
 .dropdown button.stoprow { display: flex; align-items: flex-start; gap: 10px; }
 .dropdown .stoprow .sic { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--chip); color: var(--ink-2); margin-top: 1px; }

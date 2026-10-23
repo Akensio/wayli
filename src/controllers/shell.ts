@@ -104,6 +104,12 @@ Object.assign(saved.hooks, { planTo: (p: Place) => planTo(p), choosePlace: (titl
 // what the map's bubbles ask of the app
 Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(trip, stop), openLine: (route: number) => openLine(route), openStop: (stop: number) => openStop(stop), planTo: (p: Place) => planTo(p), planFrom: (p: Place) => planFrom(p) });
 positionHooks.moved = () => map.updateNearRoutes();
+// a line or stop search is a step of its own: back returns to the trip search (folded)
+search.hooks.kindChanged = (k) => {
+  const on = nav.stack.value.some((e) => e.kind === 'search');
+  if (k !== 'trip' && !on) nav.push({ kind: 'search' });
+  else if (k === 'trip' && on) nav.close('search');
+};
 
 // ---- panels: what closing each one stops (state/nav.ts keeps the stack and the history)
 const ON_CLOSE: Record<string, () => void> = {
@@ -114,6 +120,7 @@ const ON_CLOSE: Record<string, () => void> = {
 Object.assign(nav.hooks, {
   closed: (id: string) => { map.closePopup(); ON_CLOSE[id]?.(); },
   clearPlan: () => clearPlan(),
+  leaveSearch: () => { search.leaveLineMode(); search.foldBar(); },
   changed: () => map.redrawMap(),
   screenShown: (name: string) => { if (name === 'nearby' && data.ttReady.value && nearby.status.value !== 'ready') loadNearby(); },
 });

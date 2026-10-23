@@ -50,9 +50,10 @@ export function TopBar() {
     Object.assign(thumb.style, { width: `${on.offsetWidth}px`, transform: `translateX(${on.offsetLeft}px)` });
   });
 
-  // leaving search mode closes the option popovers and the line search (the rows' play-out is in the state)
+  // leaving search mode closes the option popovers (the rows' play-out is in the state); a line or stop search stays one,
+  // folded to its own pill
   useEffect(() => {
-    if (!search.barOpen.value) { search.optOpen.value = ''; search.leaveLineMode(); }
+    if (!search.barOpen.value) search.optOpen.value = '';
   }, [search.barOpen.value]);
   // the bar's height drives the map controls and the sheet: measured after every change of shape
   useEffect(() => {
@@ -99,12 +100,16 @@ export function TopBar() {
         <div class="trow" id="toRow" data-flip="to" hidden={sum} onPointerDownCapture={(e) => { if ((e.target as HTMLElement).id === 'toQ') onToPointerDown(e); }}>
           <SearchField id="toQ" dropId="toDrop" text={pair ? search.stToText : search.toText} place={pair ? search.stTo : search.to} onFocus={search.openBar} withUser
             placeholder={t(pair ? 'toStationQ' : search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines kind={kind} stationSide={pair ? 'to' : undefined}
-            onStop={(g) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); if (pair) search.hooks.chooseStation('to', g); else search.hooks.openStopGroup(g); }}
+            onStop={(g) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); if (pair) search.hooks.chooseStation('to', g); else { search.hooks.openStopGroup(g); search.foldBar(); } }}
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
-            onLine={(r) => { if (!line) search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); }}>
+            onLine={(r) => { if (!line) search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); search.foldBar(); }}>
             <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><MenuGlyph /></button>
             <span class="tag" key={`${kind}${pair}`}>{kind === 'line' ? t('tagLine') : kind === 'stop' && !pair ? t('tagStop') : t('tagTo')}</span>
-            <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><Logo /></button>
+            {line && !edit
+              // folded, the line and stop searches say which they are where the logo sits; its x is the trip search again
+              ? <button type="button" class="kindpill" id="kindPill" aria-label={t('backToTrip')} onClick={() => search.setKind('trip')}>
+                  <Icon name={kind === 'line' ? 'bus' : pair ? 'train' : 'pin'} />{kind === 'line' ? t('kindLine') : t('kindStopSearch')}<Icon name="close" class="x" /></button>
+              : <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><Logo /></button>}
           </SearchField>
         </div>
         <button type="button" class="iconbtn small" id="swap" data-flip="swap" hidden={!edit || one} title={t('swap')} aria-label={t('swap')} onClick={pair ? search.hooks.swapStations : search.swapPlaces}><Icon name="swap" /></button>

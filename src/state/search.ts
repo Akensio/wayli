@@ -73,7 +73,7 @@ effect(() => {
 
 /** The bar's three looks: the prompt pill, the two rows with options, or the summary of a plan. */
 export const mode = computed<'rest' | 'edit' | 'summary'>(() => {
-  const has = !!(to.value || (from.value && !from.value.auto));
+  const has = kind.value === 'trip' && !!(to.value || (from.value && !from.value.auto));   // the line and stop searches rest as a pill
   if (barOpen.value || leaving.value) return 'edit';
   return has ? 'summary' : 'rest';
 });
@@ -92,6 +92,7 @@ export const hooks = {
   chooseStation: (_side: Side, _g: StopGroup) => {},
   swapStations: () => {},
   openLine: (_r: any) => {},
+  kindChanged: (_k: Kind) => {},   // the line and stop searches are a step back can undo
   getPosition: async (): Promise<{ lat: number; lon: number }> => { throw new Error('no location'); },
   pickOnMap: async (_start: Place | null): Promise<Place | null> => null,
   openMenu: () => {},
@@ -115,16 +116,17 @@ export function openBar(): void {
   if (!from.value) setPlace('from', { name: t('myLoc'), transient: true, auto: true });
 }
 export function foldBar(): void { barOpen.value = false; }
-export function clearPlaces(): void { tripTo = null; kind.value = 'trip'; clearStations(); from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
+export function clearPlaces(): void { tripTo = null; leaveLineMode(); from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
 export function swapPlaces(): void {
   const f = from.value, tt = to.value;
   setPlace('from', tt); setPlace('to', f);   // Go plans; a swap by itself changes nothing else
 }
-/** Back from editing ends the search, like the summary's X: no places, no results, the plain pill. (A tap on the map
- *  folds the rows back to the summary instead.) */
+/** Back from editing ends a trip search, like the summary's X: no places, no results, the plain pill. The line and stop
+ *  searches fold to their own pill instead (a step back from there is the trip pill). (A tap on the map folds the rows
+ *  back to the summary or the pill.) */
 export function back(): void {
   for (const id of ['toQ', 'fromQ']) (document.getElementById(id) as HTMLInputElement | null)?.blur();
-  hooks.clearPlan();
+  if (kind.value !== 'trip') foldBar(); else hooks.clearPlan();
 }
 /** Plan with what is set: the places (where you are now, for "my location"), the time and the bicycle. */
 function planSet(): void {
@@ -179,10 +181,11 @@ export function setKind(k: Kind): void {
     else toText.value = to.value ? to.value.name : '';
   }
   kind.value = k;
+  hooks.kindChanged(k);
 }
 /** Search a line by number: the bar opens on the line search. */
 export function lineMode(): void { barOpen.value = true; setKind('line'); focusBox('toQ'); }
-/** The bar closed: back to trips (what the To box held before is given back). */
+/** Back to trips (what the To box held before is given back). */
 export function leaveLineMode(): void { setKind('trip'); lineFilter.value = 'all'; stopFilter.value = 'all'; clearStations(); }
 export function clearStations(): void { stFrom.value = null; stFromText.value = ''; stTo.value = null; stToText.value = ''; }
 /** Search a stop: the bar opens on the stop search. */

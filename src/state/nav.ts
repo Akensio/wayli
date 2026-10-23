@@ -17,7 +17,8 @@ import * as search from './search';
 import * as chooser from './chooser';
 import * as app from './app';
 
-export type Entry = { kind: 'overlay'; id: string } | { kind: 'tab'; from: string } | { kind: 'plan' };
+// 'search': the bar searches lines or stops (a step back is the trip search again)
+export type Entry = { kind: 'overlay'; id: string } | { kind: 'tab'; from: string } | { kind: 'plan' } | { kind: 'search' };
 export const stack = signal<Entry[]>([]);
 export const screen = signal('plan');
 let settling = false;
@@ -27,6 +28,7 @@ const queued: Entry[] = [];
 export const hooks = {
   closed: (_id: string) => {},       // a panel closed: its timers, markers, promises
   clearPlan: () => {},               // the plan entry was undone
+  leaveSearch: () => {},             // the line or stop search entry was undone
   changed: () => {},                 // something shows differently: the map redraws
   screenShown: (_name: string) => {},
 };
@@ -97,15 +99,17 @@ function stepBack(n: number): void {
 function undo(entry: Entry): void {
   if (entry.kind === 'overlay') hideOverlay(entry.id);
   else if (entry.kind === 'tab') showScreen(entry.from, false);
+  else if (entry.kind === 'search') hooks.leaveSearch();
   else hooks.clearPlan();
 }
-/** Close the given panel (or the plan) now; history steps back one entry to match (its popstate then finds nothing left to undo). */
+/** Close the given panel (or the plan, or the line or stop search) now; history steps back one entry to match (its
+ *  popstate then finds nothing left to undo). */
 export function close(id: string): void {
-  const i = stack.value.findIndex((e) => (e.kind === 'overlay' && e.id === id) || (e.kind === 'plan' && id === 'plan'));
+  const i = stack.value.findIndex((e) => (e.kind === 'overlay' && e.id === id) || (e.kind === id && (id === 'plan' || id === 'search')));
   if (i < 0) { if (id === 'plan') hooks.clearPlan(); return; }
   const entry = stack.value[i];
   stack.value = stack.value.filter((_, k) => k !== i);
-  if (entry.kind === 'plan') hooks.clearPlan(); else hideOverlay(id);
+  if (entry.kind === 'plan') hooks.clearPlan(); else if (entry.kind === 'search') hooks.leaveSearch(); else hideOverlay(id);
   if (WATCH) unwatch(entry); else stepBack(1);
 }
 /** Replace one open panel by another in place (the trip detail becomes the trip being followed). */
@@ -127,7 +131,7 @@ export function closeAll(): void {
   stack.value = [];
   const base = old.find((e) => e.kind === 'tab');
   if (base && base.kind === 'tab') screen.value = base.from;
-  for (const e of old) if (e.kind === 'overlay') hooks.closed(e.id);
+  for (const e of old) if (e.kind === 'overlay') hooks.closed(e.id); else if (e.kind === 'search') hooks.leaveSearch();
   renderPanels();
   if (WATCH) for (const e of old) unwatch(e); else stepBack(old.length);
 }
