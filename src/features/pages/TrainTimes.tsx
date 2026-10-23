@@ -1,0 +1,44 @@
+// The direct trains between two stations: when each leaves and arrives (live when known), how long it takes, where
+// it heads; a swap for the way back. A tap opens the train's stops.
+import { Icon } from '../../ui/Icon';
+import { t, lang } from '../../i18n';
+import { fmt } from '../../time';
+import * as st from '../../state/station';
+import { dur, inText } from '../../journey/format';
+import { now } from '../../state/clock';
+
+export function TrainTimes() {
+  void lang.value; void now.value;
+  const p = st.pair.value;
+  if (!p) return null;
+  const rows = st.trains.value, day = st.day.value;
+  return (
+    <>
+      <div class="bar">
+        <button type="button" class="ghost" id="trainsBack" onClick={st.hooks.closeTrains}>{t('back')}</button>
+        <h2 id="trainsTitle"><bdi>{t('lineEnds', { a: p.from.name, b: p.to.name })}</bdi></h2>
+        <button type="button" class="iconbtn small flat" id="trainsSwap" title={t('swap')} aria-label={t('swap')} onClick={st.hooks.swap}><Icon name="swap" /></button>
+      </div>
+      <div class="legs">
+        <div class="row"><h2 class="sec" style="margin:8px 0">{t('directTrains')}</h2><span class="muted" id="trainsLive">{st.liveNote.value}</span></div>
+        {rows === null && <div class="empty">{t('loading')}</div>}
+        {rows && !rows.length && <div class="empty">{t('noDirectTrains')}</div>}
+        <div id="trainRows">
+          {(rows || []).map((r) => {
+            const lv = st.live.value[String(r.trip)];
+            const dep = lv ? lv.dep : r.dep, arr = lv ? lv.arr : r.arr;
+            return (
+              <div class={`trainrow${lv && lv.passed ? ' gone' : ''}`} key={r.trip} onClick={() => st.hooks.openTrip(r.trip, r.fromStop)}>
+                <span class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}>{fmt(dep)}</span>
+                <span class="arrow"><Icon name="chevronEnd" class="chev" /></span>
+                <span class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}>{fmt(arr)}</span>
+                <span class="what"><span>{dur(arr - dep)} · {r.stops === 1 ? t('stops1') : t('stopsN', { n: r.stops })}</span><small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
+                <span class="in">{lv && !lv.passed ? <><span class={`live ${lv.stale ? 'unsure' : 'ok'}`}>⦿{lv.delayMin ? ` ${lv.delayMin > 0 ? '+' : ''}${lv.delayMin}` : ''}{lv.stale ? '?' : ''}</span> </> : null}{lv && lv.passed ? t('livePassed') : st.isNow.value ? inText(dep, day) : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}

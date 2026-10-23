@@ -249,6 +249,7 @@ export function parseBusTimes(buf) {
   return { idx, cells: new Uint8Array(buf, 4 + hl + 8 * n, n * head.kinds * head.bands), bands: head.bands, kinds: head.kinds, built: head.built };
 }
 export function setBusTimes(m) { busTimes = m; }
+export const hasBusTimes = () => !!busTimes;
 /** 0 Sunday to Thursday, 1 Friday, 2 Saturday, for a service day YYYYMMDD. */
 const kindOf = (day) => { const w = new Date(Date.UTC(+day.slice(0, 4), +day.slice(4, 6) - 1, +day.slice(6, 8))).getUTCDay(); return w === 5 ? 1 : w === 6 ? 2 : 0; };
 const bandOf = (sec) => { const h = Math.floor(sec / 3600); return h < 5 ? 0 : Math.min(busTimes.bands - 1, h - 5); };

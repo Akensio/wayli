@@ -18,6 +18,7 @@ import { clearPlan, planTo, planFrom } from './planner';
 import { closeDetail } from './detail';
 import { openStop, closeStop } from './stop';
 import { openLine, closeLine } from './line';
+import { closeStation, closeTrains } from './station';
 import { openTrip } from './trip';
 import { loadNearby } from './nearby';
 import { isFollowing, closeFollow } from './follow';
@@ -78,6 +79,7 @@ Object.assign(app.hooks, {
   },
   go: (name: string) => { nav.closeAll(); nav.showScreen(name); if (name === 'plan') sheet.set('half'); },
   lineSearch: () => { nav.closeAll(); nav.showScreen('plan'); search.lineMode(); },   // the rows, even over a plan's summary
+  stopSearch: () => { nav.closeAll(); nav.showScreen('plan'); search.stopMode(); },
   closeDrawer: () => nav.close('drawer'),
   openSettings: () => nav.showOverlay('settings'),   // over the drawer, which stays open under it
   closeSettings: () => nav.close('settings'),
@@ -105,7 +107,7 @@ positionHooks.moved = () => map.updateNearRoutes();
 
 // ---- panels: what closing each one stops (state/nav.ts keeps the stack and the history)
 const ON_CLOSE: Record<string, () => void> = {
-  detail: closeDetail, stopDetail: closeStop, lineDetail: closeLine,
+  detail: closeDetail, stopDetail: closeStop, lineDetail: closeLine, stationDetail: closeStation, trainTimes: closeTrains,
   picker: () => map.closePicker(null, false), chooser: () => chooser.finish(null, false),
   follow: () => closeFollow(false),
 };

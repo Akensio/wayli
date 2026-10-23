@@ -19,6 +19,8 @@ import type { Place } from '../state/search';
 import type { Query, PlanResult } from '../journey/types';
 import { startDay } from './loading';
 import { openLine } from './line';
+import { openStop } from './stop';
+import { openStation } from './station';
 import { openDetail } from './detail';
 import { startTrip } from './follow';
 import { layoutTop } from './shell';
@@ -116,6 +118,8 @@ Object.assign(search.hooks, {
   lastQuery: () => results.query.value,
   search: (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos }),
   lineGroups: (q: string, mode: search.LineFilter, limit = 30) => call<search.LineGroup[]>('lineGroups', { q, mode, near: lastPos, limit }),
+  stopGroups: (q: string, mode: search.StopFilter) => call<search.StopGroup[]>('stopGroups', { q, mode, near: lastPos, limit: 30 }),
+  openStopGroup: (g: search.StopGroup) => (g.mode === 'rail' ? openStation(g) : openStop(g.stops[0])),
   openLine: (r: any) => openLine(r.route),
   getPosition: () => getPosition(),
   pickOnMap: (start: Place | null) => map.pickOnMap(start),

@@ -948,3 +948,11 @@ so they are not re-litigated.
   their two end stations. Rejected: a separate line-search page (the top
   asks, the bottom answers), city pairs as the grouping (a line from Holon
   to Tel Aviv split in two).
+- 2026-10-23 Gadi: a search by stop, and for trains it should work differently:
+  riders of trains care about where they can get from here and when, not
+  lines; choose a station, then a destination, and get the times. Built as
+  the third search type: bus and light rail stops open their departures by
+  line; a station lists the stations reachable without a change, and a
+  chosen one the direct trains between the two with live times. Rejected:
+  a second box in the bar for the destination station (the station's page
+  already holds the list, and the bar stays one box for line and stop).

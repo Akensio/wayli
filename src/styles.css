@@ -636,3 +636,28 @@ label.pilltoggle[hidden] { display: none; }
 /* in the line search the back arrow sits on the one box: its tag moves aside like the origin's */
 .topbar.two.linekind #toRow .tag { inset-inline-start: 48px; }
 .topbar.two.linekind #toRow input[type=text] { padding-inline-start: 106px; }
+/* the stop search's list: what stops there, the name, where and the sign's number, a bus stop's lines */
+.dropdown button.stoprow { display: flex; align-items: flex-start; gap: 10px; }
+.dropdown .stoprow .sic { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--chip); color: var(--ink-2); margin-top: 1px; }
+.dropdown .stoprow.m-rail .sic { background: #1b3a6b; color: #fff; }
+.dropdown .stoprow.m-lrt .sic { background: #d7263d; color: #fff; }
+.dropdown .stoprow .sic .i { width: 17px; height: 17px; }
+.dropdown .stoprow .txt { flex: 1; min-width: 0; font-weight: 600; }
+.dropdown .stoprow .txt small { font-weight: 400; }
+.dropdown .stoprow .slines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.dropdown .stoprow .slines .chip.lchip { font-size: 12px; min-width: 26px; padding: 0 6px; }
+.dropdown .stoprow .slines .chip.lchip .i { width: 12px; height: 12px; }
+/* a station's destinations and the trains between two stations */
+.field.stationto input { width: 100%; height: 44px; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); padding: 0 16px; font-size: 16px; color: var(--ink); }
+.destrow { display: block; width: 100%; text-align: start; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 11px 2px; color: var(--ink); cursor: pointer; font: inherit; }
+.destrow .name { font-weight: 600; }
+.destrow small { display: block; color: var(--ink-2); font-size: 12px; margin-top: 1px; }
+.trainrow { display: flex; align-items: center; gap: 8px; padding: 11px 2px; border-bottom: 1px solid var(--line); cursor: pointer; font-variant-numeric: tabular-nums; }
+.trainrow .time { font-weight: 700; font-size: 17px; }
+.trainrow .time.live { color: var(--ok); } .trainrow .time.unsure { color: var(--warn); }
+.trainrow .arrow { color: var(--ink-2); display: grid; place-items: center; } .trainrow .arrow .i { width: 14px; height: 14px; }
+.trainrow .what { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13px; padding-inline-start: 6px; }
+.trainrow .what small { color: var(--ink-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trainrow .in { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.trainrow.gone { opacity: .45; }
+#trainsTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -477,7 +477,7 @@ button; another tap moves it; a tap on a stop picks the stop), and gets its name
 nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
-Lines: the bar, while editing, has a Trip / Line switch above its rows.
+Lines: the bar, while editing, has a Trip / Line / Stop switch above its rows.
 The line search is one box (numeric keyboard; a station's name for trains)
 with chips under it for the kind of line: all, bus, train, light rail,
 cable car. The worker (`lineGroups`) lists lines as riders know them: a
@@ -501,6 +501,20 @@ directions as buttons, today's trip count and first and last departure,
 and the stop list (tap a stop for its page). Line chips everywhere (stop
 cards, a stop's lines, a ride in a journey, a vehicle bubble) open the line
 page.
+
+Stops: the stop search is the same one box with chips for all, bus, train
+and light rail (worker `stopGroups`): stops by name or by the number on
+their sign (an exact number first), and with nothing typed those within
+600 m (every train station, nearest first, for the train chip); a station
+is one entry with its platforms. A bus or light rail stop opens its page
+(departures by line, below). A train station works the way riders of
+trains think, from station to station, not by line: its page lists every
+station a train from it reaches without a change (`stationReach`: the next
+train there and how long it takes, today's count), with a box to find one;
+a tap opens the direct trains between the two (`trainsBetween`): leave,
+arrive, how long, stops, where the train heads, with live times for the
+next ones from one request for every train, a swap for the way back, and a
+tap opening the train's stops. Connections stay with the trip search.
 
 Nearby and stops: stops around the device with the lines serving them and
 the walk in minutes; a stop shows its next departures with live times

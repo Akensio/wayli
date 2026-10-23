@@ -2,7 +2,7 @@
 import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign, parseHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode, placeAt } from './places.js';
-import { estimateDelay, secondsOn, setRailTimes, parseBusTimes, setBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops, metres } from './live.js';
+import { estimateDelay, secondsOn, setRailTimes, parseBusTimes, setBusTimes, hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops, metres } from './live.js';
 
 let tt = null, st = null, pl = null, sh = null;
 let lang = 'he';   // the language names are handed out in (setLang); the timetable carries what the feed translates
@@ -113,6 +113,13 @@ function railStops() {
   stopRail = new Uint8Array(tt.stops.length);
   for (let p = 0; p < tt.patRoute.length; p++) if (tt.routes[tt.patRoute[p]][3] === 2) for (let i = tt.patStopsOff[p]; i < tt.patStopsOff[p + 1]; i++) stopRail[tt.patStops[i]] = 1;
   return stopRail;
+}
+let stopLrt = null;
+function lrtStops() {
+  if (stopLrt) return stopLrt;
+  stopLrt = new Uint8Array(tt.stops.length);
+  for (let p = 0; p < tt.patRoute.length; p++) if (tt.routes[tt.patRoute[p]][3] === 0) for (let i = tt.patStopsOff[p]; i < tt.patStopsOff[p + 1]; i++) stopLrt[tt.patStops[i]] = 1;
+  return stopLrt;
 }
 /** A trip's scheduled times, untouched by any live shift: from the stored start and deltas. */
 function rawTimes(p, t) {
@@ -580,7 +587,7 @@ const TRACK_MS = 900e3, PAIR_MS = 90e3;
 const tracks = new Map();   // ride -> { lineRef, start, pts: [[ms, lat, lon]] } oldest first
 let roads = new Map();      // "code>code" -> [{ ratio, t, ride, p, k }]
 function noteRoads(vehicles) {
-  if (!tt) return;
+  if (!tt || !hasBusTimes()) return;   // without the learned times there is nothing to compare with
   let newest = 0;
   for (const v of vehicles) {
     if (v.operator === 2 || v.atStop) continue;
@@ -698,7 +705,7 @@ async function snapshot(urls) {
       remember(before.j, before.t); remember(cur.j, cur.t);
       if (snap && snap.id === cur.id) snap = { ...snap, vehicles: snapVehicles(cur.j, cur.t) };
       // and the one of 10 minutes before: how the roads run is known at once, not after minutes of use
-      return get(10).then((older) => { noteRoads(snapVehicles(older.j, older.t)); noteRoads(snap ? snap.vehicles : []); });
+      if (hasBusTimes()) return get(10).then((older) => { noteRoads(snapVehicles(older.j, older.t)); noteRoads(snap ? snap.vehicles : []); });
     }).catch(() => {});
     return snap;
   })().finally(() => { snapLoading = null; });
@@ -724,7 +731,7 @@ const ops = {
   async loadTimetable({ url }) {
     const buf = await fetchContainer(url, 'timetable');
     tt = parseTimetable(buf);
-    routeById = routePats = stopRail = stopByCode = lineIdx = null;
+    routeById = routePats = stopRail = stopLrt = stopByCode = lineIdx = null;
     return { date: tt.header.date, counts: tt.counts, feed: tt.header.feed, streets: !!tt.header.streets };
   },
   /**
@@ -889,6 +896,92 @@ const ops = {
     // a line within a short walk comes first among equal matches: line 1 here, not line 1 in another city
     rows.sort((a, b) => b.score - a.score || Math.min(a.dist, 1e6) - Math.min(b.dist, 1e6) || num(lineIdx.groups[a.i].label) - num(lineIdx.groups[b.i].label) || lineIdx.groups[b.i].trips - lineIdx.groups[a.i].trips);
     return rows.slice(0, limit).map((r) => groupOut(r.i, r.dist));
+  },
+  /**
+   * Stops for the stop search: by name or by the code on the sign (exact codes first), or, with nothing typed, those
+   * near the rider (every station, nearest first, for trains). `mode` narrows to bus stops, train stations or light
+   * rail stops. A station is one entry with its platforms (`stops`).
+   */
+  stopGroups({ q = '', mode = 'all', near = null, limit = 30 }) {
+    const rail = railStops(), lrt = lrtStops();
+    const modeOf = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
+    const groupOf = (s) => { const p = tt.stopParent[s]; return p >= 0 ? { key: 'p' + p, stops: tt.stationStops.get(p).slice(), name: stName(p) || sName(s) } : { key: 's' + s, stops: [s], name: sName(s) }; };
+    const out = new Map();
+    const add = (s, score) => {
+      const g = groupOf(s), m = modeOf(s);
+      if (mode !== 'all' && m !== mode && !g.stops.some((x) => modeOf(x) === mode)) return;
+      const o = out.get(g.key);
+      if (o) { if (score > o.score) o.score = score; return; }
+      let la = 0, lo = 0;
+      for (const x of g.stops) { la += tt.stopLat[x]; lo += tt.stopLon[x]; }
+      la /= g.stops.length; lo /= g.stops.length;
+      const gm = g.stops.some((x) => rail[x]) ? 'rail' : g.stops.some((x) => lrt[x]) ? 'lrt' : 'bus';
+      out.set(g.key, { key: g.key, name: g.name, city: cName(tt.stops[s][3]), code: g.stops.length === 1 ? tt.stops[s][2] : '', stops: g.stops, lat: la, lon: lo, mode: gm, score,
+        dist: near ? Math.round(haversine(near.lat, near.lon, la, lo)) : null });
+    };
+    const n = String(q || '').trim();
+    if (!n) {
+      for (let s = 0; s < tt.stops.length; s++) {
+        if (mode === 'rail' ? !rail[s] : !near || haversine(near.lat, near.lon, tt.stopLat[s], tt.stopLon[s]) > 600) continue;
+        add(s, 0);
+      }
+    } else {
+      if (/^\d{2,6}$/.test(n)) { const s = codeIndex().get(n); if (s !== undefined) add(s, 100); }
+      for (const g of searchStops(tt, n, 60, lang)) add(g.stops[0], g.score);
+    }
+    const rows = Array.from(out.values());
+    rows.sort((a, b) => b.score - a.score || (a.dist ?? 1e9) - (b.dist ?? 1e9) || a.name.localeCompare(b.name));
+    return rows.slice(0, limit).map((r) => ({ ...r, lines: r.mode === 'rail' ? [] : linesAt(r.stops[0], 8) }));
+  },
+  /**
+   * A train station's direct destinations: every station a train from here reaches without a change, with today's
+   * trains there, the next one from `fromTime` and how long it takes. `stops` are the station's platforms.
+   */
+  stationReach({ stops, fromTime }) {
+    const from = new Set(stops), dests = new Map();
+    for (const s of stops) {
+      for (let i = tt.stopPatsOff[s]; i < tt.stopPatsOff[s + 1]; i++) {
+        const p = tt.stopPats[2 * i], pos = tt.stopPats[2 * i + 1];
+        if (tt.routes[tt.patRoute[p]][3] !== 2) continue;
+        const o = tt.patStopsOff[p], ns = tt.patStopsOff[p + 1] - o;
+        for (let j = pos + 1; j < ns; j++) {
+          const b = tt.patStops[o + j];
+          if (from.has(b)) continue;
+          const key = tt.stopParent[b] >= 0 ? 'p' + tt.stopParent[b] : 's' + b;
+          let d = dests.get(key);
+          if (!d) dests.set(key, (d = { key, name: (tt.stopParent[b] >= 0 && stName(tt.stopParent[b])) || sName(b), stops: tt.stopParent[b] >= 0 ? tt.stationStops.get(tt.stopParent[b]).slice() : [b], lat: tt.stopLat[b], lon: tt.stopLon[b], trips: 0, next: null, ride: null }));
+          for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) {
+            const base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns, dep = tt.dep[base + pos], arr = tt.arr[base + j];
+            d.trips++;
+            if (dep >= fromTime && (d.next == null || dep < d.next)) { d.next = dep; d.ride = arr - dep; }
+          }
+        }
+      }
+    }
+    return Array.from(dests.values()).sort((a, b) => a.name.localeCompare(b.name));
+  },
+  /** The direct trains between two stations (their platforms), leaving from `fromTime` on: when, how long, which train. */
+  trainsBetween({ from, to, fromTime, limit = 24 }) {
+    const B = new Set(to), out = [], seen = new Set();
+    for (const s of from) {
+      for (let i = tt.stopPatsOff[s]; i < tt.stopPatsOff[s + 1]; i++) {
+        const p = tt.stopPats[2 * i], pos = tt.stopPats[2 * i + 1];
+        const o = tt.patStopsOff[p], ns = tt.patStopsOff[p + 1] - o;
+        let j = -1;
+        for (let k = pos + 1; k < ns; k++) if (B.has(tt.patStops[o + k])) { j = k; break; }
+        if (j < 0) continue;
+        const r = tt.routes[tt.patRoute[p]];
+        for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) {
+          const base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns, dep = tt.dep[base + pos];
+          if (dep < fromTime || seen.has(t)) continue;
+          seen.add(t);
+          out.push({ trip: t, dep, arr: tt.arr[base + j], stops: j - pos, boardPos: pos, alightPos: j, line: routeLabel(r), routeType: r[3], agency: r[2], routeId: r[4] ?? null,
+            headsign: headsign(tt.patRoute[p]), firstDep: tt.dep[base], fromStop: s, toStop: tt.patStops[o + j] });
+        }
+      }
+    }
+    out.sort((a, b) => a.dep - b.dep || a.arr - b.arr);
+    return out.slice(0, limit);
   },
   /** One direction of a line: its main pattern's stops and course, today's trips, and its other directions. A train
    *  line is every train between the same two stations, each of which the feed lists as a route of its own. */

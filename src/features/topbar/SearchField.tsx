@@ -1,7 +1,7 @@
 // A search box of the bar: the pill with its tag, the typed text, a small x to clear it, and the list under it:
 // the quick entries (my location, pick on the map, home, work, recents) while empty, matching stops, places
-// and lines while typing. In the line search (`lineKind`) the list holds lines only: those near the rider while
-// empty, those matching the number as it is typed. The list ends above the keyboard and scrolls inside itself.
+// and lines while typing. In the line search (`kind` line) the list holds lines only, in the stop search stops only:
+// those near the rider while empty, those matching as it is typed. The list ends above the keyboard and scrolls inside itself.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { placeName, named } from '../../state/names';
 import { useSignal, useSignalEffect } from '@preact/signals';
@@ -12,7 +12,7 @@ import { Icon } from '../../ui/Icon';
 import { savedPlaces, recentPlaces } from '../../store.js';
 import * as search from '../../state/search';
 import * as saved from '../../state/saved';
-import type { Place, LineGroup } from '../../state/search';
+import type { Place, LineGroup, StopGroup } from '../../state/search';
 import { LineChip } from '../../ui/LineChip';
 import { agencyName } from '../../journey/agencies';
 
@@ -26,8 +26,9 @@ type Props = {
   onFocus?: () => void;           // the bar opens search mode
   inputMode?: '' | 'numeric';
   lines?: boolean;          // line numbers match too (the To box)
-  lineKind?: boolean;       // the line search: lines only
+  kind?: search.Kind;       // what the bar searches for: a trip (places, stops, lines), a line, a stop
   onPick: (p: Place) => void;
+  onStop?: (g: StopGroup) => void;
   onLine?: (r: any) => void;
   onLocate?: () => void;    // custom "my location" and "pick on the map" (the place chooser), else the planner's own
   onMap?: () => void;
@@ -46,7 +47,21 @@ function fitDrop(el: HTMLElement) {
   el.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
 }
 
-type Rows = { quick: boolean; lines: LineGroup[]; results: Suggestion[]; placesLoaded: boolean; near?: boolean };
+type Rows = { quick: boolean; lines: LineGroup[]; results: Suggestion[]; placesLoaded: boolean; near?: boolean; stops?: StopGroup[] };
+const STOP_ICON = { bus: 'bus', rail: 'train', lrt: 'tram' } as const;
+
+/** A stop in the list: what stops there, its name, where, the number on its sign, how far; a bus stop's lines. */
+function StopRow({ g, onStop }: { g: StopGroup; onStop: (g: StopGroup) => void }) {
+  return (
+    <button type="button" class={`stoprow m-${g.mode}`} onClick={() => onStop(g)}>
+      <span class="sic"><Icon name={STOP_ICON[g.mode]} /></span>
+      <span class="txt"><bdi>{g.name}</bdi>
+        <small>{[g.city, g.code, g.dist != null ? t('stopAway', { m: g.dist < 100 ? g.dist : Math.round(g.dist / 50) * 50 }) : ''].filter(Boolean).join(' · ')}</small>
+        {g.lines.length > 0 && <span class="slines">{g.lines.slice(0, 6).map((l) => <LineChip line={l.label} routeType={l.type} agency={l.agency} />)}</span>}
+      </span>
+    </button>
+  );
+}
 
 /** A line in the list: its chip, where it runs and who runs it, then a row per direction (a tap opens that direction). */
 function LineRow({ g, onLine }: { g: LineGroup; onLine: (r: { route: number }) => void }) {
@@ -68,7 +83,8 @@ function LineRow({ g, onLine }: { g: LineGroup; onLine: (r: { route: number }) =
   );
 }
 
-export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, lineKind = false, onPick, onLine, onLocate, onMap, withUser = false, children }: Props) {
+export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, kind = 'trip', onPick, onStop, onLine, onLocate, onMap, withUser = false, children }: Props) {
+  const lineKind = kind === 'line', stopKind = kind === 'stop';
   const open = useSignal(false);
   const closing = useSignal(false);   // the list folds away before it hides
   const focused = useSignal(false);
@@ -90,8 +106,17 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
     setRows({ quick: false, lines: found, results: [], placesLoaded: true, near: !q });
     show();
   };
+  // the stop search's list: the stops matching the name or sign number, or near the rider (every station for trains)
+  const stopList = async (q: string) => {
+    const my = ++seq.current;
+    const found = search.hooks.ttReady() ? await search.hooks.stopGroups(q, search.stopFilter.value).catch(() => []) : [];
+    if (my !== seq.current) return;
+    setRows({ quick: false, lines: [], results: [], placesLoaded: true, near: !q, stops: found });
+    show();
+  };
   const quickMenu = () => {
     if (lineKind) { lineList(''); return; }
+    if (stopKind) { stopList(''); return; }
     setRows({ quick: true, lines: [], results: [], placesLoaded: true }); show();
   };
   const typed = (q: string) => {
@@ -99,6 +124,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
     clearTimeout(timer.current);
     if (!q.length) { quickMenu(); return; }
     if (lineKind) { timer.current = window.setTimeout(() => lineList(q), 120); return; }
+    if (stopKind) { timer.current = window.setTimeout(() => stopList(q), 150); return; }
     if ((q.length < 2 && !(lines && /^\d+$/.test(q))) || !search.hooks.ttReady()) { open.value = false; return; }   // one digit is a whole line number
     timer.current = window.setTimeout(async () => {
       const my = ++seq.current;
@@ -110,8 +136,9 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
   };
   // the line search's kind of line changed (the chips under the box): list again for it
   useSignalEffect(() => {
-    void search.lineFilter.value;
+    void search.lineFilter.value; void search.stopFilter.value;
     if (lineKind && (open.peek() || focused.peek())) lineList(text.peek().trim());
+    if (stopKind && (open.peek() || focused.peek())) stopList(text.peek().trim());
   });
 
   // a tap elsewhere closes the list, unless that tap is what focused the box (the clear or go button hands focus here)
@@ -206,6 +233,8 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
         {rows && !rows.quick && <>
           {rows.lines.length > 0 && <div class="grp">{rows.near && search.lineFilter.value === 'all' ? t('linesNear') : t('grpLines')}</div>}
           {rows.lines.map((g) => <LineRow key={g.key} g={g} onLine={(r) => { open.value = false; onLine?.(r); }} />)}
+          {rows.stops && rows.stops.length > 0 && <div class="grp">{rows.near ? (search.stopFilter.value === 'rail' ? t('stationsAll') : t('stopsNear')) : t('grpStops')}</div>}
+          {(rows.stops || []).map((g) => <StopRow key={g.key} g={g} onStop={(x) => { open.value = false; onStop?.(x); }} />)}
           {rows.lines.length > 0 && rows.results.length > 0 && <div class="grp">{t('grpPlaces')}</div>}
           {rows.results.map((g) => {
             const kind = g.kind === 'stop' ? (g.platforms && g.platforms > 1 ? t('platforms', { n: g.platforms }) : t('kindStop'))
@@ -216,7 +245,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
               </button>
             );
           })}
-          {!rows.results.length && !rows.lines.length && <button type="button" disabled>{lineKind ? (rows.near ? t('linesHint') : t('lineNoMatch')) : rows.placesLoaded ? t('noMatch') : t('placesPending')}</button>}
+          {!rows.results.length && !rows.lines.length && !(rows.stops && rows.stops.length) && <button type="button" disabled>{lineKind ? (rows.near ? t('linesHint') : t('lineNoMatch')) : stopKind ? (rows.near ? t('stopsHint') : t('noMatch')) : rows.placesLoaded ? t('noMatch') : t('placesPending')}</button>}
         </>}
       </div>
     </div>

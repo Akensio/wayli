@@ -19,6 +19,7 @@ export const hooks = {
   openSettings: () => {},
   closeSettings: () => {},
   lineSearch: () => {},
+  stopSearch: () => {},
   closeDrawer: () => {},
   setLang: (_l: 'he' | 'en') => {},
   appearanceChanged: () => {},             // the map's look or the menus' theme changed

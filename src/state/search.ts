@@ -26,11 +26,15 @@ export const leaving = signal(false);   // the moment after editing ends: the ro
 export const settling = signal(false);  // then the pill's icons pop back in
 export const optOpen = signal<OptPanel>('');
 export const optDirty = signal(false);  // an option changed while its popover was open: re-plan on close
-/** What the bar searches for: a trip to a place (the two boxes, time, bike), or a line by its number. */
+/** What the bar searches for: a trip to a place (the two boxes, time, bike), a line by its number, or a stop. */
 export type LineFilter = 'all' | 'bus' | 'rail' | 'lrt' | 'cable';
-export const kind = signal<'trip' | 'line'>('trip');
+export type StopFilter = 'all' | 'bus' | 'rail' | 'lrt';
+export type Kind = 'trip' | 'line' | 'stop';
+export const kind = signal<Kind>('trip');
 export const lineFilter = signal<LineFilter>('all');
-export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ'>(() => (kind.value !== 'line' ? 'goQ' : lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber'));
+export const stopFilter = signal<StopFilter>('all');
+export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ' | 'stopQ'>(() =>
+  (kind.value === 'line' ? (lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber') : kind.value === 'stop' ? (stopFilter.value === 'rail' ? 'stationQ' : 'stopQ') : 'goQ'));
 export const toInputMode = computed<'' | 'numeric'>(() => (kind.value === 'line' && lineFilter.value !== 'rail' ? 'numeric' : ''));
 export const busy = signal(true);       // the planner is not ready, or planning
 
@@ -75,6 +79,8 @@ export const hooks = {
   lastQuery: (): { from: Place; to: Place } | null => null,
   search: async (_q: string): Promise<{ results: any[]; placesLoaded: boolean }> => ({ results: [], placesLoaded: false }),
   lineGroups: async (_q: string, _mode: LineFilter, _limit?: number): Promise<LineGroup[]> => [],
+  stopGroups: async (_q: string, _mode: StopFilter): Promise<StopGroup[]> => [],
+  openStopGroup: (_g: StopGroup) => {},
   openLine: (_r: any) => {},
   getPosition: async (): Promise<{ lat: number; lon: number }> => { throw new Error('no location'); },
   pickOnMap: async (_start: Place | null): Promise<Place | null> => null,
@@ -147,20 +153,27 @@ export function setOpt(which: OptPanel, replan = true): void {
 export function chooseFrom(p: Place): void { setPlace('from', p); if (to.value) hooks.plan(); }
 /** A line as the line search lists it: its chip, where it runs, its directions (worker `lineGroups`). */
 export type LineGroup = { key: string; mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex'; line: string; agency: string; routeType: number; trips: number; area: string[]; dirs: { route: number; headsign: string; trips: number }[]; dist: number | null };
-// The destination set before switching to the line search, given back when switching to a trip again.
+/** A stop as the stop search lists it (worker `stopGroups`): a station is one entry with its platforms. */
+export type StopGroup = { key: string; name: string; city?: string; code?: string; stops: number[]; lat: number; lon: number; mode: 'bus' | 'rail' | 'lrt'; dist: number | null; lines: { label: string; type: number; agency: string; route: number }[] };
+// The destination set before switching to the line or stop search, given back when switching to a trip again.
 let tripTo: { to: Place | null; text: string } | null = null;
-/** Switch what the bar searches for. The line search keeps the To box (numbers, or a station's name for trains). */
-export function setKind(k: 'trip' | 'line'): void {
+/** Switch what the bar searches for. The line and stop searches keep the To box for what they search. */
+export function setKind(k: Kind): void {
   if (kind.value === k) return;
-  if (k === 'line') { tripTo = { to: to.value, text: toText.value }; to.value = null; toText.value = ''; optOpen.value = ''; }
-  else if (tripTo) { to.value = tripTo.to; toText.value = tripTo.text; tripTo = null; }
-  else { toText.value = to.value ? to.value.name : ''; }
+  if (kind.value === 'trip') { tripTo = { to: to.value, text: toText.value }; to.value = null; optOpen.value = ''; }
+  toText.value = '';
+  if (k === 'trip') {
+    if (tripTo) { to.value = tripTo.to; toText.value = tripTo.text; tripTo = null; }
+    else toText.value = to.value ? to.value.name : '';
+  }
   kind.value = k;
 }
 /** Search a line by number: the bar opens on the line search. */
 export function lineMode(): void { barOpen.value = true; setKind('line'); focusBox('toQ'); }
 /** The bar closed: back to trips (what the To box held before is given back). */
-export function leaveLineMode(): void { setKind('trip'); lineFilter.value = 'all'; }
+export function leaveLineMode(): void { setKind('trip'); lineFilter.value = 'all'; stopFilter.value = 'all'; }
+/** Search a stop: the bar opens on the stop search. */
+export function stopMode(): void { barOpen.value = true; setKind('stop'); focusBox('toQ'); }
 
 // ---- when
 /** The time as seconds on the selected service day. */

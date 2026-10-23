@@ -1,8 +1,8 @@
 // The top bar is the planner. Three looks: the prompt pill at rest (the menu at its start, the app's logo at
 // its end), the two rows while editing (origin above destination, a back arrow, the swap between them, the
 // option chips and Go under them), and the summary box once a plan is shown (a tap reopens the rows). While
-// editing, a switch above the rows chooses what to search for: a trip, or a line (one box for its number, and
-// chips for the kind of line under it). Entering
+// editing, a switch above the rows chooses what to search for: a trip, a line (one box for its number) or a stop
+// (its name or the number on its sign), the last two with chips for the kind of line or stop under the box. Entering
 // search mode plays a sequence (the styles), leaving plays it back; the keyboard is held until the pill has
 // shortened so the two never fight.
 import { useEffect, useRef } from 'preact/hooks';
@@ -20,6 +20,9 @@ const LINE_FILTERS: { f: search.LineFilter; label: string; icon?: IconName }[] =
   { f: 'all', label: 'fAll' }, { f: 'bus', label: 'fBus', icon: 'bus' }, { f: 'rail', label: 'fRail', icon: 'train' },
   { f: 'lrt', label: 'fLrt', icon: 'tram' }, { f: 'cable', label: 'fCable', icon: 'cable' },
 ];
+const STOP_FILTERS: { f: search.StopFilter; label: string; icon?: IconName }[] = [
+  { f: 'all', label: 'fAll' }, { f: 'bus', label: 'fBus', icon: 'bus' }, { f: 'rail', label: 'fRail', icon: 'train' }, { f: 'lrt', label: 'fLrt', icon: 'tram' },
+];
 
 /** The menu's three lines, drawn inline (not from the sprite) so each can move on its own when pressed. */
 const MenuGlyph = () => (
@@ -30,8 +33,9 @@ export function TopBar() {
   void lang.value;
   const mode = search.mode.value;
   const edit = mode === 'edit', sum = mode === 'summary';
-  const line = search.kind.value === 'line';
-  const toKind = (k: 'trip' | 'line') => { search.setKind(k); search.focusBox('toQ'); };
+  const kind = search.kind.value, line = kind !== 'trip';   // the line and stop searches: one box and kind chips
+  const toKind = (k: search.Kind) => { search.setKind(k); search.focusBox('toQ'); };
+  const filters = kind === 'stop' ? STOP_FILTERS : LINE_FILTERS, filter = kind === 'stop' ? search.stopFilter : search.lineFilter;
   const opt = search.optOpen.value;
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -64,8 +68,9 @@ export function TopBar() {
     <div ref={barRef} class={`topbar${edit ? ' two' : ''}${line ? ' linekind' : ''}${search.leaving.value ? ' leaving' : ''}${search.settling.value ? ' settle' : ''}${opt ? ' open' : ''}`} id="topbar" hidden={nav.picking.value}>
       <div class="trow kinds" id="kindRow" hidden={!edit}>
         <div class="kindseg" role="tablist" aria-label={t('searchKind')}>
-          <button type="button" role="tab" id="kindTrip" aria-selected={!line} class={line ? '' : 'on'} onClick={() => toKind('trip')}><Icon name="route" />{t('kindTrip')}</button>
-          <button type="button" role="tab" id="kindLine" aria-selected={line} class={line ? 'on' : ''} onClick={() => toKind('line')}><Icon name="bus" />{t('kindLine')}</button>
+          <button type="button" role="tab" id="kindTrip" aria-selected={kind === 'trip'} class={kind === 'trip' ? 'on' : ''} onClick={() => toKind('trip')}><Icon name="route" />{t('kindTrip')}</button>
+          <button type="button" role="tab" id="kindLine" aria-selected={kind === 'line'} class={kind === 'line' ? 'on' : ''} onClick={() => toKind('line')}><Icon name="bus" />{t('kindLine')}</button>
+          <button type="button" role="tab" id="kindStop" aria-selected={kind === 'stop'} class={kind === 'stop' ? 'on' : ''} onClick={() => toKind('stop')}><Icon name="pin" />{t('kindStopSearch')}</button>
         </div>
       </div>
       <div class="pair" id="pair" hidden={sum}>
@@ -76,11 +81,12 @@ export function TopBar() {
           </SearchField>
         </div>
         <div class="trow" id="toRow" hidden={sum} onPointerDownCapture={(e) => { if ((e.target as HTMLElement).id === 'toQ') onToPointerDown(e); }}>
-          <SearchField id="toQ" dropId="toDrop" text={search.toText} place={search.to} onFocus={search.openBar} withUser placeholder={t(search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines lineKind={line}
+          <SearchField id="toQ" dropId="toDrop" text={search.toText} place={search.to} onFocus={search.openBar} withUser placeholder={t(search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines kind={kind}
+            onStop={(g) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openStopGroup(g); }}
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
             onLine={(r) => { if (!line) search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); }}>
             <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><MenuGlyph /></button>
-            <span class="tag">{line ? t('tagLine') : t('tagTo')}</span>
+            <span class="tag">{kind === 'line' ? t('tagLine') : kind === 'stop' ? t('tagStop') : t('tagTo')}</span>
             <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><Logo /></button>
           </SearchField>
         </div>
@@ -95,10 +101,10 @@ export function TopBar() {
           <button type="button" class="clearbtn" id="sumClear" aria-label={t('clearText')} onClick={search.hooks.clearPlan}><Icon name="close" /></button>
         </div>
       </div>
-      <div class="trow opts lfilters keepdrop" id="lineRow" hidden={!edit || !line} role="tablist" aria-label={t('lineModes')}>
-        {LINE_FILTERS.map(({ f, label, icon }, i) => (
-          <button type="button" role="tab" aria-selected={search.lineFilter.value === f} class={`chipbtn${search.lineFilter.value === f ? ' on' : ''}`} data-f={f} style={{ '--n': i }}
-            onClick={() => { search.lineFilter.value = f; }}>{icon && <Icon name={icon} />}{t(label)}</button>
+      <div class="trow opts lfilters keepdrop" id="lineRow" key={kind} hidden={!edit || !line} role="tablist" aria-label={t('lineModes')}>
+        {filters.map(({ f, label, icon }, i) => (
+          <button type="button" role="tab" aria-selected={filter.value === f} class={`chipbtn${filter.value === f ? ' on' : ''}`} data-f={f} style={{ '--n': i }}
+            onClick={() => { (filter as { value: string }).value = f; }}>{icon && <Icon name={icon} />}{t(label)}</button>
         ))}
       </div>
       <div class="trow opts" id="optRow" hidden={!edit || line}>

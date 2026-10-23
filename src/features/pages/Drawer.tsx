@@ -28,6 +28,7 @@ export function Drawer() {
         <Row icon="route" label={t('tabPlan')} screen="plan" onClick={() => app.hooks.go('plan')} />
         <Row icon="locate" label={t('tabNearby')} screen="nearby" onClick={() => app.hooks.go('nearby')} />
         <button type="button" id="menuLines" onClick={app.hooks.lineSearch}><span class="ic"><Icon name="bus" /></span><span>{t('lineSearch')}</span></button>
+        <button type="button" id="menuStops" onClick={app.hooks.stopSearch}><span class="ic"><Icon name="pin" /></span><span>{t('stopSearch')}</span></button>
         <Row icon="star" label={t('tabSaved')} screen="saved" onClick={() => app.hooks.go('saved')} />
         <Row icon="sliders" label={t('tabMore')} screen="more" onClick={app.hooks.openSettings} />
         <button type="button" id="menuReload" onClick={() => location.reload()}><span class="ic"><Icon name="refresh" /></span><span>{t('reload')}</span></button>
