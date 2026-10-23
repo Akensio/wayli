@@ -107,6 +107,11 @@ function setupMapLayers(m: MLMap): void {
   setBasemapLang(m);
   applySky(m);
   const dark = wantDarkMap();
+  // traffic from the buses: under the basemap's labels and everything of ours
+  const firstLabel = m.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+  m.addSource('lm-traffic', { type: 'geojson', data: EMPTY });
+  m.addLayer({ id: 'lm-traffic', type: 'line', source: 'lm-traffic', minzoom: 11, layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['match', ['get', 'level'], 0, '#2fa35f', 1, '#f0962e', 2, '#d93b33', '#8e1b1b'], 'line-width': ['interpolate', ['linear'], ['zoom'], 11, ['match', ['get', 'level'], 0, 1.5, 2.5], 16, ['match', ['get', 'level'], 0, 4, 6]], 'line-opacity': ['match', ['get', 'level'], 0, 0.55, 0.85] } }, firstLabel);
   m.addSource('lm-stops', { type: 'geojson', data: EMPTY });
   m.addLayer({ id: 'lm-stops', type: 'circle', source: 'lm-stops', minzoom: 14, filter: ['in', ['get', 'kind'], ['literal', ['bus', 'platform']]], paint: { 'circle-radius': ['case', ['==', ['get', 'kind'], 'platform'], 4, 5.5], 'circle-color': '#ffffff', 'circle-stroke-color': '#4a5560', 'circle-stroke-width': 2 } });
   for (const k of BADGE_KINDS) if (!m.hasImage('wayli-st-' + k)) m.addImage('wayli-st-' + k, stationImage(k), { pixelRatio: 2 });

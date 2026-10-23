@@ -91,14 +91,20 @@ export async function loadShapes(): Promise<void> {
   // straight lines between stops until then
   await retrying(async () => { await call('loadShapes', { url: fileUrl(f) }); data.shReady.value = true; map.redrawMap(true); }, () => { loadShapes(); });
 }
-/** The learned running times of rail sections: train delays from where a train is, here and in the data worker. */
+/** The learned running times of rail sections: train delays from where a train is, in the data worker (where every estimate is made). */
 export async function loadRailTimes(): Promise<void> {
   const f = manifest().railtimes;
   if (!f) return;
   try {
     const m = await (await fetch(fileUrl(f))).json();
-    live.setRailTimes(m); await call('setRailTimes', { m });
+    await call('setRailTimes', { m });
   } catch { /* the timetable's own section times then */ }
+}
+/** The learned running times of bus sections: bus delays at each stop ahead, in the data worker (where every estimate is made). */
+export async function loadBusTimes(): Promise<void> {
+  const f = manifest().bustimes;
+  if (!f) return;
+  try { await call('loadBusTimes', { url: fileUrl(f) }); } catch { /* the timetable's own section times then */ }
 }
 export async function loadStreets(): Promise<void> {
   const f = manifest().streets;

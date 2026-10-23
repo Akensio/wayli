@@ -1,0 +1,52 @@
+# Nightly: learn how long buses really take between stops from the last 14 days (pipeline/bustimes.py). Each night
+# reads the service day just over from Hasadna's minute snapshots and keeps its passage log; the logs and the result live
+# in the Actions cache, and the site build takes the newest result, so a deploy never waits for this.
+name: Bus section times
+on:
+  schedule:
+    - cron: "10 1 * * *"   # 04:10 in Israel in summer (03:10 in winter): the service day is over
+  workflow_dispatch:
+  push:   # a change to the learning runs it at once
+    branches: [main]
+    paths: [pipeline/bustimes.py, .github/workflows/bustimes.yml]
+permissions:
+  contents: read
+concurrency:
+  group: bustimes
+  cancel-in-progress: false
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180   # a day's minutes take about 15 minutes to read; the first runs fetch three days each
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install brotli==1.1.0   # MIT; Hasadna's snapshots are brotli-compressed
+      - name: The passage logs so far (a day per file)
+        uses: actions/cache@v4
+        with:
+          path: data/bushist
+          key: bushist-${{ github.run_id }}
+          restore-keys: bushist-
+      - name: The feed the site build last downloaded
+        uses: actions/cache/restore@v4
+        with:
+          path: data/gtfs-last.zip
+          key: gtfs-none
+          restore-keys: gtfs-
+      - name: The feed, from the Ministry if the build has none yet
+        run: |
+          if [ -f data/gtfs-last.zip ]; then cp data/gtfs-last.zip data/gtfs.zip
+          else curl -fsSL --retry 3 --connect-timeout 60 -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip; fi
+      - run: python3 -I pipeline/bustimes.py data/gtfs.zip --history data/bushist --days 14 --fetch-days 3 --out data/bustimes.bin.gz
+      - name: How it does on the newest day, held out (for the log)
+        run: |
+          last=$(ls data/bushist | sort | tail -1 | cut -c1-10)
+          python3 -I pipeline/bustimes.py data/gtfs.zip --history data/bushist --no-fetch --score "$last" || true
+      - name: Keep the result for the site build
+        uses: actions/cache/save@v4
+        with:
+          path: data/bustimes.bin.gz
+          key: bustimes-${{ github.run_id }}

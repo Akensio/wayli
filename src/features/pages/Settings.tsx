@@ -53,6 +53,7 @@ export function Settings() {
         <div class="grouphead">{t('grpLive')}</div>
         <div class="list">
           <Toggle icon="live" id="setLive" label={<><span>{t('setLive')}</span><small>{t('liveNote')}</small></>} on={!!s.live} onChange={(on) => settings.set({ live: on })} />
+          <Toggle icon="route" id="setTraffic" label={<><span>{t('setTraffic')}</span><small>{t('trafficNote')}</small></>} on={s.traffic !== false} onChange={(on) => settings.set({ traffic: on })} />
           <Toggle icon="bell" id="setNotify" label={t('setNotify')} on={!!s.notify} onChange={async (on) => { settings.set({ notify: on }); if (on) await app.hooks.requestAlertPermission(); }} />
           <Toggle icon="sound" id="setSound" label={t('setSound')} on={!!s.sound} onChange={(on) => settings.set({ sound: on })} />
           <Act icon="bell" id="testAlert" label={t('testAlert')} onClick={() => app.hooks.testAlert()} />

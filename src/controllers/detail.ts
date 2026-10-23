@@ -3,7 +3,7 @@
 import * as live from '../live.js';
 import * as search from '../state/search';
 import { t } from '../i18n';
-import { call, tripStopsCached } from '../worker/client';
+import { call, tripStopsCached, estimate } from '../worker/client';
 import * as data from '../state/data';
 import * as detail from '../state/detail';
 import * as nav from '../state/nav';
@@ -53,7 +53,7 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
       const v = live.matchTrip(vs, l.routeId, l.firstDep, day);
       if (!v) { detail.setBadge(trip, { text: t('liveNoVehicle'), cls: '' }); return; }
       const ts = await tripStopsCached(trip);
-      const est = live.estimateDelay(v, ts.stops, day);
+      const est = await estimate(v, ts.stops, day);
       const at = live.liveAt(est, ts.stops, l.boardPos);
       if (my !== seq) return;
       detail.setBadge(trip, liveBadge(at));

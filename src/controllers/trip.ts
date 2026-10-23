@@ -1,6 +1,6 @@
 // One trip's page: every stop with its time, and where its vehicle is now.
 import * as live from '../live.js';
-import { tripStopsCached } from '../worker/client';
+import { tripStopsCached, estimate } from '../worker/client';
 import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as tripPage from '../state/trip';
@@ -17,7 +17,7 @@ export async function openTrip(trip: number, hereStop: number | null): Promise<v
   try {
     const vs = await live.vehiclesByLine(ts.routeId);
     const v = live.matchTrip(vs, ts.routeId, ts.firstDep, day);
-    const est = v && live.estimateDelay(v, ts.stops, day);
+    const est = v ? await estimate(v, ts.stops, day) : null;
     if (tripPage.ts.value !== ts) return;   // another trip opened meanwhile
     if (!est) { tripPage.noVehicle.value = true; return; }
     tripPage.vehicle.value = { index: est.index + (est.frac > 0.5 ? 1 : 0), delayMin: est.delay ? live.delayMinutes(est.delay) : 0 };

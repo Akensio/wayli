@@ -1,5 +1,6 @@
 // The data worker (worker.js) holds the timetable, the street graph and the address book and answers every
 // query, so the UI never blocks. This is the UI's end: one promise per request.
+import type { estimateDelay } from '../live.js';
 export type Progress = { label: string; got: number; total?: number; unpacking?: boolean };
 const worker = new Worker(new URL('../worker.js', import.meta.url), { type: 'module' });
 /** Data files are addressed from the page, not from the worker's own folder under assets/. */
@@ -29,3 +30,7 @@ worker.onerror = (e) => hooks.failed(e.message || 'worker');
 const tsCache = new Map<number, Promise<any>>();
 export const tripStopsCached = (trip: number): Promise<any> => { if (!tsCache.has(trip)) tsCache.set(trip, call('tripStops', { trip })); return tsCache.get(trip)!; };
 export const resetCaches = (): void => { tsCache.clear(); };
+/** A vehicle's delay and its time at each stop ahead, made in the worker where the learned section times are
+ *  (live.js estimateDelay); null when it cannot be told. */
+export type Estimate = ReturnType<typeof estimateDelay>;
+export const estimate = (vehicle: any, stops: any[], day: string): Promise<Estimate> => call<Estimate>('estimate', { vehicle: { ...vehicle }, stops, day }).catch(() => null);

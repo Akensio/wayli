@@ -6,8 +6,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  workflow_run:   # new train section times go out as soon as they are learned
-    workflows: ["Train section times"]
+  workflow_run:   # new train and bus section times go out as soon as they are learned
+    workflows: ["Train section times", "Bus section times"]
     types: [completed]
 permissions:
   contents: read
@@ -106,6 +106,12 @@ jobs:
           path: data/railtimes.json
           key: railtimes-none
           restore-keys: railtimes-
+      - name: The newest learned bus section times (.github/workflows/bustimes.yml), if any
+        uses: actions/cache/restore@v4
+        with:
+          path: data/bustimes.bin.gz
+          key: bustimes-none
+          restore-keys: bustimes-
       - run: python3 pipeline/build_site.py --out site
       - uses: actions/upload-pages-artifact@v3
         with:

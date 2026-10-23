@@ -19,7 +19,7 @@ import { arrowImage } from './images';
 import { heading, vehiclePopup } from './popups';
 
 export const liveOn = (): boolean => !!settings.get().live && navigator.onLine !== false;
-const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label'];
+const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label', 'lm-traffic'];
 type Show = 'all' | 'none' | string[];
 let liveShow: Show | null = null;
 let nearRoutes: { lat: number; lon: number; ids: string[] } | null = null;   // the lines serving stops within 500 m of the last position
@@ -86,7 +86,7 @@ export async function refreshLiveMap(): Promise<void> {
   if (nav.isOpen('picker') || liveShow === 'none') { app.liveNote.value = ''; return; }
   const veh = m.getSource('lm-veh') as any;
   // no vehicles is never silent: the note says when live times are switched off, or the phone is offline
-  if (!liveOn()) { app.liveNote.value = t(settings.get().live ? 'liveOffline' : 'liveOff'); veh.setData(EMPTY); return; }
+  if (!liveOn()) { app.liveNote.value = t(settings.get().live ? 'liveOffline' : 'liveOff'); veh.setData(EMPTY); (m.getSource('lm-traffic') as any)?.setData(EMPTY); return; }
   if (m.getZoom() < 10) { app.liveNote.value = t('liveMapZoom'); veh.setData(EMPTY); return; }
   // requests overlap (a move, the 20 s timer): a slow answer still shows unless a newer one already has (on a slow
   // connection every answer came after the next request had started, and none ever showed); until the first, the note
@@ -118,6 +118,7 @@ export async function refreshLiveMap(): Promise<void> {
     });
     for (const ck of new Set(features.map((f) => f.properties!.ckey as string))) if (!m.hasImage('wayli-arrow-' + ck)) m.addImage('wayli-arrow-' + ck, arrowImage('#' + ck), { pixelRatio: 2 });
     veh.setData({ type: 'FeatureCollection', features });
+    refreshTraffic(m, b);
     const nw = live.newest(vs);
     const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
     const shown = Array.isArray(liveShow) ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length : features.length;
@@ -131,6 +132,13 @@ export async function refreshLiveMap(): Promise<void> {
   } catch { if (my === lm.seq && my > lm.applied) app.liveNote.value = t('liveFail'); }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLiveMap(); });
+/** Traffic from the buses in view (the worker follows them across the snapshots), unless switched off in settings. */
+async function refreshTraffic(m: MLMap, b: { getSouth(): number; getNorth(): number; getWest(): number; getEast(): number }): Promise<void> {
+  const src = m.getSource('lm-traffic') as any;
+  if (!src) return;
+  if (settings.get().traffic === false || m.getZoom() < 11) { src.setData(EMPTY); return; }
+  try { src.setData(await call('traffic', { box: { south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() } })); } catch { /* traffic is a bonus */ }
+}
 /** A tap on a live vehicle: which trip it runs and how late, in its bubble. */
 export async function selectVehicle(m: MLMap, p: any, coords: [number, number]): Promise<void> {
   if (nav.isOpen('picker')) return;

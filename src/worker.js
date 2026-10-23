@@ -2,7 +2,7 @@
 import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign, parseHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode, placeAt } from './places.js';
-import { estimateDelay, secondsOn, setRailTimes, metres } from './live.js';
+import { estimateDelay, secondsOn, setRailTimes, parseBusTimes, setBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops, metres } from './live.js';
 
 let tt = null, st = null, pl = null, sh = null;
 let lang = 'he';   // the language names are handed out in (setLang); the timetable carries what the feed translates
@@ -264,7 +264,7 @@ function applyLive(vehicles) {
   }
   for (const [t, { v, rec }] of byTrip) {
     const { p, ns, base, stops } = tripStopList(t);
-    const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: rec }, stops, day);
+    const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: rec, rideId: v.rideId }, stops, day);
     if (!est) continue;
     tripLive.set(t, { delay: est.delay, index: est.index, seen: rec.getTime(), stale: est.ageSec > 240, lat: v.lat, lon: v.lon });
     if (Math.abs(est.delay) < 60 && !est.dep) continue;   // a train with learned sections has its own time at each station
@@ -571,6 +571,90 @@ function snapVehicles(j, t) {
   }
   return gone.size ? out.filter((v) => !gone.has(v)) : out;
 }
+// ---------------------------------------------------------------- how the roads run now, from the buses on them
+// Each bus is followed across the snapshots read (the last 15 minutes): between two of its positions at least 90 s
+// apart it covered part of its trip, and the time that took against the part's usual time (live.js usualRun: learned
+// by hour, else the timetable's) says how that stretch runs now. Every section it covered gets that ratio. live.js
+// applies them to the sections ahead of other buses (roadFactor), and the map colours the sections by them.
+const TRACK_MS = 900e3, PAIR_MS = 90e3;
+const tracks = new Map();   // ride -> { lineRef, start, pts: [[ms, lat, lon]] } oldest first
+let roads = new Map();      // "code>code" -> [{ ratio, t, ride, p, k }]
+function noteRoads(vehicles) {
+  if (!tt) return;
+  let newest = 0;
+  for (const v of vehicles) {
+    if (v.operator === 2 || v.atStop) continue;
+    const t = v.recordedAt.getTime();
+    if (t > newest) newest = t;
+    let tr = tracks.get(v.rideId);
+    if (!tr) tracks.set(v.rideId, (tr = { lineRef: v.lineRef, start: v.scheduledStart, pts: [] }));
+    if (tr.pts.some((x) => x[0] === t)) continue;
+    tr.pts.push([t, v.lat, v.lon]); tr.pts.sort((a, b) => a[0] - b[0]);
+  }
+  for (const [k, tr] of tracks) { tr.pts = tr.pts.filter((x) => x[0] > newest - TRACK_MS); if (!tr.pts.length) tracks.delete(k); }
+  const day = tt.header.date, out = new Map();
+  for (const [ride, tr] of tracks) {
+    if (tr.pts.length < 2) continue;
+    const trip = tripFor(tr.lineRef, secondsOn(tr.start, day));
+    if (trip < 0) continue;
+    const { p, stops } = tripStopList(trip);
+    let a = null;
+    for (const pt of tr.pts) {
+      const pr = projectOnStops(pt[1], pt[2], stops);
+      if (pr.metres > 120) continue;
+      const at = { t: pt[0], x: pr.index + pr.frac };
+      if (!a) { a = at; continue; }
+      if (at.t - a.t < PAIR_MS) continue;
+      if (at.x > a.x + 0.05 && at.x - a.x < 15) {
+        // the usual time of the stretch covered: the parts of each section between the two positions
+        const from = secondsOn(new Date(a.t), day);
+        let usual = 0;
+        for (let k = Math.floor(a.x); k < Math.min(stops.length - 1, Math.ceil(at.x)); k++) usual += (Math.min(at.x, k + 1) - Math.max(a.x, k)) * usualRun(stops, k, from, day);
+        if (usual >= 30 && a.x >= 0.05) {   // a bus still at its first stop is waiting for its time, not in traffic
+          const ratio = Math.max(0.3, Math.min(4, (at.t - a.t) / 1000 / usual));
+          for (let k = Math.floor(a.x); k < Math.min(stops.length - 1, Math.ceil(at.x)); k++) {
+            const key = `${stops[k].code}>${stops[k + 1].code}`;
+            if (!out.has(key)) out.set(key, []);
+            out.get(key).push({ ratio, t: at.t, ride, p, k });
+          }
+        }
+      }
+      a = at;
+    }
+  }
+  roads = out; setRoadsNow(out);
+}
+
+/**
+ * Traffic in a box, from the buses: each section that at least two buses ran in the last 15 minutes, drawn along its
+ * course, with how its time now (the median of their ratios to its usual time, times that) compares with the fastest
+ * it is learned to run that kind of day: level 0 free (up to 1.3 times), 1 slow (to 1.8), 2 jammed (to 2.6), 3 stuck.
+ */
+function trafficIn(box) {
+  if (!tt || !roads.size) return { type: 'FeatureCollection', features: [] };
+  const day = tt.header.date, features = [];
+  let newest = 0;
+  for (const v of roads.values()) for (const x of v) if (x.t > newest) newest = x.t;
+  const inBox = (s) => tt.stopLat[s] >= box.south && tt.stopLat[s] <= box.north && tt.stopLon[s] >= box.west && tt.stopLon[s] <= box.east;
+  const nowSec = secondsOn(new Date(newest), day);
+  for (const [key, v] of roads) {
+    const recent = v.filter((x) => x.t > newest - TRACK_MS);
+    if (new Set(recent.map((x) => x.ride)).size < 2) continue;
+    const { p, k } = recent[recent.length - 1], at = tt.patStopsOff[p] + k, s1 = tt.patStops[at], s2 = tt.patStops[at + 1];
+    if (!inBox(s1) && !inBox(s2)) continue;
+    const [c1, c2] = key.split('>'), free = freeRun(c1, c2, day);
+    if (!free) continue;
+    const rs = recent.map((x) => x.ratio).sort((a, b) => a - b), m = rs[Math.floor(rs.length / 2)];
+    const stops = [{ code: c1, arr: 0, dep: 0 }, { code: c2, arr: 0, dep: 0 }];
+    const now = m * usualRun(stops, 0, nowSec, day), x = now / free;
+    if (!now) continue;
+    const level = x <= 1.3 ? 0 : x <= 1.8 ? 1 : x <= 2.6 ? 2 : 3;
+    const path = ridePath(p, k, k + 1) || [[tt.stopLat[s1], tt.stopLon[s1]], [tt.stopLat[s2], tt.stopLon[s2]]];
+    features.push({ type: 'Feature', properties: { level, x: Math.round(x * 100) / 100, n: rs.length }, geometry: { type: 'LineString', coordinates: path.map(([la, lo]) => [lo, la]) } });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 let relayAt = 0;   // which of the relay's addresses answered last: tried first next time
 async function snapshot(urls) {
   if (snap && Date.now() - snap.at < SNAP_MS) return snap;
@@ -606,12 +690,15 @@ async function snapshot(urls) {
     if (!(Date.now() - cur.t <= 600e3)) throw new Error(`relay snapshot ${cur.id || '?'} is old`);
     remember(cur.j, cur.t);
     snap = { at: Date.now(), id: cur.id, vehicles: snapVehicles(cur.j, cur.t) };
+    noteRoads(snap.vehicles);
     // the first time, the snapshot of 3 minutes before follows in the background, so frozen positions show at once:
     // its positions count as seen first then, and the current vehicles are filtered again
     if (first) get(3).then((before) => {
       if (!(before.t < cur.t)) return;
       remember(before.j, before.t); remember(cur.j, cur.t);
       if (snap && snap.id === cur.id) snap = { ...snap, vehicles: snapVehicles(cur.j, cur.t) };
+      // and the one of 10 minutes before: how the roads run is known at once, not after minutes of use
+      return get(10).then((older) => { noteRoads(snapVehicles(older.j, older.t)); noteRoads(snap ? snap.vehicles : []); });
     }).catch(() => {});
     return snap;
   })().finally(() => { snapLoading = null; });
@@ -684,6 +771,12 @@ const ops = {
   },
   /** The learned running times of rail sections (pipeline/railtimes.py), for train delays. */
   setRailTimes({ m }) { setRailTimes(m); return true; },
+  /** Traffic from the buses in a box {south, west, north, east} as GeoJSON (trafficIn). */
+  traffic({ box }) { return trafficIn(box); },
+  /** The learned running times of bus sections (pipeline/bustimes.py). */
+  async loadBusTimes({ url }) { const m = parseBusTimes(await fetchContainer(url, 'bustimes')); setBusTimes(m); return { sections: m.idx.size, built: m.built }; },
+  /** A vehicle's delay and its time at each stop ahead (live.js estimateDelay), made here where the learned times are. */
+  estimate({ vehicle, stops, day }) { return estimateDelay(vehicle, stops, day); },
   async loadShapes({ url }) {
     const buf = await fetchContainer(url, 'shapes');
     sh = parseShapes(buf);

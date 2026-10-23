@@ -231,11 +231,91 @@ function railAhead(stops, pr, seen, lat, lon) {
   return { arr, dep, index, frac, next: at >= 0 ? at : next };
 }
 
+// ------------------------------------------------------------------ buses: learned running times
+// The timetable gives a stretch of road the same time all day, and buses do not keep it (Namir Road southbound: 6.5
+// minutes in the feed at every hour, 6.5 at 06:00 and 18 at 16:00 in fact). pipeline/bustimes.py learns from the last
+// two weeks of positions how long buses take between each two consecutive stops, all lines pooled, by hour and kind of
+// day. A bus's position then says when it reaches each stop ahead: the rest of the section it is on, then each
+// section's learned time at the hour the bus will be there. Sections never seen fall back to the timetable's.
+/** @type {{ idx: Map<string, number>, cells: Uint8Array, bands: number, kinds: number } | null} */
+let busTimes = null;
+/** The learned bus times (the file pipeline/bustimes.py writes, unpacked): a header, the sections' stop codes, the times. */
+export function parseBusTimes(buf) {
+  const dv = new DataView(buf), hl = dv.getUint32(0, true);
+  const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hl)));
+  const n = head.n, a = new Uint32Array(buf, 4 + hl, n), b = new Uint32Array(buf, 4 + hl + 4 * n, n);
+  const idx = new Map();
+  for (let i = 0; i < n; i++) idx.set(`${a[i]}>${b[i]}`, i);
+  return { idx, cells: new Uint8Array(buf, 4 + hl + 8 * n, n * head.kinds * head.bands), bands: head.bands, kinds: head.kinds, built: head.built };
+}
+export function setBusTimes(m) { busTimes = m; }
+/** 0 Sunday to Thursday, 1 Friday, 2 Saturday, for a service day YYYYMMDD. */
+const kindOf = (day) => { const w = new Date(Date.UTC(+day.slice(0, 4), +day.slice(4, 6) - 1, +day.slice(6, 8))).getUTCDay(); return w === 5 ? 1 : w === 6 ? 2 : 0; };
+const bandOf = (sec) => { const h = Math.floor(sec / 3600); return h < 5 ? 0 : Math.min(busTimes.bands - 1, h - 5); };
+const decode = (v) => (!v ? null : v <= 150 ? 2 * v : 300 + 15 * (v - 150));
+/** The learned time of section k (stop k to stop k+1) for a bus there at `at`, else null. */
+function busRun(stops, k, at, kind) {
+  const i = busTimes && stops[k].code && stops[k + 1].code ? busTimes.idx.get(`${stops[k].code}>${stops[k + 1].code}`) : undefined;
+  return i === undefined ? null : decode(busTimes.cells[(i * busTimes.kinds + kind) * busTimes.bands + bandOf(at)]);
+}
+/** How long section k usually takes at `at`: learned, else the timetable's. */
+export function usualRun(stops, k, at, day) {
+  const r = busTimes ? busRun(stops, k, at, kindOf(day)) : null;
+  return r != null ? r : Math.max(0, stops[k + 1].arr - stops[k].dep);
+}
+/** The fastest the section is learned to run on that kind of day (free flow), else null. */
+export function freeRun(code1, code2, day) {
+  const i = busTimes ? busTimes.idx.get(`${code1}>${code2}`) : undefined;
+  if (i === undefined) return null;
+  let best = null;
+  const o = (i * busTimes.kinds + kindOf(day)) * busTimes.bands;
+  for (let b = 0; b < busTimes.bands; b++) { const v = decode(busTimes.cells[o + b]); if (v != null && (best == null || v < best)) best = v; }
+  return best;
+}
+
+// How the roads run now: the data worker follows each bus across the snapshots it reads and sets, per section, how
+// the buses that ran it in the last 15 minutes did against its usual time (`ratio`, `t` when, ms; `ride`). A section's
+// time ahead is its usual time times the median of those ratios, shrunk towards 1 when there are few (n / (n + 2)), and
+// fading back to the usual time for sections the bus reaches more than half an hour from now. Measured on held-out days
+// (pipeline/bustimes.py --score).
+/** @type {Map<string, { ratio: number, t: number, ride: string }[]>} */
+let roadsNow = new Map();
+export function setRoadsNow(m) { roadsNow = m; }
+const ROADS_MS = 900e3, FADE_S = 1800;
+/** The live factor of a section for a vehicle seen at `seenMs` (its own runs left out). */
+export function roadFactor(code1, code2, seenMs, ride) {
+  const v = roadsNow.get(`${code1}>${code2}`);
+  if (!v) return 1;
+  const rs = v.filter((x) => x.ride !== ride && x.t <= seenMs + 120e3 && x.t > seenMs - ROADS_MS).map((x) => x.ratio).sort((a, b) => a - b);
+  if (!rs.length) return 1;
+  const m = rs.length % 2 ? rs[(rs.length - 1) / 2] : (rs[rs.length / 2 - 1] + rs[rs.length / 2]) / 2;
+  return 1 + (m - 1) * rs.length / (rs.length + 2);
+}
+/** A bus's arrival at each later stop, from where it is and the learned sections; null when none is known ahead. */
+function busAhead(stops, pr, seen, day, seenMs, ride) {
+  const n = stops.length, kind = kindOf(day);
+  const run = (j, at) => {
+    const r = busRun(stops, j, at, kind), base = r != null ? r : Math.max(0, stops[j + 1].arr - stops[j].dep);
+    const w = Math.max(0, 1 - (at - seen) / FADE_S);
+    return w > 0 && roadsNow.size ? base * (1 + (roadFactor(stops[j].code, stops[j + 1].code, seenMs, ride) - 1) * w) : base;
+  };
+  let known = false;
+  for (let j = pr.index; j < n - 1 && !known; j++) known = busRun(stops, j, seen, kind) != null;
+  if (!known) return null;
+  const arr = new Array(n).fill(null);
+  let t, i;
+  if (pr.index === 0 && pr.frac < 0.05) {   // still at its first stop: it leaves at its time, or now if that has passed
+    t = Math.max(stops[0].dep, seen); arr[0] = t; t += run(0, t);
+  } else t = seen + (1 - pr.frac) * run(pr.index, seen);
+  for (i = pr.index + 1; i < n; i++) { arr[i] = t; if (i < n - 1) t += run(i, t); }
+  return { arr, dep: arr, index: pr.index, frac: pr.frac, next: pr.index + 1 };
+}
+
 /**
  * How late a vehicle runs, from its position against its trip's schedule: the scheduled time at the
  * point of the trip it is at, compared with when it was seen there. A vehicle still at the first stop
- * is late only once its start time has passed. A train with learned sections gets its time at each later
- * station instead (`arr`, `dep`), and its delay is the one at the next station.
+ * is late only once its start time has passed. A train with learned sections, or a bus with learned sections
+ * ahead, gets its time at each later stop instead (`arr`, `dep`), and its delay is the one at the next stop.
  */
 export function estimateDelay(vehicle, stops, day) {
   if (!stops || stops.length < 2) return null;
@@ -243,7 +323,7 @@ export function estimateDelay(vehicle, stops, day) {
   if (pr.metres > 600) return null;   // not on this trip's path (or a very different route shape)
   const seen = secondsOn(vehicle.recordedAt, day);
   const ageSec = (Date.now() - vehicle.recordedAt.getTime()) / 1000;
-  const ahead = railTimes && railAhead(stops, pr, seen, vehicle.lat, vehicle.lon);
+  const ahead = (railTimes && railAhead(stops, pr, seen, vehicle.lat, vehicle.lon)) || (busTimes && busAhead(stops, pr, seen, day, vehicle.recordedAt.getTime(), vehicle.rideId));
   if (ahead) {
     const j = ahead.next, last = j === stops.length - 1;
     const delay = Math.max(-900, Math.min(5400, Math.round(last ? ahead.arr[j] - stops[j].arr : ahead.dep[j] - stops[j].dep)));

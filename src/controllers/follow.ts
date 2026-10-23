@@ -8,7 +8,7 @@ import { settings, activeTrip } from '../store.js';
 import { t } from '../i18n';
 import { dateOf, fmt } from '../time';
 import { toast } from '../ui/toast';
-import { call, tripStopsCached } from '../worker/client';
+import { call, tripStopsCached, estimate } from '../worker/client';
 import * as data from '../state/data';
 import * as nav from '../state/nav';
 import * as follow from '../state/follow';
@@ -150,7 +150,8 @@ async function followLive(): Promise<void> {
     if (!v) { fol.liveEst = null; follow.liveBadge.value = null; publish(); replanCheck(); return; }
     const ts = await tripStopsCached(leg.trip!);
     if (!fol) return;
-    const est = live.estimateDelay(v, ts.stops, a.day);
+    const est = await estimate(v, ts.stops, a.day);
+    if (!fol) return;
     const at = live.liveAt(est, ts.stops, a.state.onBoard && leg.alightPos != null ? leg.alightPos : leg.boardPos);   // on board: when it reaches the stop to get off at
     fol.liveEst = est ? { est, at } : null;
     follow.liveBadge.value = at ? liveBadge(at) : null;

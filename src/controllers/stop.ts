@@ -3,7 +3,7 @@
 import * as live from '../live.js';
 import { t } from '../i18n';
 import { calToday } from '../time';
-import { call, tripStopsCached } from '../worker/client';
+import { call, tripStopsCached, estimate } from '../worker/client';
 import * as search from '../state/search';
 import * as sheet from '../state/sheet';
 import * as nav from '../state/nav';
@@ -65,7 +65,8 @@ async function liveForStop(info: StopInfo, deps: Departure[], day: string, my: n
       const ts = await tripStopsCached(d.trip);
       if (my !== seq) return;
       const idx = ts.stops.findIndex((s: { stop: number; dep: number }) => s.stop === info.stop && s.dep === d.time);
-      const est = live.estimateDelay(v, ts.stops, day);
+      const est = await estimate(v, ts.stops, day);
+      if (my !== seq) return;
       const at = live.liveAt(est, ts.stops, idx < 0 ? 0 : idx);
       if (!at) continue;
       stopPage.setLive(d.trip, at.passed ? { passed: true } : { passed: false, time: at.time, stale: !!at.stale, delayMin: live.delayMinutes(at.delay) });
