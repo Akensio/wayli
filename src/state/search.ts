@@ -35,7 +35,8 @@ export const lineFilter = signal<LineFilter>('all');
 export const stopFilter = signal<StopFilter>('all');
 export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ' | 'stopQ'>(() =>
   (kind.value === 'line' ? (lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber') : kind.value === 'stop' ? (stopFilter.value === 'rail' ? 'stationQ' : 'stopQ') : 'goQ'));
-export const toInputMode = computed<'' | 'numeric'>(() => (kind.value === 'line' && lineFilter.value !== 'rail' ? 'numeric' : ''));
+// the full keyboard everywhere: line numbers carry letters ("4א"), and words narrow them ("274 תל אביב")
+export const toInputMode = computed<'' | 'numeric'>(() => '');
 // The train timetable (the stop search for trains): two stations at the top, as riders who plan their own trips from
 // the schedule use it; the sheet answers with where trains from the first go, or the trains between the two.
 export const railPair = computed(() => kind.value === 'stop' && stopFilter.value === 'rail');

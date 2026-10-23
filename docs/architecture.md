@@ -481,9 +481,12 @@ Lines: the bar, while editing, has a Trip / Line / Stop switch above its rows
 (its highlight slides to the chosen one; switching animates through `ui/flip`:
 the parts marked `data-flip` that stay glide to their new place, new ones pop
 in, those that go fade where they were, one rule for every pair of states).
-The line search is one box (numeric keyboard; a station's name for trains)
-with chips under it for the kind of line: all, bus, train, light rail,
-cable car. The worker (`lineGroups`) lists lines as riders know them: a
+The line search is one box (the full keyboard: numbers carry letters, "4א",
+and words after the number narrow it to where the line runs, "274 תל אביב";
+words alone list the lines running there; a station's name for trains) with
+chips under it for the kind of line: all, bus, train, light rail, cable car.
+The switch and the chips leave the box its focus, so the keyboard stays up
+while switching. The worker (`lineGroups`) lists lines as riders know them: a
 bus, light rail or cable line is its code in the feed (route_desc's
 "makat", shared by its directions and variants; the compiler keeps it as
 the route's sixth field, and older timetables fall back to number,

@@ -77,7 +77,8 @@ export function TopBar() {
 
   return (
     <div ref={barRef} class={`topbar${edit ? ' two' : ''}${one ? ' linekind' : ''}${search.leaving.value ? ' leaving' : ''}${search.settling.value ? ' settle' : ''}${opt ? ' open' : ''}`} id="topbar" hidden={nav.picking.value}>
-      <div class="trow kinds" id="kindRow" hidden={!edit}>
+      {/* the switch and the chips keep the box's focus (pointerdown does not take it): the keyboard stays up */}
+      <div class="trow kinds keepdrop" id="kindRow" hidden={!edit} onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) e.preventDefault(); }}>
         <div class="kindseg" ref={segRef} role="tablist" aria-label={t('searchKind')}>
           <span class="thumb" aria-hidden="true" />
           <button type="button" role="tab" id="kindTrip" aria-selected={kind === 'trip'} class={kind === 'trip' ? 'on' : ''} onClick={() => toKind('trip')}><Icon name="route" />{t('kindTrip')}</button>
@@ -117,7 +118,7 @@ export function TopBar() {
           <button type="button" class="clearbtn" id="sumClear" aria-label={t('clearText')} onClick={search.hooks.clearPlan}><Icon name="close" /></button>
         </div>
       </div>
-      <div class="trow opts lfilters keepdrop" id="lineRow" data-flip={`chips-${kind}`} key={kind} hidden={!edit || !line} role="tablist" aria-label={t('lineModes')}>
+      <div class="trow opts lfilters keepdrop" onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) e.preventDefault(); }} id="lineRow" data-flip={`chips-${kind}`} key={kind} hidden={!edit || !line} role="tablist" aria-label={t('lineModes')}>
         {filters.map(({ f, label, icon }, i) => (
           <button type="button" role="tab" aria-selected={filter.value === f} class={`chipbtn${filter.value === f ? ' on' : ''}`} data-f={f} style={{ '--n': i }}
             onClick={() => { (filter as { value: string }).value = f; }}>{icon && <Icon name={icon} />}{t(label)}</button>

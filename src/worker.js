@@ -204,6 +204,19 @@ function indexLines() {
   // a train line is also found by its stations' names in the rider's language
   lineIdx.groups.forEach((g) => { if (g.mode === 'rail') for (const x of endNames(mainPat(g.routes[0])) || []) if (x && !g.names.includes(x.toLowerCase())) g.names.push(x.toLowerCase()); });
 }
+/** Hebrew written with or without the extra yod and vav (קריית / קרית, תיכון / תכון) reads as one. */
+const spell = (s) => s.replace(/יי/g, 'י').replace(/וו/g, 'ו').replace(/['"״׳`]/g, '');
+/** Where a line runs, as text to match words against: its cities and every direction's destination, in the rider's
+ *  language and in Hebrew (the feed's own). */
+function placeText(g) {
+  if (g.text == null) {
+    const parts = [];
+    for (const d of lineDirs(g)) { parts.push(d.headsign, parseHeadsign(tt.routes[d.route][1])); const p = mainPat(d.route); if (p >= 0) for (const k of [tt.patStopsOff[p], tt.patStopsOff[p + 1] - 1]) parts.push(cName(tt.stops[tt.patStops[k]][3])); }
+    for (const ri of g.routes) { const e = routeEnds(tt.routes[ri][1]); if (e) parts.push(...e); }
+    g.text = spell(parts.join(' ').toLowerCase());
+  }
+  return g.text;
+}
 /** A line's directions, the busiest first: one per destination, standing for the variants that share it. */
 function lineDirs(g) {
   const dirs = new Map();
@@ -881,6 +894,10 @@ const ops = {
     const wanted = (g) => mode === 'all' || g.mode === mode || (mode === 'bus' && (g.mode === 'flex' || g.mode === 'taxi'));
     const dist = near ? linesNear(near.lat, near.lon, 800) : new Map();
     const rows = [];
+    // a number (with any letters: "4א", "L1") is the line's; other words name where it runs ("274 תל אביב", "קרית אונו")
+    const toks = n.split(/\s+/).filter(Boolean), numTok = toks.find((x) => /\d/.test(x)) || null;
+    const words = toks.filter((x) => x !== numTok && x.length > 1);
+    const placeOk = (g) => words.every((w) => placeText(g).includes(spell(w)));
     lineIdx.groups.forEach((g, i) => {
       if (!wanted(g)) return;
       let score = 0;
@@ -888,8 +905,12 @@ const ops = {
       else if (g.mode === 'rail') score = 'train'.startsWith(n) || 'רכבת'.startsWith(n) || g.names.some((x) => x.includes(n)) ? 2 : 0;
       else {
         const label = g.label.toLowerCase();
-        score = label === n ? 3 : label.startsWith(n) ? 1 : 0;
-        if (!score && g.mode === 'lrt' && n.length > 1 && ('light rail'.startsWith(n) || 'רכבת קלה'.startsWith(n))) score = 2;
+        if (numTok) score = (label === numTok ? 3 : label.startsWith(numTok) ? 1 : 0) * (placeOk(g) ? 1 : 0);
+        else {
+          score = label === n ? 3 : 0;
+          if (!score && g.mode === 'lrt' && n.length > 1 && ('light rail'.startsWith(n) || 'רכבת קלה'.startsWith(n))) score = 1.5;   // after the trains for "רכבת"
+          if (!score && words.length && placeOk(g)) score = 0.5;   // only places: the lines running there
+        }
       }
       if (score) rows.push({ i, score, dist: dist.has(i) ? dist.get(i) : Infinity });
     });

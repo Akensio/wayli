@@ -136,6 +136,12 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
       show();
     }, 150);
   };
+  // what the bar searches for changed while typing (the switch keeps the keyboard up): the list follows at once
+  useEffect(() => {
+    if (!focused.peek()) return;
+    const q = text.peek().trim();
+    if (q) typed(q); else quickMenu();
+  }, [kind, stationSide]);
   // the line search's kind of line changed (the chips under the box): list again for it
   useSignalEffect(() => {
     void search.lineFilter.value; void search.stopFilter.value;

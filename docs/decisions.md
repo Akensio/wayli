@@ -984,3 +984,8 @@ so they are not re-litigated.
 - 2026-10-23 Gadi: a tap on the time chip while it says "now" should open on
   "depart at". Done: it opens on depart at the time now, wheels showing;
   closed without a change it stays "now" (no frozen minute).
+- 2026-10-23 Gadi: the line search should not be numbers only, and the
+  keyboard should stay up when switching. Done: the full keyboard, a number
+  plus words for where the line runs, words alone for the lines there
+  (Hebrew spelling with or without the extra yod or vav matches); the switch
+  and chips no longer take the focus. Rejected: switching keyboards by kind.
