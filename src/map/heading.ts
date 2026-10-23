@@ -42,15 +42,19 @@ export function startHeading(): void {
 export function attachHeading(m: MLMap): void {
   const draw = () => {
     frame = 0;
-    const dot = document.querySelector<HTMLElement>('.maplibregl-user-location-dot');
-    if (!dot) return;
-    let cone = dot.querySelector<HTMLElement>('.wayli-cone');   // its own element: the dot's ::after is its white ring
-    if (!cone) { cone = document.createElement('div'); cone.className = 'wayli-cone'; dot.appendChild(cone); shown = null; }
+    // the map's position dot, and the one the follow screen draws
+    const dots = document.querySelectorAll<HTMLElement>('.maplibregl-user-location-dot, .wayli-me');
     const fresh = heading != null && performance.now() - seenAt < KEEP_MS;
-    cone.classList.toggle('on', fresh);
-    if (!fresh) { shown = null; return; }
-    const deg = Math.round((heading! - m.getBearing() + 360) % 360);
-    if (deg !== shown) { shown = deg; cone.style.setProperty('--heading', `${deg}deg`); }
+    const deg = fresh ? Math.round((heading! - m.getBearing() + 360) % 360) : null;
+    const turned = deg !== shown;
+    shown = deg;
+    for (const dot of dots) {
+      let cone = dot.querySelector<HTMLElement>('.wayli-cone');   // its own element: the dot's ::after is its white ring
+      if (!cone) { cone = document.createElement('div'); cone.className = 'wayli-cone'; dot.appendChild(cone); }
+      else if (!turned && cone.classList.contains('on') === fresh) continue;
+      cone.classList.toggle('on', fresh);
+      if (deg != null) cone.style.setProperty('--heading', `${deg}deg`);
+    }
   };
   const tick = () => { if (!frame) frame = requestAnimationFrame(draw); };
   window.setInterval(tick, 100);   // readings come up to 60 times a second; ten redraws a second are plenty

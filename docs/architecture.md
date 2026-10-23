@@ -389,7 +389,16 @@ plain with the schedule alone) and departed options grey out;
 earlier/later buttons shift the window; no results offers an hour later or
 a longer walk. The last search opens again, planned afresh, when the app is
 reopened within six hours; the
-eight most recent searches sit under the form and re-plan from now.
+recent searches sit under the form and re-plan from now. Under them, what
+was opened lately (`recentViews` in `store.js`, on the phone only): trips,
+lines, stops, stations and pairs of stations. The sheet's history follows
+the search kind: a trip search shows both, a line search the lines opened,
+a stop search the stops, stations and station pairs. Entries keep what
+names them in the feed (a route id, the number on a stop's sign, positions),
+since the timetable's own numbers change from day to day; the worker's
+`findRecent` finds them in the day loaded. A trip keeps its journey and
+reopens as it was while the same build of that day is loaded and it has not
+ended; otherwise it is planned again from now.
 
 Journey detail: the legs drawn on the map, pins at boarding and alighting stops and
 dots at the stops between (a tap on a ride leg focuses it: its course alone, only
@@ -524,6 +533,13 @@ takes, today's count; a tap sets To); with both, the direct trains between
 them (`trainsBetween`): leave, arrive, how long, stops, where the train
 heads, live times for the next ones from one request for every train, a
 tap opening the train's stops. Connections stay with the trip search.
+The line and stop searches are a step of their own (a history entry): the
+bar's back arrow or a tap on the map folds them to a pill of their own
+(the kind on a chip where the logo sits, its x back to the trip search),
+opening a line or a stop folds the bar too, and the phone's back from
+there returns to the trip search. The boxes are search boxes (`type=search`
+with a combobox role), so phones do not offer saved passwords over the
+keyboard.
 
 Nearby and stops: stops around the device with the lines serving them and
 the walk in minutes; a stop shows its next departures with live times
@@ -580,7 +596,9 @@ on the next date; so the night is complete in one file.
 Deployment: `pipeline/build_site.py` assembles `site/`; the GitHub Actions
 workflow in `.github/workflows/build.yml` runs nightly (and on push to
 `main`): downloads the feed, rebuilds the street graph weekly, compiles the
-next 7 days, and deploys `site/` to GitHub Pages, turning Pages on by itself the first
+next 7 days (a day before the feed's first calendar day is left out: a
+build between midnight and 03:00 compiles the night's day, which a feed
+downloaded then may no longer carry), and deploys `site/` to GitHub Pages, turning Pages on by itself the first
 time (`actions/configure-pages` with `enablement: true`). No server, no cost.
 
 The results on the map: the first three ways are drawn together, the
@@ -809,8 +827,10 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   view); while results are shown, only the lines of those journeys (the
   note says which); hidden while a journey, a line or a followed trip
   draws its own vehicles (the rider's own carries its minutes late; the
-  others show it in their bubble). The note under the map is one sentence
-  per case: "12 vehicles of the lines searched · data as of 08:05 (18 min
+  others show it in their bubble). The note under the map is folded into a
+  round info button at the map's corner (a tap opens it, another or eight
+  seconds fold it; the button turns orange when the data is behind), one
+  sentence per case: "12 vehicles of the lines searched · data as of 08:05 (18 min
   ago, the source is behind)", or "No vehicles of the lines searched
   reporting in this area right now". A vehicle whose last report is
   more than five minutes behind the newest report of its own set (the

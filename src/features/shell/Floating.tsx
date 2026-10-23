@@ -1,6 +1,9 @@
 // What floats over the map under the bar: the status pill (loading, errors), the offline tag, the resume bar,
 // the pick bar while choosing a point, and the live note at the bottom.
+import { useRef } from 'preact/hooks';
+import { useSignal } from '@preact/signals';
 import { t, lang } from '../../i18n';
+import { Icon } from '../../ui/Icon';
 import * as app from '../../state/app';
 import * as nav from '../../state/nav';
 import { ResumeBar } from '../follow/ResumeBar';
@@ -30,4 +33,20 @@ export function PickBar() {
 }
 /** Menus drawn over everything (outside the sheet, so its scrolling never cuts them off). */
 export const Menus = () => <SortPopover />;
-export const LiveNote = () => <div class={`livenote${app.liveLag.value ? ' lag' : ''}`} id="liveNote">{app.liveNote.value}</div>;
+/** The live map's note (what the vehicles shown are, or why there are none), folded into a small button at the map's
+ *  corner: a tap opens it and another folds it (it folds by itself after a while); late live data colours the button. */
+export function LiveNote() {
+  void lang.value;
+  const note = app.liveNote.value, lag = app.liveLag.value, open = useSignal(false), timer = useRef(0);
+  const toggle = () => {
+    open.value = !open.value;
+    clearTimeout(timer.current);
+    if (open.value) timer.current = window.setTimeout(() => { open.value = false; }, 8000);
+  };
+  return (
+    <div class={`livenote${lag ? ' lag' : ''}${open.value ? ' open' : ''}`} id="liveNote" hidden={!note}>
+      <button type="button" class="lnbtn" aria-label={t('liveInfo')} aria-expanded={open.value} onClick={toggle}><Icon name="info" /></button>
+      <span class="lntext" id="liveNoteText" onClick={toggle}>{note}</span>
+    </div>
+  );
+}

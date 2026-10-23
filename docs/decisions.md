@@ -1001,3 +1001,15 @@ so they are not re-litigated.
   asked for did not show on his phone: it hid after 2 s without a reading,
   and a still phone may send none; it now keeps the last direction for half
   a minute and also takes an absolute plain orientation event.
+- 2026-10-24: From Gadi's notes. The search boxes offered saved passwords
+  (Chrome guesses at logins and ignores autocomplete="off"): they are
+  search boxes now. The line and stop searches fold to a pill of their own
+  instead of falling back to the trip search; back returns to it (his
+  choice). History by search kind, plus what was opened (trips, lines,
+  stops, stations, station pairs), kept by feed ids since the timetable's
+  numbers change daily; a trip reopens as it was only while the same build
+  is loaded (otherwise its indices may point elsewhere), else re-plans.
+  The map note folds into an info button. "No stops on the map": a build
+  after midnight compiled the night's day from a feed that already started
+  the next day (75 KB instead of 3.9 MB); such days are left out of the
+  site. The follow screen's own dot also gets the compass cone.
