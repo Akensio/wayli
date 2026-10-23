@@ -144,18 +144,20 @@ export function chooseTo(p: Place): void {
 }
 /**
  * Open an option popover, or close it (''). The time popover works on a draft: closing it in any way (Done, a tap
- * elsewhere, Go) sets what it shows. Closing after a change plans again when there is a destination.
+ * elsewhere, Go) sets what it shows. Opened on "now", it shows "depart at" the time now (whoever taps the chip means
+ * to set a time); closed untouched, it stays "now". Closing after a change plans again when there is a destination.
  */
 export const whenDraft = signal<When | null>(null);
+let whenOpened: When | null = null;   // the draft as the popover opened, to tell a change from none
 export function setOpt(which: OptPanel, replan = true): void {
   const was = optOpen.value;
   if (was === which) return;
   if (was === 'time' && whenDraft.value) {
     const d = whenDraft.value;
-    if (JSON.stringify(d) !== JSON.stringify(whenNow())) { setWhen(d); optDirty.value = true; }
-    whenDraft.value = null;
+    if (JSON.stringify(d) !== JSON.stringify(whenOpened)) { setWhen(d); optDirty.value = true; }
+    whenDraft.value = null; whenOpened = null;
   }
-  if (which === 'time') whenDraft.value = whenNow();
+  if (which === 'time') { const w = whenNow(); whenDraft.value = whenOpened = w.mode === 'now' ? { ...w, mode: 'depart' } : w; }
   optOpen.value = which;
   if (!which && optDirty.value) { optDirty.value = false; if (replan && to.value) planSet(); }
 }

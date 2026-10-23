@@ -981,3 +981,6 @@ so they are not re-litigated.
   `src/ui/flip.ts`) keyed on what the bar searches for, and a sliding
   highlight in the switch. Also: the kind-of-line chips scroll with a finger
   (the bar's buttons had touch gestures off).
+- 2026-10-23 Gadi: a tap on the time chip while it says "now" should open on
+  "depart at". Done: it opens on depart at the time now, wheels showing;
+  closed without a change it stays "now" (no frozen minute).
