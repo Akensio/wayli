@@ -972,3 +972,7 @@ so they are not re-litigated.
   database for the live part (15 minutes behind made it worse than none),
   the bus's own recent pace (measured, no gain), night free flow as the map's
   baseline (every road read slow at 10:00).
+- 2026-10-23 Gadi: the nightly download of Hasadna's minute files needs no
+  separate ask; it is the same public data the relay already passes on all
+  day. Rejected: having the relay keep the snapshots itself (it would need
+  storage and still fetch the same files).
