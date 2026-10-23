@@ -33,6 +33,7 @@ HOURS = {"fri": (16 * 3600 + 1800, 26 * 3600), "sat": (9 * 3600, 17 * 3600 + 180
 HEADWAY = 20 * 60
 SPEED = {"fri": 20 / 3.6, "sat": 24 / 3.6}   # m/s, straight line from stop to stop (estimates, see above)
 NEAR = 40      # m: a stop this close to a line's course is on it
+SHAPE_BASE = 2_000_000_000
 AGENCY = "est-naim"
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
 
@@ -193,7 +194,8 @@ def merge(gtfs, dirs, stops_by_code):
     n_trips = 0
     for i, d in enumerate(dirs):
         S = [stops_by_code[c] for c in d["stops"]]
-        rid, shape = f"{AGENCY}-{d['line']}-{i}", f"{AGENCY}-{d['line']}-{i}"
+        # shape ids are numbers in the feed and int32 in the courses file: ours start well above the feed's
+        rid, shape = f"{AGENCY}-{d['line']}-{i}", str(SHAPE_BASE + i)
         end_of = lambda s: f"{s['name']}-{s['city']}"
         add["routes.txt"].append({"route_id": rid, "agency_id": AGENCY, "route_short_name": str(d["line"]),
                                   "route_long_name": f"{end_of(S[0])}<->{end_of(S[-1])}-1#", "route_desc": f"99{d['line']}-{i % 2 + 1}-#",
