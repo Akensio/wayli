@@ -733,7 +733,11 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   18-21; bus seen at a stop, predicting its arrival further on, against the
   passings it actually made), within a minute: 3 stops ahead 77% (timetable
   pace 52%), 5 ahead 63% (36%), 10 ahead 42% (19%); median error at 10
-  stops -0.5 min (-2.5); at the peaks 10 ahead 39% (15%).
+  stops -0.5 min (-2.5); at the peaks 10 ahead 39% (15%). Each of 18-21
+  held out in turn gave the same within a point or two (10 ahead: 20% to
+  44% every day), and the app's own code (live.js) gives the measurement's
+  times to the second (2,990 of 3,000 predictions; the rest within 18 s,
+  a position on the edge of two sections).
 - How the roads run now, from the buses: the data worker follows every bus
   across the snapshots it reads (the last 15 minutes; the first load also
   reads the one of 10 minutes before), and between two positions at least
@@ -742,9 +746,10 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   of another bus is its learned time times the median ratio of the other
   buses there, shrunk towards 1 when few (n / (n + 2)) and fading to the
   learned time for sections reached more than half an hour on. Measured the
-  same way it barely moves the median (it is in the learned hour already)
-  but trims the worst: 90% within 4.0 min at 10 stops ahead (4.2), 4.6 at
-  the peaks (4.8). A bus's own recent pace was tried as well and added
+  same way it trims the worst (90% within 3.9 min at 10 stops ahead against
+  4.1 learned alone, every held-out day; 4.6 against 4.8 at the peaks) at
+  the cost of a point of the share within a minute (77% against 78% three
+  stops ahead). A bus's own recent pace was tried as well and added
   nothing. Measured only where the buses ran on those days; roads without
   bus lanes and days with an accident are where it should matter most.
 - Traffic on the map, from the same ratios (a setting, on by default once
