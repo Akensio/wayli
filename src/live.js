@@ -264,14 +264,17 @@ export function usualRun(stops, k, at, day) {
   const r = busTimes ? busRun(stops, k, at, kindOf(day)) : null;
   return r != null ? r : Math.max(0, stops[k + 1].arr - stops[k].dep);
 }
-/** The fastest the section is learned to run on that kind of day (free flow), else null. */
+/** How fast the section runs at its best in the day's hours (06:00 to 22:00) on that kind of day, else null: free flow
+ *  with passengers boarding, the second-fastest hour (the fastest of 16 medians is low by chance). The night, with nobody
+ *  at the stops, is faster still: measured against it every road read slow at 10:00 (Tel Aviv, 2026-10-22: the median
+ *  section 1.66 times its night time). */
 export function freeRun(code1, code2, day) {
   const i = busTimes ? busTimes.idx.get(`${code1}>${code2}`) : undefined;
   if (i === undefined) return null;
-  let best = null;
-  const o = (i * busTimes.kinds + kindOf(day)) * busTimes.bands;
-  for (let b = 0; b < busTimes.bands; b++) { const v = decode(busTimes.cells[o + b]); if (v != null && (best == null || v < best)) best = v; }
-  return best;
+  const o = (i * busTimes.kinds + kindOf(day)) * busTimes.bands, v = [];
+  for (let b = 1; b < Math.min(busTimes.bands - 1, 18); b++) { const x = decode(busTimes.cells[o + b]); if (x != null) v.push(x); }
+  v.sort((a, b) => a - b);
+  return v.length ? v[Math.min(1, v.length - 1)] : null;
 }
 
 // How the roads run now: the data worker follows each bus across the snapshots it reads and sets, per section, how

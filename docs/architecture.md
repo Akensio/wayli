@@ -654,6 +654,15 @@ station's platforms into one result.
   cache so each night fetches one day (two requests at a time; the first
   run fetches the week), learned into `railtimes.json` (about 150
   sections), which the site build takes from the cache. See Real-time.
+- Bus section times (`pipeline/bustimes.py`, its own nightly workflow
+  `.github/workflows/bustimes.yml` at 04:10): each night reads the service
+  day just over from Hasadna's per-minute snapshots (about 1,380 files,
+  ~300 MB, four at a time; the files the relay passes on) and keeps its
+  passage log (when each bus ride passed each stop, ~25 MB a day gzipped)
+  in the Actions cache for 14 days; at most three missing days per run, so
+  the history fills over the first nights. Learned into `bustimes.bin.gz`
+  (about 44,000 sections, 0.8 MB), which the site build takes from the
+  cache. The workflow logs a held-out measurement every night. See Real-time.
 - Hosting: GitHub Pages or Cloudflare Pages, both free. Torrent/IPFS were
   considered and rejected for now (a CDN is free; peer-to-peer in a browser
   still needs servers). An optional mirror can come later.
@@ -702,6 +711,48 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   are wrong either way. A section never seen keeps the timetable's pace.
   `npm test` checks the arithmetic, and the app gives the same times as the
   measurement to the second.
+- Buses (since 2026-10-23): the timetable gives a stretch of road the same
+  time all day and buses do not keep it (nationwide, buses took 1.3 to 1.5
+  times the timetable between 07:00 and 19:00, 0.94 at 05:00; 2026-10-22).
+  `bustimes.bin.gz` holds, per section between two consecutive stops (stop
+  code > stop code), all lines on it pooled, the median time buses took per
+  hour (05..23, then the night) and kind of day (Sunday to Thursday,
+  Friday, Saturday), a byte each; a cell with fewer than 3 runs borrows the
+  hours either side, else the timetable's time stands. The passings come
+  from each ride's positions placed along its trip's stops as the app does,
+  searched forward so a loop is not read backwards, interpolated between
+  positions at most 3 minutes apart (85% of stops get one). From a bus's
+  position the app (live.js busAhead, in the data worker, where every
+  estimate is made since then) adds the rest of its section and each
+  section's learned time at the hour the bus will be there; its delay is
+  the one at the next stop and the planner shifts each stop by its own.
+  Measured on a day held out of the learning (2026-10-22, learned from
+  18-21; bus seen at a stop, predicting its arrival further on, against the
+  passings it actually made), within a minute: 3 stops ahead 77% (timetable
+  pace 52%), 5 ahead 63% (36%), 10 ahead 42% (19%); median error at 10
+  stops -0.5 min (-2.5); at the peaks 10 ahead 39% (15%).
+- How the roads run now, from the buses: the data worker follows every bus
+  across the snapshots it reads (the last 15 minutes; the first load also
+  reads the one of 10 minutes before), and between two positions at least
+  90 s apart compares the time it took with the learned time of what it
+  covered. Each section it covered gets that ratio. A section's time ahead
+  of another bus is its learned time times the median ratio of the other
+  buses there, shrunk towards 1 when few (n / (n + 2)) and fading to the
+  learned time for sections reached more than half an hour on. Measured the
+  same way it barely moves the median (it is in the learned hour already)
+  but trims the worst: 90% within 4.0 min at 10 stops ahead (4.2), 4.6 at
+  the peaks (4.8). A bus's own recent pace was tried as well and added
+  nothing. Measured only where the buses ran on those days; roads without
+  bus lanes and days with an accident are where it should matter most.
+- Traffic on the map, from the same ratios (a setting, on by default once
+  the learned times exist): each section that at least two buses ran in the
+  last 15 minutes, along its course, coloured by its time now against its
+  best in the day's hours (the second-fastest hour of 06..22; the night,
+  with nobody at the stops, made every road read slow): green up to 1.5
+  times, orange to 2.2, red to 3.2, dark red beyond. Replayed on Tel Aviv,
+  2026-10-22: at 10:00 72% of 973 sections green, at 17:00 49% of 843, with
+  the jams where the buses stood. It is under the map's labels and hidden
+  with the live vehicles while a journey, line or trip draws its own.
 - Trains take their next trip's number before it starts: 18% of train fixes
   came before their trip's start, 94% of them at its first station. The
   rest (about 35 trips a day) come from a train still running elsewhere,

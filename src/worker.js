@@ -634,8 +634,9 @@ function noteRoads(vehicles) {
 
 /**
  * Traffic in a box, from the buses: each section that at least two buses ran in the last 15 minutes, drawn along its
- * course, with how its time now (the median of their ratios to its usual time, times that) compares with the fastest
- * it is learned to run that kind of day: level 0 free (up to 1.3 times), 1 slow (to 1.8), 2 jammed (to 2.6), 3 stuck.
+ * course, with how its time now (the median of their ratios to its usual time, times that) compares with its best in
+ * the day's hours (live.js freeRun): level 0 free (up to 1.5 times), 1 slow (to 2.2), 2 jammed (to 3.2), 3 stuck. On a
+ * Thursday in Tel Aviv (2026-10-22) that made 10:00 mostly free and 17:00 a mix with jams where they were.
  */
 function trafficIn(box) {
   if (!tt || !roads.size) return { type: 'FeatureCollection', features: [] };
@@ -655,7 +656,7 @@ function trafficIn(box) {
     const stops = [{ code: c1, arr: 0, dep: 0 }, { code: c2, arr: 0, dep: 0 }];
     const now = m * usualRun(stops, 0, nowSec, day), x = now / free;
     if (!now) continue;
-    const level = x <= 1.3 ? 0 : x <= 1.8 ? 1 : x <= 2.6 ? 2 : 3;
+    const level = x <= 1.5 ? 0 : x <= 2.2 ? 1 : x <= 3.2 ? 2 : 3;
     const path = ridePath(p, k, k + 1) || [[tt.stopLat[s1], tt.stopLon[s1]], [tt.stopLat[s2], tt.stopLon[s2]]];
     features.push({ type: 'Feature', properties: { level, x: Math.round(x * 100) / 100, n: rs.length }, geometry: { type: 'LineString', coordinates: path.map(([la, lo]) => [lo, la]) } });
   }

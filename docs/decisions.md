@@ -962,3 +962,13 @@ so they are not re-litigated.
   train chip gives the bar two station boxes and a swap; the sheet only lists
   answers (where trains from the From station go, then the trains between the
   two). The To box lists only stations reachable without a change.
+- 2026-10-23 Gadi: build the three stages of live traffic estimation. Built
+  and measured before switching on: learned bus section times by hour and
+  kind of day from Hasadna's minute snapshots (nightly, passage logs kept 14
+  days); a live correction from the buses that just ran a section; traffic
+  on the map from the same. Every delay estimate moved into the data worker
+  (one owner for the learned and live times). Rejected: commercial traffic
+  feeds (terms, cost, the map area sent out), Waze (agencies only), Hasadna's
+  database for the live part (15 minutes behind made it worse than none),
+  the bus's own recent pace (measured, no gain), night free flow as the map's
+  baseline (every road read slow at 10:00).
