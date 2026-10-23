@@ -34,7 +34,11 @@ export function ensureJourneyLayers(m: MLMap): void {
   m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 10, 7], 'line-opacity': .95 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 6.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
-  m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 12, paint: { 'circle-radius': 3.5, 'circle-color': '#ffffff', 'circle-stroke-color': '#444', 'circle-stroke-width': 1.5 } });
+  // a journey's stops from zoom 12; a line's (they carry its colour) from zoom 9, solid in its colour while far out,
+  // white with a ring of it up close
+  m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 9, filter: ['any', ['has', 'color'], ['>=', ['zoom'], 12]],
+    paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 12, 4, 15, 6], 'circle-color': ['step', ['zoom'], ['coalesce', ['get', 'color'], '#ffffff'], 13, '#ffffff'],
+      'circle-stroke-color': ['step', ['zoom'], '#ffffff', 13, ['coalesce', ['get', 'color'], '#444444']], 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 1, 13, 2] } });
   // stations along a line or a journey get their badge over the dot
   for (const k of BADGE_KINDS) if (!m.hasImage('wayli-st-' + k)) m.addImage('wayli-st-' + k, stationImage(k), { pixelRatio: 2 });
   for (const [id, src] of [['context-stations', 'context-stops'], ['journey-stations', 'stops']] as const) m.addLayer({ id, type: 'symbol', source: src, minzoom: 10, filter: ['has', 'kind'], layout: { 'icon-image': ['concat', 'wayli-st-', ['get', 'kind']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 15, 1], 'icon-allow-overlap': true } });

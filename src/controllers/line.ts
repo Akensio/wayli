@@ -10,6 +10,7 @@ import { clock } from '../map/popups';
 import type { LineInfo } from '../state/line';
 import type { Journey } from '../journey/types';
 import { openStop } from './stop';
+import { routeColor } from '../journey/colors';
 
 let seq = 0, timer = 0, current: LineInfo | null = null;
 
@@ -25,7 +26,7 @@ export async function openLine(route: number): Promise<void> {
     const course: Journey = { depart: 0, arrive: 0, transfers: 0, legs: [{ type: 'ride', seconds: 0, routeType: info.routeType, agency: info.agency, path: info.path, pattern: null }] };
     const b = map.drawJourney(m, course, map.markers.journey);
     // every stop of the line as a dot
-    (m.getSource('stops') as any).setData({ type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop, ...map.stopKindProp(st.stop) }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });
+    (m.getSource('stops') as any).setData({ type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop, color: routeColor(info.routeType, info.agency), ...map.stopKindProp(st.stop) }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });
     map.fitMap(b, 15);
     lineLive();
   };

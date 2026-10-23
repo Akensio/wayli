@@ -995,3 +995,9 @@ so they are not re-litigated.
   minute frequency, labelled as estimates wherever they show. Rejected: no
   weekend lines until a timetable is published (riders use them every
   weekend, and an honest estimate beats nothing); scraping an app.
+- 2026-10-23 Gadi: a line's stops should be visible from further out. Now
+  from zoom 9, solid in the line's colour while far out, white with a ring of
+  it up close (a journey's stops stay from zoom 12). And the compass cone he
+  asked for did not show on his phone: it hid after 2 s without a reading,
+  and a still phone may send none; it now keeps the last direction for half
+  a minute and also takes an absolute plain orientation event.
