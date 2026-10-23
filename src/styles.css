@@ -596,15 +596,23 @@ label.pilltoggle[hidden] { display: none; }
 /* what the bar searches for: a trip or a line, a small switch above the rows while editing */
 #kindRow { order: 0; padding-inline-start: 54px; }
 #lineRow { order: 2; }
-.kindseg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); }
-.kindseg button { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 13px; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
-.kindseg button .i { width: 16px; height: 16px; }
-.kindseg button.on { background: var(--accent); color: var(--accent-ink); }
+.kindseg { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.kindseg button { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 13px; cursor: pointer; transition: color .25s ease; }
+.kindseg button .i { width: 16px; height: 16px; transition: transform .35s var(--spring); }
+.kindseg button.on { color: var(--accent-ink); }
+.kindseg button.on .i { transform: scale(1.12); }
+/* the highlight under the chosen option slides between them (its place is set from the buttons, TopBar) */
+.kindseg .thumb { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 999px; background: var(--accent); transition: transform .38s var(--spring), width .38s var(--spring); }
+@media (prefers-reduced-motion: reduce) { .kindseg .thumb { transition: none; } }
 .topbar.two #kindRow { animation: popIn .32s .2s var(--ease-out) both; }
 .topbar.two.leaving #kindRow { animation: popOut .18s var(--ease-in) forwards; }
 .topbar.linekind .pair .trow { padding-inline-end: 0; }   /* no swap in the line search */
 /* the kinds of line under the box: one row that scrolls sideways when it does not fit */
-.topbar .trow.lfilters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-block: 2px 8px; margin-block-end: -6px; }
+.topbar .trow.lfilters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-block: 2px 8px; margin-block-end: -6px; touch-action: pan-x; overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(to var(--end-side, right), #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to var(--end-side, right), #000 calc(100% - 28px), transparent); }
+[dir="rtl"] .topbar .trow.lfilters { --end-side: left; }
+/* a swipe that starts on a chip scrolls the row (the bar's other buttons take no gestures) */
+.topbar .trow.lfilters .chipbtn { touch-action: pan-x; }
 .topbar .trow.lfilters::-webkit-scrollbar { display: none; }
 .topbar .trow.lfilters .chipbtn { flex: none; display: inline-flex; align-items: center; gap: 5px; }
 .topbar .trow.lfilters .chipbtn .i { width: 16px; height: 16px; }
@@ -661,3 +669,5 @@ label.pilltoggle[hidden] { display: none; }
 .trainrow .in { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
 .trainrow.gone { opacity: .45; }
 #trainsTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a part going away as its layout changes (ui/flip): a still copy that fades where it was; its entrances do not replay */
+.flip-ghost, .flip-ghost * { animation: none !important; transition: none !important; }

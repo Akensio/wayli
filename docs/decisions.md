@@ -976,3 +976,8 @@ so they are not re-litigated.
   separate ask; it is the same public data the relay already passes on all
   day. Rejected: having the relay keep the snapshots itself (it would need
   storage and still fetch the same files).
+- 2026-10-23 Gadi: animate switching between the search types, without an
+  if-else per transition. Built as one layout-animation helper (FLIP,
+  `src/ui/flip.ts`) keyed on what the bar searches for, and a sliding
+  highlight in the switch. Also: the kind-of-line chips scroll with a finger
+  (the bar's buttons had touch gestures off).

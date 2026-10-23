@@ -477,7 +477,10 @@ button; another tap moves it; a tap on a stop picks the stop), and gets its name
 nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
-Lines: the bar, while editing, has a Trip / Line / Stop switch above its rows.
+Lines: the bar, while editing, has a Trip / Line / Stop switch above its rows
+(its highlight slides to the chosen one; switching animates through `ui/flip`:
+the parts marked `data-flip` that stay glide to their new place, new ones pop
+in, those that go fade where they were, one rule for every pair of states).
 The line search is one box (numeric keyboard; a station's name for trains)
 with chips under it for the kind of line: all, bus, train, light rail,
 cable car. The worker (`lineGroups`) lists lines as riders know them: a
