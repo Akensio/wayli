@@ -3,7 +3,7 @@
 import { Icon } from '../../ui/Icon';
 import { t, lang } from '../../i18n';
 import { toast } from '../../ui/toast';
-import { recentPlaces, recentTrips, lastSearch } from '../../store.js';
+import { recentPlaces, recentTrips, recentViews, lastSearch } from '../../store.js';
 import * as settings from '../../state/settings';
 import * as app from '../../state/app';
 import * as results from '../../state/results';
@@ -65,7 +65,7 @@ export function Settings() {
         <div class="list">
           <Act icon="download" id="installBtn" label={t('install')} hidden={!app.installable.value} onClick={() => app.hooks.install()} />
           <div class="item text" id="installHint" hidden={!app.installHint.value}>{app.installHint.value}</div>
-          <Act icon="trash" id="clearHistory" label={t('clearHistory')} onClick={() => { recentPlaces.clear(); recentTrips.clear(); lastSearch.clear(); results.refreshRecent(); toast(t('historyCleared')); }} />
+          <Act icon="trash" id="clearHistory" label={t('clearHistory')} onClick={() => { recentPlaces.clear(); recentTrips.clear(); recentViews.clear(); lastSearch.clear(); results.refreshRecent(); toast(t('historyCleared')); }} />
         </div>
       </div>
       <div class="group">

@@ -13,12 +13,14 @@ import { liveBadge } from '../journey/format';
 import type { Journey, Query } from '../journey/types';
 import { openLine } from './line';
 import { startTrip } from './follow';
+import { recentViews } from '../store.js';
 
 let seq = 0;   // the journey shown; a live answer for an older one is dropped
 
 export function openDetail(j: Journey, q: Query, bikeOnly = false): void {
   const my = ++seq;
   search.foldBar();   // a result opened: the rider has moved on from the boxes
+  if (!bikeOnly) recentViews.add({ type: 'trip', q, j, built: data.manifest.value?.built });
   try { window.wayliDebug = { ...(window.wayliDebug || {}), journey: j }; } catch { /* debugging only */ }
   map.mapOf.detail = async (drawSeq) => {
     const m = await map.mapReady();

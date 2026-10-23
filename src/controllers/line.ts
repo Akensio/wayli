@@ -11,6 +11,7 @@ import type { LineInfo } from '../state/line';
 import type { Journey } from '../journey/types';
 import { openStop } from './stop';
 import { routeColor } from '../journey/colors';
+import { recentViews } from '../store.js';
 
 let seq = 0, timer = 0, current: LineInfo | null = null;
 
@@ -20,6 +21,7 @@ export async function openLine(route: number): Promise<void> {
   try { info = await call<LineInfo>('lineInfo', { route }); } catch { toast(t('liveFail')); return; }
   if (my !== seq) return;
   current = info;
+  if (info.ref) recentViews.add({ type: 'line', ref: info.ref, line: info.line, routeType: info.routeType, agency: info.agency, headsign: info.headsign, mode: info.mode });
   map.mapOf.lineDetail = async (drawSeq) => {
     const m = await map.mapReady();
     if (!m || my !== seq || map.stale(drawSeq)) return;

@@ -20,7 +20,7 @@ import type { Query, PlanResult } from '../journey/types';
 import { startDay } from './loading';
 import { openLine } from './line';
 import { openStop } from './stop';
-import { chooseStation, swapStations } from './station';
+import { chooseStation, swapStations, openStation, openTrains } from './station';
 import { openDetail } from './detail';
 import { startTrip } from './follow';
 import { layoutTop } from './shell';
@@ -132,12 +132,34 @@ Object.assign(search.hooks, {
   ttReady: () => data.ttReady.value,
   lastPos: () => lastPos,
 });
+/** Open again something from the history, found in the day loaded now. A trip opens as it was while that timetable is
+ *  loaded and it has not ended; otherwise it is planned again from now, like a recent search. */
+async function openView(v: results.View): Promise<void> {
+  if (!data.ttReady.value) return;
+  const gone = () => toast(t('notInDay'));
+  if (v.type === 'trip') {
+    const same = data.dayInfo.value?.date === v.q.day && v.built === data.manifest.value?.built && v.j.arrive > live.nowOn(v.q.day);
+    if (same) { nav.closeAll(); nav.showScreen('plan'); openDetail(v.j, v.q); } else results.hooks.replan(v.q);
+    return;
+  }
+  if (v.type === 'line') { const r = await call<number>('findRecent', { kind: 'line', ref: v.ref }); if (r >= 0) openLine(r); else gone(); return; }
+  if (v.type === 'stop') { const s = await call<number>('findRecent', { kind: 'stop', code: v.code, lat: v.lat, lon: v.lon }); if (s >= 0) openStop(s); else gone(); return; }
+  type Found = { name: string; stops: number[]; lat: number; lon: number } | null;
+  const station = async (a: { name: string; lat: number; lon: number }) => {
+    const f = await call<Found>('findRecent', { kind: 'station', lat: a.lat, lon: a.lon });
+    return f ? { ...f, key: f.name, name: a.name } : null;
+  };
+  if (v.type === 'station') { const s = await station(v); if (s) openStation(s); else gone(); return; }
+  const [a, b] = await Promise.all([station(v.from), station(v.to)]);
+  if (a && b) openTrains(a, b); else gone();
+}
 // What the results need: the detail and follow screens, planning again, the sheet and the map.
 Object.assign(results.hooks, {
   openDetail: (j, q, bikeOnly) => openDetail(j, q, bikeOnly),
   startTrip: (j, q) => startTrip(j, q),
   plan: (opts) => plan(opts),
   replan: (q) => { search.applyQuery(q); search.resetNow(); nav.closeAll(); nav.showScreen('plan'); plan(); },
+  openView: (v) => openView(v),
   afterResults: () => {
     const body = document.getElementById('sheetBody'); if (body) body.scrollTop = 0;
     if (!nav.topPanel() && nav.screen.value === 'plan' && sheet.state.value === 'peek') sheet.set('half');

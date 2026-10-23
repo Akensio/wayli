@@ -14,6 +14,7 @@ import type { StopInfo, Departure } from '../state/stop';
 import type { Place } from '../state/search';
 import { planTo, planFrom } from './planner';
 import { openTrip } from './trip';
+import { recentViews } from '../store.js';
 
 let current: StopInfo | null = null, seq = 0, timer = 0;
 /** A stop as a place to plan from or to. */
@@ -23,6 +24,7 @@ export async function openStop(stop: number): Promise<void> {
   const my = ++seq;
   const info = await call<StopInfo>('stopInfo', { stop });
   current = info;
+  recentViews.add({ type: 'stop', code: info.code || '', name: info.name, city: info.city, lat: info.lat, lon: info.lon });
   map.mapOf.stopDetail = async (drawSeq) => {
     const m = await map.mapReady();
     if (!m || my !== seq || map.stale(drawSeq)) return;

@@ -1038,7 +1038,20 @@ const ops = {
     const own = parseHeadsign(r[1]);
     const others = g ? lineDirs(g).filter((d) => parseHeadsign(tt.routes[d.route][1]) !== own).map((d) => ({ route: d.route, headsign: d.headsign })) : [];
     const routeIds = sibs.map((ri) => liveId(tt.routes[ri])).filter((x) => x != null);
-    return { route, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOf(r[3]), line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOf(r[3]), line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+  },
+  /** Something opened on another day, found in the day loaded now (indices are the day's own): a line by its route
+   *  id in the feed, a stop by the number on its sign (else the nearest within 60 m), a train station by position. */
+  findRecent({ kind, ref = null, code = '', lat = 0, lon = 0 }) {
+    if (kind === 'line') { for (let i = 0; i < tt.routes.length; i++) if (tt.routes[i][4] != null && String(tt.routes[i][4]) === ref) return i; return -1; }
+    if (kind === 'station') {
+      const g = ops.stopGroups({ mode: 'rail', near: { lat, lon }, limit: 1 })[0];
+      return g && g.dist != null && g.dist < 400 ? { name: g.name, stops: g.stops, lat: g.lat, lon: g.lon } : null;
+    }
+    if (code) { const s = codeIndex().get(String(code)); if (s !== undefined) return s; }
+    let best = -1, bd = 60;
+    for (let s = 0; s < tt.stops.length; s++) { const d = haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]); if (d < bd) { bd = d; best = s; } }
+    return best;
   },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {

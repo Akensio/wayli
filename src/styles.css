@@ -156,6 +156,8 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .recent { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
 .recent .ic { color: var(--ink-2); } .recent .txt { flex: 1; min-width: 0; } .recent .txt small { display: block; color: var(--ink-2); font-size: 12px; }
 .recent .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent small.legs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.recent > .lchip { flex: none; }
 .fromto .arrow { color: var(--ink-2); margin: 0 .35em; }
 .dropdown button.quick { display: flex; align-items: center; gap: 8px; }
 .dropdown button.quick .ic { width: 20px; text-align: center; color: var(--ink-2); flex: none; }

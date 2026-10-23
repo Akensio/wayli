@@ -37,6 +37,27 @@ export const recentTrips = {
   clear() { set('wayli-recent-trips', null); },
 };
 
+/**
+ * What was opened, newest first: a line, a stop, a train station, the trains between two stations, a trip. Kept by
+ * what names it in the feed (route id, the number on a stop's sign, positions), since the timetable's own numbers
+ * change from day to day; a trip keeps the journey itself and the build it came from.
+ */
+const viewKey = (v) => v.type === 'line' ? `line:${v.ref}` : v.type === 'stop' ? `stop:${v.code || `${v.lat},${v.lon}`}` : v.type === 'station' ? `station:${v.name}`
+  : v.type === 'trains' ? `trains:${v.from.name}|${v.to.name}` : `trip:${v.q.from.name}|${v.q.to.name}|${v.q.day}|${v.j.depart}`;
+export const recentViews = {
+  list() { return get('wayli-recent-views', []); },
+  add(v) {
+    const k = viewKey(v);
+    let l = this.list().filter((x) => viewKey(x) !== k);
+    l.unshift({ ...v, at: Date.now() });
+    // trips carry their journey: a few of them, among up to 30 entries
+    let trips = 0;
+    l = l.filter((x) => x.type !== 'trip' || ++trips <= 6);
+    set('wayli-recent-views', l.slice(0, 30));
+  },
+  clear() { set('wayli-recent-views', null); },
+};
+
 export const savedPlaces = {
   get() { return { home: null, work: null, more: [], ...get('wayli-saved-places', {}) }; },
   set(slot, p) { const s = this.get(); s[slot] = p ? slim(p) : null; set('wayli-saved-places', s); },

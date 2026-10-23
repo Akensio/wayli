@@ -14,6 +14,7 @@ import * as map from '../map/index';
 import { clock } from '../map/popups';
 import type { Station, Dest, TrainRow } from '../state/station';
 import { openTrip } from './trip';
+import { recentViews } from '../store.js';
 
 let seq = 0, timer = 0;
 const when = () => {
@@ -35,6 +36,7 @@ async function loadStation(s: Station): Promise<void> {
 /** A station: the stations its trains reach directly. */
 export async function openStation(s: Station): Promise<void> {
   const my = ++seq;
+  recentViews.add({ type: 'station', name: s.name, lat: s.lat, lon: s.lon });
   map.mapOf.stationDetail = async (drawSeq) => {
     const m = await map.mapReady();
     if (!m || my !== seq || map.stale(drawSeq)) return;
@@ -51,6 +53,7 @@ export function closeStation(): void { seq++; delete map.mapOf.stationDetail; }
 export async function openTrains(from: Station, to: Station): Promise<void> {
   const my = ++seq;
   const w = when();
+  recentViews.add({ type: 'trains', from: { name: from.name, lat: from.lat, lon: from.lon }, to: { name: to.name, lat: to.lat, lon: to.lon } });
   st.pair.value = { from, to }; st.trains.value = null; st.live.value = {}; st.liveNote.value = ''; st.day.value = w.day; st.isNow.value = w.isNow;
   map.mapOf.trainTimes = async (drawSeq) => {
     const m = await map.mapReady();

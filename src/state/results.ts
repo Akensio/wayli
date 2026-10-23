@@ -62,11 +62,20 @@ export const showing = computed(() => status.value !== 'idle' || result.value !=
 export const highlighted = computed<Card | null>(() => list.value.cards.find((c) => c.idx === altSel.value && altShown.value.has(c.idx)) || null);
 
 /** What the results need from the rest of the app. Filled in by the app at start. */
+/** Something opened, as the history keeps it (store.js recentViews). */
+type At = { name: string; lat: number; lon: number };
+export type View = { at?: number } & (
+  | { type: 'line'; ref: string; line: string; routeType: number; agency: string; headsign: string; mode?: string }
+  | { type: 'stop'; code: string; name: string; city?: string; lat: number; lon: number }
+  | ({ type: 'station' } & At)
+  | { type: 'trains'; from: At; to: At }
+  | { type: 'trip'; q: Query; j: Journey; built?: string });
 export const hooks = {
   openDetail: (_j: Journey, _q: Query, _bikeOnly?: boolean) => {},
   startTrip: (_j: Journey, _q: Query) => {},
   plan: (_opts?: { maxWalk?: number }) => {},
   replan: (_q: Query) => {},       // a recent trip tapped: the bar filled from it, planned from now
+  openView: (_v: View) => {},      // something opened before, opened again (store.js recentViews)
   afterResults: () => {},          // the sheet opens, the map draws
   redraw: () => {},                // the map draws the ways switched on
   peekChanged: () => {},           // the collapsed sheet follows the peek line's height
