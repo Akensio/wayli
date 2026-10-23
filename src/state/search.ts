@@ -36,6 +36,13 @@ export const stopFilter = signal<StopFilter>('all');
 export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ' | 'stopQ'>(() =>
   (kind.value === 'line' ? (lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber') : kind.value === 'stop' ? (stopFilter.value === 'rail' ? 'stationQ' : 'stopQ') : 'goQ'));
 export const toInputMode = computed<'' | 'numeric'>(() => (kind.value === 'line' && lineFilter.value !== 'rail' ? 'numeric' : ''));
+// The train timetable (the stop search for trains): two stations at the top, as riders who plan their own trips from
+// the schedule use it; the sheet answers with where trains from the first go, or the trains between the two.
+export const railPair = computed(() => kind.value === 'stop' && stopFilter.value === 'rail');
+export const stFrom = signal<Place | null>(null);
+export const stFromText = signal('');
+export const stTo = signal<Place | null>(null);
+export const stToText = signal('');
 export const busy = signal(true);       // the planner is not ready, or planning
 
 // ---- when and how
@@ -79,8 +86,10 @@ export const hooks = {
   lastQuery: (): { from: Place; to: Place } | null => null,
   search: async (_q: string): Promise<{ results: any[]; placesLoaded: boolean }> => ({ results: [], placesLoaded: false }),
   lineGroups: async (_q: string, _mode: LineFilter, _limit?: number): Promise<LineGroup[]> => [],
-  stopGroups: async (_q: string, _mode: StopFilter): Promise<StopGroup[]> => [],
+  stopGroups: async (_q: string, _mode: StopFilter, _from?: number[]): Promise<StopGroup[]> => [],
   openStopGroup: (_g: StopGroup) => {},
+  chooseStation: (_side: Side, _g: StopGroup) => {},
+  swapStations: () => {},
   openLine: (_r: any) => {},
   getPosition: async (): Promise<{ lat: number; lon: number }> => { throw new Error('no location'); },
   pickOnMap: async (_start: Place | null): Promise<Place | null> => null,
@@ -105,7 +114,7 @@ export function openBar(): void {
   if (!from.value) setPlace('from', { name: t('myLoc'), transient: true, auto: true });
 }
 export function foldBar(): void { barOpen.value = false; }
-export function clearPlaces(): void { tripTo = null; kind.value = 'trip'; from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
+export function clearPlaces(): void { tripTo = null; kind.value = 'trip'; clearStations(); from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
 export function swapPlaces(): void {
   const f = from.value, tt = to.value;
   setPlace('from', tt); setPlace('to', f);   // Go plans; a swap by itself changes nothing else
@@ -171,7 +180,8 @@ export function setKind(k: Kind): void {
 /** Search a line by number: the bar opens on the line search. */
 export function lineMode(): void { barOpen.value = true; setKind('line'); focusBox('toQ'); }
 /** The bar closed: back to trips (what the To box held before is given back). */
-export function leaveLineMode(): void { setKind('trip'); lineFilter.value = 'all'; stopFilter.value = 'all'; }
+export function leaveLineMode(): void { setKind('trip'); lineFilter.value = 'all'; stopFilter.value = 'all'; clearStations(); }
+export function clearStations(): void { stFrom.value = null; stFromText.value = ''; stTo.value = null; stToText.value = ''; }
 /** Search a stop: the bar opens on the stop search. */
 export function stopMode(): void { barOpen.value = true; setKind('stop'); focusBox('toQ'); }
 

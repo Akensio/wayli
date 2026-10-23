@@ -29,6 +29,7 @@ type Props = {
   kind?: search.Kind;       // what the bar searches for: a trip (places, stops, lines), a line, a stop
   onPick: (p: Place) => void;
   onStop?: (g: StopGroup) => void;
+  stationSide?: 'from' | 'to';  // a box of the train timetable: stations only; the To box lists those reachable from the From one
   onLine?: (r: any) => void;
   onLocate?: () => void;    // custom "my location" and "pick on the map" (the place chooser), else the planner's own
   onMap?: () => void;
@@ -83,7 +84,7 @@ function LineRow({ g, onLine }: { g: LineGroup; onLine: (r: { route: number }) =
   );
 }
 
-export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, kind = 'trip', onPick, onStop, onLine, onLocate, onMap, withUser = false, children }: Props) {
+export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, kind = 'trip', stationSide, onPick, onStop, onLine, onLocate, onMap, withUser = false, children }: Props) {
   const lineKind = kind === 'line', stopKind = kind === 'stop';
   const open = useSignal(false);
   const closing = useSignal(false);   // the list folds away before it hides
@@ -109,7 +110,8 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
   // the stop search's list: the stops matching the name or sign number, or near the rider (every station for trains)
   const stopList = async (q: string) => {
     const my = ++seq.current;
-    const found = search.hooks.ttReady() ? await search.hooks.stopGroups(q, search.stopFilter.value).catch(() => []) : [];
+    const from = stationSide === 'to' ? search.stFrom.value?.stops : undefined;
+    const found = search.hooks.ttReady() ? await search.hooks.stopGroups(q, stationSide ? 'rail' : search.stopFilter.value, from).catch(() => []) : [];
     if (my !== seq.current) return;
     setRows({ quick: false, lines: [], results: [], placesLoaded: true, near: !q, stops: found });
     show();

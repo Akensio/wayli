@@ -1,5 +1,5 @@
 // The direct trains between two stations: when each leaves and arrives (live when known), how long it takes, where
-// it heads; a swap for the way back. A tap opens the train's stops.
+// it heads (the way back: the swap between the two boxes at the top). A tap opens the train's stops.
 import { Icon } from '../../ui/Icon';
 import { t, lang } from '../../i18n';
 import { fmt } from '../../time';
@@ -17,7 +17,6 @@ export function TrainTimes() {
       <div class="bar">
         <button type="button" class="ghost" id="trainsBack" onClick={st.hooks.closeTrains}>{t('back')}</button>
         <h2 id="trainsTitle"><bdi>{t('lineEnds', { a: p.from.name, b: p.to.name })}</bdi></h2>
-        <button type="button" class="iconbtn small flat" id="trainsSwap" title={t('swap')} aria-label={t('swap')} onClick={st.hooks.swap}><Icon name="swap" /></button>
       </div>
       <div class="legs">
         <div class="row"><h2 class="sec" style="margin:8px 0">{t('directTrains')}</h2><span class="muted" id="trainsLive">{st.liveNote.value}</span></div>

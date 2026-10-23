@@ -900,23 +900,28 @@ const ops = {
   /**
    * Stops for the stop search: by name or by the code on the sign (exact codes first), or, with nothing typed, those
    * near the rider (every station, nearest first, for trains). `mode` narrows to bus stops, train stations or light
-   * rail stops. A station is one entry with its platforms (`stops`).
+   * rail stops; `from` (a station's platforms) to the stations its trains reach without a change. A station is one
+   * entry with its platforms (`stops`).
    */
-  stopGroups({ q = '', mode = 'all', near = null, limit = 30 }) {
+  stopGroups({ q = '', mode = 'all', near = null, limit = 30, from = null }) {
     const rail = railStops(), lrt = lrtStops();
+    // the To box of the train timetable: only the stations a train from the chosen one reaches without a change
+    const reach = from && from.length ? new Set(ops.stationReach({ stops: from, fromTime: 0 }).map((d) => d.key)) : null;
     const modeOf = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
+    const gmode = (ss) => (ss.some((x) => rail[x]) ? 'rail' : ss.some((x) => lrt[x]) ? 'lrt' : 'bus');   // the number on a station's sign is no rider's
     const groupOf = (s) => { const p = tt.stopParent[s]; return p >= 0 ? { key: 'p' + p, stops: tt.stationStops.get(p).slice(), name: stName(p) || sName(s) } : { key: 's' + s, stops: [s], name: sName(s) }; };
     const out = new Map();
     const add = (s, score) => {
       const g = groupOf(s), m = modeOf(s);
       if (mode !== 'all' && m !== mode && !g.stops.some((x) => modeOf(x) === mode)) return;
+      if (reach && !reach.has(g.key)) return;
       const o = out.get(g.key);
       if (o) { if (score > o.score) o.score = score; return; }
       let la = 0, lo = 0;
       for (const x of g.stops) { la += tt.stopLat[x]; lo += tt.stopLon[x]; }
       la /= g.stops.length; lo /= g.stops.length;
-      const gm = g.stops.some((x) => rail[x]) ? 'rail' : g.stops.some((x) => lrt[x]) ? 'lrt' : 'bus';
-      out.set(g.key, { key: g.key, name: g.name, city: cName(tt.stops[s][3]), code: g.stops.length === 1 ? tt.stops[s][2] : '', stops: g.stops, lat: la, lon: lo, mode: gm, score,
+      const gm = gmode(g.stops);
+      out.set(g.key, { key: g.key, name: g.name, city: cName(tt.stops[s][3]), code: g.stops.length === 1 && gmode(g.stops) !== 'rail' ? tt.stops[s][2] : '', stops: g.stops, lat: la, lon: lo, mode: gm, score,
         dist: near ? Math.round(haversine(near.lat, near.lon, la, lo)) : null });
     };
     const n = String(q || '').trim();
@@ -930,7 +935,8 @@ const ops = {
       for (const g of searchStops(tt, n, 60, lang)) add(g.stops[0], g.score);
     }
     const rows = Array.from(out.values());
-    rows.sort((a, b) => b.score - a.score || (a.dist ?? 1e9) - (b.dist ?? 1e9) || a.name.localeCompare(b.name));
+    // the stations reachable from the From one are listed by name; anything else nearest first among equal matches
+    rows.sort((a, b) => b.score - a.score || (reach ? 0 : (a.dist ?? 1e9) - (b.dist ?? 1e9)) || a.name.localeCompare(b.name));
     return rows.slice(0, limit).map((r) => ({ ...r, lines: r.mode === 'rail' ? [] : linesAt(r.stops[0], 8) }));
   },
   /**

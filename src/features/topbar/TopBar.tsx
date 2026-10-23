@@ -33,7 +33,9 @@ export function TopBar() {
   void lang.value;
   const mode = search.mode.value;
   const edit = mode === 'edit', sum = mode === 'summary';
-  const kind = search.kind.value, line = kind !== 'trip';   // the line and stop searches: one box and kind chips
+  const kind = search.kind.value, pair = search.railPair.value;
+  const line = kind !== 'trip';                // the line and stop searches: kind chips under the box
+  const one = line && !pair;                   // one box (the train timetable has two: from and to station)
   const toKind = (k: search.Kind) => { search.setKind(k); search.focusBox('toQ'); };
   const filters = kind === 'stop' ? STOP_FILTERS : LINE_FILTERS, filter = kind === 'stop' ? search.stopFilter : search.lineFilter;
   const opt = search.optOpen.value;
@@ -65,7 +67,7 @@ export function TopBar() {
   };
 
   return (
-    <div ref={barRef} class={`topbar${edit ? ' two' : ''}${line ? ' linekind' : ''}${search.leaving.value ? ' leaving' : ''}${search.settling.value ? ' settle' : ''}${opt ? ' open' : ''}`} id="topbar" hidden={nav.picking.value}>
+    <div ref={barRef} class={`topbar${edit ? ' two' : ''}${one ? ' linekind' : ''}${search.leaving.value ? ' leaving' : ''}${search.settling.value ? ' settle' : ''}${opt ? ' open' : ''}`} id="topbar" hidden={nav.picking.value}>
       <div class="trow kinds" id="kindRow" hidden={!edit}>
         <div class="kindseg" role="tablist" aria-label={t('searchKind')}>
           <button type="button" role="tab" id="kindTrip" aria-selected={kind === 'trip'} class={kind === 'trip' ? 'on' : ''} onClick={() => toKind('trip')}><Icon name="route" />{t('kindTrip')}</button>
@@ -75,22 +77,26 @@ export function TopBar() {
       </div>
       <div class="pair" id="pair" hidden={sum}>
         <button type="button" class="iconbtn small" id="barBack" hidden={!edit} aria-label={t('back')} onClick={search.back}><Icon name="back" class="chev" /></button>
-        <div class="trow origin" id="fromRow" hidden={!edit || line}>
-          <SearchField id="fromQ" dropId="fromDrop" text={search.fromText} place={search.from} onFocus={search.openBar} placeholder={t('fromQ')} onPick={(p) => { (document.getElementById('fromQ') as HTMLInputElement | null)?.blur(); search.chooseFrom(p); }}>
+        <div class="trow origin" id="fromRow" hidden={!edit || one}>
+          <SearchField id="fromQ" dropId="fromDrop" text={pair ? search.stFromText : search.fromText} place={pair ? search.stFrom : search.from} onFocus={search.openBar} placeholder={t(pair ? 'fromStationQ' : 'fromQ')}
+            kind={pair ? 'stop' : 'trip'} stationSide={pair ? 'from' : undefined}
+            onStop={(g) => { (document.getElementById('fromQ') as HTMLInputElement | null)?.blur(); search.hooks.chooseStation('from', g); }}
+            onPick={(p) => { (document.getElementById('fromQ') as HTMLInputElement | null)?.blur(); search.chooseFrom(p); }}>
             <span class="tag">{t('tagFrom')}</span>
           </SearchField>
         </div>
         <div class="trow" id="toRow" hidden={sum} onPointerDownCapture={(e) => { if ((e.target as HTMLElement).id === 'toQ') onToPointerDown(e); }}>
-          <SearchField id="toQ" dropId="toDrop" text={search.toText} place={search.to} onFocus={search.openBar} withUser placeholder={t(search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines kind={kind}
-            onStop={(g) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openStopGroup(g); }}
+          <SearchField id="toQ" dropId="toDrop" text={pair ? search.stToText : search.toText} place={pair ? search.stTo : search.to} onFocus={search.openBar} withUser
+            placeholder={t(pair ? 'toStationQ' : search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines kind={kind} stationSide={pair ? 'to' : undefined}
+            onStop={(g) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); if (pair) search.hooks.chooseStation('to', g); else search.hooks.openStopGroup(g); }}
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
             onLine={(r) => { if (!line) search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); }}>
             <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><MenuGlyph /></button>
-            <span class="tag">{kind === 'line' ? t('tagLine') : kind === 'stop' ? t('tagStop') : t('tagTo')}</span>
+            <span class="tag">{kind === 'line' ? t('tagLine') : kind === 'stop' && !pair ? t('tagStop') : t('tagTo')}</span>
             <button type="button" class="applogo" id="appLogo" aria-label="Wayli" onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}><Logo /></button>
           </SearchField>
         </div>
-        <button type="button" class="iconbtn small" id="swap" hidden={!edit || line} title={t('swap')} aria-label={t('swap')} onClick={search.swapPlaces}><Icon name="swap" /></button>
+        <button type="button" class="iconbtn small" id="swap" hidden={!edit || one} title={t('swap')} aria-label={t('swap')} onClick={pair ? search.hooks.swapStations : search.swapPlaces}><Icon name="swap" /></button>
       </div>
       <div class="trow" id="sumRow" hidden={!sum}>
         <div class="sumbox">

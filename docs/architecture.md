@@ -502,18 +502,21 @@ and the stop list (tap a stop for its page). Line chips everywhere (stop
 cards, a stop's lines, a ride in a journey, a vehicle bubble) open the line
 page.
 
-Stops: the stop search is the same one box with chips for all, bus, train
-and light rail (worker `stopGroups`): stops by name or by the number on
-their sign (an exact number first), and with nothing typed those within
-600 m (every train station, nearest first, for the train chip); a station
-is one entry with its platforms. A bus or light rail stop opens its page
-(departures by line, below). A train station works the way riders of
-trains think, from station to station, not by line: its page lists every
-station a train from it reaches without a change (`stationReach`: the next
-train there and how long it takes, today's count), with a box to find one;
-a tap opens the direct trains between the two (`trainsBetween`): leave,
-arrive, how long, stops, where the train heads, with live times for the
-next ones from one request for every train, a swap for the way back, and a
+Stops: the stop search is one box with chips for all, bus, train and light
+rail (worker `stopGroups`): stops by name or by the number on their sign
+(an exact number first), and with nothing typed those within 600 m; a
+station is one entry with its platforms. A bus or light rail stop opens
+its page (departures by line, below). Trains work the way their riders
+think, from station to station, not by line, and many plan their own trips
+from the schedule: the train chip turns the bar into a timetable with two
+boxes, From station and To station, and a swap between them (a station
+picked among all stops opens it with that station as From). The From box
+lists every station, nearest first; the To box only those a train from the
+From station reaches without a change. The sheet answers: with only From,
+where its trains go (`stationReach`: the next train there and how long it
+takes, today's count; a tap sets To); with both, the direct trains between
+them (`trainsBetween`): leave, arrive, how long, stops, where the train
+heads, live times for the next ones from one request for every train, a
 tap opening the train's stops. Connections stay with the trip search.
 
 Nearby and stops: stops around the device with the lines serving them and

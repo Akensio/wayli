@@ -956,3 +956,9 @@ so they are not re-litigated.
   chosen one the direct trains between the two with live times. Rejected:
   a second box in the bar for the destination station (the station's page
   already holds the list, and the bar stays one box for line and stop).
+- 2026-10-23 Gadi, on the first version: a "to station" box in the sheet breaks
+  the layout (the top asks, the bottom answers), and the reason for from/to is
+  that many riders plan their own trips from the train schedule. Changed: the
+  train chip gives the bar two station boxes and a swap; the sheet only lists
+  answers (where trains from the From station go, then the trains between the
+  two). The To box lists only stations reachable without a change.

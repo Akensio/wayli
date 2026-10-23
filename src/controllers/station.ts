@@ -25,20 +25,25 @@ const pin = (m: MLMap, s: Station) => {
   map.markers.journey.push(new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(m));
 };
 
+/** The station page's content for a station (where its trains go), without opening it. */
+async function loadStation(s: Station): Promise<void> {
+  const w = when();
+  st.station.value = s; st.dests.value = null; st.day.value = w.day; st.isNow.value = w.isNow;
+  const d = await call<Dest[]>('stationReach', { stops: s.stops, fromTime: w.from });
+  if (st.station.value === s) st.dests.value = d;
+}
 /** A station: the stations its trains reach directly. */
 export async function openStation(s: Station): Promise<void> {
   const my = ++seq;
-  const w = when();
-  st.station.value = s; st.dests.value = null; st.filter.value = ''; st.day.value = w.day; st.isNow.value = w.isNow;
   map.mapOf.stationDetail = async (drawSeq) => {
     const m = await map.mapReady();
     if (!m || my !== seq || map.stale(drawSeq)) return;
     pin(m, s);
     m.easeTo({ center: [s.lon, s.lat], zoom: Math.max(m.getZoom(), 14), offset: [0, -Math.round(sheet.px('half') / 2) + 30], duration: 500 });
   };
-  nav.showOverlay('stationDetail');
-  const d = await call<Dest[]>('stationReach', { stops: s.stops, fromTime: w.from });
-  if (my === seq) st.dests.value = d;
+  const loading = loadStation(s);
+  if (!nav.isOpen('stationDetail')) nav.showOverlay('stationDetail'); else map.redrawMap(true);
+  await loading;
 }
 export function closeStation(): void { seq++; delete map.mapOf.stationDetail; }
 
@@ -90,11 +95,28 @@ async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<vo
   } catch { st.liveNote.value = t('liveFail'); }
 }
 
+/** A station chosen in one of the two boxes at the top: the trains between the two once both are set, else where
+ *  trains from the first go (the To box waits for its station then). */
+export function chooseStation(side: search.Side, g: Station): void {
+  const box = side === 'from' ? search.stFrom : search.stTo, text = side === 'from' ? search.stFromText : search.stToText;
+  box.value = { name: g.name, stops: g.stops, lat: g.lat, lon: g.lon }; text.value = g.name;
+  const f = search.stFrom.value, to = search.stTo.value;
+  if (f && to) { openTrains(asStation(f), asStation(to)); return; }
+  if (f) { openStation(asStation(f)); search.focusBox('toQ'); } else search.focusBox('fromQ');
+}
+export function swapStations(): void {
+  const f = search.stFrom.value, ft = search.stFromText.value;
+  search.stFrom.value = search.stTo.value; search.stFromText.value = search.stToText.value;
+  search.stTo.value = f; search.stToText.value = ft;
+  const a = search.stFrom.value, b = search.stTo.value;
+  if (a && b) { loadStation(asStation(a)); openTrains(asStation(a), asStation(b)); } else if (a) openStation(asStation(a));
+}
+const asStation = (p: { name: string; stops?: number[]; lat?: number | null; lon?: number | null }): Station => ({ key: '', name: p.name, stops: p.stops || [], lat: p.lat || 0, lon: p.lon || 0 });
+
 Object.assign(st.hooks, {
   close: () => nav.close('stationDetail'),
   closeTrains: () => nav.close('trainTimes'),
-  openTo: (d: Dest) => { const s = st.station.value; if (s) openTrains(s, d); },
-  swap: () => { const p = st.pair.value; if (p) openTrains(p.to, p.from); },
+  openTo: (d: Dest) => chooseStation('to', d),
   openTrip: (trip: number, stop: number) => openTrip(trip, stop),
   refresh: () => { const p = st.pair.value; if (p) openTrains(p.from, p.to); },
 } satisfies typeof st.hooks);

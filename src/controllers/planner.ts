@@ -20,7 +20,7 @@ import type { Query, PlanResult } from '../journey/types';
 import { startDay } from './loading';
 import { openLine } from './line';
 import { openStop } from './stop';
-import { openStation } from './station';
+import { chooseStation, swapStations } from './station';
 import { openDetail } from './detail';
 import { startTrip } from './follow';
 import { layoutTop } from './shell';
@@ -118,8 +118,11 @@ Object.assign(search.hooks, {
   lastQuery: () => results.query.value,
   search: (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos }),
   lineGroups: (q: string, mode: search.LineFilter, limit = 30) => call<search.LineGroup[]>('lineGroups', { q, mode, near: lastPos, limit }),
-  stopGroups: (q: string, mode: search.StopFilter) => call<search.StopGroup[]>('stopGroups', { q, mode, near: lastPos, limit: 30 }),
-  openStopGroup: (g: search.StopGroup) => (g.mode === 'rail' ? openStation(g) : openStop(g.stops[0])),
+  stopGroups: (q: string, mode: search.StopFilter, from?: number[]) => call<search.StopGroup[]>('stopGroups', { q, mode, near: lastPos, limit: 60, from }),
+  // a station picked among all stops: the train timetable opens with it as the From station
+  openStopGroup: (g: search.StopGroup) => { if (g.mode === 'rail') { search.stopFilter.value = 'rail'; chooseStation('from', g); } else openStop(g.stops[0]); },
+  chooseStation: (side: search.Side, g: search.StopGroup) => chooseStation(side, g),
+  swapStations: () => swapStations(),
   openLine: (r: any) => openLine(r.route),
   getPosition: () => getPosition(),
   pickOnMap: (start: Place | null) => map.pickOnMap(start),
