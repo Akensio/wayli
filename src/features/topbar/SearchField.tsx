@@ -1,6 +1,7 @@
 // A search box of the bar: the pill with its tag, the typed text, a small x to clear it, and the list under it:
 // the quick entries (my location, pick on the map, home, work, recents) while empty, matching stops, places
-// and lines while typing. The list ends above the keyboard and scrolls inside itself.
+// and lines while typing. In the line search (`lineKind`) the list holds lines only: those near the rider while
+// empty, those matching the number as it is typed. The list ends above the keyboard and scrolls inside itself.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { placeName, named } from '../../state/names';
 import { useSignal, useSignalEffect } from '@preact/signals';
@@ -11,7 +12,9 @@ import { Icon } from '../../ui/Icon';
 import { savedPlaces, recentPlaces } from '../../store.js';
 import * as search from '../../state/search';
 import * as saved from '../../state/saved';
-import type { Place } from '../../state/search';
+import type { Place, LineGroup } from '../../state/search';
+import { LineChip } from '../../ui/LineChip';
+import { agencyName } from '../../journey/agencies';
 
 type Suggestion = { kind: string; name: string; city?: string; platforms?: number; label?: string; approx?: number | null; lat?: number; lon?: number; stops?: number[]; code?: string };
 type Props = {
@@ -23,6 +26,7 @@ type Props = {
   onFocus?: () => void;           // the bar opens search mode
   inputMode?: '' | 'numeric';
   lines?: boolean;          // line numbers match too (the To box)
+  lineKind?: boolean;       // the line search: lines only
   onPick: (p: Place) => void;
   onLine?: (r: any) => void;
   onLocate?: () => void;    // custom "my location" and "pick on the map" (the place chooser), else the planner's own
@@ -42,11 +46,33 @@ function fitDrop(el: HTMLElement) {
   el.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
 }
 
-export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, onPick, onLine, onLocate, onMap, withUser = false, children }: Props) {
+type Rows = { quick: boolean; lines: LineGroup[]; results: Suggestion[]; placesLoaded: boolean; near?: boolean };
+
+/** A line in the list: its chip, where it runs and who runs it, then a row per direction (a tap opens that direction). */
+function LineRow({ g, onLine }: { g: LineGroup; onLine: (r: { route: number }) => void }) {
+  const rail = g.mode === 'rail';
+  return (
+    <div class={`lgroup m-${g.mode}`}>
+      <button type="button" class="lhead" onClick={() => onLine(g.dirs[0])}>
+        <LineChip line={g.line} routeType={g.routeType} agency={g.agency} mode={g.mode} />
+        <span class="txt"><bdi>{rail ? g.area.join(' – ') : g.area.join(' – ') || agencyName(g.agency)}</bdi>
+          <small>{rail ? t('tripsToday', { n: g.trips }) : agencyName(g.agency)}{g.dist != null ? ' · ' + t('lineAway', { m: g.dist < 100 ? g.dist : Math.round(g.dist / 50) * 50 }) : ''}</small></span>
+      </button>
+      {g.dirs.map((d) => (
+        <button type="button" class="ldir" onClick={() => onLine(d)}>
+          <span class="arrow"><Icon name="chevronEnd" class="chev" /></span>
+          <span class="txt"><bdi>{t('toward', { headsign: d.headsign })}</bdi><small>{t('tripsToday', { n: d.trips })}</small></span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, lineKind = false, onPick, onLine, onLocate, onMap, withUser = false, children }: Props) {
   const open = useSignal(false);
   const closing = useSignal(false);   // the list folds away before it hides
   const focused = useSignal(false);
-  const [rows, setRows] = useState<{ quick: boolean; lines: any[]; results: Suggestion[]; placesLoaded: boolean } | null>(null);
+  const [rows, setRows] = useState<Rows | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const focusedAt = useRef(0);
@@ -56,27 +82,44 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
 
   const pick = (p: Place) => { open.value = false; onPick(named(p)); };
   const show = () => { open.value = true; requestAnimationFrame(() => { if (dropRef.current) fitDrop(dropRef.current); }); };
-  const quickMenu = () => { setRows({ quick: true, lines: [], results: [], placesLoaded: true }); show(); };
+  // the line search's list: the lines matching what is typed, or near the rider while empty
+  const lineList = async (q: string) => {
+    const my = ++seq.current;
+    const found = search.hooks.ttReady() ? await search.hooks.lineGroups(q, search.lineFilter.value).catch(() => []) : [];
+    if (my !== seq.current) return;
+    setRows({ quick: false, lines: found, results: [], placesLoaded: true, near: !q });
+    show();
+  };
+  const quickMenu = () => {
+    if (lineKind) { lineList(''); return; }
+    setRows({ quick: true, lines: [], results: [], placesLoaded: true }); show();
+  };
   const typed = (q: string) => {
     place.value = null;
     clearTimeout(timer.current);
     if (!q.length) { quickMenu(); return; }
+    if (lineKind) { timer.current = window.setTimeout(() => lineList(q), 120); return; }
     if ((q.length < 2 && !(lines && /^\d+$/.test(q))) || !search.hooks.ttReady()) { open.value = false; return; }   // one digit is a whole line number
     timer.current = window.setTimeout(async () => {
       const my = ++seq.current;
-      const [found, lineRows] = await Promise.all([search.hooks.search(q), lines && q.length <= 5 ? search.hooks.searchLines(q).catch(() => []) : Promise.resolve([])]);
+      const [found, lineRows] = await Promise.all([search.hooks.search(q), lines && q.length <= 5 ? search.hooks.lineGroups(q, 'all', 3).catch(() => []) : Promise.resolve([])]);
       if (my !== seq.current) return;
       setRows({ quick: false, lines: lineRows, results: found.results, placesLoaded: found.placesLoaded });
       show();
     }, 150);
   };
+  // the line search's kind of line changed (the chips under the box): list again for it
+  useSignalEffect(() => {
+    void search.lineFilter.value;
+    if (lineKind && (open.peek() || focused.peek())) lineList(text.peek().trim());
+  });
 
   // a tap elsewhere closes the list, unless that tap is what focused the box (the clear or go button hands focus here)
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       const target = e.target as Node;
       if (!open.value) return;
-      if (dropRef.current?.contains(target) || target === inputRef.current || (target as HTMLElement).closest?.(`#${id}-x`)) return;
+      if (dropRef.current?.contains(target) || target === inputRef.current || (target as HTMLElement).closest?.(`#${id}-x, .keepdrop`)) return;
       if (Date.now() - focusedAt.current > 500) open.value = false;
     };
     document.addEventListener('click', onDoc);
@@ -161,13 +204,8 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
           ))}
         </>}
         {rows && !rows.quick && <>
-          {rows.lines.length > 0 && <div class="grp">{t('grpLines')}</div>}
-          {rows.lines.map((r) => (
-            <button type="button" class="line" onClick={() => { open.value = false; onLine?.(r); }}>
-              <span dangerouslySetInnerHTML={{ __html: search.hooks.lineChipHtml(r) }} />
-              <span class="txt">{t('toward', { headsign: r.headsign })}<small> · {r.agency} · {t('tripsToday', { n: r.trips })}</small></span>
-            </button>
-          ))}
+          {rows.lines.length > 0 && <div class="grp">{rows.near && search.lineFilter.value === 'all' ? t('linesNear') : t('grpLines')}</div>}
+          {rows.lines.map((g) => <LineRow key={g.key} g={g} onLine={(r) => { open.value = false; onLine?.(r); }} />)}
           {rows.lines.length > 0 && rows.results.length > 0 && <div class="grp">{t('grpPlaces')}</div>}
           {rows.results.map((g) => {
             const kind = g.kind === 'stop' ? (g.platforms && g.platforms > 1 ? t('platforms', { n: g.platforms }) : t('kindStop'))
@@ -178,7 +216,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
               </button>
             );
           })}
-          {!rows.results.length && !rows.lines.length && <button type="button" disabled>{rows.placesLoaded ? t('noMatch') : t('placesPending')}</button>}
+          {!rows.results.length && !rows.lines.length && <button type="button" disabled>{lineKind ? (rows.near ? t('linesHint') : t('lineNoMatch')) : rows.placesLoaded ? t('noMatch') : t('placesPending')}</button>}
         </>}
       </div>
     </div>

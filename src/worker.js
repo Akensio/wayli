@@ -1,5 +1,5 @@
 // Wayli worker: holds the timetable and the street graph, answers every query off the main thread.
-import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign } from './raptor.js';
+import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign, parseHeadsign } from './raptor.js';
 import { parseStreets, accessStops, route } from './streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode, placeAt } from './places.js';
 import { estimateDelay, secondsOn, setRailTimes, metres } from './live.js';
@@ -152,6 +152,85 @@ function indexRoutes() {
   routeById = new Map(); routePats = new Map();
   tt.routes.forEach((r, i) => { if (r[4] != null) routeById.set(String(r[4]), i); });
   for (let p = 0; p < tt.patRoute.length; p++) { const r = tt.patRoute[p]; if (!routePats.has(r)) routePats.set(r, []); routePats.get(r).push(p); }
+}
+// ---- lines as riders know them: a number and operator in an area, both directions and their variants together
+let lineIdx = null;
+/** What kind of vehicle runs a GTFS route type: rail, lrt (light rail), cable (the Carmelit and the cable car),
+ *  taxi (shared taxis), flex (on demand) or bus. */
+const modeOf = (type) => (type === 2 ? 'rail' : type === 0 ? 'lrt' : type === 5 || type === 6 || type === 7 ? 'cable' : type === 8 ? 'taxi' : type === 715 ? 'flex' : 'bus');
+/** The two ends of a route as the feed names them ('origin-city<->destination-city-1#' to ['origin-city', 'destination-city']). */
+function routeEnds(longName) {
+  const parts = String(longName || '').split('<->');
+  return parts.length === 2 ? parts.map((x) => x.replace(/-\d+[#א-ת]*$/, '').trim()) : null;
+}
+const endCity = (e) => { const i = e.lastIndexOf('-'); return i > 0 ? e.slice(i + 1).trim() : e; };
+/** The pattern of a route with the most trips: what its line page and search rows describe. */
+function mainPat(ri) {
+  let best = -1, most = -1;
+  for (const p of routePats.get(ri) || []) { const n = tt.patTripsOff[p + 1] - tt.patTripsOff[p]; if (n > most) { most = n; best = p; } }
+  return best;
+}
+const tripsOf = (ri) => { let n = 0; for (const p of routePats.get(ri) || []) n += tt.patTripsOff[p + 1] - tt.patTripsOff[p]; return n; };
+/** A pattern's first and last stop by name (a train's stations). */
+function endNames(p) {
+  if (p < 0) return null;
+  const nm = (s) => (tt.stopParent[s] >= 0 && stName(tt.stopParent[s])) || sName(s);
+  return [nm(tt.patStops[tt.patStopsOff[p]]), nm(tt.patStops[tt.patStopsOff[p + 1] - 1])];
+}
+function indexLines() {
+  if (!routePats) indexRoutes();
+  const groups = new Map();
+  tt.routes.forEach((r, i) => {
+    if (!(routePats.get(i) || []).length) return;
+    const mode = modeOf(r[3]), ends = routeEnds(r[1]);
+    // trains have no numbers: a train line is its two stations. Any other line is its code in the feed (the "makat" its
+    // directions and variants share), or, in a timetable built before it was kept, its number and operator where it runs.
+    const key = mode === 'rail' ? `rail|${ends ? ends.slice().sort().join('|') : r[1]}`
+      : r[5] ? `${mode}|${r[2]}|${r[5]}` : `${mode}|${routeLabel(r)}|${r[2]}|${ends ? ends.map(endCity).sort().join('|') : ''}`;
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = { key, mode, label: routeLabel(r), routes: [], trips: 0, names: [] }));
+    g.routes.push(i); g.trips += tripsOf(i);
+    if (mode === 'rail' && ends) for (const e of ends) { const x = e.toLowerCase(); if (!g.names.includes(x)) g.names.push(x); }
+  });
+  lineIdx = { groups: Array.from(groups.values()), byRoute: new Map() };
+  lineIdx.groups.forEach((g, n) => { for (const ri of g.routes) lineIdx.byRoute.set(ri, n); });
+  // a train line is also found by its stations' names in the rider's language
+  lineIdx.groups.forEach((g) => { if (g.mode === 'rail') for (const x of endNames(mainPat(g.routes[0])) || []) if (x && !g.names.includes(x.toLowerCase())) g.names.push(x.toLowerCase()); });
+}
+/** A line's directions, the busiest first: one per destination, standing for the variants that share it. */
+function lineDirs(g) {
+  const dirs = new Map();
+  for (const ri of g.routes) {
+    const k = parseHeadsign(tt.routes[ri][1]), n = tripsOf(ri);
+    let d = dirs.get(k);
+    if (!d) dirs.set(k, (d = { route: ri, most: -1, trips: 0 }));
+    d.trips += n; if (n > d.most) { d.most = n; d.route = ri; }
+  }
+  return [...dirs.values()].sort((a, b) => b.trips - a.trips).map((d) => ({ route: d.route, headsign: headsign(d.route), trips: d.trips }));
+}
+/** A line for the search list: its label, where it runs (a train's stations, another line's cities), its directions. */
+function groupOut(n, dist) {
+  const g = lineIdx.groups[n], dirs = lineDirs(g), r = tt.routes[dirs[0].route], p = mainPat(dirs[0].route);
+  let area = [];
+  if (g.mode === 'rail') area = endNames(p) || [];
+  else if (p >= 0) { const a = cName(tt.stops[tt.patStops[tt.patStopsOff[p]]][3]), b = cName(tt.stops[tt.patStops[tt.patStopsOff[p + 1] - 1]][3]); area = a === b ? [a] : [a, b]; }
+  return { key: g.key, mode: g.mode, line: g.label, agency: r[2], routeType: r[3], trips: g.trips, area: area.filter(Boolean), dirs: dirs.slice(0, 4), dist: Number.isFinite(dist) ? Math.round(dist) : null };
+}
+/** The lines with a stop within `radius` m of a point, each with the distance to its nearest such stop. */
+function linesNear(lat, lon, radius) {
+  if (!lineIdx) indexLines();
+  const out = new Map();
+  const dlat = radius / 110500, dlon = radius / (111300 * Math.cos(lat * Math.PI / 180));
+  for (let s = 0; s < tt.stops.length; s++) {
+    if (Math.abs(tt.stopLat[s] - lat) > dlat || Math.abs(tt.stopLon[s] - lon) > dlon) continue;
+    const d = haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]);
+    if (d > radius) continue;
+    for (let i = tt.stopPatsOff[s]; i < tt.stopPatsOff[s + 1]; i++) {
+      const n = lineIdx.byRoute.get(tt.patRoute[tt.stopPats[2 * i]]);
+      if (n != null && !(out.get(n) <= d)) out.set(n, d);
+    }
+  }
+  return out;
 }
 /** The trip of a route whose first departure is at `start` (seconds on the loaded day), else -1. */
 function tripFor(routeId, start) {
@@ -558,7 +637,7 @@ const ops = {
   async loadTimetable({ url }) {
     const buf = await fetchContainer(url, 'timetable');
     tt = parseTimetable(buf);
-    routeById = routePats = stopRail = stopByCode = null;
+    routeById = routePats = stopRail = stopByCode = lineIdx = null;
     return { date: tt.header.date, counts: tt.counts, feed: tt.header.feed, streets: !!tt.header.streets };
   },
   /**
@@ -690,30 +769,42 @@ const ops = {
     for (const id of ids) { const ri = routeById.get(String(id)); if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(ri), route: ri }; } }
     return out;
   },
-  /** Lines by number: exact matches first, then prefix; one row per direction, grouped by line and agency. */
-  searchLines({ q, limit = 20 }) {
-    if (!routePats) indexRoutes();
-    const n = String(q || '').trim().toLowerCase();
-    if (!n) return [];
+  /**
+   * Lines as riders know them, for the line search: one entry per line with its directions, the nearest first when
+   * the rider's position is known. `mode` narrows to buses, trains, light rail or cable lines; an empty query lists
+   * the lines near the rider (every line, for the modes with few).
+   */
+  lineGroups({ q = '', mode = 'all', near = null, limit = 30 }) {
+    if (!lineIdx) indexLines();
+    const n = String(q || '').trim().toLowerCase().replace(/^(קו|line)\s*/, '');
+    const wanted = (g) => mode === 'all' || g.mode === mode || (mode === 'bus' && (g.mode === 'flex' || g.mode === 'taxi'));
+    const dist = near ? linesNear(near.lat, near.lon, 800) : new Map();
     const rows = [];
-    const trainQ = 'train'.startsWith(n) || 'רכבת'.startsWith(n);
-    tt.routes.forEach((r, i) => {
-      const label = routeLabel(r).toLowerCase();
-      const score = label === n ? 3 : (label === 'train' && trainQ) ? 2 : label.startsWith(n) ? 1 : 0;
-      if (!score) return;
-      let trips = 0;
-      for (const p of routePats.get(i) || []) trips += tt.patTripsOff[p + 1] - tt.patTripsOff[p];
-      rows.push({ route: i, routeId: r[4] ?? null, line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(i), trips, score });
+    lineIdx.groups.forEach((g, i) => {
+      if (!wanted(g)) return;
+      let score = 0;
+      if (!n) score = dist.has(i) || mode === 'rail' || mode === 'lrt' || mode === 'cable' ? 1 : 0;
+      else if (g.mode === 'rail') score = 'train'.startsWith(n) || 'רכבת'.startsWith(n) || g.names.some((x) => x.includes(n)) ? 2 : 0;
+      else {
+        const label = g.label.toLowerCase();
+        score = label === n ? 3 : label.startsWith(n) ? 1 : 0;
+        if (!score && g.mode === 'lrt' && n.length > 1 && ('light rail'.startsWith(n) || 'רכבת קלה'.startsWith(n))) score = 2;
+      }
+      if (score) rows.push({ i, score, dist: dist.has(i) ? dist.get(i) : Infinity });
     });
     const num = (x) => { const m = /^\d+/.exec(x); return m ? +m[0] : 1e9; };
-    rows.sort((a, b) => b.score - a.score || num(a.line) - num(b.line) || a.line.localeCompare(b.line) || a.agency.localeCompare(b.agency) || b.trips - a.trips);
-    return rows.slice(0, limit);
+    // a line within a short walk comes first among equal matches: line 1 here, not line 1 in another city
+    rows.sort((a, b) => b.score - a.score || Math.min(a.dist, 1e6) - Math.min(b.dist, 1e6) || num(lineIdx.groups[a.i].label) - num(lineIdx.groups[b.i].label) || lineIdx.groups[b.i].trips - lineIdx.groups[a.i].trips);
+    return rows.slice(0, limit).map((r) => groupOut(r.i, r.dist));
   },
-  /** One direction of a line: its main pattern's stops and course, today's trips, and its other directions. */
+  /** One direction of a line: its main pattern's stops and course, today's trips, and its other directions. A train
+   *  line is every train between the same two stations, each of which the feed lists as a route of its own. */
   lineInfo({ route }) {
-    if (!routePats) indexRoutes();
+    if (!lineIdx) indexLines();
     const r = tt.routes[route];
-    const pats = routePats.get(route) || [];
+    const g = lineIdx.groups[lineIdx.byRoute.get(route)];
+    const sibs = g && g.mode === 'rail' ? g.routes.filter((ri) => tt.routes[ri][1] === r[1]) : [route];
+    const pats = sibs.flatMap((ri) => routePats.get(ri) || []);
     let best = -1, bestTrips = -1, trips = 0, first = Infinity, last = -Infinity;
     for (const p of pats) {
       const n = tt.patTripsOff[p + 1] - tt.patTripsOff[p];
@@ -726,10 +817,11 @@ const ops = {
     if (best >= 0) for (let i = tt.patStopsOff[best]; i < tt.patStopsOff[best + 1]; i++) stops.push(stopOut(tt.patStops[i]));
     const ns = stops.length;
     const path = best >= 0 && ns >= 2 ? (ridePath(best, 0, ns - 1) || stops.map((s) => [s.lat, s.lon])) : [];
-    const others = [];
-    const label = routeLabel(r);
-    tt.routes.forEach((o, i) => { if (i !== route && routeLabel(o) === label && o[2] === r[2] && (routePats.get(i) || []).length) others.push({ route: i, headsign: headsign(i) }); });
-    return { route, routeId: r[4] ?? null, line: label, agency: r[2], routeType: r[3], headsign: headsign(route), stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    // the other directions of the same line (same number and operator in the same area; for trains, the same two stations)
+    const own = parseHeadsign(r[1]);
+    const others = g ? lineDirs(g).filter((d) => parseHeadsign(tt.routes[d.route][1]) !== own).map((d) => ({ route: d.route, headsign: d.headsign })) : [];
+    const routeIds = sibs.map((ri) => tt.routes[ri][4]).filter((x) => x != null);
+    return { route, routeId: r[4] ?? null, routeIds, mode: g ? g.mode : modeOf(r[3]), line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {
@@ -809,7 +901,7 @@ const ops = {
     return Array.from(ids);
   },
   /** The language every name is handed out in from now on (what the timetable carries; Hebrew otherwise). */
-  setLang({ lang: l }) { lang = l || 'he'; return lang; },
+  setLang({ lang: l }) { lang = l || 'he'; lineIdx = null; return lang; },
   departures({ stop, fromTime, limit = 40 }) {
     const out = [];
     for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {

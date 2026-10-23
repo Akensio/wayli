@@ -235,9 +235,12 @@ def main():
             agencies[r["agency_id"]] = r["agency_name"]
 
     routes_raw = {}
+    route_line = {}  # route_id -> the line's code (MOT "makat", shared by its directions and variants)
     for r in rows(zf, "routes.txt"):
         routes_raw[r["route_id"]] = (r.get("route_short_name", ""), r.get("route_long_name", ""),
                                      r.get("agency_id", ""), int(r.get("route_type", "3") or 3))
+        m = re.match(r"(\d+)-\d+-", r.get("route_desc", ""))   # route_desc is "makat-direction-alternative"
+        route_line[r["route_id"]] = m.group(1) if m else ""
 
     trips_raw = {}  # trip_id -> (route_id, headsign)
     trips_next = {}  # next-day trips; kept only if they start before NIGHT_END, shifted by a day
@@ -431,8 +434,9 @@ def main():
         if route_id not in route_index:
             route_index[route_id] = len(route_list)
             short, long_, ag, rtype = routes_raw[route_id]
-            # the GTFS route_id last: it is the SIRI line_ref, which real-time data is keyed by
-            route_list.append([short, long_, agencies.get(ag, ag), rtype, int(route_id) if route_id.isdigit() else route_id])
+            # the GTFS route_id next: it is the SIRI line_ref, which real-time data is keyed by; then the line's code
+            route_list.append([short, long_, agencies.get(ag, ag), rtype, int(route_id) if route_id.isdigit() else route_id,
+                               route_line.get(route_id, "")])
 
     # ---- arrays ----
     P = len(patterns)

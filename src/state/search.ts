@@ -26,8 +26,12 @@ export const leaving = signal(false);   // the moment after editing ends: the ro
 export const settling = signal(false);  // then the pill's icons pop back in
 export const optOpen = signal<OptPanel>('');
 export const optDirty = signal(false);  // an option changed while its popover was open: re-plan on close
-export const toPlaceholder = signal<'goQ' | 'lineNumber'>('goQ');
-export const toInputMode = signal<'' | 'numeric'>('');
+/** What the bar searches for: a trip to a place (the two boxes, time, bike), or a line by its number. */
+export type LineFilter = 'all' | 'bus' | 'rail' | 'lrt' | 'cable';
+export const kind = signal<'trip' | 'line'>('trip');
+export const lineFilter = signal<LineFilter>('all');
+export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ'>(() => (kind.value !== 'line' ? 'goQ' : lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber'));
+export const toInputMode = computed<'' | 'numeric'>(() => (kind.value === 'line' && lineFilter.value !== 'rail' ? 'numeric' : ''));
 export const busy = signal(true);       // the planner is not ready, or planning
 
 // ---- when and how
@@ -70,8 +74,7 @@ export const hooks = {
   hasResults: () => false,
   lastQuery: (): { from: Place; to: Place } | null => null,
   search: async (_q: string): Promise<{ results: any[]; placesLoaded: boolean }> => ({ results: [], placesLoaded: false }),
-  searchLines: async (_q: string): Promise<any[]> => [],
-  lineChipHtml: (_r: any): string => '',
+  lineGroups: async (_q: string, _mode: LineFilter, _limit?: number): Promise<LineGroup[]> => [],
   openLine: (_r: any) => {},
   getPosition: async (): Promise<{ lat: number; lon: number }> => { throw new Error('no location'); },
   pickOnMap: async (_start: Place | null): Promise<Place | null> => null,
@@ -96,7 +99,7 @@ export function openBar(): void {
   if (!from.value) setPlace('from', { name: t('myLoc'), transient: true, auto: true });
 }
 export function foldBar(): void { barOpen.value = false; }
-export function clearPlaces(): void { from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
+export function clearPlaces(): void { tripTo = null; kind.value = 'trip'; from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
 export function swapPlaces(): void {
   const f = from.value, tt = to.value;
   setPlace('from', tt); setPlace('to', f);   // Go plans; a swap by itself changes nothing else
@@ -142,12 +145,22 @@ export function setOpt(which: OptPanel, replan = true): void {
   if (!which && optDirty.value) { optDirty.value = false; if (replan && to.value) planSet(); }
 }
 export function chooseFrom(p: Place): void { setPlace('from', p); if (to.value) hooks.plan(); }
-/** Search a line by number: the To box with a numeric keyboard until it is left. */
-export function lineMode(): void {
-  barOpen.value = true; toPlaceholder.value = 'lineNumber'; toInputMode.value = 'numeric'; toText.value = ''; to.value = null;
-  focusBox('toQ');
+/** A line as the line search lists it: its chip, where it runs, its directions (worker `lineGroups`). */
+export type LineGroup = { key: string; mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex'; line: string; agency: string; routeType: number; trips: number; area: string[]; dirs: { route: number; headsign: string; trips: number }[]; dist: number | null };
+// The destination set before switching to the line search, given back when switching to a trip again.
+let tripTo: { to: Place | null; text: string } | null = null;
+/** Switch what the bar searches for. The line search keeps the To box (numbers, or a station's name for trains). */
+export function setKind(k: 'trip' | 'line'): void {
+  if (kind.value === k) return;
+  if (k === 'line') { tripTo = { to: to.value, text: toText.value }; to.value = null; toText.value = ''; optOpen.value = ''; }
+  else if (tripTo) { to.value = tripTo.to; toText.value = tripTo.text; tripTo = null; }
+  else { toText.value = to.value ? to.value.name : ''; }
+  kind.value = k;
 }
-export function leaveLineMode(): void { toPlaceholder.value = 'goQ'; toInputMode.value = ''; }
+/** Search a line by number: the bar opens on the line search. */
+export function lineMode(): void { barOpen.value = true; setKind('line'); focusBox('toQ'); }
+/** The bar closed: back to trips (what the To box held before is given back). */
+export function leaveLineMode(): void { setKind('trip'); lineFilter.value = 'all'; }
 
 // ---- when
 /** The time as seconds on the selected service day. */

@@ -14,9 +14,6 @@ import * as sheet from '../state/sheet';
 import * as nav from '../state/nav';
 import { lastPos, getPosition } from '../state/position';
 import * as map from '../map/index';
-import { chipStyle } from '../journey/colors';
-import { lineText } from '../journey/format';
-import { esc } from '../ui/html';
 import { toast } from '../ui/toast';
 import type { Place } from '../state/search';
 import type { Query, PlanResult } from '../journey/types';
@@ -118,8 +115,7 @@ Object.assign(search.hooks, {
   hasResults: () => !!(results.result.value && results.query.value),
   lastQuery: () => results.query.value,
   search: (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos }),
-  searchLines: (q: string) => call('searchLines', { q, limit: 6 }),
-  lineChipHtml: (r: any) => `<span class="chip t${r.routeType}"${chipStyle(r.routeType, r.agency)}>${esc(lineText(r.line))}</span>`,
+  lineGroups: (q: string, mode: search.LineFilter, limit = 30) => call<search.LineGroup[]>('lineGroups', { q, mode, near: lastPos, limit }),
   openLine: (r: any) => openLine(r.route),
   getPosition: () => getPosition(),
   pickOnMap: (start: Place | null) => map.pickOnMap(start),

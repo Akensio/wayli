@@ -593,3 +593,46 @@ label.pilltoggle[hidden] { display: none; }
 .toast[hidden] { display: none; }
 #ver { font-size: 12px; margin: 8px 0 20px; }
 .hint { color: var(--ink-2); font-size: 13px; text-align: center; padding: 2px 0 8px; }
+/* what the bar searches for: a trip or a line, a small switch above the rows while editing */
+#kindRow { order: 0; padding-inline-start: 54px; }
+#lineRow { order: 2; }
+.kindseg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.kindseg button { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 13px; cursor: pointer; transition: background-color .2s ease, color .2s ease; }
+.kindseg button .i { width: 16px; height: 16px; }
+.kindseg button.on { background: var(--accent); color: var(--accent-ink); }
+.topbar.two #kindRow { animation: popIn .32s .2s var(--ease-out) both; }
+.topbar.two.leaving #kindRow { animation: popOut .18s var(--ease-in) forwards; }
+.topbar.linekind .pair .trow { padding-inline-end: 0; }   /* no swap in the line search */
+/* the kinds of line under the box: one row that scrolls sideways when it does not fit */
+.topbar .trow.lfilters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-block: 2px 8px; margin-block-end: -6px; }
+.topbar .trow.lfilters::-webkit-scrollbar { display: none; }
+.topbar .trow.lfilters .chipbtn { flex: none; display: inline-flex; align-items: center; gap: 5px; }
+.topbar .trow.lfilters .chipbtn .i { width: 16px; height: 16px; }
+.topbar .trow.lfilters .chipbtn.on { background: var(--ink); color: var(--bg); }
+.topbar.two #lineRow .chipbtn { animation: popIn .3s calc(.06s * var(--n, 0)) var(--ease-out) both; }
+/* a line's chip by what runs on it: buses as a tag in the operator's colour, rails and cables as a rounded pill
+   with their icon, shared taxis yellow, on-demand lines outlined */
+.chip.lchip { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 34px; padding: 2px 8px; font-size: 14px; line-height: 1.3; flex: none; }
+.chip.lchip .i { width: 15px; height: 15px; vertical-align: 0; }
+.chip.lchip.m-rail, .chip.lchip.m-lrt, .chip.lchip.m-cable { border-radius: 999px; padding-inline: 9px 10px; }
+.chip.lchip.m-flex { background: var(--surface) !important; border: 1.5px dashed; padding-block: 1px; }
+.chip.lchip.big { font-size: 16px; padding-block: 3px; min-width: 40px; }
+.chip.lchip.big .i { width: 17px; height: 17px; }
+/* the line search's list: a line (its chip, where it runs, who runs it), then a row per direction */
+.dropdown .lgroup { border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.dropdown .lgroup:last-child { border-bottom: 0; }
+.dropdown .lgroup button { display: flex; align-items: center; gap: 10px; border-bottom: 0; }
+.dropdown .lgroup .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown .lgroup .lhead { padding-block: 10px 4px; }
+.dropdown .lgroup .lhead .txt { font-weight: 600; }
+.dropdown .lgroup .lhead small { font-weight: 400; }
+.dropdown .lgroup .ldir { padding-block: 6px; padding-inline-start: 22px; font-size: 14px; }
+.dropdown .lgroup .ldir small { display: inline; margin-inline-start: 8px; }
+.dropdown .lgroup .ldir .arrow { display: grid; place-items: center; width: 34px; flex: none; color: var(--ink-2); }
+.dropdown .lgroup .ldir .arrow .i { width: 14px; height: 14px; }
+.dropdown .lgroup.m-rail .lhead .txt bdi { color: var(--ink); }
+#lineLive { flex: 0 1 auto; min-width: 0; margin-inline-start: auto; overflow: hidden; text-overflow: ellipsis; }
+#lineTitle { font-size: 18px; margin: 0 0 4px; }
+/* in the line search the back arrow sits on the one box: its tag moves aside like the origin's */
+.topbar.two.linekind #toRow .tag { inset-inline-start: 48px; }
+.topbar.two.linekind #toRow input[type=text] { padding-inline-start: 106px; }

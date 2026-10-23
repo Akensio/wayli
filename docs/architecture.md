@@ -477,9 +477,24 @@ button; another tap moves it; a tap on a stop picks the stop), and gets its name
 nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
-Lines: the top bar finds a line by number (exact first, then prefix; "רכבת"
-lists the trains), one row per direction with its agency and today's trip
-count, listed above the places for short queries. A line page shows the
+Lines: the bar, while editing, has a Trip / Line switch above its rows.
+The line search is one box (numeric keyboard; a station's name for trains)
+with chips under it for the kind of line: all, bus, train, light rail,
+cable car. The worker (`lineGroups`) lists lines as riders know them: a
+bus, light rail or cable line is its code in the feed (route_desc's
+"makat", shared by its directions and variants; the compiler keeps it as
+the route's sixth field, and older timetables fall back to number,
+operator and end cities), a train line is every train between the same two
+stations (the feed lists each train as a route of its own). Each line is
+one entry: its chip, where it runs (a bus's cities, a train's stations),
+its operator, how far its nearest stop is, then a row per direction with
+today's trips. Empty, the box lists the lines with a stop within 800 m of
+the rider; typed, exact numbers first, then prefixes, the nearest first
+among equals (line 1 here before line 1 in another city). Chips are
+styled by mode: a bus as a tag in its operator's colour, train (navy),
+light rail (red) and cable (teal) as rounded pills with their icon, shared
+taxis yellow, on-demand lines outlined. In the trip search, line numbers
+still match in the To box (three lines above the places). A line page shows the
 direction's course on the map with every stop as a dot and the line's
 vehicles reporting now, each with its delay (tap one for its trip's stops), the other
 directions as buttons, today's trip count and first and last departure,
@@ -568,7 +583,8 @@ One file per service day, gzipped: a u32 header length, a JSON header, then
 little-endian typed arrays the app views in place:
 
 - header: feed dates, counts, the section table, routes (line number, long
-  name, operator, type) and stops (id, name, code).
+  name, operator, type, GTFS route id, line code from route_desc) and stops
+  (id, name, code).
 - route patterns RAPTOR-style: `patStopsOff`/`patStops` (stop sequence per
   pattern), `patTripsOff` (trip range per pattern), `tripTimesOff`.
   In the Israel feed every `route_id` is one direction of one line, so a

@@ -39,10 +39,12 @@ export function closeLine(): void { clearInterval(timer); seq++; current = null;
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive(): Promise<void> {
   const info = current;
-  if (!info || !nav.isOpen('lineDetail') || !map.liveOn() || info.routeId == null) return;
+  const ids = info?.routeIds?.length ? info.routeIds : info?.routeId != null ? [info.routeId] : [];
+  if (!info || !nav.isOpen('lineDetail') || !map.liveOn() || !ids.length) return;
   const my = seq;
   try {
-    const vs = await live.vehiclesByLine(info.routeId);
+    // a train line is many routes in the feed (one per train): every train in the country, then those of this line
+    const vs = ids.length > 1 ? (await live.trains()).filter((v: { lineRef: unknown }) => ids.includes(Number(v.lineRef))) : await live.vehiclesByLine(ids[0]);
     if (my !== seq) return;
     const st: any[] = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
     if (my !== seq) return;

@@ -940,3 +940,11 @@ so they are not re-litigated.
   places and options and is planned afresh too, from now if it was from now
   and from where the rider is if it was from "my location"; its old results
   are never shown. Rejected: keeping the reuse with tighter conditions.
+- 2026-10-23 Gadi: build the search by line, styled by kind of vehicle. Built
+  as a Trip / Line switch above the bar's rows (shown while editing, hidden
+  at rest), the line search keeping the To box with chips for the kind of
+  line; lines grouped by the feed's line code (makat) rather than one row
+  per direction, the nearest first. Trains, which have no numbers, are
+  their two end stations. Rejected: a separate line-search page (the top
+  asks, the bottom answers), city pairs as the grouping (a line from Holon
+  to Tel Aviv split in two).
