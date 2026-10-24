@@ -21,10 +21,23 @@ function onReading(deg: number): void {
   readings++;
   try { (window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug = { ...((window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug || {}), compass: { readings, heading: Math.round(heading) } }; } catch { /* debugging only */ }
 }
-function absolute(e: DeviceOrientationEvent): void { if (e.alpha != null) onReading(360 - e.alpha); }
+// what arrives, for the line in Settings that tells a phone without a compass from a drawing problem
+const seen = { abs: 0, absNull: 0, plainAbs: 0, plainRel: 0, ios: 0 };
+function absolute(e: DeviceOrientationEvent): void { if (e.alpha != null) { seen.abs++; onReading(360 - e.alpha); } else seen.absNull++; }
 /** The plain event, when the browser says it is relative to north (Firefox and others on Android). */
-function plain(e: DeviceOrientationEvent): void { if (e.absolute && e.alpha != null && performance.now() - seenAt > 500) onReading(360 - e.alpha); }
-function ios(e: DeviceOrientationEvent): void { const c = (e as unknown as { webkitCompassHeading?: number }).webkitCompassHeading; if (c != null && !Number.isNaN(c)) onReading(c); }
+function plain(e: DeviceOrientationEvent): void {
+  if (e.absolute) seen.plainAbs++; else seen.plainRel++;
+  if (e.absolute && e.alpha != null && performance.now() - seenAt > 500) onReading(360 - e.alpha);
+}
+function ios(e: DeviceOrientationEvent): void { const c = (e as unknown as { webkitCompassHeading?: number }).webkitCompassHeading; if (c != null && !Number.isNaN(c)) { seen.ios++; onReading(c); } }
+/** One line on what the compass sends and what the cone does: readings by kind, the heading, the dot and the cone. */
+export function compassReport(): string {
+  const dot = document.querySelector<HTMLElement>('.maplibregl-user-location-dot, .wayli-me'), cone = dot?.querySelector<HTMLElement>('.wayli-cone');
+  const age = seenAt ? Math.round((performance.now() - seenAt) / 1000) : null;
+  return [`started ${started ? 'yes' : 'no'}`, `absolute ${'ondeviceorientationabsolute' in window ? seen.abs : 'n/a'}${seen.absNull ? ` (+${seen.absNull} empty)` : ''}`,
+    `plain ${seen.plainAbs}/${seen.plainRel} abs/rel`, `ios ${seen.ios}`, `heading ${heading == null ? '-' : Math.round(heading) + '°'}${age != null ? ` ${age}s ago` : ''}`,
+    `dot ${dot ? (dot.className.includes('stale') ? 'stale' : 'yes') : 'no'}`, `cone ${cone ? (cone.classList.contains('on') ? `on ${cone.style.getPropertyValue('--heading')}` : 'off') : 'none'}`].join(' · ');
+}
 
 let asking = false;
 /** Listen to the compass (once). On an iPhone this must run from a tap: it asks for permission there. */

@@ -1,6 +1,8 @@
 // Settings and more: language, the map's and the menus' look, the longest walk, live data and alerts,
 // install, clearing history, about.
+import { useEffect, useState } from 'preact/hooks';
 import { Icon } from '../../ui/Icon';
+import { compassReport } from '../../map/heading';
 import { t, lang } from '../../i18n';
 import { toast } from '../../ui/toast';
 import { recentPlaces, recentTrips, recentViews, lastSearch } from '../../store.js';
@@ -70,9 +72,17 @@ export function Settings() {
       </div>
       <div class="group">
         <div class="grouphead">{t('grpAbout')}</div>
-        <div class="list"><div class="item text" id="aboutBox" dangerouslySetInnerHTML={{ __html: t('about', { feed: feed ? `${feed.start || ''}–${feed.end || ''}, ${feed.built || ''}` : '' }) }} /></div>
+        <div class="list"><div class="item text" id="aboutBox" dangerouslySetInnerHTML={{ __html: t('about', { feed: feed ? `${feed.start || ''}–${feed.end || ''}, ${feed.built || ''}` : '' }) }} />
+          <CompassLine /></div>
       </div>
       <div class="muted center" id="ver">{app.version.value}</div>
     </>
   );
+}
+
+/** What the phone's compass sends, live while the page is open (the cone on the position dot depends on it). */
+function CompassLine() {
+  const [line, setLine] = useState(compassReport());
+  useEffect(() => { const id = window.setInterval(() => setLine(compassReport()), 1000); return () => clearInterval(id); }, []);
+  return <div class="item text muted small" id="compassLine">{t('compassLine')}: {line}</div>;
 }
