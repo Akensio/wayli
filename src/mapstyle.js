@@ -120,7 +120,16 @@ export async function styledLiberty(mode = 'light', tint = 'teal') {
     for (const section of ['paint', 'layout']) {
       const props = layer[section];
       if (!props) continue;
-      for (const k of COLOR_PROPS) if (k in props) props[k] = walk(props[k], roleOf(layer, k), pal);
+      for (const k of COLOR_PROPS) {
+        if (!(k in props)) continue;
+        const role = roleOf(layer, k);
+        // Liberty draws trunk roads in one layer with the primary ones; in Israel much of Route 4 and the climb on
+        // Route 1 are trunk roads, not motorways, and came out white like a city avenue: trunk takes the motorway's
+        // colours, by the road's class, primary keeps its own
+        props[k] = /^(road|bridge)_trunk_primary/.test(layer.id) && typeof props[k] === 'string' && role.startsWith('primary')
+          ? ['match', ['get', 'class'], 'trunk', walk(props[k], role.replace('primary', 'motorway'), pal), walk(props[k], role, pal)]
+          : walk(props[k], role, pal);
+      }
     }
   }
   style.name = `Liberty, Wayli ${tint} ${mode}`;

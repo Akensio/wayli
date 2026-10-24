@@ -1081,4 +1081,8 @@ so they are not re-litigated.
   seen along it three times. Replaying Thursday 08:00-08:20 (Oct 22) through
   the worker: road coloured 3,146 km before, 3,868 with the course alone,
   5,304 with both; long sections 130 to 369; the city unchanged.
+- 2026-10-24: Gadi: Route 4 and half of Route 1 lacked the map's turquoise
+  (he meant the basemap, not traffic). OpenStreetMap tags those stretches
+  trunk, which Liberty draws in one layer with primary roads, white; trunk
+  now takes the motorway's colours, by class, primary keeps its own.
 
