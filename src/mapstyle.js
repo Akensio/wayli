@@ -118,6 +118,10 @@ export async function styledLiberty(mode = 'light', tint = 'teal') {
       const not = (field, part) => ['!', ['in', part, ['coalesce', ['get', field], '']]];
       layer.filter = ['all', layer.filter || true, ['!=', ['coalesce', ['get', 'iso_a2'], ''], 'PS'], not('name:en', 'Palestin'), not('name', 'Palestin'), not('name:he', 'פלסטינ')];
     }
+    // the stops on the map are the feed's, served today (map/index.ts): OpenStreetMap's own bus stops and stations
+    // in the basemap's points of interest doubled them, and named stops no line serves any more (Neve Sha'anan, by
+    // the old central bus station: Gadi, 2026-10-24)
+    if (layer['source-layer'] === 'poi' && /^poi_r/.test(layer.id)) layer.filter = ['all', layer.filter || true, ['!', ['match', ['get', 'class'], ['bus', 'railway', 'rail', 'tram'], true, false]]];
     // the sprite's hatchings (construction sites, pedestrian areas, rail ties) are black and white: faint in the dark
     if (mode === 'dark' && layer.paint) {
       if (layer.paint['fill-pattern']) layer.paint['fill-opacity'] = 0.12;

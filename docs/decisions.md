@@ -1090,4 +1090,9 @@ so they are not re-litigated.
   people off using it. Left out of the country and state label layers by
   its code (PS) and its English and Hebrew names; the rest of the map,
   borders included, is as OpenStreetMap draws it.
+- 2026-10-24: Gadi saw two bus-stop badges with no stop circles in Neve
+  Sha'anan: OpenStreetMap's own bus stops from the basemap's points of
+  interest (poi_r1/r7), at stops the feed still lists (codes 4002, 26967)
+  but no line serves today. The basemap's bus and rail points are no longer
+  drawn: the map's stops are the feed's, served that day.
 
