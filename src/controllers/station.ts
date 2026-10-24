@@ -1,19 +1,19 @@
-// A train station from the stop search: where a train from it goes without a change, then the direct trains to the
-// station chosen, with their live times (every 45 s while open). A rider of trains thinks from station to station,
-// not by line: which trains go from here to there, and when.
+// The train timetable (the stop search's train chip: two stations at the top): the From station opens as the one stop
+// view (its departures, where its trains go), and once To is set the direct trains between the two with their live
+// times (every 45 s while open). A rider of trains thinks from station to station, not by line.
 import type { Map as MLMap } from 'maplibre-gl';
 import * as live from '../live.js';
 import { t } from '../i18n';
 import { calToday } from '../time';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import * as search from '../state/search';
-import * as sheet from '../state/sheet';
 import * as nav from '../state/nav';
 import * as st from '../state/station';
 import * as map from '../map/index';
 import { clock } from '../map/popups';
-import type { Station, Dest, TrainRow } from '../state/station';
+import type { Station, TrainRow } from '../state/station';
 import { openTrip } from './trip';
+import { openStop } from './stop';
 import { recentViews } from '../store.js';
 
 let seq = 0, timer = 0;
@@ -26,28 +26,8 @@ const pin = (m: MLMap, s: Station) => {
   map.markers.journey.push(new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(m));
 };
 
-/** The station page's content for a station (where its trains go), without opening it. */
-async function loadStation(s: Station): Promise<void> {
-  const w = when();
-  st.station.value = s; st.dests.value = null; st.day.value = w.day; st.isNow.value = w.isNow;
-  const d = await call<Dest[]>('stationReach', { stops: s.stops, fromTime: w.from });
-  if (st.station.value === s) st.dests.value = d;
-}
-/** A station: the stations its trains reach directly. */
-export async function openStation(s: Station): Promise<void> {
-  const my = ++seq;
-  recentViews.add({ type: 'station', name: s.name, lat: s.lat, lon: s.lon });
-  map.mapOf.stationDetail = async (drawSeq) => {
-    const m = await map.mapReady();
-    if (!m || my !== seq || map.stale(drawSeq)) return;
-    pin(m, s);
-    m.easeTo({ center: [s.lon, s.lat], zoom: Math.max(m.getZoom(), 14), offset: [0, -Math.round(sheet.px('half') / 2) + 30], duration: 500 });
-  };
-  const loading = loadStation(s);
-  if (!nav.isOpen('stationDetail')) nav.showOverlay('stationDetail'); else map.redrawMap(true);
-  await loading;
-}
-export function closeStation(): void { seq++; delete map.mapOf.stationDetail; }
+/** A station: the one stop view, for all its platforms (its departures, and where its trains go). */
+export function openStation(s: Station): void { if (s.stops.length) openStop(s.stops[0], { stops: s.stops }); }
 
 /** The direct trains between two stations, from now (or the bar's time on another day). */
 export async function openTrains(from: Station, to: Station): Promise<void> {
@@ -112,14 +92,12 @@ export function swapStations(): void {
   search.stFrom.value = search.stTo.value; search.stFromText.value = search.stToText.value;
   search.stTo.value = f; search.stToText.value = ft;
   const a = search.stFrom.value, b = search.stTo.value;
-  if (a && b) { loadStation(asStation(a)); openTrains(asStation(a), asStation(b)); } else if (a) openStation(asStation(a));
+  if (a && b) openTrains(asStation(a), asStation(b)); else if (a) openStation(asStation(a));
 }
 const asStation = (p: { name: string; stops?: number[]; lat?: number | null; lon?: number | null }): Station => ({ key: '', name: p.name, stops: p.stops || [], lat: p.lat || 0, lon: p.lon || 0 });
 
 Object.assign(st.hooks, {
-  close: () => nav.close('stationDetail'),
   closeTrains: () => nav.close('trainTimes'),
-  openTo: (d: Dest) => chooseStation('to', d),
   openTrip: (trip: number, stop: number) => openTrip(trip, stop),
   refresh: () => { const p = st.pair.value; if (p) openTrains(p.from, p.to); },
 } satisfies typeof st.hooks);

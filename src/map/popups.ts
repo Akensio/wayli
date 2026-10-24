@@ -46,21 +46,12 @@ export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void
     el.querySelector('[data-act="line"]')?.addEventListener('click', () => { closePopup(); hooks.openLine(v.route!); });
   });
 }
-const stopPlace = (s: any) => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
-/** A stop's bubble: name, its lines, and departures / from here / to here. */
-export async function stopPopup(m: MLMap, lngLat: LngLatLike, stop: number, station?: unknown): Promise<void> {
+/** A stop tapped on the map: the stop itself in the sheet (no bubble in between: the sheet has its lines, departures,
+ *  from here and to here); a station's badge opens the whole station. */
+export function stopPopup(_m: MLMap, _lngLat: LngLatLike, stop: number, station?: unknown): void {
   if (nav.isOpen('picker')) return;   // in pick mode the map tap handler picks the stop instead
-  let info: any;
-  try { info = await call('stopInfo', { stop, station: station != null && station !== '' ? +(station as any) : -1 }); } catch { return; }
-  const html = `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
-    `<div class="chips">${info.lines.slice(0, 10).map((l: any) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${esc(lineText(l.label))}</span>`).join('')}</div>` +
-    `<div class="row"><button type="button" class="ghost" data-act="deps">${t('popDeps')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
-  openPopup(m, lngLat, html, (el) => {
-    el.querySelector('[data-act="deps"]')?.addEventListener('click', () => { closePopup(); hooks.openStop(stop); });
-    el.querySelector('[data-act="from"]')?.addEventListener('click', () => { closePopup(); hooks.planFrom(stopPlace(info)); });
-    el.querySelector('[data-act="to"]')?.addEventListener('click', () => { closePopup(); hooks.planTo(stopPlace(info)); });
-    for (const c of el.querySelectorAll<HTMLElement>('.chip[data-route]')) if (c.dataset.route !== '') c.addEventListener('click', () => { closePopup(); hooks.openLine(+c.dataset.route!); });
-  });
+  closePopup();
+  hooks.openStop(stop, station != null && station !== '' ? +(station as number) : undefined);
 }
 /** A tap on the bare map (sheet collapsed): a bubble pointing at the spot, naming a place of the basemap under the
  *  finger, anything else by reverse geocoding (the name fills in when it arrives), with "to here" and "from here". */
@@ -83,7 +74,7 @@ export async function placeBubble(m: MLMap, e: { point: { x: number; y: number }
   } catch { p = { ...p, name: t('pointName') }; }
   if (my === pick.seq && popupState.current === mine) setPopupTitle(p.name);
 }
-/** Stop dots on a journey or line map answer a tap with the stop's bubble. */
+/** Stop dots on a journey or line map open the stop on a tap. */
 export function wireStopLayers(m: MLMap, layers: string[]): void {
   for (const layer of layers) {
     m.on('click', layer, (e) => { const f = e.features && e.features[0]; if (f && f.properties.stop != null && f.properties.stop !== '') stopPopup(m, (f.geometry as any).coordinates, +f.properties.stop); });

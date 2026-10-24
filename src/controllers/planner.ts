@@ -120,7 +120,7 @@ Object.assign(search.hooks, {
   lineGroups: (q: string, mode: search.LineFilter, limit = 30) => call<search.LineGroup[]>('lineGroups', { q, mode, near: lastPos, limit }),
   stopGroups: (q: string, mode: search.StopFilter, from?: number[]) => call<search.StopGroup[]>('stopGroups', { q, mode, near: lastPos, limit: 60, from }),
   // a station picked among all stops: the train timetable opens with it as the From station
-  openStopGroup: (g: search.StopGroup) => { if (g.mode === 'rail') { search.stopFilter.value = 'rail'; chooseStation('from', g); } else openStop(g.stops[0]); },
+  openStopGroup: (g: search.StopGroup) => openStop(g.stops[0], { stops: g.stops }),   // a station too: the one stop view (the train chip is the timetable of two stations)
   chooseStation: (side: search.Side, g: search.StopGroup) => chooseStation(side, g),
   swapStations: () => swapStations(),
   openLine: (r: any) => openLine(r.route),

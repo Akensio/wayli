@@ -554,8 +554,14 @@ with a combobox role), so phones do not offer saved passwords over the
 keyboard.
 
 Nearby and stops: stops around the device with the lines serving them and
-the walk in minutes; a stop shows its next departures with live times
-(below), refreshed every 45 seconds while open; a departure opens the
+the walk in minutes. A stop has one view, in the sheet, wherever it is
+opened (a tap on the map, which opens it directly with no bubble first; a
+search; a line, a trip, a saved stop): its lines (a tap opens one), from
+here and to here, its next departures with live times (below), refreshed
+every 45 seconds while open; a station is all its platforms, and below its
+departures where its trains go without a change (`stationReach`; a tap
+shows the trains between the two). The train chip's timetable opens its
+From station as the same view; a departure opens the
 trip's full stop list with where the vehicle is now; the map eases to the
 stop with a pin; "to here" plans from the rider's location at once and
 "from here" opens the form; stars save stops. Saved: home and work (one

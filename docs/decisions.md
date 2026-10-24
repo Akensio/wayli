@@ -1058,4 +1058,10 @@ so they are not re-litigated.
   its colours on the highlighted way, grey on the others). The faint whole
   lines before and after a ride were there but too faint on the dark map
   (0.3); now 0.45. "My location to my location" is no recent search.
+- 2026-10-24: One view per stop (Gadi: "merge all to a single page"). A
+  stop tapped on the map opens in the sheet directly, no bubble first (the
+  bubble's lines, from here and to here are in the view); the station view
+  (where its trains go) is folded into it under the departures, across all
+  the station's platforms, so a station is a stop like any other; the train
+  timetable's From station opens it too. Vehicles keep their bubbles.
 

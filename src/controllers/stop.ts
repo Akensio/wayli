@@ -1,5 +1,6 @@
-// A stop's page: its next departures (from now, or from the bar's time on another day), refreshed with live
-// times every 45 s while it is open; from here, to here.
+// A stop in the sheet, the one view of a stop wherever it was opened (the map, a search, a line, a trip): its lines,
+// next departures (from now, or from the bar's time on another day) refreshed with live times every 45 s while it is
+// open, from here and to here; a station is all its platforms, and where its trains go without a change.
 import * as live from '../live.js';
 import { t } from '../i18n';
 import { calToday } from '../time';
@@ -16,16 +17,22 @@ import { planTo, planFrom } from './planner';
 import { openTrip } from './trip';
 import { recentViews } from '../store.js';
 import { routeColor } from '../journey/colors';
+import { openTrains, chooseStation } from './station';
+import { openLine } from './line';
+import type { Dest } from '../state/station';
 
 let current: StopInfo | null = null, seq = 0, timer = 0;
 /** A stop as a place to plan from or to. */
 export const stopPlace = (s: { name: string; stop: number; lat: number; lon: number }): Place => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
 
-export async function openStop(stop: number): Promise<void> {
+export async function openStop(stop: number, where: { station?: number; stops?: number[] } = {}): Promise<void> {
   const my = ++seq;
-  const info = await call<StopInfo>('stopInfo', { stop });
+  const info = await call<StopInfo>('stopInfo', { stop, station: where.station ?? -1, stops: where.stops || null });
+  if (my !== seq) return;
   current = info;
-  recentViews.add({ type: 'stop', code: info.code || '', name: info.name, city: info.city, lat: info.lat, lon: info.lon });
+  const members = info.stops && info.stops.length ? info.stops : [stop];
+  recentViews.add(info.station != null && info.station >= 0 ? { type: 'station', name: info.name, lat: info.lat, lon: info.lon }
+    : { type: 'stop', code: info.code || '', name: info.name, city: info.city, lat: info.lat, lon: info.lon });
   map.mapOf.stopDetail = async (drawSeq) => {
     const m = await map.mapReady();
     if (!m || my !== seq || map.stale(drawSeq)) return;
@@ -34,7 +41,7 @@ export async function openStop(stop: number): Promise<void> {
     m.easeTo({ center: [info.lon, info.lat], zoom: Math.max(m.getZoom(), 15), offset: [0, -Math.round(sheet.px('half') / 2) + 30], duration: 500 });
     // the page is about the lines calling here: their vehicles only, and their courses faint under the pin
     try {
-      const routes = await call<{ pattern: number; ref: number | null; type: number; agency: string }[]>('stopRoutes', { stop });
+      const routes = await call<{ pattern: number; ref: number | null; type: number; agency: string }[]>('stopRoutes', { stop, stops: members });
       if (my !== seq) return;
       map.showLinesFor('stopDetail', routes.filter((r) => r.ref != null).map((r) => String(r.ref)));
       const courses = await call<{ path: [number, number][] | null }[]>('patternCourse', { patterns: routes.map((r) => r.pattern) });
@@ -48,7 +55,10 @@ export async function openStop(stop: number): Promise<void> {
   const day = search.day.value, svc = live.serviceDay();
   const isNow = day === svc.day || day === calToday();
   stopPage.open(info, day, isNow);
-  const deps = await call<Departure[]>('departures', { stop, fromTime: isNow ? live.nowOn(day) - 120 : search.atSeconds(), limit: 40 });
+  const from = isNow ? live.nowOn(day) - 120 : search.atSeconds();
+  // a station's trains: where they go without a change, the next one there and how long it takes
+  if (info.rail) call<Dest[]>('stationReach', { stops: members, fromTime: from + 120 }).then((d) => { if (my === seq) stopPage.dests.value = d; }).catch(() => { if (my === seq) stopPage.dests.value = []; });
+  const deps = await call<Departure[]>('departures', { stop, stops: members, fromTime: from, limit: 40 });
   if (my !== seq) return;
   stopPage.deps.value = deps;
   clearInterval(timer);
@@ -79,7 +89,8 @@ async function liveForStop(info: StopInfo, deps: Departure[], day: string, my: n
       if (!v) continue;
       const ts = await tripStopsCached(d.trip);
       if (my !== seq) return;
-      const idx = ts.stops.findIndex((s: { stop: number; dep: number }) => s.stop === info.stop && s.dep === d.time);
+      const at0 = info.stops && info.stops.length ? info.stops : [info.stop];   // any platform of a station
+      const idx = ts.stops.findIndex((s: { stop: number; dep: number }) => at0.includes(s.stop) && s.dep === d.time);
       const est = await estimate(v, ts.stops, day);
       if (my !== seq) return;
       const at = live.liveAt(est, ts.stops, idx < 0 ? 0 : idx);
@@ -94,7 +105,14 @@ async function liveForStop(info: StopInfo, deps: Departure[], day: string, my: n
 Object.assign(stopPage.hooks, {
   show: () => nav.showOverlay('stopDetail'),
   close: () => nav.close('stopDetail'),
-  refresh: () => { if (current) openStop(current.stop); },
+  refresh: () => { if (current) openStop(current.stop, { stops: current.stops }); },
+  openLine: (route: number) => openLine(route),
+  // a destination of a station: the trains between the two; in the train timetable (the two boxes at the top), as its To
+  openTo: (d: Dest) => {
+    const c = current; if (!c) return;
+    if (search.railPair.value && search.stFrom.value) chooseStation('to', d);
+    else openTrains({ key: '', name: c.name, stops: c.stops || [c.stop], lat: c.lat, lon: c.lon }, d);
+  },
   openTrip: (trip: number, stop: number) => openTrip(trip, stop),
   fromHere: () => { if (current) { planFrom(stopPlace(current)); sheet.set('half'); } },
   toHere: () => { if (current) planTo(stopPlace(current)); },

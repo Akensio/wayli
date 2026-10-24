@@ -1,5 +1,7 @@
-// A stop: name, city and code, from here / to here, the next departures with their countdowns, and the live
-// times as they arrive (a departure that passed greys out).
+// A stop, the one view of it wherever it was opened: name, city and code, its lines (a tap opens one), from here / to
+// here, the next departures with their countdowns and the live times as they arrive (a departure that passed greys
+// out); a station is all its platforms, and below its departures where its trains go without a change (a tap: the
+// trains between the two).
 import { Icon } from '../../ui/Icon';
 import { t, lang } from '../../i18n';
 import { fmt } from '../../time';
@@ -8,7 +10,8 @@ import * as stop from '../../state/stop';
 import * as saved from '../../state/saved';
 import { now } from '../../state/clock';
 import { chipColors } from '../../journey/colors';
-import { lineText, inText } from '../../journey/format';
+import { lineText, inText, dur } from '../../journey/format';
+import { LineChip } from '../../ui/LineChip';
 
 export function StopDetail() {
   void lang.value; void now.value; void stop.favTick.value;
@@ -25,6 +28,11 @@ export function StopDetail() {
       </div>
       <div class="legs">
         <div class="muted" id="stopMeta">{info.city || ''}{info.code ? ' · ' + info.code : ''}</div>
+        {info.lines.length > 0 && (
+          <div class="stoplines" id="stopLines">
+            {info.lines.map((l) => <button type="button" class="linkchip" onClick={() => l.route != null && stop.hooks.openLine(l.route)}><LineChip line={l.label} routeType={l.type} agency={l.agency} /></button>)}
+          </div>
+        )}
         <div class="row" style="margin:8px 0">
           <button type="button" class="ghost" id="stopFrom" onClick={stop.hooks.fromHere}>{t('fromHere')}</button>
           <button type="button" class="ghost" id="stopTo" onClick={stop.hooks.toHere}>{t('toHere')}</button>
@@ -49,6 +57,21 @@ export function StopDetail() {
             );
           })}
         </div>
+        {info.rail && (
+          <>
+            <h2 class="sec" style="margin:14px 0 6px">{t('directTrains')}</h2>
+            {stop.dests.value === null && <div class="empty">{t('loading')}</div>}
+            {stop.dests.value && !stop.dests.value.length && <div class="empty">{t('noTrains')}</div>}
+            <div id="stationDests">
+              {(stop.dests.value || []).map((d) => (
+                <button type="button" class="destrow" key={d.key} onClick={() => stop.hooks.openTo(d)}>
+                  <span class="name">{d.name}</span>
+                  <small>{d.next != null ? t('nextTrain', { time: fmt(d.next), ride: dur(d.ride || 0) }) : t('noMoreTrains')} · {t('tripsToday', { n: d.trips })}</small>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </>
   );

@@ -20,7 +20,7 @@ import { clearPlan, planTo, planFrom, revealCard } from './planner';
 import { closeDetail } from './detail';
 import { openStop, closeStop } from './stop';
 import { openLine, closeLine } from './line';
-import { closeStation, closeTrains } from './station';
+import { closeTrains } from './station';
 import { openTrip } from './trip';
 import { loadNearby } from './nearby';
 import { isFollowing, closeFollow } from './follow';
@@ -104,7 +104,7 @@ Object.assign(chooser.hooks, {
 });
 Object.assign(saved.hooks, { planTo: (p: Place) => planTo(p), choosePlace: (title: string) => chooser.open(title), openStop: (stop: number) => openStop(stop), openLine: (route: number) => openLine(route) });
 // what the map's bubbles ask of the app
-Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(trip, stop), openLine: (route: number) => openLine(route), openStop: (stop: number) => openStop(stop), planTo: (p: Place) => planTo(p), planFrom: (p: Place) => planFrom(p) });
+Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(trip, stop), openLine: (route: number) => openLine(route), openStop: (stop: number, station?: number) => openStop(stop, station != null ? { station } : {}), planTo: (p: Place) => planTo(p), planFrom: (p: Place) => planFrom(p) });
 positionHooks.moved = () => map.updateNearRoutes();
 // Back and the top bar, on Android: one step that undoes the bar a piece at a time (the keyboard, then the list, then
 // the line or stop search, back to the trip search folded) and is made again while anything is left. One re-made step
@@ -137,7 +137,7 @@ search.hooks.kindChanged = (k) => {
 
 // ---- panels: what closing each one stops (state/nav.ts keeps the stack and the history)
 const ON_CLOSE: Record<string, () => void> = {
-  detail: closeDetail, stopDetail: closeStop, lineDetail: closeLine, stationDetail: closeStation, trainTimes: closeTrains,
+  detail: closeDetail, stopDetail: closeStop, lineDetail: closeLine, trainTimes: closeTrains,
   picker: () => map.closePicker(null, false), chooser: () => chooser.finish(null, false),
   follow: () => closeFollow(false),
 };

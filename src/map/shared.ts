@@ -30,7 +30,7 @@ export const settleWaiters = (m: MLMap | null): void => { for (const r of styled
 export const hooks = {
   openTrip: (_trip: number, _stop: number) => {},
   openLine: (_route: number) => {},
-  openStop: (_stop: number) => {},
+  openStop: (_stop: number, _station?: number) => {},   // a station: all its platforms
   planTo: (_p: Place) => {},
   planFrom: (_p: Place) => {},     // "from here": the place in the From box, the bar open
 };

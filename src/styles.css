@@ -704,3 +704,6 @@ label.pilltoggle[hidden] { display: none; }
 .journey .top .est { font-weight: 700; margin-inline-end: 2px; }
 .dep .head small.est { display: block; font-size: 11px; }
 #compassLine { font-size: 12px; unicode-bidi: plaintext; }
+/* the stop view's lines: their chips in a row that wraps; a tap opens the line */
+.stoplines { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.linkchip { background: none; border: 0; padding: 0; cursor: pointer; line-height: 0; }

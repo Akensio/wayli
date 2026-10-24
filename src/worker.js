@@ -1049,9 +1049,9 @@ const ops = {
   },
   /** The lines calling at a stop, for its page's map: one pattern per line (its busiest), with what names it in the
    *  live data and its colours. */
-  stopRoutes({ stop }) {
+  stopRoutes({ stop, stops = null }) {
     const best = new Map();
-    for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {
+    for (const st of stops && stops.length ? stops : [stop]) for (let i = tt.stopPatsOff[st]; i < tt.stopPatsOff[st + 1]; i++) {
       const p = tt.stopPats[2 * i], ri = tt.patRoute[p], n = tt.patTripsOff[p + 1] - tt.patTripsOff[p];
       const b = best.get(ri);
       if (!b || n > b.n) best.set(ri, { p, n });
@@ -1133,11 +1133,18 @@ const ops = {
     return out.slice(0, limit).map((o) => ({ ...o, lines: linesAt(o.stop) }));
   },
   /** A stop's lines; for a station (parent index), the lines of all its platforms under the station's name. */
-  stopInfo({ stop, station = -1 }) {
-    if (station < 0) return { ...stopOut(stop), lines: linesAt(stop, 30) };
+  /** A stop, or a station with all its platforms (`station`, or `stops` that share one): what the stop view shows
+   *  about it, with the stops it stands for and whether trains call there. */
+  stopInfo({ stop, station = -1, stops = null }) {
+    if (station < 0 && stops && stops.length > 1) { const p = tt.stopParent[stops[0]]; if (p >= 0 && stops.every((s) => tt.stopParent[s] === p)) station = p; }
+    const members = station >= 0 ? (tt.stationStops.get(station) || [stop]).slice() : stops && stops.length ? stops.slice() : [stop];
+    const rail = railStops(), hasRail = members.some((s) => rail[s]);
+    // the number on a stop's sign is for buses: a railway station's is no rider's
+    if (station < 0 && members.length === 1) return { ...stopOut(stop), ...(hasRail ? { code: '' } : {}), stops: members, rail: hasRail, lines: linesAt(stop, 30) };
     const seen = new Map();
-    for (const s of tt.stationStops.get(station) || [stop]) for (const l of linesAt(s, 40)) if (!seen.has(l.label)) seen.set(l.label, l);
-    return { ...stopOut(stop), name: stName(station) || sName(stop), code: '', lines: Array.from(seen.values()).slice(0, 30) };
+    for (const s of members) for (const l of linesAt(s, 40)) if (!seen.has(l.label)) seen.set(l.label, l);
+    let la = 0, lo = 0; for (const s of members) { la += tt.stopLat[s]; lo += tt.stopLon[s]; }
+    return { ...stopOut(members[0]), lat: la / members.length, lon: lo / members.length, name: (station >= 0 && stName(station)) || sName(members[0]), code: '', station, stops: members, rail: hasRail, lines: Array.from(seen.values()).slice(0, 30) };
   },
   /** The GTFS route ids of the lines serving stops within `radius` m of a point: what can be taken from there. */
   nearbyRoutes({ lat, lon, radius = 500 }) {
@@ -1150,9 +1157,9 @@ const ops = {
   },
   /** The language every name is handed out in from now on (what the timetable carries; Hebrew otherwise). */
   setLang({ lang: l }) { lang = l || 'he'; lineIdx = null; return lang; },
-  departures({ stop, fromTime, limit = 40 }) {
+  departures({ stop, stops = null, fromTime, limit = 40 }) {
     const out = [];
-    for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {
+    for (const st of stops && stops.length ? stops : [stop]) for (let i = tt.stopPatsOff[st]; i < tt.stopPatsOff[st + 1]; i++) {
       const p = tt.stopPats[2 * i], pos = tt.stopPats[2 * i + 1];
       const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
       if (pos === ns - 1) continue;   // a vehicle ending here is not a departure
