@@ -103,13 +103,14 @@ function undo(entry: Entry): void {
   else hooks.clearPlan();
 }
 /** Close the given panel (or the plan, or the line or stop search) now; history steps back one entry to match (its
- *  popstate then finds nothing left to undo). */
-export function close(id: string): void {
+ *  popstate then finds nothing left to undo). `undo` false drops the entry only: what it stood for is already undone
+ *  (the bar's switch went back to the trip search). */
+export function close(id: string, undo = true): void {
   const i = stack.value.findIndex((e) => (e.kind === 'overlay' && e.id === id) || (e.kind === id && (id === 'plan' || id === 'search')));
   if (i < 0) { if (id === 'plan') hooks.clearPlan(); return; }
   const entry = stack.value[i];
   stack.value = stack.value.filter((_, k) => k !== i);
-  if (entry.kind === 'plan') hooks.clearPlan(); else if (entry.kind === 'search') hooks.leaveSearch(); else hideOverlay(id);
+  if (!undo) { /* nothing left to undo */ } else if (entry.kind === 'plan') hooks.clearPlan(); else if (entry.kind === 'search') hooks.leaveSearch(); else hideOverlay(id);
   if (WATCH) unwatch(entry); else stepBack(1);
 }
 /** Replace one open panel by another in place (the trip detail becomes the trip being followed). */

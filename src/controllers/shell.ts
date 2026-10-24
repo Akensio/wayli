@@ -108,7 +108,7 @@ positionHooks.moved = () => map.updateNearRoutes();
 search.hooks.kindChanged = (k) => {
   const on = nav.stack.value.some((e) => e.kind === 'search');
   if (k !== 'trip' && !on) nav.push({ kind: 'search' });
-  else if (k === 'trip' && on) nav.close('search');
+  else if (k === 'trip' && on) nav.close('search', false);   // back to trips by the switch (or the pill's x): the bar stays as it is
 };
 
 // ---- panels: what closing each one stops (state/nav.ts keeps the stack and the history)
