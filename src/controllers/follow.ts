@@ -65,15 +65,8 @@ export function openFollow(a: ActiveTrip): void {
     requestWake();
   }
   a.view = 'follow'; activeTrip.set(a);
-  map.mapOf.follow = async (drawSeq) => {
-    const m = await map.mapReady();
-    if (!m || !fol || fol.a !== a || map.stale(drawSeq)) return;
-    await map.withCourses(a.journey);
-    if (!fol || fol.a !== a || map.stale(drawSeq)) return;
-    map.fitMap(map.drawJourney(m, a.journey, map.markers.journey), 16);
-    stepFollow(); followLive();
-  };
-  // started from the detail, the panel is already 'follow' (swapped in before its drawing existed), and a plain
+  follow.publish(a, follow.alt.value);   // the map draws the trip from here (map/render.ts)
+  // started from the detail, the panel is already 'follow' (swapped in before its trip was published), and a plain
   // redraw would see the same panel and skip it: draw it now
   if (nav.isOpen('follow')) map.redrawMap(true); else nav.showOverlay('follow');
   follow.resumable.value = null;
@@ -238,7 +231,6 @@ export function closeFollow(end: boolean): void {
   }
   for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
   if (map.markers.me) { map.markers.me.remove(); map.markers.me = null; }
-  delete map.mapOf.follow;
   updateResumeBar();
 }
 function updateResumeBar(): void {
@@ -264,3 +256,5 @@ Object.assign(follow.hooks, {
   switchTo: (alt: Alt) => switchJourney(alt),
   dismiss: (alt: Alt) => { if (!fol) return; fol.dismissed[alt.key] = Date.now(); fol.alt = null; publish(); },
 });
+// the followed trip's vehicle and the rider, once the map has drawn the trip
+map.afterDraw.follow = () => { if (fol) { stepFollow(); followLive(); } };

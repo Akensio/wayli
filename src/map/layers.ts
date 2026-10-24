@@ -1,12 +1,11 @@
 // Drawing a journey or a line: the sources and layers (created once per style), the journey with its stops
-// and pins, the faded whole lines of its rides, the other ways muted under it; fitting the map to what the
-// bar and the sheet leave visible.
+// and pins, the faded whole lines of its rides, the other ways muted under it. (What is drawn when, and the camera:
+// map/view.ts decides, map/render.ts carries it out.)
 import type { Map as MLMap, Marker, LngLatBounds } from 'maplibre-gl';
 import { legColor } from '../journey/colors';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as results from '../state/results';
-import * as sheet from '../state/sheet';
 import type { Journey } from '../journey/types';
 import { state, EMPTY, stopKindProp } from './shared';
 import { BADGE_KINDS, stationImage } from './images';
@@ -95,14 +94,6 @@ export function drawJourney(m: MLMap, j: Journey, markers: Marker[], focus = -1,
   return bounds;
 }
 export const boundsOf = (path?: [number, number][] | null): LngLatBounds => { const b = new maplibregl.LngLatBounds(); for (const p of path || []) b.extend([p[1], p[0]]); return b; };
-/** Fit bounds into the part of the map the sheet and the top bar leave visible. */
-export function fitMap(b: LngLatBounds | null, maxZoom: number): void {
-  const m = state.main;
-  if (!m || !b || b.isEmpty()) return;
-  const top = sheet.topPad();
-  const bottom = Math.min(sheet.px(sheet.state.value) + 20, innerHeight - top - 120);
-  m.fitBounds(b, { padding: { top, bottom, left: 24, right: 24 }, duration: 0, maxZoom });
-}
 /** Legs planned before the courses or the street graph were loaded get their course or street path now (in place). */
 export async function withCourses(j: Journey): Promise<void> {
   await Promise.all([withRideCourses(j), withStreetPaths(j)]);

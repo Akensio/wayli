@@ -17,6 +17,8 @@ import { lastPos } from '../state/position';
 import { state, EMPTY, stopKinds } from './shared';
 import { arrowImage } from './images';
 import { heading, vehiclePopup } from './popups';
+import { viewFor } from './view';
+import { currentSheet } from './render';
 
 export const liveOn = (): boolean => !!settings.get().live && navigator.onLine !== false;
 const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label', 'lm-traffic'];
@@ -29,17 +31,18 @@ export const lm = { seq: 0, applied: 0, stops: false, labels: new Map<string, an
 export const resetLive = (): void => { lm.labels.clear(); lm.stops = false; nearRoutes = null; updateNearRoutes(); };
 export const resetShow = (): void => { liveShow = null; };
 
-// a page about some lines (a stop's page: the lines calling there) shows only their vehicles; [] until they are known
-const panelLines = new Map<string, string[]>();
-export function showLinesFor(key: string, refs: string[] | null): void { if (refs) panelLines.set(key, refs); else panelLines.delete(key); applyLiveShow(); }
-/** Which vehicles the layer shows for what is on top: every one in view, only the lines of the results, or none. */
+// the lines calling at the stop in the sheet (map/render.ts fills them in; [] until they are known)
+let stopLines: string[] = [];
+export function setStopLines(refs: string[]): void { stopLines = refs; liveShow = null; applyLiveShow(); }
+/** Which vehicles the layer shows, as the map's one decision has it for what the sheet holds (map/view.ts): every one
+ *  in view (the lines near the rider in front), only the results' or the stop's lines, or none. */
 const nearOf = (s: Show | null): string[] | null => (s && typeof s === 'object' && !Array.isArray(s) ? s.near : null);
 function liveShowFor(key: string): Show {
-  if (key === 'detail' || key === 'lineDetail' || key === 'follow') return 'none';
-  const own = panelLines.get(key);
-  if (own) return own;
+  const want = viewFor(currentSheet(key)).live;
+  if (want === 'own' || want === 'none') return 'none';
+  if (want === 'stop') return stopLines;
   const r = results.result.value;
-  if (key === 'screen-plan' && r && r.journeys && r.journeys.length && results.showing.value) {
+  if (want === 'results' && r && r.journeys) {
     const ids = new Set<string>();
     for (const j of r.journeys) for (const l of j.legs) if (l.type === 'ride' && l.routeId != null) ids.add(String(l.routeId));
     if (ids.size) return Array.from(ids).sort();
@@ -140,7 +143,7 @@ export async function refreshLiveMap(): Promise<void> {
     const near = nearOf(liveShow);
     const shown = Array.isArray(liveShow) ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length : features.length;
     const nNear = near ? features.filter((f) => near.includes(f.properties!.ref as string)).length : 0;
-    const scope = Array.isArray(liveShow) ? t(panelLines.get(nav.key.value) === liveShow ? 'liveScopeStop' : 'liveScopeSearch') : near ? t('liveNearOf', { n: nNear }) : '';
+    const scope = Array.isArray(liveShow) ? t(viewFor(currentSheet()).live === 'stop' ? 'liveScopeStop' : 'liveScopeSearch') : near ? t('liveNearOf', { n: nNear }) : '';
     const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
     // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
     const via = live.source.relay ? '' : t('liveViaDb', { why: live.source.why });

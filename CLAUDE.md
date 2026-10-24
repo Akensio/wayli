@@ -54,6 +54,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `README.md` | Public description: what, why, how, roadmap. |
 | `docs/architecture.md` | The design: pipeline, compact timetable, on-device routing, real-time, crowd reports, server pieces, the feasibility test. |
 | `docs/decisions.md` | Dated log of decisions, including rejected options. |
+| `docs/principles.md` | The design rules agreed with Gadi, each with its owner in the code and its test. |
 | `LICENSE` | GNU AGPL-3.0. |
 | `pipeline/compile.py` | GTFS zip to one service day's compact timetable (format in `docs/architecture.md`); with `--streets`, real walking transfers. |
 | `pipeline/streets.py`, `pipeline/streetgraph.py` | OpenStreetMap extract to the compact street graph; reader and stop-to-stop walking times for the compiler. |

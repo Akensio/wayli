@@ -16,7 +16,6 @@ import type { Place } from '../state/search';
 import { planTo, planFrom } from './planner';
 import { openTrip } from './trip';
 import { recentViews } from '../store.js';
-import { routeColor } from '../journey/colors';
 import { openTrains, chooseStation } from './station';
 import { openLine } from './line';
 import type { Dest } from '../state/station';
@@ -33,25 +32,7 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
   const members = info.stops && info.stops.length ? info.stops : [stop];
   recentViews.add(info.station != null && info.station >= 0 ? { type: 'station', name: info.name, lat: info.lat, lon: info.lon }
     : { type: 'stop', code: info.code || '', name: info.name, city: info.city, lat: info.lat, lon: info.lon });
-  map.mapOf.stopDetail = async (drawSeq) => {
-    const m = await map.mapReady();
-    if (!m || my !== seq || map.stale(drawSeq)) return;
-    const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = 'var(--accent)';
-    map.markers.journey.push(new maplibregl.Marker({ element: el }).setLngLat([info.lon, info.lat]).addTo(m));
-    m.easeTo({ center: [info.lon, info.lat], zoom: Math.max(m.getZoom(), 15), offset: [0, -Math.round(sheet.px('half') / 2) + 30], duration: 500 });
-    // the page is about the lines calling here: their vehicles only, and their courses faint under the pin
-    try {
-      const routes = await call<{ pattern: number; ref: number | null; type: number; agency: string }[]>('stopRoutes', { stop, stops: members });
-      if (my !== seq) return;
-      map.showLinesFor('stopDetail', routes.filter((r) => r.ref != null).map((r) => String(r.ref)));
-      const courses = await call<{ path: [number, number][] | null }[]>('patternCourse', { patterns: routes.map((r) => r.pattern) });
-      if (my !== seq || map.stale(drawSeq)) return;
-      const lines: GeoJSON.Feature[] = [];
-      courses.forEach((c, i) => { if (c.path && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color: routeColor(routes[i].type, routes[i].agency) }, geometry: { type: 'LineString', coordinates: c.path.map((q) => [q[1], q[0]]) } }); });
-      (m.getSource('context') as any)?.setData({ type: 'FeatureCollection', features: lines });
-    } catch { /* the pin and the departures stay */ }
-  };
-  map.showLinesFor('stopDetail', []);   // nothing until the stop's lines are known
+  // the map draws the stop and its lines' courses (map/render.ts)
   const day = search.day.value, svc = live.serviceDay();
   const isNow = day === svc.day || day === calToday();
   stopPage.open(info, day, isNow);
@@ -67,7 +48,7 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
     timer = window.setInterval(() => { if (!nav.isOpen('stopDetail')) clearInterval(timer); else liveForStop(info, deps, day, my); }, 45000);
   }
 }
-export function closeStop(): void { clearInterval(timer); seq++; delete map.mapOf.stopDetail; map.showLinesFor('stopDetail', null); }
+export function closeStop(): void { clearInterval(timer); seq++; }
 
 /** Live times for the departures of a stop: one request for the vehicles around it, then by line for what it missed. */
 async function liveForStop(info: StopInfo, deps: Departure[], day: string, my: number): Promise<void> {

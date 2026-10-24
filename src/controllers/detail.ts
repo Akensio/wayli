@@ -18,24 +18,18 @@ import { recentViews } from '../store.js';
 let seq = 0;   // the journey shown; a live answer for an older one is dropped
 
 export function openDetail(j: Journey, q: Query, bikeOnly = false): void {
-  const my = ++seq;
+  seq++;
   search.foldBar();   // a result opened: the rider has moved on from the boxes
   if (!bikeOnly) recentViews.add({ type: 'trip', q, j, built: data.manifest.value?.built });
   try { window.wayliDebug = { ...(window.wayliDebug || {}), journey: j }; } catch { /* debugging only */ }
-  map.mapOf.detail = async (drawSeq) => {
-    const m = await map.mapReady();
-    if (!m || my !== seq || map.stale(drawSeq)) return;
-    if (!bikeOnly) await map.withCourses(j);
-    if (my !== seq || map.stale(drawSeq)) return;
-    const focus = detail.focus.value;
-    const b = map.drawJourney(m, j, map.markers.journey, focus);
-    for (const mk of map.markers.live.splice(0)) mk.remove();
-    map.fitMap(focus >= 0 && j.legs[focus] ? map.boundsOf(j.legs[focus].path) : b, 16);
-    if (!bikeOnly) liveForJourney(j, q.day, my, focus);
-  };
-  detail.open(j, q, bikeOnly);
+  detail.open(j, q, bikeOnly);   // the map draws it (map/render.ts); its vehicles follow once drawn
 }
-export function closeDetail(): void { seq++; delete map.mapOf.detail; }
+export function closeDetail(): void { seq++; }
+// the way's vehicles, once the map has drawn it (and again after each redraw: a ride focused, the courses in)
+map.afterDraw.detail = () => {
+  const j = detail.journey.value, q = detail.query.value;
+  if (j && q && !detail.bikeOnly.value) liveForJourney(j, q.day, seq, detail.focus.value);
+};
 
 /** Live badges on the ride legs of a journey happening around now; every vehicle of those lines on the map. */
 async function liveForJourney(j: Journey, day: string, my: number, focus = -1): Promise<void> {

@@ -1,7 +1,6 @@
 // The train timetable (the stop search's train chip: two stations at the top): the From station opens as the one stop
 // view (its departures, where its trains go), and once To is set the direct trains between the two with their live
 // times (every 45 s while open). A rider of trains thinks from station to station, not by line.
-import type { Map as MLMap } from 'maplibre-gl';
 import * as live from '../live.js';
 import { t } from '../i18n';
 import { calToday } from '../time';
@@ -21,10 +20,6 @@ const when = () => {
   const day = search.day.value, isNow = day === live.serviceDay().day || day === calToday();
   return { day, isNow, from: isNow ? live.nowOn(day) - 60 : search.atSeconds() };
 };
-const pin = (m: MLMap, s: Station) => {
-  const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = 'var(--accent)';
-  map.markers.journey.push(new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(m));
-};
 
 /** A station: the one stop view, for all its platforms (its departures, and where its trains go). */
 export function openStation(s: Station): void { if (s.stops.length) openStop(s.stops[0], { stops: s.stops }); }
@@ -35,13 +30,7 @@ export async function openTrains(from: Station, to: Station): Promise<void> {
   const w = when();
   recentViews.add({ type: 'trains', from: { name: from.name, lat: from.lat, lon: from.lon }, to: { name: to.name, lat: to.lat, lon: to.lon } });
   st.pair.value = { from, to }; st.trains.value = null; st.live.value = {}; st.liveNote.value = ''; st.day.value = w.day; st.isNow.value = w.isNow;
-  map.mapOf.trainTimes = async (drawSeq) => {
-    const m = await map.mapReady();
-    if (!m || my !== seq || map.stale(drawSeq)) return;
-    pin(m, from); pin(m, to);
-    const b = new maplibregl.LngLatBounds([from.lon, from.lat], [from.lon, from.lat]).extend([to.lon, to.lat]);
-    map.fitMap(b, 13);
-  };
+  // the map draws both stations (map/render.ts)
   if (!nav.isOpen('trainTimes')) nav.showOverlay('trainTimes'); else map.redrawMap(true);
   const rows = await call<TrainRow[]>('trainsBetween', { from: from.stops, to: to.stops, fromTime: w.from });
   if (my !== seq) return;
@@ -52,7 +41,7 @@ export async function openTrains(from: Station, to: Station): Promise<void> {
     timer = window.setInterval(() => { if (!nav.isOpen('trainTimes')) clearInterval(timer); else liveTrains(rows, w.day, my); }, 45000);
   }
 }
-export function closeTrains(): void { clearInterval(timer); seq++; delete map.mapOf.trainTimes; }
+export function closeTrains(): void { clearInterval(timer); seq++; }
 
 /** Live times of the next trains between the two stations: every train in the country is one request. */
 async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<void> {

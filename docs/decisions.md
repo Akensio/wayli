@@ -1064,4 +1064,12 @@ so they are not re-litigated.
   (where its trains go) is folded into it under the departures, across all
   the station's platforms, so a station is a stop like any other; the train
   timetable's From station opens it too. Vehicles keep their bubbles.
+- 2026-10-24: Built the agreed "one place decides the map" (deck slide 6,
+  agreed 2026-10-23; Gadi: go, with the centring). `map/view.ts` is the
+  decision as a pure table, tested in Node (`tools/mapview.test.mjs`);
+  `map/render.ts` carries it out for every panel; the six panels no longer
+  draw the map, and the camera has one owner, aiming between the bar and
+  the sheet (the locate button too: it centred behind a half-open sheet).
+  The camera fits a thing once: highlights, live updates and courses
+  arriving no longer refit it. docs/principles.md starts with this rule.
 

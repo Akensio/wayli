@@ -8,9 +8,7 @@ import * as linePage from '../state/line';
 import * as map from '../map/index';
 import { clock } from '../map/popups';
 import type { LineInfo } from '../state/line';
-import type { Journey } from '../journey/types';
 import { openStop } from './stop';
-import { routeColor } from '../journey/colors';
 import { recentViews } from '../store.js';
 
 let seq = 0, timer = 0, current: LineInfo | null = null;
@@ -22,22 +20,14 @@ export async function openLine(route: number): Promise<void> {
   if (my !== seq) return;
   current = info;
   if (info.ref) recentViews.add({ type: 'line', ref: info.ref, line: info.line, routeType: info.routeType, agency: info.agency, headsign: info.headsign, mode: info.mode });
-  map.mapOf.lineDetail = async (drawSeq) => {
-    const m = await map.mapReady();
-    if (!m || my !== seq || map.stale(drawSeq)) return;
-    const course: Journey = { depart: 0, arrive: 0, transfers: 0, legs: [{ type: 'ride', seconds: 0, routeType: info.routeType, agency: info.agency, path: info.path, pattern: null }] };
-    const b = map.drawJourney(m, course, map.markers.journey);
-    // every stop of the line as a dot
-    (m.getSource('stops') as any).setData({ type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop, color: routeColor(info.routeType, info.agency), ...map.stopKindProp(st.stop) }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });
-    map.fitMap(b, 15);
-    lineLive();
-  };
   linePage.info.value = info; linePage.liveText.value = ''; linePage.liveOk.value = false;
   nav.showOverlay('lineDetail');
   clearInterval(timer);
   timer = window.setInterval(lineLive, 20000);
 }
-export function closeLine(): void { clearInterval(timer); seq++; current = null; delete map.mapOf.lineDetail; }
+export function closeLine(): void { clearInterval(timer); seq++; current = null; }
+// the line's vehicles, once the map has drawn its course (map/render.ts)
+map.afterDraw.lineDetail = () => { lineLive(); };
 
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive(): Promise<void> {

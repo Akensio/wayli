@@ -1,18 +1,15 @@
-// The one map under everything. Panels register what they draw on it (`mapOf`); whichever panel is on top is
-// drawn, over the stops of the day and the live vehicles.
+// The one map under everything: its layers, the stops of the day, the live vehicles, taps on it. What it shows for
+// what the sheet holds is decided in one place (map/view.ts) and drawn by one renderer (map/render.ts).
 import type { Map as MLMap, GeolocateControl } from 'maplibre-gl';
-import { dur, lineText } from '../journey/format';
-import { chipColors } from '../journey/colors';
 import * as nav from '../state/nav';
 import * as search from '../state/search';
 import * as sheet from '../state/sheet';
 import * as results from '../state/results';
-import * as nearby from '../state/nearby';
 import { lastPos, notePos } from '../state/position';
-import { state, markers, popupState, EMPTY, settleWaiters, stale, stopKindProp } from './shared';
+import { state, popupState, EMPTY, settleWaiters } from './shared';
 import { styleReady, mapStyle, makeMap, setBasemapLang, applySky, wantDarkMap } from './basemap';
 import { BADGE_KINDS, stationImage } from './images';
-import { ensureJourneyLayers, drawJourney, fitMap, withCourses } from './layers';
+import { ensureJourneyLayers } from './layers';
 import { stopPopup, placeBubble } from './popups';
 import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetShow } from './live';
 import { pickAt } from './picker';
@@ -20,14 +17,13 @@ import { startHeading, attachHeading } from './heading';
 
 export { applyTheme, setBasemapLang } from './basemap';
 export { mapReady, stale, state as mapState, markers, stopKindProp, EMPTY } from './shared';
-export { ensureJourneyLayers, drawJourney, boundsOf, fitMap, withCourses } from './layers';
+export { ensureJourneyLayers, drawJourney, boundsOf, withCourses } from './layers';
 export { lineVehicleMarkers, vehiclesForWorker, closePopup } from './popups';
-export { refreshLiveMap, applyLiveShow, loadStopsGeo, updateNearRoutes, liveOn, resetLive, showLinesFor } from './live';
+export { refreshLiveMap, applyLiveShow, loadStopsGeo, updateNearRoutes, liveOn, resetLive, setStopLines } from './live';
 export { pickOnMap, closePicker } from './picker';
 export { hooks } from './shared';
-
-/** panel id (or 'screen-<name>') -> async function (token) drawing that panel's content on the map */
-export const mapOf: Record<string, (seq: number) => Promise<void> | void> = {};
+export { redrawMap, drawMe, afterDraw, cameraPadding } from './render';
+import { redrawMap, cameraPadding } from './render';
 let geoCtl: GeolocateControl | null = null;
 
 export async function initMap(): Promise<void> {
@@ -39,7 +35,11 @@ export async function initMap(): Promise<void> {
   try { window.wayliDebug = { ...(window.wayliDebug || {}), map: state.main }; } catch { /* debugging only */ }
   if (!state.main) { state.failed = true; settleWaiters(null); return; }
   const m = state.main;
-  geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: { maxZoom: 15, linear: true, duration: 500 } });
+  // the locate button centres the rider in the part of the screen the map shows, between the bar and the sheet, not
+  // behind the sheet: MapLibre copies these options on every move, so the padding is read then, as things stand
+  const fitOpts = { maxZoom: 15, linear: true, duration: 500 };
+  Object.defineProperty(fitOpts, 'padding', { get: cameraPadding, enumerable: true });
+  geoCtl = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true, fitBoundsOptions: fitOpts });
   let viewTimer = 0;   // the camera is remembered for the next start
   m.on('moveend', () => { clearTimeout(viewTimer); viewTimer = window.setTimeout(() => { try { const c = m.getCenter(); localStorage.setItem('wayli-view', JSON.stringify({ lat: +c.lat.toFixed(5), lon: +c.lng.toFixed(5), zoom: +m.getZoom().toFixed(2) })); } catch { /* private mode */ } }, 500); });
   m.addControl(geoCtl, 'bottom-right');
@@ -142,92 +142,3 @@ export async function applyMapStyle(): Promise<void> {
   state.main.setStyle(st, { diff: false });
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapStyle);
-function clearMap(m: MLMap): void {
-  for (const arr of [markers.journey, markers.live, markers.lineVeh, markers.followVehicle, markers.alt]) for (const mk of arr.splice(0)) mk.remove();
-  if (markers.me) { markers.me.remove(); markers.me = null; }
-  for (const src of ['journey', 'stops', 'context', 'context-stops', 'alts']) { const s = m.getSource(src) as any; if (s) s.setData(EMPTY); }
-}
-/** Draw what the panel on top wants on the map; nothing when it wants nothing. */
-export function redrawMap(force = false): void {
-  const key = nav.key.value;
-  applyLiveShow();
-  if (!force && key === state.drawnFor) return;
-  if (key !== 'screen-plan') lastFit = '';
-  state.drawnFor = key;
-  const seq = ++state.drawSeq;
-  const m = state.main;
-  if (!m || !state.styled) return;
-  clearMap(m);
-  const fn = mapOf[key];
-  if (fn) fn(seq);
-}
-/** The rider's dot. */
-export function drawMe(pos: { lat: number; lon: number }): void {
-  const m = state.main;
-  if (!m || !state.styled) return;
-  if (!markers.me) { const el = document.createElement('div'); el.className = 'wayli-me'; markers.me = new maplibregl.Marker({ element: el }).setLngLat([pos.lon, pos.lat]).addTo(m); }
-  else markers.me.setLngLat([pos.lon, pos.lat]);
-}
-
-/** The results on the map: the ways switched on, the highlighted one in colour with its stops, the others grey,
- *  each with a badge of its minutes at the middle of its longest ride (a tap highlights that way). */
-mapOf['screen-plan'] = async (seq) => {
-  const m = state.main;
-  const shown = results.list.value.cards.filter((c) => results.altShown.value.has(c.idx));
-  const altSel = results.altSel.value;
-  if (!m || !shown.length) return;
-  await Promise.all(shown.map((c) => withCourses(c.j)));
-  if (stale(seq) || !state.main) return;
-  ensureJourneyLayers(m);
-  for (const mk of markers.alt.splice(0)) mk.remove();
-  const features: GeoJSON.Feature[] = [], b = new maplibregl.LngLatBounds();
-  for (const c of shown) {
-    let longest: [number, number][] | null = null;
-    for (const l of c.j.legs) {
-      if (!l.path || l.path.length < 2) continue;
-      const coords = l.path.map((p) => [p[1], p[0]] as [number, number]);
-      coords.forEach((x) => b.extend(x));
-      if (c.idx !== altSel) features.push({ type: 'Feature', properties: { idx: c.idx, ride: l.type === 'ride' ? 1 : 0 }, geometry: { type: 'LineString', coordinates: coords } });
-      if (l.type === 'ride' && (!longest || coords.length > longest.length)) longest = coords;
-    }
-    // each ride says its line where it runs (a third of the way along, clear of the boarding pin and the minutes at
-    // the middle): in the line's colours on the highlighted way, grey on the others; a tap highlights that way
-    for (const l of c.j.legs) {
-      if (l.type !== 'ride' || !l.path || l.path.length < 2) continue;
-      const p = l.path[Math.floor((l.path.length - 1) / 3)];
-      const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'wayli-linechip' + (c.idx === altSel ? ' sel' : '');
-      chip.textContent = lineText(l.line);
-      if (c.idx === altSel) Object.assign(chip.style, chipColors(l.routeType, l.agency));
-      chip.addEventListener('click', (e) => { e.stopPropagation(); results.pickAlt(c.idx); });
-      markers.alt.push(new maplibregl.Marker({ element: chip, anchor: 'center' }).setLngLat([p[1], p[0]]).addTo(m));
-    }
-    const at = longest ? longest[Math.floor(longest.length / 2)] : null;
-    if (!at) continue;
-    const el = document.createElement('button'); el.type = 'button'; el.className = 'wayli-alt' + (c.idx === altSel ? ' sel' : '');
-    el.textContent = dur(c.j.arrive - c.j.depart);
-    el.addEventListener('click', (e) => { e.stopPropagation(); results.pickAlt(c.idx); });
-    markers.alt.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(at).addTo(m));
-  }
-  (m.getSource('alts') as any).setData({ type: 'FeatureCollection', features });
-  const sel = shown.find((c) => c.idx === altSel) || shown[0];
-  drawJourney(m, sel.j, markers.journey, -1, false);
-  // fitted when the ways shown change, not when another of them is highlighted: a rider who zoomed in to tap a route
-  // keeps the view
-  const fitKey = `${shown.map((c) => c.idx).join(',')}|${results.query.value ? JSON.stringify([results.query.value.from, results.query.value.to, results.query.value.day, results.query.value.at]) : ''}|${results.result.value ? results.result.value.journeys.length : 0}`;
-  if (fitKey !== lastFit) fitMap(b, 15);
-  lastFit = fitKey;
-};
-let lastFit = '';   // what the results' map was last fitted to; forgotten when anything else draws (back from a detail, refit)
-/** The nearby screen on the map: the rider's position, a ring out to the farthest listed stop, the stops highlighted. */
-mapOf['screen-nearby'] = async (seq) => {
-  const m = state.main, stops = nearby.stops.value;
-  if (!m || !lastPos || !stops.length || stale(seq)) return;
-  ensureJourneyLayers(m);
-  const r = Math.max(150, (stops[stops.length - 1].distance || 0) + 30), ring: [number, number][] = [];
-  for (let i = 0; i <= 64; i++) { const a = i / 64 * 2 * Math.PI; ring.push([lastPos.lon + r / 111000 / Math.cos(lastPos.lat * Math.PI / 180) * Math.cos(a), lastPos.lat + r / 111000 * Math.sin(a)]); }
-  (m.getSource('context') as any).setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#12998b' }, geometry: { type: 'LineString', coordinates: ring } }] });
-  (m.getSource('stops') as any).setData({ type: 'FeatureCollection', features: stops.map((s) => ({ type: 'Feature', properties: { stop: s.stop, ...stopKindProp(s.stop) }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) });
-  drawMe(lastPos);
-  const b = new maplibregl.LngLatBounds(); ring.forEach((c) => b.extend(c));
-  fitMap(b, 16);
-};

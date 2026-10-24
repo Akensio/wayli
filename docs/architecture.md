@@ -143,12 +143,17 @@ Layout, one folder per concern:
   with every panel, the floating pills, the pick bar; `sheet/` the gestures
   and the pull to refresh). `index.html` is roots only; `main.ts` renders
   the components, attaches the gestures, then imports `boot.ts`.
-- `map/`: the one map (`index.ts`: init, the layers, what each panel draws
-  through `mapOf`), `basemap` (Liberty recoloured, theme, labels' language),
-  `layers` (a journey with its stops and pins, the other ways muted under
-  it, fitting), `live` (the vehicles in view, the day's stops, the note),
-  `popups` (bubbles for a vehicle, a stop, a tapped place; a line's vehicle
-  markers), `picker` (a point on the map), `shared` (the map, its markers).
+- `map/`: the one map (`index.ts`: init, the layers, taps), `view.ts`
+  (what the map shows for what the sheet holds: what is drawn, the camera,
+  which live vehicles; pure, tested by `tools/mapview.test.mjs`),
+  `render.ts` (carries that out from the panels' state, the one camera,
+  aimed between the bar and the sheet, the locate button's included; a
+  panel's own live vehicles go on after the drawing through `afterDraw`),
+  `basemap` (Liberty recoloured, theme, labels' language), `layers` (a
+  journey with its stops and pins, the other ways muted under it), `live`
+  (the vehicles in view, the day's stops, the note), `popups` (bubbles for
+  a vehicle and a tapped place; a line's vehicle markers), `picker` (a
+  point on the map), `shared` (the map, its markers).
 - `journey/`: types, line colours, the words for journeys, operators'
   English names, sharing. `ui/`: icons, the toast, the ripple, HTML
   escaping. `time.ts`.
@@ -260,8 +265,9 @@ is a mode of the same map: the sheet and bar give way to a hint and a
 Cancel; a tap drops the pin. The strip at the bottom when nothing is open offers plan, home,
 work, recent places and nearby stops. Picking a destination in the top bar
 plans from the rider's location at once. The panels form a stack, and only
-the top one is shown with its map content (a panel registers what it draws;
-revealing a panel underneath redraws its content); every panel and screen
+the top one is shown, the map following it (`map/view.ts` decides from
+what the sheet holds; revealing a panel underneath draws it again, fitted
+again); every panel and screen
 change is a history entry, so the phone's back button closes the panel or
 returns to the previous screen instead of leaving the app. Closing a panel
 edits the stack first and lets history catch up, so programmatic closes and
