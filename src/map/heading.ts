@@ -11,6 +11,8 @@ import type { Map as MLMap } from 'maplibre-gl';
 let heading: number | null = null, seenAt = 0, shown: number | null = null, frame = 0, listening = false, readings = 0;
 let permission: 'none' | 'asking' | 'granted' | 'denied' | 'failed' = 'none';   // 'none': the browser has none to ask
 const KEEP_MS = 30000;   // a still phone may send nothing: the last direction holds this long
+const GLIDE_MS = 90;     // how quickly the cone catches up with the heading (time constant)
+let glide = (): void => {};   // a new reading: the cone moves (set once the map is there)
 
 /** A compass reading in degrees clockwise from north, corrected for the screen being turned. */
 function onReading(deg: number): void {
@@ -20,6 +22,7 @@ function onReading(deg: number): void {
   heading = heading == null ? h : (heading + (((h - heading + 540) % 360) - 180) * 0.25 + 360) % 360;
   seenAt = performance.now();
   readings++;
+  glide();
   try { (window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug = { ...((window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug || {}), compass: { readings, heading: Math.round(heading) } }; } catch { /* debugging only */ }
 }
 // what arrives, for the line in Settings that tells a phone without a compass from a drawing problem
@@ -58,27 +61,39 @@ export function startHeading(): void {
   D.requestPermission().then((r) => { permission = r === 'granted' ? 'granted' : 'denied'; }).catch(() => { permission = 'failed'; });
 }
 
-/** Keep the cone on the dot turned to the heading, on the map as it is rotated. */
+/** Keep the cone on the dot turned to the heading, on the map as it is rotated. It glides: every frame it turns part
+ *  of the way to the heading (the shorter way round), so readings arriving in steps and the map turning by jumps both
+ *  come out as one smooth motion; frames stop once it has caught up and nothing new came. */
 export function attachHeading(m: MLMap): void {
-  const draw = () => {
+  let last = 0;
+  const step = () => {
     frame = 0;
+    const now = performance.now();   // (not the frame's own time stamp: it can be older than the readings')
     // the map's position dot, and the one the follow screen draws
     const dots = document.querySelectorAll<HTMLElement>('.maplibregl-user-location-dot, .wayli-me');
-    const fresh = heading != null && performance.now() - seenAt < KEEP_MS;
-    const deg = fresh ? Math.round((heading! - m.getBearing() + 360) % 360) : null;
-    const turned = deg !== shown;
-    shown = deg;
+    const fresh = heading != null && now - seenAt < KEEP_MS;
+    let gap = 0;
+    if (!fresh) shown = null;
+    else {
+      const target = (heading! - m.getBearing() + 360) % 360;
+      if (shown == null) shown = target;
+      else {
+        gap = ((target - shown + 540) % 360) - 180;
+        shown = (shown + gap * (1 - Math.exp(-Math.max(0, Math.min(now - last, 100)) / GLIDE_MS)) + 360) % 360;
+      }
+    }
+    last = now;
     for (const dot of dots) {
       let cone = dot.querySelector<HTMLElement>('.wayli-cone');   // its own element: the dot's ::after is its white ring
       if (!cone) { cone = document.createElement('div'); cone.className = 'wayli-cone'; dot.appendChild(cone); }
-      else if (!turned && cone.classList.contains('on') === fresh) continue;
-      cone.classList.toggle('on', fresh);
-      if (deg != null) cone.style.setProperty('--heading', `${deg}deg`);
+      if (cone.classList.contains('on') !== fresh) cone.classList.toggle('on', fresh);
+      if (shown != null) cone.style.setProperty('--heading', `${shown.toFixed(1)}deg`);
     }
+    if (fresh && (Math.abs(gap) > 0.2 || now - seenAt < 300)) frame = requestAnimationFrame(step);
   };
-  const tick = () => { if (!frame) frame = requestAnimationFrame(draw); };
-  window.setInterval(tick, 100);   // readings come up to 60 times a second; ten redraws a second are plenty
-  m.on('rotate', tick);
+  glide = () => { if (!frame) { last = performance.now(); frame = requestAnimationFrame(step); } };
+  window.setInterval(glide, 500);   // the dot may be drawn anew, or the readings stop: looked at now and then
+  m.on('rotate', glide);
   // where the browser asks (an iPhone, Chrome on a Pixel), it asks from a tap: the first on the map does (a refusal asks
   // again on the locate button only)
   const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: unknown } }).DeviceOrientationEvent;
