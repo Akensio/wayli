@@ -1085,4 +1085,9 @@ so they are not re-litigated.
   (he meant the basemap, not traffic). OpenStreetMap tags those stretches
   trunk, which Liberty draws in one layer with primary roads, white; trunk
   now takes the motorway's colours, by class, primary keeps its own.
+- 2026-10-24: Gadi: the basemap's "Palestinian Territories" country label
+  must go; Wayli is an app for riders in Israel and the label would put
+  people off using it. Left out of the country and state label layers by
+  its code (PS) and its English and Hebrew names; the rest of the map,
+  borders included, is as OpenStreetMap draws it.
 

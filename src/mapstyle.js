@@ -112,6 +112,12 @@ export async function styledLiberty(mode = 'light', tint = 'teal') {
   const pal = (PALETTES[tint] || TEAL)[mode] || TEAL.light;
   const style = await (await fetch(LIBERTY)).json();
   for (const layer of style.layers || []) {
+    // an app for riders in Israel does not name "Palestinian Territories" on its map (Gadi, 2026-10-24): that country
+    // label is left out, by its code and by its name in either language, whatever language the labels are shown in
+    if (layer['source-layer'] === 'place' && /^label_(country|state)/.test(layer.id)) {
+      const not = (field, part) => ['!', ['in', part, ['coalesce', ['get', field], '']]];
+      layer.filter = ['all', layer.filter || true, ['!=', ['coalesce', ['get', 'iso_a2'], ''], 'PS'], not('name:en', 'Palestin'), not('name', 'Palestin'), not('name:he', 'פלסטינ')];
+    }
     // the sprite's hatchings (construction sites, pedestrian areas, rail ties) are black and white: faint in the dark
     if (mode === 'dark' && layer.paint) {
       if (layer.paint['fill-pattern']) layer.paint['fill-opacity'] = 0.12;
