@@ -201,8 +201,10 @@ Layout (v0.3, map first): one map under everything, showing every vehicle
 reporting in view with its line number and heading, the stops when zoomed
 in, the rider's position (MapLibre's locate control, started on its own once
 location was allowed before; a turquoise dot with a cone showing which way
-the phone faces, from its compass, `map/heading.ts`; an iPhone gives the
-compass only after asking from a tap, the locate button's or the first on the map), a compass under it that appears once the map
+the phone faces, from its compass, `map/heading.ts`: every kind of reading is
+listened to, and where the browser has a permission for it (an iPhone, Chrome
+on a Pixel) it is asked from a tap, the locate button's or the first on the
+map; Settings ends with a line on what the compass sends), a compass under it that appears once the map
 is rotated or tilted and resets both on a tap, and whatever the open panel
 is about. Over it,
 a floating top bar that is the planner: a menu button and one prompt,

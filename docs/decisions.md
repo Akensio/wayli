@@ -1018,5 +1018,9 @@ so they are not re-litigated.
   feed gives the line no Saturday trips. Timetables now carry the names of
   the feed's other lines; such a vehicle is named, its bubble says the line
   is not in today's official timetable. And no compass cone on his iPhone:
-  iOS asks permission only from a tap, and with his position already known
-  he never tapped the locate button; the first tap on the map asks too.
+  the first tap on the map asks for the compass too, where the browser asks.
+  (His phone is a Pixel, not an iPhone: Settings' new compass line said
+  "started no". Chrome there has the permission request too, which the code
+  took for "an iPhone": it waited for a tap and then listened for the
+  iPhone's readings only. Now every kind of reading is listened to from the
+  start and the permission, where there is one, is asked from a tap.)
