@@ -690,8 +690,8 @@ station's platforms into one result.
   the Ministry's stop code), merged into the feed as an agency whose id
   starts "est-" (the compiler sets the route's estimated flag). No
   timetable is published: the hours are the official ones (Friday
-  16:30-02:00, Saturday 09:00-17:30, busofash.co.il), every 20 minutes
-  (Wikipedia), at an estimated 20 km/h on Friday evening and 24 on Saturday
+  16:30-02:00, Saturday 09:00-17:30, busofash.co.il) as first and last
+  departures, every 20 minutes (Wikipedia; 710 every 30, Time Out), at an estimated 20 km/h on Friday evening and 24 on Saturday
   stop to stop (Gush Dan buses measured 24 on a Saturday, 15 on a Thursday
   evening). A stop goes with the direction travelling the way the feed's
   own buses leave it, else the one passing it on the right; of 1,377 stops

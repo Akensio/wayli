@@ -1040,6 +1040,8 @@ so they are not re-litigated.
   card, and highlighting no longer refits the map (it zoomed back out on a
   rider who had zoomed in to tap a route). His question on line 710 at
   17:49 on Saturday: Na'im BeSofash runs until 17:30 on Saturdays
-  (busofash.co.il), read as the last trip ending by then; if buses are seen
-  running later, the hours are read as last departures instead.
-
+  (busofash.co.il), then read as the last trip ending by then. He then saw
+  Bus Nearby list a 710 near 18:00 by Derech HaShalom, 25 minutes into the
+  route: the hours are now read as first and last departures, and 710 runs
+  every 30 minutes (Time Out; every 20 gave a last bus there at 17:42, 30
+  gives 17:52). The app no longer says "every 20 minutes" for every line.

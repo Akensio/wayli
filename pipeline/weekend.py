@@ -10,11 +10,11 @@ GTFS feed nor its SIRI real-time feed has them (checked 2026-10-23: none of line
 server, behind the official map (https://busofash.co.il): layer 992 (one line per direction, named "from X to Y") and
 layer 993 (a stop per line, with the Ministry's stop code). No timetable is published. What is known, and used:
   - hours: Friday 16:30 to 02:00, Saturday 09:00 to 17:30 (https://busofash.co.il, 2026-10-23);
-  - frequency: every 20 minutes (https://en.wikipedia.org/wiki/Na'im_Busofash), the same for every line here;
+  - frequency: every 20 minutes (https://en.wikipedia.org/wiki/Na'im_Busofash), 710 every 30 (HEADWAY_OF);
   - speed, an estimate: on Saturday daytime the buses in Gush Dan covered 24 km/h stop to stop in a straight line
     (Hasadna's positions, 2026-10-17); on Thursday evening 15 (2026-10-22). Friday evening is taken as 20.
 So every trip here is an estimate: the agency's id starts with "est-", which the compiler records on the route and the
-app shows ("about every 20 minutes, times estimated"). The routes are drawn along the municipality's lines.
+app shows ("times estimated"). The routes are drawn along the municipality's lines.
 
 Stops are given per line, not per direction, within 40 m of both courses on a two-way street, the twins across the
 street within metres of each other: a stop goes with the direction travelling the way the feed's own buses leave it
@@ -29,8 +29,14 @@ from collections import defaultdict
 
 GIS = "https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer"
 LINES, STOPS = 992, 993
+# busofash.co.il: Friday 16:30-02:00, Saturday 09:00-17:30, read as the first and last departures from the line's first
+# stop (2026-10-24: Bus Nearby lists a line 710 bus at about 18:00 near Derech HaShalom, 25 minutes into its route,
+# which fits a 17:30 last departure, not a last trip ending at 17:30)
 HOURS = {"fri": (16 * 3600 + 1800, 26 * 3600), "sat": (9 * 3600, 17 * 3600 + 1800)}
 HEADWAY = 20 * 60
+# lines that run less often (estimates): 710 every 30 minutes (Time Out on Na'im BeSofash: every 20 minutes, 710 every
+# 30; Mako 2019 said hourly), which also puts its last Saturday bus at Derech HaShalom near 18:00, as Bus Nearby lists it
+HEADWAY_OF = {"710": 30 * 60}
 SPEED = {"fri": 20 / 3.6, "sat": 24 / 3.6}   # m/s, straight line from stop to stop (estimates, see above)
 NEAR = 40      # m: a stop this close to a line's course is on it
 SHAPE_BASE = 2_000_000_000
@@ -208,7 +214,7 @@ def merge(gtfs, dirs, stops_by_code):
             runs = [max(30, round(g / SPEED[k])) for g in gaps]
             total = sum(runs)
             t0 = h0
-            while t0 + total <= h1:   # the last trip ends by the end of the service
+            while t0 <= h1:   # the last trip leaves at the end of the service
                 tid = f"{rid}-{k}-{t0 // 60}"
                 add["trips.txt"].append({"route_id": rid, "service_id": f"{AGENCY}-{k}", "trip_id": tid, "trip_headsign": S[-1]["name"],
                                          "direction_id": str(i % 2), "shape_id": shape})
@@ -219,7 +225,7 @@ def merge(gtfs, dirs, stops_by_code):
                     hms = f"{t // 3600:02d}:{t % 3600 // 60:02d}:{t % 60:02d}"
                     add["stop_times.txt"].append({"trip_id": tid, "arrival_time": hms, "departure_time": hms, "stop_id": s["id"], "stop_sequence": str(j + 1)})
                 n_trips += 1
-                t0 += HEADWAY
+                t0 += HEADWAY_OF.get(str(d["line"]), HEADWAY)
     tmp = gtfs + ".tmp"
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
         for info in z.infolist():
