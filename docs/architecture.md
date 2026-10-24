@@ -842,9 +842,9 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   its line number, refreshed every 20 s and on every pan (not while the
   sheet covers the map or the app is in the background), with the stops
   when zoomed in. The layer follows the view: with nothing searched and
-  the map around the rider, only the lines serving stops within 500 m of
-  them (what can be taken from there; elsewhere on the map, everything in
-  view); while results are shown, only the lines of those journeys (the
+  the map around the rider, every vehicle, those of the lines serving stops
+  within 500 m of them (what can be taken from there) in front and the
+  rest faded (elsewhere on the map, everything alike); while results are shown, only the lines of those journeys (the
   note says which); hidden while a journey, a line or a followed trip
   draws its own vehicles (the rider's own carries its minutes late; the
   others show it in their bubble). The note under the map is folded into a

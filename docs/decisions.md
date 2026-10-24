@@ -1045,3 +1045,8 @@ so they are not re-litigated.
   route: the hours are now read as first and last departures, and 710 runs
   every 30 minutes (Time Out; every 20 gave a last bus there at 17:42, 30
   gives 17:52). The app no longer says "every 20 minutes" for every line.
+- 2026-10-24: Around the rider the live map hid every vehicle not on a line
+  serving a stop within 500 m; Gadi saw vehicles vanish as he zoomed in on
+  himself (right after Shabbat none of his lines ran yet, and the note that
+  said so is folded now). They are shown faded instead, his lines in front.
+

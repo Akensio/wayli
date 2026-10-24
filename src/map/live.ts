@@ -20,7 +20,9 @@ import { heading, vehiclePopup } from './popups';
 
 export const liveOn = (): boolean => !!settings.get().live && navigator.onLine !== false;
 const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label', 'lm-traffic'];
-type Show = 'all' | 'none' | string[];
+// every vehicle in view, only those of some lines (the results'), every one with those of some lines brought forward
+// (the lines near the rider), or none
+type Show = 'all' | 'none' | string[] | { near: string[] };
 let liveShow: Show | null = null;
 let nearRoutes: { lat: number; lon: number; ids: string[] } | null = null;   // the lines serving stops within 500 m of the last position
 export const lm = { seq: 0, applied: 0, stops: false, labels: new Map<string, any>(), moveTimer: 0 };
@@ -28,6 +30,7 @@ export const resetLive = (): void => { lm.labels.clear(); lm.stops = false; near
 export const resetShow = (): void => { liveShow = null; };
 
 /** Which vehicles the layer shows for what is on top: every one in view, only the lines of the results, or none. */
+const nearOf = (s: Show | null): string[] | null => (s && typeof s === 'object' && !Array.isArray(s) ? s.near : null);
 function liveShowFor(key: string): Show {
   if (key === 'detail' || key === 'lineDetail' || key === 'follow') return 'none';
   const r = results.result.value;
@@ -36,10 +39,12 @@ function liveShowFor(key: string): Show {
     for (const j of r.journeys) for (const l of j.legs) if (l.type === 'ride' && l.routeId != null) ids.add(String(l.routeId));
     if (ids.size) return Array.from(ids).sort();
   }
-  // nothing searched: around you, the lines you can take from here; looking elsewhere, everything there
+  // nothing searched: around you, every vehicle, those of the lines you can take from here in front and the rest faded
+  // (they used to be hidden: zooming in on yourself emptied the map when none of your lines was running); elsewhere,
+  // everything alike
   if (nearRoutes && nearRoutes.ids.length && state.main && lastPos) {
     const c = state.main.getCenter();
-    if (live.metres(c.lat, c.lng, lastPos.lat, lastPos.lon) < 2500) return nearRoutes.ids;
+    if (live.metres(c.lat, c.lng, lastPos.lat, lastPos.lon) < 2500) return { near: nearRoutes.ids };
   }
   return 'all';
 }
@@ -56,7 +61,7 @@ export async function updateNearRoutes(): Promise<void> {
 }
 export function applyLiveShow(): void {
   const want = liveShowFor(nav.key.value);
-  const same = liveShow != null && String(want) === String(liveShow);
+  const same = liveShow != null && JSON.stringify(want) === JSON.stringify(liveShow);
   liveShow = want;
   const m = state.main;
   if (same || !m || !state.styled || !m.getLayer('lm-veh')) return;
@@ -65,6 +70,12 @@ export function applyLiveShow(): void {
     const f: any = Array.isArray(want) ? ['in', ['get', 'ref'], ['literal', want]] : null;
     m.setFilter('lm-veh', f); m.setFilter('lm-veh-label', f);
     m.setFilter('lm-veh-dir', f ? ['all', ['>', ['get', 'bearing'], -1], f] : ['>', ['get', 'bearing'], -1]);
+    // the lines near the rider in front, the others faded and under them
+    const near = nearOf(want), isNear: any = near ? ['in', ['get', 'ref'], ['literal', near]] : null;
+    const op: any = isNear ? ['*', ['get', 'opacity'], ['case', isNear, 1, 0.45]] : ['get', 'opacity'];
+    m.setPaintProperty('lm-veh', 'circle-opacity', op); m.setPaintProperty('lm-veh', 'circle-stroke-opacity', op);
+    m.setPaintProperty('lm-veh-dir', 'icon-opacity', op); m.setPaintProperty('lm-veh-label', 'text-opacity', op);
+    m.setLayoutProperty('lm-veh', 'circle-sort-key', isNear ? ['case', isNear, 1, 0] : 0);
     refreshLiveMap();
   } else app.liveNote.value = '';
 }
@@ -121,8 +132,10 @@ export async function refreshLiveMap(): Promise<void> {
     refreshTraffic(m, b);
     const nw = live.newest(vs);
     const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
+    const near = nearOf(liveShow);
     const shown = Array.isArray(liveShow) ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length : features.length;
-    const scope = !Array.isArray(liveShow) ? '' : nearRoutes && liveShow === nearRoutes.ids ? t('liveScopeNear') : t('liveScopeSearch');
+    const nNear = near ? features.filter((f) => near.includes(f.properties!.ref as string)).length : 0;
+    const scope = Array.isArray(liveShow) ? t('liveScopeSearch') : near ? t('liveNearOf', { n: nNear }) : '';
     const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
     // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
     const via = live.source.relay ? '' : t('liveViaDb', { why: live.source.why });
