@@ -16,7 +16,7 @@ const close = () => { anchor.value = null; };
 export function SortChip() {
   const so = results.filters.value.resultSort, open = !!anchor.value;
   return (
-    <button type="button" class={`chipbtn${so !== 'depart' ? ' on' : ''}${open ? ' open' : ''}`} id="sortBtn" aria-haspopup="menu" aria-expanded={open}
+    <button type="button" class={`chipbtn${open ? ' open' : ''}`} id="sortBtn" aria-haspopup="menu" aria-expanded={open}
       onClick={(e) => { anchor.value = open ? null : (e.currentTarget as HTMLElement).getBoundingClientRect(); }}>
       <Icon name="sliders" /> {label(so)} <Icon name="chevronDown" class="chev" />
     </button>

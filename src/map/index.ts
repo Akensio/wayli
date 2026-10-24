@@ -1,7 +1,8 @@
 // The one map under everything. Panels register what they draw on it (`mapOf`); whichever panel is on top is
 // drawn, over the stops of the day and the live vehicles.
 import type { Map as MLMap, GeolocateControl } from 'maplibre-gl';
-import { dur } from '../journey/format';
+import { dur, lineText } from '../journey/format';
+import { chipColors } from '../journey/colors';
 import * as nav from '../state/nav';
 import * as search from '../state/search';
 import * as sheet from '../state/sheet';
@@ -21,7 +22,7 @@ export { applyTheme, setBasemapLang } from './basemap';
 export { mapReady, stale, state as mapState, markers, stopKindProp, EMPTY } from './shared';
 export { ensureJourneyLayers, drawJourney, boundsOf, fitMap, withCourses } from './layers';
 export { lineVehicleMarkers, vehiclesForWorker, closePopup } from './popups';
-export { refreshLiveMap, applyLiveShow, loadStopsGeo, updateNearRoutes, liveOn, resetLive } from './live';
+export { refreshLiveMap, applyLiveShow, loadStopsGeo, updateNearRoutes, liveOn, resetLive, showLinesFor } from './live';
 export { pickOnMap, closePicker } from './picker';
 export { hooks } from './shared';
 
@@ -188,6 +189,17 @@ mapOf['screen-plan'] = async (seq) => {
       coords.forEach((x) => b.extend(x));
       if (c.idx !== altSel) features.push({ type: 'Feature', properties: { idx: c.idx, ride: l.type === 'ride' ? 1 : 0 }, geometry: { type: 'LineString', coordinates: coords } });
       if (l.type === 'ride' && (!longest || coords.length > longest.length)) longest = coords;
+    }
+    // each ride says its line where it runs (a third of the way along, clear of the boarding pin and the minutes at
+    // the middle): in the line's colours on the highlighted way, grey on the others; a tap highlights that way
+    for (const l of c.j.legs) {
+      if (l.type !== 'ride' || !l.path || l.path.length < 2) continue;
+      const p = l.path[Math.floor((l.path.length - 1) / 3)];
+      const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'wayli-linechip' + (c.idx === altSel ? ' sel' : '');
+      chip.textContent = lineText(l.line);
+      if (c.idx === altSel) Object.assign(chip.style, chipColors(l.routeType, l.agency));
+      chip.addEventListener('click', (e) => { e.stopPropagation(); results.pickAlt(c.idx); });
+      markers.alt.push(new maplibregl.Marker({ element: chip, anchor: 'center' }).setLngLat([p[1], p[0]]).addTo(m));
     }
     const at = longest ? longest[Math.floor(longest.length / 2)] : null;
     if (!at) continue;

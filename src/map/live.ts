@@ -29,10 +29,15 @@ export const lm = { seq: 0, applied: 0, stops: false, labels: new Map<string, an
 export const resetLive = (): void => { lm.labels.clear(); lm.stops = false; nearRoutes = null; updateNearRoutes(); };
 export const resetShow = (): void => { liveShow = null; };
 
+// a page about some lines (a stop's page: the lines calling there) shows only their vehicles; [] until they are known
+const panelLines = new Map<string, string[]>();
+export function showLinesFor(key: string, refs: string[] | null): void { if (refs) panelLines.set(key, refs); else panelLines.delete(key); applyLiveShow(); }
 /** Which vehicles the layer shows for what is on top: every one in view, only the lines of the results, or none. */
 const nearOf = (s: Show | null): string[] | null => (s && typeof s === 'object' && !Array.isArray(s) ? s.near : null);
 function liveShowFor(key: string): Show {
   if (key === 'detail' || key === 'lineDetail' || key === 'follow') return 'none';
+  const own = panelLines.get(key);
+  if (own) return own;
   const r = results.result.value;
   if (key === 'screen-plan' && r && r.journeys && r.journeys.length && results.showing.value) {
     const ids = new Set<string>();
@@ -135,7 +140,7 @@ export async function refreshLiveMap(): Promise<void> {
     const near = nearOf(liveShow);
     const shown = Array.isArray(liveShow) ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length : features.length;
     const nNear = near ? features.filter((f) => near.includes(f.properties!.ref as string)).length : 0;
-    const scope = Array.isArray(liveShow) ? t('liveScopeSearch') : near ? t('liveNearOf', { n: nNear }) : '';
+    const scope = Array.isArray(liveShow) ? t(panelLines.get(nav.key.value) === liveShow ? 'liveScopeStop' : 'liveScopeSearch') : near ? t('liveNearOf', { n: nNear }) : '';
     const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
     // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
     const via = live.source.relay ? '' : t('liveViaDb', { why: live.source.why });

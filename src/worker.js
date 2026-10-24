@@ -1047,6 +1047,17 @@ const ops = {
     const routeIds = sibs.map((ri) => liveId(tt.routes[ri])).filter((x) => x != null);
     return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOf(r[3]), line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
+  /** The lines calling at a stop, for its page's map: one pattern per line (its busiest), with what names it in the
+   *  live data and its colours. */
+  stopRoutes({ stop }) {
+    const best = new Map();
+    for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {
+      const p = tt.stopPats[2 * i], ri = tt.patRoute[p], n = tt.patTripsOff[p + 1] - tt.patTripsOff[p];
+      const b = best.get(ri);
+      if (!b || n > b.n) best.set(ri, { p, n });
+    }
+    return Array.from(best, ([ri, { p }]) => { const r = tt.routes[ri]; return { pattern: p, ref: liveId(r), type: r[3], agency: r[2] }; });
+  },
   /** Something opened on another day, found in the day loaded now (indices are the day's own): a line by its route
    *  id in the feed, a stop by the number on its sign (else the nearest within 60 m), a train station by position. */
   findRecent({ kind, ref = null, code = '', lat = 0, lon = 0 }) {

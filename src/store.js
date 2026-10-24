@@ -4,7 +4,7 @@
 const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const set = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-const DEFAULTS = { map: 'system', theme: 'system', live: true, traffic: true, notify: true, sound: true, maxWalk: 15, lang: null, resultSort: 'depart', fDirect: false, fTrain: false, mapTint: 'teal' };   // mapTint: 'teal' | 'neutral'   // map and theme: 'light' | 'dark' | 'system' (the old map value 'auto' reads as 'system')
+const DEFAULTS = { map: 'system', theme: 'system', live: true, traffic: true, notify: true, sound: true, maxWalk: 15, lang: null, fDirect: false, fTrain: false, mapTint: 'teal' };   // mapTint: 'teal' | 'neutral'   // map and theme: 'light' | 'dark' | 'system' (the old map value 'auto' reads as 'system')
 export const settings = {
   get() { return { ...DEFAULTS, ...get('wayli-settings', {}) }; },
   set(patch) { const s = { ...this.get(), ...patch }; set('wayli-settings', s); return s; },
@@ -26,9 +26,12 @@ export const recentPlaces = {
   clear() { set('wayli-recent-places', null); },
 };
 
+// a trip from a place to the same place (my location to my location) is no trip to keep
+const sameEnds = (x) => !!(x.from && x.to && x.from.name === x.to.name);
 export const recentTrips = {
-  list() { return get('wayli-recent-trips', []); },
+  list() { return get('wayli-recent-trips', []).filter((x) => !sameEnds(x)); },
   add(q) {
+    if (sameEnds(q)) return;
     const key = (x) => `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
     const l = this.list().filter((x) => key(x) !== key(q));
     l.unshift({ from: slim(q.from), to: slim(q.to), bike: q.bike, folding: !!q.folding, at: Date.now(), day: q.day, time: q.at, arriveBy: !!q.arriveBy });

@@ -13,9 +13,10 @@ export type Filters = { fDirect: boolean; fTrain: boolean; resultSort: Sort };
 /** One card: the first option of a group, the other departures of the same lines, and when to leave for it. */
 export type Card = { idx: number; j: Journey; q: Query; options: Journey[]; lines: string[][] | null; dep: number };
 
-export const SORTS: Sort[] = ['depart', 'arrive', 'fast', 'changes'];
+export const SORTS: Sort[] = ['arrive', 'depart', 'fast', 'changes'];   // by arrival first: every plan starts so (Gadi)
 const sortKey: Record<Sort, (j: Journey) => number> = { depart: (j) => j.depart, arrive: (j) => j.arrive, fast: (j) => j.arrive - j.depart, changes: (j) => j.transfers * 1e6 + j.depart };
-const readFilters = (): Filters => { const s = settings.get(); return { fDirect: !!s.fDirect, fTrain: !!s.fTrain, resultSort: SORTS.includes(s.resultSort) ? s.resultSort : 'depart' }; };
+// the filters are kept on the phone; the order is the plan's own (each plan starts by arrival)
+const readFilters = (sort: Sort = 'arrive'): Filters => { const s = settings.get(); return { fDirect: !!s.fDirect, fTrain: !!s.fTrain, resultSort: sort }; };
 
 export const result = signal<PlanResult | null>(null);
 export const query = signal<Query | null>(null);
@@ -41,7 +42,8 @@ function build(r: PlanResult | null, q: Query | null, at: number | null, f: Filt
   if (q.arriveBy) groups = groups.slice().sort((a, b) => first(b).depart - first(a).depart);   // latest departure first, by what each card shows
   if (f.fDirect) groups = groups.filter((g) => first(g).transfers === 0);
   if (f.fTrain) groups = groups.filter((g) => first(g).legs.some((l) => l.type === 'ride' && l.routeType === 2));
-  if (f.resultSort !== 'depart') { const sk = sortKey[f.resultSort]; groups = groups.slice().sort((a, b) => sk(first(a)) - sk(first(b))); }
+  // arrive-by keeps its own order by arrival (the latest that is in time first); every other order sorts (stable)
+  if (!(q.arriveBy && f.resultSort === 'arrive')) { const sk = sortKey[f.resultSort]; groups = groups.slice().sort((a, b) => sk(first(a)) - sk(first(b)) || sortKey.depart(first(a)) - sortKey.depart(first(b))); }
   const nowSec = live.nowOn(q.day);
   const isGone = (j: Journey) => !!q.isNow && rideDep(j) < nowSec - 60;              // the first ride has left
   const onStrip = (j: Journey) => rideDep(j) >= nowSec - 600 || (!!at && j.arrive > nowSec);   // left lately, or (restored) still under way
@@ -93,6 +95,7 @@ export function setResults(r: PlanResult, q: Query, at: number | null = null): v
   // the boxes stay open: picking a destination plans at once, and the time or the bike may still change (a change
   // plans again). They fold when the rider moves on: a tap on the map, a result opened, the sheet dragged, X or back.
   result.value = r; query.value = q; resultsAt.value = at; status.value = 'idle'; error.value = '';
+  if (filters.value.resultSort !== 'arrive') filters.value = { ...filters.value, resultSort: 'arrive' };
   resetAlts();
   hooks.afterResults();
 }
@@ -119,5 +122,9 @@ export function toggleAlt(idx: number): void {
   hooks.redraw();
 }
 /** Filters and the sort order are remembered across plans; a change starts the map over from the new first three. */
-export function setFilter(patch: Partial<Filters>): void { settings.set(patch); filters.value = readFilters(); resetAlts(); hooks.afterResults(); }
+export function setFilter(patch: Partial<Filters>): void {
+  const { resultSort, ...kept } = patch;
+  if (Object.keys(kept).length) settings.set(kept);
+  filters.value = readFilters(resultSort || filters.value.resultSort); resetAlts(); hooks.afterResults();
+}
 export const refreshRecent = (): void => { recentTick.value++; };

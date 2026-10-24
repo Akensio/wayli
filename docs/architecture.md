@@ -619,7 +619,11 @@ a white casing, each with a pill at the middle of its longest ride saying its
 minutes (the highlighted one in the accent colour). A tap on a grey route or
 its pill highlights that way and brings its card into view in the open sheet
 (with a flash); a tap on the highlighted one opens a collapsed sheet on its
-card, as does opening the sheet by any means. The collapsed sheet's line
+card, as does opening the sheet by any means. Each ride of the ways drawn
+carries its line's chip a third of the way along (in its colours on the
+highlighted way, grey on the others); results sort by arrival unless the
+rider picks another order for that plan. A stop's page draws the courses
+of the lines calling there, faint, and only their vehicles. The collapsed sheet's line
 about the highlighted way folds away once the sheet opens (the list says
 the same). The map is fitted when the ways shown change, not when another
 of them is highlighted, so a rider who zoomed in keeps the view; each card has a map button that shows a way

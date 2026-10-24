@@ -28,7 +28,8 @@ export function ensureJourneyLayers(m: MLMap): void {
   m.addLayer({ id: 'alt-hit', type: 'line', source: 'alts', paint: { 'line-color': '#000000', 'line-width': 18, 'line-opacity': 0.001 } });
   m.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) results.pickAlt(+f.properties.idx); });
   m.on('mouseenter', 'alt-hit', () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', 'alt-hit', () => { m.getCanvas().style.cursor = ''; });
-  m.addLayer({ id: 'context-line', type: 'line', source: 'context', paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.3 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  // the whole lines, before and after the ride (or through a stop), faint but findable on either map
+  m.addLayer({ id: 'context-line', type: 'line', source: 'context', paint: { 'line-color': ['get', 'color'], 'line-width': 4.5, 'line-opacity': 0.45 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'context-stops', type: 'circle', source: 'context-stops', minzoom: 11, paint: { 'circle-radius': 3, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 1.5, 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 } });
   // the highlighted way: a white casing, the rides wide in their line's colour, the walks dashed
   m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 10, 7], 'line-opacity': .95 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });

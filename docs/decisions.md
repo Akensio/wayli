@@ -1049,4 +1049,13 @@ so they are not re-litigated.
   serving a stop within 500 m; Gadi saw vehicles vanish as he zoomed in on
   himself (right after Shabbat none of his lines ran yet, and the note that
   said so is folded now). They are shown faded instead, his lines in front.
+- 2026-10-24: From Gadi: a stop's page shows on the map only what it is
+  about (the principle): the vehicles of the lines calling there and their
+  courses, faint; it showed every vehicle around. Results sort by arrival
+  first, each plan starting so (the order is the plan's, no longer a kept
+  setting); the sort chip no longer turns coloured when another order is
+  chosen. Comparing ways, each ride carries its line's chip on the map (in
+  its colours on the highlighted way, grey on the others). The faint whole
+  lines before and after a ride were there but too faint on the dark map
+  (0.3); now 0.45. "My location to my location" is no recent search.
 
