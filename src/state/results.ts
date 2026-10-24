@@ -80,6 +80,7 @@ export const hooks = {
   redraw: () => {},                // the map draws the ways switched on
   peekChanged: () => {},           // the collapsed sheet follows the peek line's height
   peekTap: () => {},               // the peek line opens the sheet
+  revealCard: (_idx: number, _open: boolean) => {},   // a way's card scrolled into view (the sheet opened first if asked)
 };
 
 /** The first three ways are drawn on the map, the first of them highlighted. */
@@ -100,6 +101,13 @@ export function clear(): void {
   altShown.value = new Set(); altSel.value = -1;
 }
 export function selectAlt(idx: number): void { altSel.value = idx; altShown.value = new Set([...altShown.value, idx]); hooks.redraw(); }
+/** A way tapped on the map (its route or its minutes): highlighted, and its card brought into view in the sheet; the
+ *  highlighted one tapped again opens a collapsed sheet on its card. */
+export function pickAlt(idx: number): void {
+  const again = altSel.value === idx;
+  if (!again) selectAlt(idx);
+  hooks.revealCard(idx, again);
+}
 /** The card's map button: show the way (highlighted), highlight a shown one, hide the highlighted one. */
 /** A card's map button: on the map or off it, nothing else. The highlighted way stays as it was (it is chosen on the
  *  map, by its time label), unless it is the one taken off or none is highlighted yet (2026-10-22, Gadi). */

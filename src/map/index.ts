@@ -73,6 +73,7 @@ export async function initMap(): Promise<void> {
   m.on('moveend', () => { applyLiveShow(); clearTimeout(lm.moveTimer); lm.moveTimer = window.setTimeout(refreshLiveMap, 400); });
   m.on('click', (e) => {
     if (m.getLayer('alt-hit') && m.queryRenderedFeatures(e.point, { layers: ['alt-hit'] }).length) return;   // an alternative route: highlighted by its own handler
+    if (state.drawnFor === 'screen-plan' && results.highlighted.value && m.getLayer('journey-hit') && m.queryRenderedFeatures(e.point, { layers: ['journey-hit'] }).length) return;   // the highlighted one: its card
     if (nav.isOpen('picker')) {
       const f = stopNear(m, e.point);
       const s = f ? { stop: +f.properties.stop, name: f.properties.name || '' } : null;
@@ -150,6 +151,7 @@ export function redrawMap(force = false): void {
   const key = nav.key.value;
   applyLiveShow();
   if (!force && key === state.drawnFor) return;
+  if (key !== 'screen-plan') lastFit = '';
   state.drawnFor = key;
   const seq = ++state.drawSeq;
   const m = state.main;
@@ -191,14 +193,19 @@ mapOf['screen-plan'] = async (seq) => {
     if (!at) continue;
     const el = document.createElement('button'); el.type = 'button'; el.className = 'wayli-alt' + (c.idx === altSel ? ' sel' : '');
     el.textContent = dur(c.j.arrive - c.j.depart);
-    el.addEventListener('click', (e) => { e.stopPropagation(); results.selectAlt(c.idx); });
+    el.addEventListener('click', (e) => { e.stopPropagation(); results.pickAlt(c.idx); });
     markers.alt.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(at).addTo(m));
   }
   (m.getSource('alts') as any).setData({ type: 'FeatureCollection', features });
   const sel = shown.find((c) => c.idx === altSel) || shown[0];
   drawJourney(m, sel.j, markers.journey, -1, false);
-  fitMap(b, 15);
+  // fitted when the ways shown change, not when another of them is highlighted: a rider who zoomed in to tap a route
+  // keeps the view
+  const fitKey = `${shown.map((c) => c.idx).join(',')}|${results.query.value ? JSON.stringify([results.query.value.from, results.query.value.to, results.query.value.day, results.query.value.at]) : ''}|${results.result.value ? results.result.value.journeys.length : 0}`;
+  if (fitKey !== lastFit) fitMap(b, 15);
+  lastFit = fitKey;
 };
+let lastFit = '';   // what the results' map was last fitted to; forgotten when anything else draws (back from a detail, refit)
 /** The nearby screen on the map: the rider's position, a ring out to the farthest listed stop, the stops highlighted. */
 mapOf['screen-nearby'] = async (seq) => {
   const m = state.main, stops = nearby.stops.value;

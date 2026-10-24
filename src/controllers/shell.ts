@@ -11,11 +11,12 @@ import * as data from '../state/data';
 import * as nearby from '../state/nearby';
 import * as chooser from '../state/chooser';
 import * as saved from '../state/saved';
+import * as results from '../state/results';
 import { getPosition, hooks as positionHooks } from '../state/position';
 import * as map from '../map/index';
 import { toast } from '../ui/toast';
 import type { Place } from '../state/search';
-import { clearPlan, planTo, planFrom } from './planner';
+import { clearPlan, planTo, planFrom, revealCard } from './planner';
 import { closeDetail } from './detail';
 import { openStop, closeStop } from './stop';
 import { openLine, closeLine } from './line';
@@ -151,4 +152,7 @@ sheet.hooks.changed = (prev, st) => {
   if (prev === 'full' && st !== 'full') map.refreshLiveMap();
   const body = document.getElementById('sheetBody');
   if (body && st !== prev && map.mapState.main && (st === 'peek' || prev === 'peek')) body.scrollTop = 0;
+  // the results opened from collapsed (a tap or a drag): the highlighted way's card in view, which need not be the first
+  const c = results.highlighted.value;
+  if (prev === 'peek' && st !== 'peek' && c && nav.key.value === 'screen-plan') revealCard(c.idx, false);
 };

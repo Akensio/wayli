@@ -605,6 +605,11 @@ label.pilltoggle[hidden] { display: none; }
 /* collapsed with results: one line about the journey highlighted on the map; a tap opens the list */
 .peekline { display: flex; align-items: center; gap: 8px; width: 100%; margin: -4px 0 10px; padding: 4px 2px; border: 0; background: none; color: var(--ink); font-size: 14px; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
 .peekline[hidden] { display: none; }
+/* only collapsed: the open sheet's list says the same, so the line folds away as the sheet opens */
+.peekline { max-height: 48px; transition: max-height .25s var(--ease-out), opacity .18s, margin .25s, padding .25s; }
+.sheet:not([data-state="peek"]) .peekline { max-height: 0; opacity: 0; margin: 0; padding-block: 0; pointer-events: none; }
+.journey.flash { animation: cardFlash .9s ease-out; }
+@keyframes cardFlash { 0%, 30% { background-color: color-mix(in srgb, var(--accent) 22%, var(--surface)); } 100% { background-color: var(--surface); } }
 .peekline .times { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
 .peekline .leave { margin-inline-start: auto; font-weight: 600; }
 .peekline .leave.past { color: var(--ink-2); font-weight: 400; }

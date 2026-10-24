@@ -26,7 +26,7 @@ export function ensureJourneyLayers(m: MLMap): void {
   m.addLayer({ id: 'alt-ride', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': '#8d939c', 'line-width': 4.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'alt-walk', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': '#8d939c', 'line-width': 3.5, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'alt-hit', type: 'line', source: 'alts', paint: { 'line-color': '#000000', 'line-width': 18, 'line-opacity': 0.001 } });
-  m.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) results.selectAlt(+f.properties.idx); });
+  m.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) results.pickAlt(+f.properties.idx); });
   m.on('mouseenter', 'alt-hit', () => { m.getCanvas().style.cursor = 'pointer'; }); m.on('mouseleave', 'alt-hit', () => { m.getCanvas().style.cursor = ''; });
   m.addLayer({ id: 'context-line', type: 'line', source: 'context', paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.3 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'context-stops', type: 'circle', source: 'context-stops', minzoom: 11, paint: { 'circle-radius': 3, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 1.5, 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 } });
@@ -34,6 +34,9 @@ export function ensureJourneyLayers(m: MLMap): void {
   m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 10, 7], 'line-opacity': .95 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 6.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
+  // the highlighted way takes taps too, among the results (its card comes into view): a wide invisible line over it
+  m.addLayer({ id: 'journey-hit', type: 'line', source: 'journey', paint: { 'line-color': '#000000', 'line-width': 18, 'line-opacity': 0.001 } });
+  m.on('click', 'journey-hit', () => { if (results.highlighted.value && state.drawnFor === 'screen-plan') results.pickAlt(results.highlighted.value.idx); });
   // a journey's stops from zoom 12; a line's (they carry its colour) from zoom 9, solid in its colour while far out,
   // white with a ring of it up close
   m.addLayer({ id: 'journey-stops', type: 'circle', source: 'stops', minzoom: 9, filter: ['any', ['has', 'color'], ['>=', ['zoom'], 12]],

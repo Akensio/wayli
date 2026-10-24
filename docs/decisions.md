@@ -1033,4 +1033,13 @@ so they are not re-litigated.
   jitter on a switch was the rows' glide: a fixed element inside a
   transformed one is placed against that one, so the list jumped, slid and
   snapped back; the lists now hang from the bar itself.
+- 2026-10-24: Results, from Gadi: the open sheet showed the highlighted
+  way's line above the list that holds it too; the line is now the
+  collapsed sheet's only. A way tapped on the map scrolls the list to its
+  card. Mine: opening the sheet (a tap or a drag) lands on the highlighted
+  card, and highlighting no longer refits the map (it zoomed back out on a
+  rider who had zoomed in to tap a route). His question on line 710 at
+  17:49 on Saturday: Na'im BeSofash runs until 17:30 on Saturdays
+  (busofash.co.il), read as the last trip ending by then; if buses are seen
+  running later, the hours are read as last departures instead.
 

@@ -153,6 +153,18 @@ async function openView(v: results.View): Promise<void> {
   const [a, b] = await Promise.all([station(v.from), station(v.to)]);
   if (a && b) openTrains(a, b); else gone();
 }
+/** Bring a way's card into view in the sheet's list, with a flash so the eye finds it; a collapsed sheet opens first
+ *  when asked (otherwise the peek line already says which way it is). */
+export function revealCard(idx: number, open: boolean): void {
+  if (sheet.state.value === 'peek') { if (open) sheet.set('half'); return; }   // opening brings the highlighted card itself (shell.ts)
+  setTimeout(() => {   // after the sheet's own scroll reset, once it has its size
+    const body = document.getElementById('sheetBody'), el = document.querySelector<HTMLElement>(`.journey[data-idx="${idx}"]`);
+    if (!body || !el || sheet.state.value === 'peek') return;
+    const top = el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop, seen = body.clientHeight;
+    if (top < body.scrollTop + 8 || top + el.offsetHeight > body.scrollTop + seen - 8) body.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  }, 60);
+}
 // What the results need: the detail and follow screens, planning again, the sheet and the map.
 Object.assign(results.hooks, {
   openDetail: (j, q, bikeOnly) => openDetail(j, q, bikeOnly),
@@ -168,4 +180,5 @@ Object.assign(results.hooks, {
   redraw: () => map.redrawMap(true),
   peekChanged: () => { if (sheet.state.value === 'peek') sheet.set('peek'); },
   peekTap: () => sheet.set('half'),
+  revealCard: (idx, open) => revealCard(idx, open),
 } satisfies typeof results.hooks);
