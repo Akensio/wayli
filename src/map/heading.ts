@@ -83,17 +83,19 @@ export function attachHeading(m: MLMap): void {
       }
     }
     last = now;
+    const pitch = `${m.getPitch().toFixed(1)}deg`;   // the beam lies on the ground: tilted with the map
     for (const dot of dots) {
       let cone = dot.querySelector<HTMLElement>('.wayli-cone');   // its own element: the dot's ::after is its white ring
       if (!cone) { cone = document.createElement('div'); cone.className = 'wayli-cone'; dot.appendChild(cone); }
       if (cone.classList.contains('on') !== fresh) cone.classList.toggle('on', fresh);
       if (shown != null) cone.style.setProperty('--heading', `${shown.toFixed(1)}deg`);
+      if (cone.style.getPropertyValue('--pitch') !== pitch) cone.style.setProperty('--pitch', pitch);
     }
     if (fresh && (Math.abs(gap) > 0.2 || now - seenAt < 300)) frame = requestAnimationFrame(step);
   };
   glide = () => { if (!frame) { last = performance.now(); frame = requestAnimationFrame(step); } };
   window.setInterval(glide, 500);   // the dot may be drawn anew, or the readings stop: looked at now and then
-  m.on('rotate', glide);
+  m.on('rotate', glide); m.on('pitch', glide);
   // where the browser asks (an iPhone, Chrome on a Pixel), it asks from a tap: the first on the map does (a refusal asks
   // again on the locate button only)
   const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: unknown } }).DeviceOrientationEvent;

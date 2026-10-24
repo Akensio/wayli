@@ -526,7 +526,7 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 /* the way you face: a cone from the dot, turned by the compass (map/heading.ts), starting outside the dot so it stays
    crisp and fading out with distance */
 .wayli-cone { display: none; position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; z-index: -1; pointer-events: none;
-  transform: translate(-50%, -50%) rotate(var(--heading, 0deg));
+  transform: translate(-50%, -50%) rotateX(var(--pitch, 0deg)) rotate(var(--heading, 0deg));   /* turned on the ground, the ground tilted as the map is (like the compass button) */
   background: conic-gradient(from -32deg, color-mix(in srgb, var(--accent) 55%, transparent) 0deg 64deg, transparent 64deg);
   -webkit-mask: radial-gradient(circle, transparent 0 9px, #000 10px, rgba(0,0,0,.6) 28px, transparent 48px); mask: radial-gradient(circle, transparent 0 9px, #000 10px, rgba(0,0,0,.6) 28px, transparent 48px); }
 .wayli-cone.on { display: block; }
