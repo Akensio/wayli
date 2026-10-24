@@ -602,6 +602,50 @@ function snapVehicles(j, t) {
 const TRACK_MS = 900e3, PAIR_MS = 90e3;
 const tracks = new Map();   // ride -> { lineRef, start, pts: [[ms, lat, lon]] } oldest first
 let roads = new Map();      // "code>code" -> [{ ratio, t, ride, p, k }]
+// A pattern's course cut at its stops, for placing a bus on it: per section the points, the length along them and a
+// box around them. Placed on the straight line between two stops instead, a bus on a long highway section (stops
+// kilometres apart, the road curving away from that line) was more than 120 m off it and left out: no traffic on Route
+// 4 or on half of Route 1 (Gadi, 2026-10-24).
+const courseSections = new Map();
+function sectionsOf(p) {
+  if (courseSections.has(p)) return courseSections.get(p);
+  const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p], out = [];
+  for (let k = 0; k < ns - 1; k++) {
+    const pts = ridePath(p, k, k + 1);
+    if (!pts) { out.length = 0; break; }
+    const cum = [0];
+    let s = 0, la0 = Infinity, la1 = -Infinity, lo0 = Infinity, lo1 = -Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      if (i) { s += metres(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]); cum.push(s); }
+      la0 = Math.min(la0, pts[i][0]); la1 = Math.max(la1, pts[i][0]); lo0 = Math.min(lo0, pts[i][1]); lo1 = Math.max(lo1, pts[i][1]);
+    }
+    out.push({ pts, cum, len: s, box: [la0 - 0.002, la1 + 0.002, lo0 - 0.0025, lo1 + 0.0025] });
+  }
+  const r = out.length ? out : null;
+  if (courseSections.size > 4000) courseSections.clear();
+  courseSections.set(p, r);
+  return r;
+}
+/** Where a position lies along a trip: the section and how far along it, and how far off the course (the straight
+ *  lines between stops where the pattern has no course). */
+function projectOnCourse(lat, lon, p, stops) {
+  const secs = sectionsOf(p);
+  if (!secs || secs.length !== stops.length - 1) return projectOnStops(lat, lon, stops);
+  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+  let best = { index: 0, frac: 0, metres: Infinity };
+  secs.forEach((sec, k) => {
+    const b = sec.box;
+    if (lat < b[0] || lat > b[1] || lon < b[2] || lon > b[3]) return;
+    for (let i = 0; i < sec.pts.length - 1; i++) {
+      const ax = (sec.pts[i][1] - lon) * kx, ay = (sec.pts[i][0] - lat) * ky, bx = (sec.pts[i + 1][1] - lon) * kx, by = (sec.pts[i + 1][0] - lat) * ky;
+      const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+      const f = len2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
+      const d = Math.hypot(ax + f * dx, ay + f * dy);
+      if (d < best.metres) best = { index: k, frac: sec.len > 0 ? (sec.cum[i] + f * (sec.cum[i + 1] - sec.cum[i])) / sec.len : 0, metres: d };
+    }
+  });
+  return best.metres === Infinity ? projectOnStops(lat, lon, stops) : best;
+}
 function noteRoads(vehicles) {
   if (!tt || !hasBusTimes()) return;   // without the learned times there is nothing to compare with
   let newest = 0;
@@ -623,7 +667,7 @@ function noteRoads(vehicles) {
     const { p, stops } = tripStopList(trip);
     let a = null;
     for (const pt of tr.pts) {
-      const pr = projectOnStops(pt[1], pt[2], stops);
+      const pr = projectOnCourse(pt[1], pt[2], p, stops);
       if (pr.metres > 120) continue;
       const at = { t: pt[0], x: pr.index + pr.frac };
       if (!a) { a = at; continue; }
@@ -663,8 +707,14 @@ function trafficIn(box) {
   const nowSec = secondsOn(new Date(newest), day);
   for (const [key, v] of roads) {
     const recent = v.filter((x) => x.t > newest - TRACK_MS);
-    if (new Set(recent.map((x) => x.ride)).size < 2) continue;
-    const { p, k } = recent[recent.length - 1], at = tt.patStopsOff[p] + k, s1 = tt.patStops[at], s2 = tt.patStops[at + 1];
+    const { p, k } = recent.length ? recent[recent.length - 1] : { p: -1, k: 0 };
+    if (p < 0) continue;
+    const at = tt.patStopsOff[p] + k, s1 = tt.patStops[at], s2 = tt.patStops[at + 1];
+    // two buses in town; on a long section (a highway between interchanges, where each line has its own pair of stops
+    // and two rarely share one in a quarter of an hour) one bus seen along it at least three times will do
+    const rides = new Set(recent.map((x) => x.ride)).size;
+    const long = metres(tt.stopLat[s1], tt.stopLon[s1], tt.stopLat[s2], tt.stopLon[s2]) >= 2000;
+    if (rides < 2 && !(long && recent.length >= 2)) continue;
     if (!inBox(s1) && !inBox(s2)) continue;
     const [c1, c2] = key.split('>'), free = freeRun(c1, c2, day);
     if (!free) continue;

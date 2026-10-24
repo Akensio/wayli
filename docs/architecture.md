@@ -827,7 +827,11 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   bus lanes and days with an accident are where it should matter most.
 - Traffic on the map, from the same ratios (a setting, on by default once
   the learned times exist): each section that at least two buses ran in the
-  last 15 minutes, along its course, coloured by its time now against its
+  last 15 minutes (on a section of 2 km or more, a highway between
+  interchanges where each line has its own stops, one bus seen along it
+  three times), a bus placed on its pattern's course (not on the straight
+  line between stops, which a highway curves away from), drawn along the
+  course, coloured by its time now against its
   best in the day's hours (the second-fastest hour of 06..22; the night,
   with nobody at the stops, made every road read slow): green up to 1.5
   times, orange to 2.2, red to 3.2, dark red beyond. Replayed on Tel Aviv,

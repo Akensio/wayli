@@ -1072,4 +1072,13 @@ so they are not re-litigated.
   the sheet (the locate button too: it centred behind a half-open sheet).
   The camera fits a thing once: highlights, live updates and courses
   arriving no longer refit it. docs/principles.md starts with this rule.
+- 2026-10-24: Gadi: Route 4 and half of Route 1 had no traffic colour. A bus
+  was placed on the straight line between its two stops, and on a highway
+  section (stops kilometres apart) the road curves away from it: positions
+  over 120 m off were dropped. Buses are now placed on the pattern's course.
+  And a section needed two buses in 15 minutes; on highways each line has
+  its own pair of stops, so a long section (2 km or more) now takes one bus
+  seen along it three times. Replaying Thursday 08:00-08:20 (Oct 22) through
+  the worker: road coloured 3,146 km before, 3,868 with the course alone,
+  5,304 with both; long sections 130 to 369; the city unchanged.
 
