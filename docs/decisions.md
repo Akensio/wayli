@@ -1024,3 +1024,13 @@ so they are not re-litigated.
   took for "an iPhone": it waited for a tap and then listened for the
   iPhone's readings only. Now every kind of reading is listened to from the
   start and the permission, where there is one, is asked from a tap.)
+- 2026-10-24: Gadi's back rule: the keyboard closes first, then the open
+  list, and only then the usual stack. Built as one close watcher for the
+  bar that undoes a piece and is made again (measured in Chrome: watchers
+  made from one tap are grouped, so a watcher per piece closed two at once;
+  rejected). Android only; elsewhere back stays history. Switching search
+  kinds keeps the keyboard and the list as they were (his ask). The list's
+  jitter on a switch was the rows' glide: a fixed element inside a
+  transformed one is placed against that one, so the list jumped, slid and
+  snapped back; the lists now hang from the bar itself.
+

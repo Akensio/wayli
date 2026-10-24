@@ -536,11 +536,20 @@ takes, today's count; a tap sets To); with both, the direct trains between
 them (`trainsBetween`): leave, arrive, how long, stops, where the train
 heads, live times for the next ones from one request for every train, a
 tap opening the train's stops. Connections stay with the trip search.
-The line and stop searches are a step of their own (a history entry): the
-bar's back arrow or a tap on the map folds them to a pill of their own
-(the kind on a chip where the logo sits, its x back to the trip search),
-opening a line or a stop folds the bar too, and the phone's back from
-there returns to the trip search. The boxes are search boxes (`type=search`
+The line and stop searches are a step of their own: the bar's back arrow or
+a tap on the map folds them to a pill of their own (the kind on a chip
+where the logo sits, its x back to the trip search), opening a line or a
+stop folds the bar too, and the phone's back from there returns to the
+trip search. On Android back takes the bar a piece at a time before
+anything else: the keyboard first (the box lets go of its focus, the list
+stays), then the open list, then the line or stop search. That is one
+close watcher, made again after each piece (Chrome groups watchers made
+from the same tap, so one per piece could close two at once); a keyboard
+the phone puts away by itself counts as that piece. Switching between
+trip, line and stop keeps the keyboard and the list as they were. The
+lists hang from the bar itself, not from their box's row, so the rows'
+glide never carries them; the list glides to the bar's new height and its
+rows change once, the old ones dimmed until the new ones come. The boxes are search boxes (`type=search`
 with a combobox role), so phones do not offer saved passwords over the
 keyboard.
 

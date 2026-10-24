@@ -17,8 +17,9 @@ import * as search from './search';
 import * as chooser from './chooser';
 import * as app from './app';
 
-// 'search': the bar searches lines or stops (a step back is the trip search again)
-export type Entry = { kind: 'overlay'; id: string } | { kind: 'tab'; from: string } | { kind: 'plan' } | { kind: 'search' };
+// 'search': the bar searches lines or stops (a step back is the trip search again); 'ui': a search box's open list or
+// its keyboard, which back closes first (Android only: see pushUi)
+export type Entry = { kind: 'overlay'; id: string } | { kind: 'tab'; from: string } | { kind: 'plan' } | { kind: 'search' } | { kind: 'ui'; undo: () => void };
 export const stack = signal<Entry[]>([]);
 export const screen = signal('plan');
 let settling = false;
@@ -64,6 +65,8 @@ export function renderPanels(): void {
 
 const CW = (window as any).CloseWatcher;
 const WATCH = typeof CW === 'function' && /Android/i.test(navigator.userAgent);
+/** Back is a close request at a time here (CloseWatcher), not history. */
+export const closeWatchers = WATCH;
 const watchers = new Map<Entry, any>();
 /** An entry's CloseWatcher: Android's back closes it, and whatever was opened over it. */
 function watch(entry: Entry): void {
@@ -100,6 +103,7 @@ function undo(entry: Entry): void {
   if (entry.kind === 'overlay') hideOverlay(entry.id);
   else if (entry.kind === 'tab') showScreen(entry.from, false);
   else if (entry.kind === 'search') hooks.leaveSearch();
+  else if (entry.kind === 'ui') entry.undo();
   else hooks.clearPlan();
 }
 /** Close the given panel (or the plan, or the line or stop search) now; history steps back one entry to match (its
@@ -112,6 +116,23 @@ export function close(id: string, undo = true): void {
   stack.value = stack.value.filter((_, k) => k !== i);
   if (!undo) { /* nothing left to undo */ } else if (entry.kind === 'plan') hooks.clearPlan(); else if (entry.kind === 'search') hooks.leaveSearch(); else hideOverlay(id);
   if (WATCH) unwatch(entry); else stepBack(1);
+}
+/**
+ * A step back of the top bar's own (controllers/shell.ts): its keyboard, then its list, then the line or stop search.
+ * Android only (CloseWatcher), where back is one close request at a time; elsewhere each focus and blur would be a
+ * history entry. Returns null there.
+ */
+export function pushUi(undo: () => void): Entry | null {
+  if (!WATCH) return null;
+  const entry: Entry = { kind: 'ui', undo };
+  push(entry);
+  return entry;
+}
+/** The box's step is over by other means (the list closed, the box lost its focus): dropped, nothing undone. */
+export function dropUi(entry: Entry | null): void {
+  if (!entry || !stack.value.includes(entry)) return;
+  stack.value = stack.value.filter((e) => e !== entry);
+  unwatch(entry);
 }
 /** Replace one open panel by another in place (the trip detail becomes the trip being followed). */
 export function swap(oldId: string, newId: string): boolean {

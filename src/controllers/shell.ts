@@ -1,5 +1,6 @@
 // The shell around the screens: the top bar's height for the map and the sheet, install (Chrome's prompt or
 // Safari's steps), online and offline, the drawer's actions, and what closing each panel must stop.
+import { effect } from '@preact/signals';
 import { t } from '../i18n';
 import { call } from '../worker/client';
 import * as app from '../state/app';
@@ -104,8 +105,30 @@ Object.assign(saved.hooks, { planTo: (p: Place) => planTo(p), choosePlace: (titl
 // what the map's bubbles ask of the app
 Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(trip, stop), openLine: (route: number) => openLine(route), openStop: (stop: number) => openStop(stop), planTo: (p: Place) => planTo(p), planFrom: (p: Place) => planFrom(p) });
 positionHooks.moved = () => map.updateNearRoutes();
-// a line or stop search is a step of its own: back returns to the trip search (folded)
+// Back and the top bar, on Android: one step that undoes the bar a piece at a time (the keyboard, then the list, then
+// the line or stop search, back to the trip search folded) and is made again while anything is left. One re-made step
+// rather than one each: Chrome groups close watchers made from the same tap, so a step per piece could close two at once.
+let barStep: nav.Entry | null = null;
+const barBusy = () => !!(search.typing.value || search.listing.value || search.kind.value !== 'trip');
+function barBack(): void {
+  barStep = null;
+  const typing = search.typing.peek(), listing = search.listing.peek();
+  if (typing) search.boxes.get(typing)?.blur();
+  else if (listing) search.boxes.get(listing)?.closeList();
+  else if (search.kind.peek() !== 'trip') { search.leaveLineMode(); search.foldBar(); }
+  setTimeout(syncBarStep, 30);   // a blur lands a moment later
+}
+function syncBarStep(): void {
+  const busy = barBusy();
+  // taken off the stack: by back (barBack runs next and makes it again after its piece) or with everything else
+  if (barStep && !nav.stack.value.includes(barStep)) { barStep = null; return; }
+  if (busy && !barStep) barStep = nav.pushUi(barBack);
+  else if (!busy && barStep) { nav.dropUi(barStep); barStep = null; }
+}
+if (nav.closeWatchers) effect(syncBarStep);
+// elsewhere (history), a line or stop search is a history entry of its own: back returns to the trip search (folded)
 search.hooks.kindChanged = (k) => {
+  if (nav.closeWatchers) return;
   const on = nav.stack.value.some((e) => e.kind === 'search');
   if (k !== 'trip' && !on) nav.push({ kind: 'search' });
   else if (k === 'trip' && on) nav.close('search', false);   // back to trips by the switch (or the pill's x): the bar stays as it is

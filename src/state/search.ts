@@ -22,6 +22,10 @@ export const texts = { from: fromText, to: toText } as const;
 
 // ---- the bar
 export const barOpen = signal(false);   // editing: both rows and the options show
+export const typing = signal('');       // the bar's box with the keyboard (its id), for back
+export const listing = signal('');      // the bar's box with its list open
+/** What back does to a bar box: let go of its focus (the keyboard goes), close its list. */
+export const boxes = new Map<string, { blur: () => void; closeList: () => void }>();
 export const leaving = signal(false);   // the moment after editing ends: the rows play out before they go
 export const settling = signal(false);  // then the pill's icons pop back in
 export const optOpen = signal<OptPanel>('');

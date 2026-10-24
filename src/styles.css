@@ -423,6 +423,10 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 .sumbox .tag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-inline-end: 6px; vertical-align: 1px; }
 .sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
 /* the suggestions list hangs below all the boxes, never over the other field */
+.dropdown.stale .dropbody { opacity: .45; transition: opacity .12s; }
+.dropbody[data-swapped] { animation: dropSwap .2s var(--ease-out) both; }
+@keyframes dropSwap { from { opacity: .3; } to { opacity: 1; } }
+.topbar .dropdown { transition: top .34s cubic-bezier(.2, .8, .2, 1); }   /* the bar changes height with the search kind: the list glides with its rows */
 .topbar .dropdown { position: fixed; top: var(--top-h); inset-inline: 10px; margin-top: 0; border-radius: 18px; max-height: calc(100vh - var(--top-h) - 16px); max-height: calc(100dvh - var(--top-h) - 16px); }
 /* the menu button: a turquoise disc with three lines. Pressed, the disc gives a little and the lines draw together;
    let go, both spring back past rest and settle while the drawer slides in */

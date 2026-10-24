@@ -2,7 +2,8 @@
 // the quick entries (my location, pick on the map, home, work, recents) while empty, matching stops, places
 // and lines while typing. In the line search (`kind` line) the list holds lines only, in the stop search stops only:
 // those near the rider while empty, those matching as it is typed. The list ends above the keyboard and scrolls inside itself.
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
 import { placeName, named } from '../../state/names';
 import { useSignal, useSignalEffect } from '@preact/signals';
 import type { Signal } from '@preact/signals';
@@ -34,6 +35,8 @@ type Props = {
   onLocate?: () => void;    // custom "my location" and "pick on the map" (the place chooser), else the planner's own
   onMap?: () => void;
   withUser?: boolean;       // the user button sits at the end (the To pill)
+  inBar?: boolean;          // the list hangs from the top bar itself, not from this box's row: the bar's rows glide when
+                            // the search kind changes (ui/flip), and a moving row would carry its fixed list along
   children?: any;           // what else sits in the pill (the tag, the logo, the user button)
 };
 
@@ -44,7 +47,9 @@ const fromResult = (g: Suggestion): Place => g.kind === 'stop' ? (g as Place) : 
 function fitDrop(el: HTMLElement) {
   const vv = window.visualViewport;
   const bottom = vv ? vv.offsetTop + vv.height : innerHeight;
-  const top = el.getBoundingClientRect().top;
+  // the bar's list may be gliding to the bar's new height: where it ends up, not where it is
+  const barTop = el.parentElement?.classList.contains('topbar') ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-h')) : NaN;
+  const top = Number.isFinite(barTop) ? barTop : el.getBoundingClientRect().top;
   el.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
 }
 
@@ -84,13 +89,18 @@ function LineRow({ g, onLine }: { g: LineGroup; onLine: (r: { route: number }) =
   );
 }
 
-export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, kind = 'trip', stationSide, onPick, onStop, onLine, onLocate, onMap, withUser = false, children }: Props) {
+export function SearchField({ id, dropId, text, place, placeholder, onFocus: onFocusProp, inputMode = '', lines = false, kind = 'trip', stationSide, onPick, onStop, onLine, onLocate, onMap, withUser = false, inBar = false, children }: Props) {
   const lineKind = kind === 'line', stopKind = kind === 'stop';
   const open = useSignal(false);
   const closing = useSignal(false);   // the list folds away before it hides
   const focused = useSignal(false);
-  const [rows, setRows] = useState<Rows | null>(null);
+  const [rows, setRowsNow] = useState<Rows | null>(null);
+  // a switch of search kind: the old rows stay, dimmed, until the new ones come, which then fade in (one change, not two)
+  const [swap, setSwap] = useState(0), stale = useSignal(false);
+  const setRows = (r: Rows) => { if (stale.peek()) { stale.value = false; setSwap((n) => n + 1); } setRowsNow(r); };
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dropHost, setDropHost] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => { if (inBar) setDropHost(inputRef.current?.closest<HTMLElement>('.topbar') || null); }, [inBar]);
   const dropRef = useRef<HTMLDivElement>(null);
   const focusedAt = useRef(0);
   const seq = useRef(0);
@@ -136,12 +146,27 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
       show();
     }, 150);
   };
-  // what the bar searches for changed while typing (the switch keeps the keyboard up): the list follows at once
+  // what the bar searches for changed: a list that was open follows at once (the switch keeps the keyboard as it was,
+  // up or down); a box whose row the new kind hides closes its list
   useEffect(() => {
-    if (!focused.peek()) return;
+    if (!focused.peek() && !open.peek()) return;
+    if (!inputRef.current?.getClientRects().length) { open.value = false; return; }
+    if (open.peek()) stale.value = true;
     const q = text.peek().trim();
     if (q) typed(q); else quickMenu();
   }, [kind, stationSide]);
+  // back (controllers/shell.ts) takes the keyboard first, then the list: the bar's boxes say which they have
+  useSignalEffect(() => {
+    if (!inBar) return;
+    const o = open.value, f = focused.value;
+    if (f) search.typing.value = id; else if (search.typing.peek() === id) search.typing.value = '';
+    if (o) search.listing.value = id; else if (search.listing.peek() === id) search.listing.value = '';
+  });
+  useEffect(() => {
+    if (!inBar) return;
+    search.boxes.set(id, { blur: () => inputRef.current?.blur(), closeList: () => { open.value = false; inputRef.current?.blur(); } });
+    return () => { search.boxes.delete(id); };
+  }, []);
   // the line search's kind of line changed (the chips under the box): list again for it
   useSignalEffect(() => {
     void search.lineFilter.value; void search.stopFilter.value;
@@ -158,7 +183,17 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
       if (Date.now() - focusedAt.current > 500) open.value = false;
     };
     document.addEventListener('click', onDoc);
-    const refit = () => { if (open.value && dropRef.current) fitDrop(dropRef.current); };
+    // the keyboard put away by the phone itself (its own back, its hide key): the box lets go of its focus, so the
+    // next back is the list's
+    let tallest = window.visualViewport?.height || innerHeight, keysUp = false;
+    const refit = () => {
+      if (open.value && dropRef.current) fitDrop(dropRef.current);
+      const vv = window.visualViewport; if (!vv) return;
+      tallest = Math.max(tallest, vv.height);
+      const up = vv.height < tallest - 120;
+      if (keysUp && !up && document.activeElement === inputRef.current) inputRef.current?.blur();
+      keysUp = up;
+    };
     window.visualViewport?.addEventListener('resize', refit); window.visualViewport?.addEventListener('scroll', refit);
     return () => { document.removeEventListener('click', onDoc); window.visualViewport?.removeEventListener('resize', refit); window.visualViewport?.removeEventListener('scroll', refit); };
   }, []);
@@ -208,23 +243,9 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
   const savedList = savedPlaces.all() as (Place & { slot: string })[];
   const recent = (recentPlaces.list() as Place[]).filter((r) => !savedPlaces.has(r));
   const xShown = focused.value && !!text.value;
-
-  return (
-    <div class={`field search tagged${withUser ? ' withuser' : ''}`}>
-      {children}
-      {/* a search box, said every way browsers and password managers listen: as a plain text box Chrome on Android offered
-          saved passwords over the keyboard (it ignores autocomplete="off" when it guesses at logins) */}
-      <input ref={inputRef} type="search" role="combobox" aria-expanded={open.value} aria-controls={dropId} name={`wayli-${id}`} id={id} placeholder={placeholder}
-        autocomplete="off" autocorrect="off" autocapitalize="off" data-1p-ignore="" data-lpignore="true" data-bwignore="" data-form-type="other" enterkeyhint="search" inputMode={inputMode || undefined}
-        value={text.value}
-        onInput={(e) => { text.value = (e.currentTarget as HTMLInputElement).value; typed(text.value.trim()); }}
-        class={magic && !focused.value ? 'magic' : ''} onFocus={onFocus} onBlur={onBlur} onKeyDown={onKey} />
-      <button type="button" id={`${id}-x`} class="fieldx" hidden={!xShown} aria-label={t('clearText')}
-        onPointerDown={(e) => e.preventDefault()}
-        onClick={() => { text.value = ''; place.value = null; focusedAt.current = Date.now(); inputRef.current?.focus(); quickMenu(); }}>
-        <Icon name="close" />
-      </button>
-      <div ref={dropRef} class={`dropdown${closing.value ? ' closing' : ''}`} id={dropId} hidden={!open.value && !closing.value}>
+  const drop = (
+    <div ref={dropRef} class={`dropdown${closing.value ? ' closing' : ''}${stale.value ? ' stale' : ''}`} id={dropId} hidden={!open.value && !closing.value}>
+      <div class="dropbody" key={swap} data-swapped={swap > 0 ? '' : undefined}>
         {rows?.quick && <>
           <button type="button" class="quick" onClick={locate}><span class="ic"><Icon name="locate" /></span><span class="txt">{t('myLoc')}</span></button>
           <button type="button" class="quick" onClick={pickMap}><span class="ic"><Icon name="map" /></span><span class="txt">{t('pickTitle')}</span></button>
@@ -259,6 +280,25 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
           {!rows.results.length && !rows.lines.length && !(rows.stops && rows.stops.length) && <button type="button" disabled>{lineKind ? (rows.near ? t('linesHint') : t('lineNoMatch')) : stopKind ? (rows.near ? t('stopsHint') : t('noMatch')) : rows.placesLoaded ? t('noMatch') : t('placesPending')}</button>}
         </>}
       </div>
+    </div>
+  );
+
+  return (
+    <div class={`field search tagged${withUser ? ' withuser' : ''}`}>
+      {children}
+      {/* a search box, said every way browsers and password managers listen: as a plain text box Chrome on Android offered
+          saved passwords over the keyboard (it ignores autocomplete="off" when it guesses at logins) */}
+      <input ref={inputRef} type="search" role="combobox" aria-expanded={open.value} aria-controls={dropId} name={`wayli-${id}`} id={id} placeholder={placeholder}
+        autocomplete="off" autocorrect="off" autocapitalize="off" data-1p-ignore="" data-lpignore="true" data-bwignore="" data-form-type="other" enterkeyhint="search" inputMode={inputMode || undefined}
+        value={text.value}
+        onInput={(e) => { text.value = (e.currentTarget as HTMLInputElement).value; typed(text.value.trim()); }}
+        class={magic && !focused.value ? 'magic' : ''} onFocus={onFocus} onBlur={onBlur} onKeyDown={onKey} />
+      <button type="button" id={`${id}-x`} class="fieldx" hidden={!xShown} aria-label={t('clearText')}
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={() => { text.value = ''; place.value = null; focusedAt.current = Date.now(); inputRef.current?.focus(); quickMenu(); }}>
+        <Icon name="close" />
+      </button>
+      {dropHost ? createPortal(drop, dropHost) : drop}
     </div>
   );
 }

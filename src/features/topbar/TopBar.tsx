@@ -37,7 +37,13 @@ export function TopBar() {
   const kind = search.kind.value, pair = search.railPair.value;
   const line = kind !== 'trip';                // the line and stop searches: kind chips under the box
   const one = line && !pair;                   // one box (the train timetable has two: from and to station)
-  const toKind = (k: search.Kind) => { search.setKind(k); search.focusBox('toQ'); };
+  // switching keeps the keyboard and the list as they were: a box that had the keyboard keeps it (the To box, if the
+  // new kind hides the one that had it); with the keyboard down nothing takes the focus, and an open list follows
+  const toKind = (k: search.Kind) => {
+    const had = document.activeElement as HTMLElement | null, typing = had?.id === 'toQ' || had?.id === 'fromQ';
+    search.setKind(k);
+    if (typing) setTimeout(() => { if (!had!.getClientRects().length || document.activeElement !== had) (document.getElementById('toQ') as HTMLInputElement | null)?.focus(); }, 60);
+  };
   const filters = kind === 'stop' ? STOP_FILTERS : LINE_FILTERS, filter = kind === 'stop' ? search.stopFilter : search.lineFilter;
   const opt = search.optOpen.value;
   const barRef = useRef<HTMLDivElement>(null), segRef = useRef<HTMLDivElement>(null);
@@ -90,7 +96,7 @@ export function TopBar() {
       <div class="pair" id="pair" hidden={sum}>
         <button type="button" class="iconbtn small" id="barBack" hidden={!edit} aria-label={t('back')} onClick={search.back}><Icon name="back" class="chev" /></button>
         <div class="trow origin" id="fromRow" data-flip="from" hidden={!edit || one}>
-          <SearchField id="fromQ" dropId="fromDrop" text={pair ? search.stFromText : search.fromText} place={pair ? search.stFrom : search.from} onFocus={search.openBar} placeholder={t(pair ? 'fromStationQ' : 'fromQ')}
+          <SearchField id="fromQ" dropId="fromDrop" inBar text={pair ? search.stFromText : search.fromText} place={pair ? search.stFrom : search.from} onFocus={search.openBar} placeholder={t(pair ? 'fromStationQ' : 'fromQ')}
             kind={pair ? 'stop' : 'trip'} stationSide={pair ? 'from' : undefined}
             onStop={(g) => { (document.getElementById('fromQ') as HTMLInputElement | null)?.blur(); search.hooks.chooseStation('from', g); }}
             onPick={(p) => { (document.getElementById('fromQ') as HTMLInputElement | null)?.blur(); search.chooseFrom(p); }}>
@@ -98,7 +104,7 @@ export function TopBar() {
           </SearchField>
         </div>
         <div class="trow" id="toRow" data-flip="to" hidden={sum} onPointerDownCapture={(e) => { if ((e.target as HTMLElement).id === 'toQ') onToPointerDown(e); }}>
-          <SearchField id="toQ" dropId="toDrop" text={pair ? search.stToText : search.toText} place={pair ? search.stTo : search.to} onFocus={search.openBar} withUser
+          <SearchField id="toQ" dropId="toDrop" inBar text={pair ? search.stToText : search.toText} place={pair ? search.stTo : search.to} onFocus={search.openBar} withUser
             placeholder={t(pair ? 'toStationQ' : search.toPlaceholder.value)} inputMode={search.toInputMode.value} lines kind={kind} stationSide={pair ? 'to' : undefined}
             onStop={(g) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); if (pair) search.hooks.chooseStation('to', g); else { search.hooks.openStopGroup(g); search.foldBar(); } }}
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
