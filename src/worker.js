@@ -883,7 +883,14 @@ const ops = {
   routeLabels({ ids }) {
     if (!routeById) indexRoutes();
     const out = {};
-    for (const id of ids) { const ri = routeById.get(String(id)); if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(ri), route: ri }; } }
+    const other = tt.header.otherRoutes || {};
+    for (const id of ids) {
+      const ri = routeById.get(String(id));
+      if (ri != null) { const r = tt.routes[ri]; out[id] = { line: routeLabel(r), type: r[3], agency: r[2], headsign: headsign(ri), route: ri }; continue; }
+      // a line of the feed with no trips today: named, with no page to open
+      const o = other[String(id)];
+      if (o) out[id] = { line: o[0], type: o[2], agency: o[1], headsign: o[3], route: null, offDay: true };
+    }
     return out;
   },
   /**

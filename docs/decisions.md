@@ -1013,3 +1013,10 @@ so they are not re-litigated.
   after midnight compiled the night's day from a feed that already started
   the next day (75 KB instead of 3.9 MB); such days are left out of the
   site. The follow screen's own dot also gets the compass cone.
+- 2026-10-24: Gadi saw a "?" vehicle on HaTayasim on Saturday: shared taxi
+  line 16 (Odelia, route ids 28099/28100), five cars reporting while the
+  feed gives the line no Saturday trips. Timetables now carry the names of
+  the feed's other lines; such a vehicle is named, its bubble says the line
+  is not in today's official timetable. And no compass cone on his iPhone:
+  iOS asks permission only from a tap, and with his position already known
+  he never tapped the locate button; the first tap on the map asks too.

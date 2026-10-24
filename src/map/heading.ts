@@ -1,6 +1,8 @@
 // Which way you face: a cone on the position dot, turned by the phone's compass and the map's rotation, like a
 // torch. Chrome on Android gives the compass as absolute orientation; an iPhone gives webkitCompassHeading once
-// permission is asked from a tap (the locate button); other Android browsers send an absolute plain orientation event.
+// permission is asked from a tap (the locate button, or the first tap on the map: with the position already known the
+// locate button may never be tapped, and the cone never came); other Android browsers send an absolute plain
+// orientation event.
 // The heading stays on the phone. Smoothed, so it does not jitter. A phone held still may send no readings at all
 // (some send only on change), so the cone keeps its last direction for half a minute; it shows only once a reading
 // came. `window.wayliDebug.compass` counts the readings, to tell a phone without a compass from a drawing problem.
@@ -24,13 +26,17 @@ function absolute(e: DeviceOrientationEvent): void { if (e.alpha != null) onRead
 function plain(e: DeviceOrientationEvent): void { if (e.absolute && e.alpha != null && performance.now() - seenAt > 500) onReading(360 - e.alpha); }
 function ios(e: DeviceOrientationEvent): void { const c = (e as unknown as { webkitCompassHeading?: number }).webkitCompassHeading; if (c != null && !Number.isNaN(c)) onReading(c); }
 
+let asking = false;
 /** Listen to the compass (once). On an iPhone this must run from a tap: it asks for permission there. */
 export function startHeading(): void {
-  if (started) return;
+  if (started || asking) return;
   const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }).DeviceOrientationEvent;
   if (!D) return;
   if (typeof D.requestPermission === 'function') {
-    D.requestPermission().then((r) => { if (r === 'granted') { started = true; window.addEventListener('deviceorientation', ios); } }).catch(() => { /* refused */ });
+    const act = (navigator as unknown as { userActivation?: { isActive: boolean } }).userActivation;
+    if (act && !act.isActive) return;   // not from a tap: it would only be refused
+    asking = true;
+    D.requestPermission().then((r) => { if (r === 'granted') { started = true; window.addEventListener('deviceorientation', ios); } }).catch(() => { /* refused */ }).finally(() => { asking = false; });
   } else {
     started = true;
     if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', absolute as EventListener);
@@ -59,4 +65,8 @@ export function attachHeading(m: MLMap): void {
   const tick = () => { if (!frame) frame = requestAnimationFrame(draw); };
   window.setInterval(tick, 100);   // readings come up to 60 times a second; ten redraws a second are plenty
   m.on('rotate', tick);
+  // an iPhone asks from a tap: the first on the map does (a refusal asks again on the locate button only)
+  const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: unknown } }).DeviceOrientationEvent;
+  // (touchend: the map's touch handling may leave no click, and Safari takes touchend as a tap that may ask)
+  if (D && typeof D.requestPermission === 'function') for (const ev of ['touchend', 'click']) m.getCanvasContainer().addEventListener(ev, () => startHeading(), { once: true });
 }

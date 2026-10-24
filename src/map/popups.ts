@@ -29,7 +29,7 @@ export function openPopup(m: MLMap, lngLat: LngLatLike, html: string, wire?: (el
 }
 /** The open bubble's title, changed in place (a name that arrives later): reopening it would flicker. */
 export function setPopupTitle(text: string): void { const b = popupState.current?.getElement()?.querySelector('.pop b'); if (b) b.textContent = text; }
-export type VehicleInfo = { line: string; routeType: number; headsign: string; agency: string; delay?: number | null; stale: boolean; seen: Date; velocity?: number | null; trip: number; route: number | null };
+export type VehicleInfo = { line: string; routeType: number; headsign: string; agency: string; delay?: number | null; stale: boolean; seen: Date; velocity?: number | null; trip: number; route: number | null; offDay?: boolean };
 /** A vehicle's bubble: line, direction, delay, when it reported, speed; its trip's stops and its line page. */
 export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void {
   const d = v.delay != null ? live.delayMinutes(v.delay) : null;
@@ -38,7 +38,9 @@ export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void
   const html = `<div class="pop"><div class="row"><span class="chip t${v.routeType}"${chipStyle(v.routeType, v.agency)}>${esc(lineText(v.line))}</span><b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
     `<div class="muted">${v.agency ? `<bdi>${esc(agencyName(v.agency))}</bdi> · ` : ''}${t('seenAgo', { time: clock(v.seen) })}${ago >= 180e3 ? ` (${t('agoMin', { n: Math.round(ago / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
     (d == null ? '' : `<div><span class="live ${v.stale ? 'unsure' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
-    `<div class="row"><button type="button" class="ghost" data-act="trip" ${v.trip >= 0 ? '' : 'disabled'}>${t('popStops')}</button><button type="button" class="ghost" data-act="line" ${v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`;
+    // a line the feed has no trips of today (it reports anyway): named, nothing to open
+    (v.offDay ? `<div class="muted">${t('offDayLine')}</div></div>`
+      : `<div class="row"><button type="button" class="ghost" data-act="trip" ${v.trip >= 0 ? '' : 'disabled'}>${t('popStops')}</button><button type="button" class="ghost" data-act="line" ${v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`);
   openPopup(m, lngLat, html, (el) => {
     el.querySelector('[data-act="trip"]')?.addEventListener('click', () => { closePopup(); hooks.openTrip(v.trip, -1); });
     el.querySelector('[data-act="line"]')?.addEventListener('click', () => { closePopup(); hooks.openLine(v.route!); });

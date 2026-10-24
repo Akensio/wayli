@@ -45,6 +45,13 @@ INTERCITY_KM = 15.0     # a bus line whose ends are in different cities this far
 NIGHT_END = 3 * 3600        # s: trips of the next calendar day starting before this hour belong to this night
 
 
+def route_dest(long_name):
+    """'origin-city<->destination-city-1#' -> the destination's name (its stop, without the city)."""
+    parts = long_name.split("<->")
+    dest = re.sub(r"-\d+[#א-ת]*$", "", parts[-1].strip())
+    return dest.rsplit("-", 1)[0].strip() if "-" in dest else dest
+
+
 def route_cities(long_name):
     """'origin-city<->destination-city-1#' -> (city, city); the MOT feed's route_long_name convention."""
     parts = long_name.split("<->")
@@ -647,6 +654,11 @@ def main():
                  "station_min_s": STATION_MIN, "transfer_slack_s": TRANSFER_SLACK, "chain_max_s": WALK_CHAIN_MAX},
         "sections": sections,
         "routes": route_list,
+        # every other line of the feed by its route id: number, operator, type, where it heads. A vehicle reports live
+        # on a line the day has no trips of (a shared taxi running on Saturday that the feed schedules on weekdays
+        # only), and the map still names it
+        "otherRoutes": {rid: [short, agencies.get(ag, ag), rtype, route_dest(long_)] for rid, (short, long_, ag, rtype) in routes_raw.items()
+                        if rid not in route_index},
         "stops": [[s[0], s[1], s[4], s[6]] for s in stop_list],
         "stations": [[pid, stops_raw[pid][0] if pid in stops_raw else ""] for pid in parent_index],
         "names": names or None,

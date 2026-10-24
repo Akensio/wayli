@@ -201,7 +201,8 @@ Layout (v0.3, map first): one map under everything, showing every vehicle
 reporting in view with its line number and heading, the stops when zoomed
 in, the rider's position (MapLibre's locate control, started on its own once
 location was allowed before; a turquoise dot with a cone showing which way
-the phone faces, from its compass, `map/heading.ts`), a compass under it that appears once the map
+the phone faces, from its compass, `map/heading.ts`; an iPhone gives the
+compass only after asking from a tap, the locate button's or the first on the map), a compass under it that appears once the map
 is rotated or tilted and resets both on a tap, and whatever the open panel
 is about. Over it,
 a floating top bar that is the planner: a menu button and one prompt,
@@ -624,8 +625,11 @@ One file per service day, gzipped: a u32 header length, a JSON header, then
 little-endian typed arrays the app views in place:
 
 - header: feed dates, counts, the section table, routes (line number, long
-  name, operator, type, GTFS route id, line code from route_desc) and stops
-  (id, name, code).
+  name, operator, type, GTFS route id, line code from route_desc), stops
+  (id, name, code), and `otherRoutes`: every other line of the feed by route
+  id (number, operator, type, destination), so a vehicle reporting live on a
+  line with no trips that day is still named (shared taxis run on Saturday
+  that the feed schedules on weekdays only).
 - route patterns RAPTOR-style: `patStopsOff`/`patStops` (stop sequence per
   pattern), `patTripsOff` (trip range per pattern), `tripTimesOff`.
   In the Israel feed every `route_id` is one direction of one line, so a
