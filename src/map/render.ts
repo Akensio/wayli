@@ -4,7 +4,7 @@
 // the followed trip) can put them on. The camera fits a thing once: not again when only the highlight, a live
 // update or the courses arriving redraw it, and again when it changes or the sheet comes back to it.
 import type { Map as MLMap, LngLatBounds } from 'maplibre-gl';
-import { lineText, dur } from '../journey/format';
+import { dur } from '../journey/format';
 import { chipColors, routeColor } from '../journey/colors';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
@@ -22,6 +22,7 @@ import { ensureJourneyLayers, drawJourney, withCourses, boundsOf } from './layer
 import { applyLiveShow, setStopLines } from './live';
 import { viewFor, visibleArea, centreOffset } from './view';
 import type { View, Sheet, Padding } from './view';
+import { lineNameHtml } from '../widgets/RailLogo';
 
 /** What the sheet holds, as the decision takes it. */
 export function currentSheet(key = nav.key.value): Sheet {
@@ -92,7 +93,7 @@ const RECIPES: Record<View['draw'], Recipe> = {
         if (l.type !== 'ride' || !l.path || l.path.length < 2) continue;
         const p = l.path[Math.floor((l.path.length - 1) / 3)];
         const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'wayli-linechip' + (c.idx === altSel ? ' sel' : '');
-        chip.textContent = lineText(l.line);
+        chip.innerHTML = lineNameHtml(l.line, l.routeType);
         if (c.idx === altSel) Object.assign(chip.style, chipColors(l.routeType, l.agency));
         chip.addEventListener('click', (e) => { e.stopPropagation(); results.pickAlt(c.idx); });
         markers.alt.push(new maplibregl.Marker({ element: chip, anchor: 'center' }).setLngLat([p[1], p[0]]).addTo(m));

@@ -7,7 +7,6 @@ import { esc } from '../widgets/html';
 import { t, lang } from '../lib/i18n';
 import { ic } from '../widgets/icons';
 import { chipStyle, routeColor } from '../journey/colors';
-import { lineText } from '../journey/format';
 import { agencyName } from '../journey/agencies';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
@@ -15,6 +14,7 @@ import { popupState, pick, hooks } from './shared';
 import { viewFor } from './view';
 import { currentSheet, cameraPadding } from './render';
 import { fmt } from '../lib/time';
+import { lineNameHtml } from '../widgets/RailLogo';
 
 export const clock = (d: Date): string => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
@@ -49,7 +49,7 @@ export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void
   const d = v.delay != null ? live.delayMinutes(v.delay) : null;
   const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
   const ago = Date.now() - new Date(v.seen).getTime();
-  const html = `<div class="pop"><div class="row"><span class="chip t${v.routeType}"${chipStyle(v.routeType, v.agency)}>${esc(lineText(v.line))}</span><b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
+  const html = `<div class="pop"><div class="row"><span class="chip t${v.routeType}"${chipStyle(v.routeType, v.agency)}>${lineNameHtml(v.line, v.routeType)}</span><b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
     `<div class="muted">${v.agency ? `<bdi>${esc(agencyName(v.agency))}</bdi> · ` : ''}${t('seenAgo', { time: clock(v.seen) })}${ago >= 180e3 ? ` (${t('agoMin', { n: Math.round(ago / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
     (d == null ? '' : `<div><span class="live ${v.stale ? 'unsure' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
     // a line the feed has no trips of today (it reports anyway): named, nothing to open
@@ -75,7 +75,7 @@ export async function stopPopup(m: MLMap, lngLat: LngLatLike, stop: number, stat
   const at = hooks.timeAt(stop), onLine = nav.key.value === 'lineDetail';
   const html = `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
     (at != null ? `<div class="pop-at">${esc(t(onLine ? 'lineHere' : 'rideHere', { time: fmt(at) }))}</div>` : '') +
-    `<div class="chips">${info.lines.slice(0, 8).map((l: any) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${esc(lineText(l.label))}</span>`).join('')}</div>` +
+    `<div class="chips">${info.lines.slice(0, 8).map((l: any) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${lineNameHtml(l.label, l.type)}</span>`).join('')}</div>` +
     `<div class="row">${onLine ? `<button type="button" class="primary slim" data-act="times">${t('timesHere')}</button>` : ''}<button type="button" class="ghost" data-act="stop">${t('stopDetails')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
     el.querySelector('[data-act="times"]')?.addEventListener('click', () => { closePopup(); hooks.lineAt(stop); });

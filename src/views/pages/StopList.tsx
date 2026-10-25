@@ -3,8 +3,8 @@
 import { Icon } from '../../widgets/Icon';
 import { t } from '../../lib/i18n';
 import { chipColors } from '../../journey/colors';
-import { lineText } from '../../journey/format';
 import type { Stop } from '../../state/stop';
+import { LineName } from '../../widgets/RailLogo';
 
 type Props = { stops: Stop[]; withDistance?: boolean; onStop: (stop: number) => void; onLine: (route: number) => void };
 
@@ -22,7 +22,7 @@ export function StopList({ stops, withDistance = false, onStop, onLine }: Props)
           </div>
           <div class="chips">
             {(s.lines || []).map((l) => (
-              <span class={`chip t${l.type}`} style={chipColors(l.type, l.agency)} onClick={l.route != null ? (e) => { e.stopPropagation(); onLine(+l.route!); } : undefined}>{lineText(l.label)}</span>
+              <span class={`chip t${l.type}`} style={chipColors(l.type, l.agency)} onClick={l.route != null ? (e) => { e.stopPropagation(); onLine(+l.route!); } : undefined}><LineName line={l.label} routeType={l.type} /></span>
             ))}
           </div>
         </div>

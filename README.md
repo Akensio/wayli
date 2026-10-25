@@ -142,3 +142,11 @@ widgets for employers, venues and tourism). Never from your location.
 ## License
 
 GNU Affero General Public License v3.0. See `LICENSE`.
+
+One exception: Israel Railways' mark beside train numbers (the path in
+`src/widgets/RailLogo.tsx`) is cut out of
+["Flag of Israel Railways.svg"](https://commons.wikimedia.org/wiki/File:Flag_of_Israel_Railways.svg)
+by Meronim, Wikimedia Commons, under
+[CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/); changed: the
+mark alone, traced into one path. That path is shared under CC BY-SA 3.0. The
+mark is Israel Railways' insignia and marks only their trains.

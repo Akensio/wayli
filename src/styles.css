@@ -37,6 +37,9 @@ button:focus-visible, .chipbtn:focus-visible { outline: 2px solid var(--accent);
 [dir="rtl"] .i.chev { transform: scaleX(-1); }
 .ic .i { width: 20px; height: 20px; vertical-align: middle; }
 .chip .i { width: 1em; height: 1em; vertical-align: -.15em; }
+/* Israel Railways' mark before a train's number (widgets/RailLogo): as tall as a capital, as wide as it runs */
+.rlogo { height: .78em; width: 1.46em; vertical-align: -.02em; margin-inline-end: .3em; flex: none; }
+.chip.lchip .rlogo { margin-inline-end: 0; }
 button, input, select { font: inherit; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
 .field { position: relative; margin-bottom: 8px; }
