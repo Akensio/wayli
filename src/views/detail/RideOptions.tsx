@@ -7,9 +7,8 @@ import { Icon } from '../../widgets/Icon';
 import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { dur, inText } from '../../journey/format';
-import { chipColors } from '../../journey/colors';
 import type { TrainRow, LiveTrain } from '../../state/station';
-import { LineName } from '../../widgets/RailLogo';
+import { LineChip } from '../../widgets/LineChip';
 
 type Props = {
   mine: number | null;                         // the trip the journey rides
@@ -48,7 +47,7 @@ export function RideOptions({ mine, load, liveFor, day, now, onOpen }: Props) {
             <span class={`time${cls}`}>{fmt(dep)}</span>
             <span class="arrow"><Icon name="chevronEnd" class="chev" /></span>
             <span class={`time${cls}`}>{fmt(arr)}</span>
-            <span class="what"><span><span class={`chip t${r.routeType}`} style={chipColors(r.routeType, r.agency)}><LineName line={r.line} routeType={r.routeType} /></span> {dur(arr - dep)}</span>
+            <span class="what"><span><LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)}</span>
               <small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
             <span class="in">{l && !l.passed ? <><span class={`live ${l.stale ? 'unsure' : 'ok'}`}>⦿{l.delayMin ? ` ${l.delayMin > 0 ? '+' : ''}${l.delayMin}` : ''}{l.stale ? '?' : ''}</span> </> : null}{l && l.passed ? t('livePassed') : now != null ? inText(dep, day) : ''}</span>
           </div>

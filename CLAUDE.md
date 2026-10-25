@@ -58,6 +58,12 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    bicycles, minimal infrastructure, privacy); within those, decide, build,
    measure, document, and report at milestones. Ask only when a choice would
    be expensive to reverse.
+9. Clean up on the way (Gadi, 2026-10-25). When the code you touch has one
+   thing implemented again and again in many places (a chip built by hand in
+   eight files, the same calculation in three modules), that is where you
+   come in: replace the copies with one shared component or function, used
+   everywhere, in the same change. Leave the code better than you found it,
+   and say in the commit what was unified.
 
 ## Where things are
 

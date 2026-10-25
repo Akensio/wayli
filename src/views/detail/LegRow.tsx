@@ -6,12 +6,12 @@ import type { TrainRow, LiveTrain } from '../../state/station';
 import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { FromTo } from '../../widgets/FromTo';
-import { routeColor, chipColors } from '../../journey/colors';
+import { routeColor } from '../../journey/colors';
 import { stopsText } from '../../journey/format';
 import { agencyName } from '../../journey/agencies';
 import type { Leg } from '../../journey/types';
 import type { Badge } from '../../journey/format';
-import { LineName } from '../../widgets/RailLogo';
+import { LineChip } from '../../widgets/LineChip';
 
 type StopAlong = { arr: number; name: string };
 type Props = {
@@ -51,7 +51,7 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options }: P
       <span class="dot" style={ride ? { background: routeColor(l.routeType, l.agency) } : undefined} />
       <span class="what">
         {ride ? <>
-          <span class={`chip${onChip && l.route != null && l.route !== '' ? ' btn' : ''} t${l.routeType}`} style={chipColors(l.routeType, l.agency)} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined}><LineName line={l.line} routeType={l.routeType} /></span>
+          <LineChip line={l.line} routeType={l.routeType} agency={l.agency} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined} />
           {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? (liveTime != null && badge.delayText ? badge.delayText : badge.text) : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi>{est ? <span class="est"> · {t('estShort')}</span> : null}</small></>
             : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)}</>}
           {mode === 'detail' && stopsAlong.length > 2 && <>

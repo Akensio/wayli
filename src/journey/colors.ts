@@ -14,6 +14,4 @@ export const routeColor = (type?: number | null, agency?: string | null): string
 export function textOn(hex: string): string { const n = parseInt(hex.slice(1), 16); const lum = 0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255); return lum > 150 ? '#1b1f24' : '#ffffff'; }
 /** A line chip's colours as a style object (components) ... */
 export const chipColors = (type?: number | null, agency?: string | null): { background: string; color: string } => { const c = routeColor(type, agency); return { background: c, color: textOn(c) }; };
-/** ... and as an attribute string (the legacy HTML builders). */
-export const chipStyle = (type?: number | null, agency?: string | null): string => { const c = routeColor(type, agency); return ` style="background:${c};color:${textOn(c)}"`; };
 export const legColor = (l: Leg): string => (l.type === 'ride' ? routeColor(l.routeType, l.agency) : l.mode === 'bike' ? '#1f5fa8' : '#2b3036');

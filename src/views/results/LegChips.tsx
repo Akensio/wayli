@@ -1,12 +1,11 @@
 // The chips of a journey's legs: a line in its operator's colour, a walk or a ride on the bicycle with its minutes.
 import { Icon } from '../../widgets/Icon';
-import { chipColors } from '../../journey/colors';
 import { lineText } from '../../journey/format';
 import type { Leg } from '../../journey/types';
-import { LineName } from '../../widgets/RailLogo';
+import { LineChip } from '../../widgets/LineChip';
 
 const LegChip = ({ l, alts }: { l: Leg; alts?: string[] | null }) => l.type === 'ride'
-  ? <span class={`chip t${l.routeType}`} style={chipColors(l.routeType, l.agency)}><LineName line={l.line} routeType={l.routeType} text={alts && alts.length > 1 ? alts.map(lineText).join(' / ') : undefined} /></span>
+  ? <LineChip line={l.line} routeType={l.routeType} agency={l.agency} text={alts && alts.length > 1 ? alts.map(lineText).join(' / ') : undefined} />
   : <span class={`chip ${l.mode === 'bike' ? 'bike' : 'walk'}`}><Icon name={l.mode === 'bike' ? 'bike' : 'walk'} /> {Math.round(l.seconds / 60)}</span>;
 
 /** Every leg with arrows between them; `lines` gives the other lines a group's options use for each leg. */

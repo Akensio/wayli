@@ -85,7 +85,7 @@ button.ghost { background: var(--chip); color: var(--ink); border: 0; border-rad
 .journey .dur { color: var(--ink-2); font-size: 13px; margin-inline-start: auto; white-space: nowrap; }
 .journey .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
 .chip { display: inline-block; border-radius: 6px; padding: 1px 8px; font-weight: 700; font-size: 13px; color: #fff; background: var(--bus); }
-.chip.t2 { background: #1b3a6b; } .chip.t0 { background: #d7263d; } .chip.walk { background: var(--chip); color: var(--ink-2); font-weight: 500; } .chip.bike { background: var(--bike); }
+.chip.walk { background: var(--chip); color: var(--ink-2); font-weight: 500; } .chip.bike { background: var(--bike); }
 .journey .sub { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
 .legs { padding: 12px 16px 24px; }
 .leg { display: grid; grid-template-columns: 52px 14px 1fr; gap: 8px; align-items: start; padding: 6px 0; }

@@ -9,11 +9,9 @@ import { favs } from '../../lib/store.js';
 import * as stop from '../../state/stop';
 import * as saved from '../../state/saved';
 import { now } from '../../state/clock';
-import { chipColors } from '../../journey/colors';
 import { inText, dur } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
 import { CloseAll } from '../../widgets/CloseAll';
-import { LineName } from '../../widgets/RailLogo';
 
 export function StopDetail() {
   void lang.value; void now.value; void stop.favTick.value;
@@ -51,7 +49,7 @@ export function StopDetail() {
             return (
               <div class="dep" data-trip={d.trip} key={d.trip} onClick={() => stop.hooks.openTrip(d.trip, info.stop)}>
                 <span class={timeCls}>{lv && !lv.passed ? fmt(lv.time) : (d.estimated ? '~' : '') + fmt(d.time)}</span>
-                <span class={`chip t${d.routeType}`} style={chipColors(d.routeType, d.agency)}><LineName line={d.line} routeType={d.routeType} /></span>
+                <LineChip line={d.line} routeType={d.routeType} agency={d.agency} />
                 <span class="head">{d.headsign}{d.estimated && <small class="est">{t('estShort')}</small>}</span>
                 <span class="in">
                   {lv ? (lv.passed ? t('livePassed') : <>{inText(lv.time, day)} <span class={`live ${lv.stale ? 'unsure' : 'ok'}`}>⦿{lv.delayMin ? ` ${lv.delayMin > 0 ? '+' : ''}${lv.delayMin}` : ''}{lv.stale ? '?' : ''}</span></>) : isNow ? inText(d.time, day) : ''}

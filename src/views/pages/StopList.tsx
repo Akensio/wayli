@@ -2,9 +2,8 @@
 // A tap opens the stop; a tap on a chip opens that line.
 import { Icon } from '../../widgets/Icon';
 import { t } from '../../lib/i18n';
-import { chipColors } from '../../journey/colors';
 import type { Stop } from '../../state/stop';
-import { LineName } from '../../widgets/RailLogo';
+import { LineChip } from '../../widgets/LineChip';
 
 type Props = { stops: Stop[]; withDistance?: boolean; onStop: (stop: number) => void; onLine: (route: number) => void };
 
@@ -22,7 +21,7 @@ export function StopList({ stops, withDistance = false, onStop, onLine }: Props)
           </div>
           <div class="chips">
             {(s.lines || []).map((l) => (
-              <span class={`chip t${l.type}`} style={chipColors(l.type, l.agency)} onClick={l.route != null ? (e) => { e.stopPropagation(); onLine(+l.route!); } : undefined}><LineName line={l.label} routeType={l.type} /></span>
+              <LineChip line={l.label} routeType={l.type} agency={l.agency} onClick={l.route != null ? (e) => { e.stopPropagation(); onLine(+l.route!); } : undefined} />
             ))}
           </div>
         </div>
