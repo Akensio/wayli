@@ -9,21 +9,17 @@ and writes site/data/manifest.json with the available days.
 """
 import argparse
 import datetime
-import gzip
 import json
 import pathlib
 import re
 import shutil
-import struct
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import container
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"   # the Vite build (npm run build): the shell, hashed assets, the service worker
-
-
-def header_of(path):
-    with gzip.open(path, "rb") as f:
-        hlen = struct.unpack("<I", f.read(4))[0]
-        return json.loads(f.read(hlen).decode("utf-8"))
 
 
 def main():
@@ -47,7 +43,7 @@ def main():
         m = re.match(r"timetable-(\d{8})\.bin\.gz$", p.name)
         if not m:
             continue
-        h = header_of(p)
+        h = container.read_header(p)
         # a build between midnight and 03:00 compiles the night's day too, but the feed downloaded then may already start
         # the next day: that day would hold only the next morning's early trips (the app would show almost no stops)
         if m.group(1) < h.get("feed", {}).get("feed_start_date", ""):
@@ -60,19 +56,19 @@ def main():
     streets = None
     sp = data / "streets.bin.gz"
     if sp.exists():
-        h = header_of(sp)
+        h = container.read_header(sp)
         shutil.copy(sp, out / "data" / sp.name)
         streets = {"file": sp.name, "bytes": sp.stat().st_size, "nodes": h["counts"]["nodes"], "built": h.get("built")}
     shapes = None
     hp = data / "shapes.bin.gz"
     if hp.exists():
-        h = header_of(hp)
+        h = container.read_header(hp)
         shutil.copy(hp, out / "data" / hp.name)
         shapes = {"file": hp.name, "bytes": hp.stat().st_size, "counts": h["counts"], "built": h.get("built")}
     places = None
     pp = data / "places.bin.gz"
     if pp.exists():
-        h = header_of(pp)
+        h = container.read_header(pp)
         shutil.copy(pp, out / "data" / pp.name)
         places = {"file": pp.name, "bytes": pp.stat().st_size, "counts": h["counts"], "built": h.get("built")}
     railtimes = None
@@ -84,10 +80,10 @@ def main():
     bustimes = None
     bp = data / "bustimes.bin.gz"
     if bp.exists():
-        h = header_of(bp)
+        h = container.read_header(bp)
         shutil.copy(bp, out / "data" / bp.name)
         bustimes = {"file": bp.name, "bytes": bp.stat().st_size, "built": h.get("built"), "days": h.get("days"), "sections": h.get("n")}
-    first = header_of(data / days[0]["file"])
+    first = container.read_header(data / days[0]["file"])
     manifest = {
         "built": built,
         "feed": {"start": (first.get("feed") or {}).get("feed_start_date"), "end": (first.get("feed") or {}).get("feed_end_date"),

@@ -102,7 +102,7 @@ jobs:
           path: |
             data/timetable-*.bin.gz
             data/shapes.bin.gz
-          key: tt-${{ steps.day.outputs.start }}-${{ hashFiles('data/gtfs.zip', 'data/streets.bin.gz', 'data/rail.bin.gz', 'pipeline/compile.py', 'pipeline/shapes.py', 'pipeline/rail.py', 'pipeline/streetgraph.py') }}
+          key: tt-${{ steps.day.outputs.start }}-${{ hashFiles('data/gtfs.zip', 'data/streets.bin.gz', 'data/rail.bin.gz', 'pipeline/compile.py', 'pipeline/shapes.py', 'pipeline/rail.py', 'pipeline/streetgraph.py', 'pipeline/container.py', 'pipeline/common.py') }}
       - name: Vehicle courses (shapes)
         if: steps.tt.outputs.cache-hit != 'true'
         run: python3 -I pipeline/shapes.py data/gtfs.zip --out data/shapes.bin.gz

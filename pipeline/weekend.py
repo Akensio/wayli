@@ -27,6 +27,9 @@ at times); with neither, the feed is left as it is.
 import argparse, csv, io, json, math, os, re, sys, time, urllib.parse, urllib.request, zipfile
 from collections import defaultdict
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from common import log, member, rows
+
 GIS = "https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer"
 LINES, STOPS = 992, 993
 # busofash.co.il: Friday 16:30-02:00, Saturday 09:00-17:30, read as the first and last departures from the line's first
@@ -42,10 +45,6 @@ NEAR = 40      # m: a stop this close to a line's course is on it
 SHAPE_BASE = 2_000_000_000
 AGENCY = "est-naim"
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
-
-
-def log(*a):
-    print(*a, file=sys.stderr, flush=True)
 
 
 def get(layer, **q):
@@ -109,8 +108,8 @@ def headings(gtfs, codes, stops_by_code):
     by_id = {s["id"]: s for s in stops_by_code.values()}
     acc = defaultdict(lambda: [0.0, 0.0])
     z = zipfile.ZipFile(gtfs)
-    with z.open("stop_times.txt") as f:
-        rd = csv.reader(io.TextIOWrapper(f, "utf-8-sig"))
+    with member(z, "stop_times.txt") as f:
+        rd = csv.reader(f)
         hdr = next(rd)
         ti, si, qi = hdr.index("trip_id"), hdr.index("stop_id"), hdr.index("stop_sequence")
         prev = None
@@ -189,7 +188,7 @@ def directions(data, stops_by_code, heading):
 
 def merge(gtfs, dirs, stops_by_code):
     z = zipfile.ZipFile(gtfs)
-    cal = list(csv.DictReader(io.TextIOWrapper(z.open("calendar.txt"), "utf-8-sig")))
+    cal = list(rows(z, "calendar.txt"))
     start, end = min(r["start_date"] for r in cal), max(r["end_date"] for r in cal)
     add = defaultdict(list)
     add["agency.txt"].append({"agency_id": AGENCY, "agency_name": 'נעים בסופ"ש', "agency_url": "https://busofash.co.il",
@@ -259,11 +258,11 @@ def main():
         log(f"the municipality's server did not answer ({e}): the answer kept from before is used")
         data = json.load(open(a.cache))
     z = zipfile.ZipFile(a.gtfs)
-    if any(r.get("agency_id") == AGENCY for r in csv.DictReader(io.TextIOWrapper(z.open("agency.txt"), "utf-8-sig"))):
+    if any(r.get("agency_id") == AGENCY for r in rows(z, "agency.txt")):
         log("the weekend lines are in this feed already")
         return
     stops_by_code = {}
-    for r in csv.DictReader(io.TextIOWrapper(z.open("stops.txt"), "utf-8-sig")):
+    for r in rows(z, "stops.txt"):
         try:
             m = CITY_RE.search(r.get("stop_desc", "") or "")
             stops_by_code[int(r["stop_code"])] = {"id": r["stop_id"], "lat": float(r["stop_lat"]), "lon": float(r["stop_lon"]),

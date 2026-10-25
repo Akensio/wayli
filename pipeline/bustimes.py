@@ -27,9 +27,12 @@ Output: a gzipped binary, a JSON header {"built", "days", "bands", "kinds", "n"}
 codes of the sections' first stops, n u32 codes of their second stops, and n x kinds x bands u8 times
 (0 unknown; v <= 150 is 2v seconds, above that 300 + 15 (v - 150)).
 """
-import argparse, array, bisect, concurrent.futures as cf, csv, datetime as dt, gzip, io, json, math, os, statistics as st
+import argparse, array, bisect, concurrent.futures as cf, datetime as dt, gzip, json, math, os, statistics as st
 import struct, sys, time, urllib.request, zipfile
 from collections import defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from common import log, rows, stop_times, il_offset
 
 BASE = "https://open-bus-siri-requester.hasadna.org.il"
 FIRST_H, LAST_H = 4, 27          # service-day hours read: 04:00 to 03:00 the next morning, Israel time
@@ -38,20 +41,6 @@ KINDS = 3                        # Sunday to Thursday, Friday, Saturday
 ON_PATH = 120                    # m: further from its trip's stops, a position is not used
 GAP = 180                        # s: a stop is passed between two positions at most this far apart
 TRAIN_OPERATOR = "2"
-
-
-def log(*a):
-    print(*a, file=sys.stderr, flush=True)
-
-
-def il_offset(day):
-    """Israel's UTC offset on a date: +3 from the Friday before the last Sunday of March to the last Sunday of October."""
-    d = dt.date.fromisoformat(day)
-    def last_sunday(m):
-        x = dt.date(d.year, m, 31)
-        return x - dt.timedelta(days=(x.weekday() + 1) % 7)
-    start = last_sunday(3) - dt.timedelta(days=2)
-    return dt.timezone(dt.timedelta(hours=3 if start <= d < last_sunday(10) else 2))
 
 
 def kind_of(day):
@@ -170,20 +159,10 @@ class Feed:
         log(f"feed: {len(self.trips)} trips, {len(self.stops)} stops")
 
     def rows(self, n):
-        with self.z.open(n) as f:
-            yield from csv.DictReader(io.TextIOWrapper(f, "utf-8-sig"))
+        return rows(self.z, n)
 
     def stop_times(self, only=None):
-        def hms(s):
-            h, m, x = s.split(":")
-            return int(h) * 3600 + int(m) * 60 + int(x)
-        with self.z.open("stop_times.txt") as f:
-            rd = csv.reader(io.TextIOWrapper(f, "utf-8-sig"))
-            hdr = next(rd)
-            ti, ai, di, si, qi = (hdr.index(k) for k in ("trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"))
-            for r in rd:
-                if only is None or r[ti] in only:
-                    yield r[ti], int(r[qi]), r[si], hms(r[ai]), hms(r[di])
+        return stop_times(self.z, only)
 
     def runs_on(self, sid, day):
         c = self.cal.get(sid)

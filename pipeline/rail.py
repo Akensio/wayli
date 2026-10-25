@@ -6,15 +6,13 @@ edges carry metres. The compiler (compile.py --rail) routes each pair of consecu
 this graph with A* (from the points where the tracks pass closest to each station, over any of the parallel
 tracks there) and stores the course once per pair.
 
-Container (like the others): u32 header length, JSON header, sections nodeLat/nodeLon int32 (1e-5
+Container (pipeline/container.py, like the others): sections nodeLat/nodeLon int32 (1e-5
 degrees), edgeOff int32[N+1], edgeTo int32, edgeLen int32 (metres).
 """
 import argparse
-import gzip
 import heapq
-import json
 import math
-import struct
+import os
 import sys
 import time
 from collections import defaultdict
@@ -22,13 +20,13 @@ from collections import defaultdict
 import numpy as np
 import osmium
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import container
+from common import log, haversine
+
 FORMAT_VERSION = 1
 SKIP_SERVICE = {"yard", "siding", "spur"}
 GAP_WEIGHT = 2.0   # a metre between the station point and the track costs this many metres of track
-
-
-def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
 
 
 class WayPass(osmium.SimpleHandler):
@@ -57,13 +55,6 @@ class NodePass(osmium.SimpleHandler):
     def node(self, n):
         if n.id in self.wanted:
             self.coords[n.id] = (n.location.lat, n.location.lon)
-
-
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
-    return 2 * R * math.asin(math.sqrt(a))
 
 
 def build(pbf):
@@ -108,33 +99,18 @@ def build(pbf):
 
 
 def write(path, lat, lon, off, to, ln):
-    sections, blobs, o = [], [], 0
+    sec = container.Sections()
     for name, arr in (("nodeLat", np.round(lat * 1e5).astype(np.int32)), ("nodeLon", np.round(lon * 1e5).astype(np.int32)),
                       ("edgeOff", off), ("edgeTo", to), ("edgeLen", ln)):
-        b = arr.astype("<i4").tobytes()
-        sections.append({"name": name, "dtype": "int32", "offset": o, "length": int(arr.size)})
-        blobs.append(b)
-        o += len(b)
+        sec.add(name, arr, "int32")
     header = {"format": FORMAT_VERSION, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-              "counts": {"nodes": int(len(lat)), "edges": int(len(to))}, "sections": sections}
-    hjson = json.dumps(header, separators=(",", ":")).encode("utf-8")
-    while (4 + len(hjson)) % 4:
-        hjson += b" "
-    raw = struct.pack("<I", len(hjson)) + hjson + b"".join(blobs)
-    with gzip.open(path, "wb", compresslevel=6) as f:
-        f.write(raw)
-    return len(raw)
+              "counts": {"nodes": int(len(lat)), "edges": int(len(to))}, "sections": sec.list}
+    return container.write(path, header, sec, level=6)[0]
 
 
 def load(path):
-    with gzip.open(path, "rb") as f:
-        raw = f.read()
-    hlen = struct.unpack_from("<I", raw, 0)[0]
-    header = json.loads(raw[4:4 + hlen].decode("utf-8"))
-    base = 4 + hlen
-    g = {"header": header}
-    for s in header["sections"]:
-        g[s["name"]] = np.frombuffer(raw, dtype="<i4", count=s["length"], offset=base + s["offset"])
+    header, g = container.read(path)
+    g["header"] = header
     g["lat"] = g["nodeLat"].astype(np.float64) / 1e5
     g["lon"] = g["nodeLon"].astype(np.float64) / 1e5
     g["kx"] = 111320.0 * math.cos(math.radians(float(g["lat"].mean()))) if len(g["lat"]) else 1.0
@@ -253,7 +229,6 @@ def main():
     ap.add_argument("--out", default="data/rail.bin.gz")
     args = ap.parse_args()
     t0 = time.time()
-    import os
     n = write(args.out, *build(args.pbf))
     log(f"wrote {args.out}: {n/1e6:.1f} MB raw, {os.path.getsize(args.out)/1e6:.2f} MB gzip, in {time.time()-t0:.0f}s")
 

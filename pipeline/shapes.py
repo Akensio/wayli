@@ -5,27 +5,24 @@ Each shape is simplified (Douglas-Peucker, 6 m by default) and stored as int32 c
 runs on and where each of its stops falls along it, so the app can draw a ride between two stops
 along the road or the track instead of a straight line.
 
-Container (like the timetable): u32 header length, JSON header, sections. Sections: shapeId int32[S]
+Container (pipeline/container.py, like the timetable). Sections: shapeId int32[S]
 (GTFS shape ids, ascending), shapeOff int32[S+1] (point offsets), ptLat int32[N], ptLon int32[N].
 """
 import argparse
 import csv
-import gzip
-import io
-import json
 import math
-import struct
+import os
 import sys
 import time
 import zipfile
 
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import container
+from common import log, member
+
 FORMAT_VERSION = 1
-
-
-def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
 
 
 def simplify_mask(lat, lon, tol_m):
@@ -68,8 +65,7 @@ def read_shapes_txt(zf, tol_m):
     shape split across the file is merged."""
     shapes = {}
     n_rows = 0
-    with zf.open("shapes.txt") as raw:
-        f = io.TextIOWrapper(raw, encoding="utf-8-sig", newline="")
+    with member(zf, "shapes.txt") as f:
         reader = csv.reader(f)
         header = next(reader)
         col = {name: i for i, name in enumerate(header)}
@@ -135,33 +131,17 @@ def write(path, shapes):
         lons.append(np.round(lon * 1e5).astype(np.int32))
     pt_lat = np.concatenate(lats) if lats else np.zeros(0, np.int32)
     pt_lon = np.concatenate(lons) if lons else np.zeros(0, np.int32)
-    sections, blobs, off = [], [], 0
+    sec = container.Sections()
     for name, arr in (("shapeId", ids), ("shapeOff", offs), ("ptLat", pt_lat), ("ptLon", pt_lon)):
-        b = arr.astype("<i4").tobytes()
-        sections.append({"name": name, "dtype": "int32", "offset": off, "length": len(arr)})
-        blobs.append(b)
-        off += len(b)
+        sec.add(name, arr, "int32")
     header = {"format": FORMAT_VERSION, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-              "counts": {"shapes": int(len(ids)), "points": int(len(pt_lat))}, "sections": sections}
-    hjson = json.dumps(header, separators=(",", ":")).encode("utf-8")
-    while (4 + len(hjson)) % 4:
-        hjson += b" "
-    raw = struct.pack("<I", len(hjson)) + hjson + b"".join(blobs)
-    with gzip.open(path, "wb", compresslevel=6) as f:
-        f.write(raw)
-    return len(raw)
+              "counts": {"shapes": int(len(ids)), "points": int(len(pt_lat))}, "sections": sec.list}
+    return container.write(path, header, sec, level=6)[0]
 
 
 def read_shapes(path):
     """The compact file back: {shape_id: (lat, lon) float64 arrays}, for the compiler."""
-    with gzip.open(path, "rb") as f:
-        raw = f.read()
-    hlen = struct.unpack_from("<I", raw, 0)[0]
-    header = json.loads(raw[4:4 + hlen].decode("utf-8"))
-    base = 4 + hlen
-    arrs = {}
-    for s in header["sections"]:
-        arrs[s["name"]] = np.frombuffer(raw, dtype="<i4", count=s["length"], offset=base + s["offset"])
+    _, arrs = container.read(path)
     ids, offs = arrs["shapeId"], arrs["shapeOff"]
     lat, lon = arrs["ptLat"].astype(np.float64) / 1e5, arrs["ptLon"].astype(np.float64) / 1e5
     return {int(ids[i]): (lat[offs[i]:offs[i + 1]], lon[offs[i]:offs[i + 1]]) for i in range(len(ids))}
@@ -177,7 +157,6 @@ def main():
     zf = zipfile.ZipFile(args.gtfs)
     shapes = read_shapes_txt(zf, args.tolerance)
     n = write(args.out, shapes)
-    import os
     log(f"wrote {args.out}: {n/1e6:.1f} MB raw, {os.path.getsize(args.out)/1e6:.1f} MB gzip, {len(shapes)} shapes, in {time.time()-t0:.0f}s")
 
 

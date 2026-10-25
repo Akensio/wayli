@@ -12,16 +12,18 @@ length, JSON header, typed-array sections.
 """
 import argparse
 import datetime
-import gzip
 import json
-import math
-import struct
+import os
 import sys
 import time
 from collections import defaultdict
 
 import numpy as np
 import osmium
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import container
+from common import log, haversine
 
 FORMAT_VERSION = 3   # 3: edgeUp / edgeDown (empty without --dem)
 # kind: 0 road, 1 cycleway, 2 footway/pedestrian, 3 path/track, 4 steps, 5 living/service
@@ -66,10 +68,6 @@ def climbs(h, hyst=HYSTERESIS_M):
     if last > 0: up += last
     else: down -= last
     return up, down
-
-
-def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
 
 
 def classify(tags):
@@ -151,13 +149,6 @@ class NodePass(osmium.SimpleHandler):
             self.coords[n.id] = (n.location.lat, n.location.lon)
 
 
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
-    return 2 * R * math.asin(math.sqrt(a))
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("pbf", nargs="?")
@@ -169,8 +160,7 @@ def main():
     args = ap.parse_args()
     if args.check:
         try:
-            with gzip.open(args.out, "rb") as f:
-                head = f.read(4); h = json.loads(f.read(struct.unpack("<I", head)[0]))
+            h = container.read_header(args.out)
             sys.exit(0 if h.get("format") == FORMAT_VERSION and h.get("climb") else 1)
         except Exception:   # noqa: BLE001 - missing or unreadable: rebuild
             sys.exit(1)
@@ -235,7 +225,6 @@ def main():
     N = len(graph_ids)
     ups = np.zeros(len(edges), np.float32); downs = np.zeros(len(edges), np.float32)
     if args.dem:
-        sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
         from elevation import Dem
         h = Dem(args.dem, smooth=args.smooth).at(np.array(samp_lat), np.array(samp_lon))
         del samp_lat, samp_lon
@@ -317,14 +306,8 @@ def main():
     cell_end = np.append(starts[1:], M)
     log(f"final: {M} nodes, {n_edges} directed edges, {len(cells)} grid cells, {time.time()-t0:.0f}s")
 
-    sections = []
-    body = bytearray()
-    def add(name, arr, dtype):
-        a = np.ascontiguousarray(np.asarray(arr, dtype=dtype))
-        while len(body) % 4:
-            body.append(0)
-        sections.append({"name": name, "dtype": dtype, "offset": len(body), "length": int(a.size)})
-        body.extend(a.astype("<" + np.dtype(dtype).str[1:]).tobytes())
+    sec = container.Sections()
+    add = sec.add
     # coordinates as u16 offsets inside the node's grid cell (about 2 cm steps), edges as deltas from
     # the source node: both compress far better than absolute values
     cy = np.floor(lat / CELL); cx = np.floor(lon / CELL)
@@ -351,17 +334,11 @@ def main():
         "flags": {"walk": F_WALK, "bike": F_BIKE, "flag_shift": 4, "kind_mask": 15},
         "walk_speed": WALK_SPEED, "bike_speed": BIKE_SPEED,
         **({"climb": CLIMB, "dem": "AWS Terrain Tiles (terrarium, zoom 12)"} if args.dem else {}),
-        "sections": sections,
+        "sections": sec.list,
     }
-    hjson = json.dumps(header, separators=(",", ":")).encode()
-    while (4 + len(hjson)) % 4:
-        hjson += b" "
-    raw = struct.pack("<I", len(hjson)) + hjson + bytes(body)
-    with gzip.open(args.out, "wb", compresslevel=9) as f:
-        f.write(raw)
-    import os
-    log(f"wrote {args.out}: {len(raw)/1e6:.1f} MB raw, {os.path.getsize(args.out)/1e6:.1f} MB gzip, {time.time()-t0:.0f}s")
-    print(json.dumps({"nodes": M, "edges": n_edges, "raw_bytes": len(raw), "gz_bytes": os.path.getsize(args.out), "seconds": round(time.time() - t0)}))
+    raw_n = container.write(args.out, header, sec)[0]
+    log(f"wrote {args.out}: {raw_n/1e6:.1f} MB raw, {os.path.getsize(args.out)/1e6:.1f} MB gzip, {time.time()-t0:.0f}s")
+    print(json.dumps({"nodes": M, "edges": n_edges, "raw_bytes": raw_n, "gz_bytes": os.path.getsize(args.out), "seconds": round(time.time() - t0)}))
 
 
 if __name__ == "__main__":

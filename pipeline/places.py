@@ -12,19 +12,19 @@ container: u32 header length, JSON header (names), typed-array sections.
 import argparse
 import csv
 import datetime
-import gzip
-import io
 import json
-import math
+import os
 import re
-import struct
 import sys
 import time
 import zipfile
 from collections import defaultdict
 
-import numpy as np
 import osmium
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import container
+from common import log, member, haversine
 
 FORMAT_VERSION = 3   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...)
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
@@ -60,10 +60,6 @@ PUNCT = re.compile(r"[.'\"״׳`/()\-,:]+")
 INNER_QUOTE = re.compile(r"(?<=[^\W\d_])['\"״׳`]+(?=[^\W\d_])")   # a quote inside a word (הל"ה, ג'וליס) belongs to it
 
 
-def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
-
-
 def norm(s):
     return re.sub(r"\s+", " ", PUNCT.sub(" ", INNER_QUOTE.sub("", s.lower()))).strip()
 
@@ -81,7 +77,7 @@ def read_city_translations(zf):
     out = {}
     if "translations.txt" not in set(zf.namelist()):
         return out
-    with io.TextIOWrapper(zf.open("translations.txt"), encoding="utf-8-sig", newline="") as f:
+    with member(zf, "translations.txt") as f:
         for r in csv.DictReader(f):
             if (r.get("lang") or "").strip().upper() == "EN" and r.get("trans_id") and r.get("translation"):
                 out[r["trans_id"].strip()] = r["translation"].strip()
@@ -91,9 +87,7 @@ def read_city_translations(zf):
 def format_of(path):
     """The format version of a compiled address book, or -1."""
     try:
-        with gzip.open(path, "rb") as f:
-            n = struct.unpack("<I", f.read(4))[0]
-            return int(json.loads(f.read(n).decode()).get("format", -1))
+        return int(container.read_header(path).get("format", -1))
     except Exception:
         return -1
 
@@ -196,13 +190,6 @@ class Handler(osmium.SimpleHandler):
                 self.addresses.append((st, num[0], num[1], t.get("addr:city", ""), lat, lon))
 
 
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    x = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
-    return 2 * R * math.asin(math.sqrt(x))
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("pbf", nargs="?")
@@ -220,7 +207,7 @@ def main():
     stops = []
     with zipfile.ZipFile(args.gtfs) as zf:
         city_en = read_city_translations(zf)
-        with io.TextIOWrapper(zf.open("stops.txt"), encoding="utf-8-sig", newline="") as f:
+        with member(zf, "stops.txt") as f:
             for r in csv.DictReader(f):
                 m = CITY_RE.search(r.get("stop_desc", "") or "")
                 city = m.group(1).strip() if m else ""
@@ -314,15 +301,8 @@ def main():
         poi_list.append([name, kind, city_near(lat, lon), round(lat, 6), round(lon, 6), en])
     poi_list.sort(key=lambda p: (p[0], p[2]))
 
-    sections = []
-    body = bytearray()
-
-    def add(name, arr, dtype):
-        a = np.ascontiguousarray(np.asarray(arr, dtype=dtype))
-        while len(body) % 4:
-            body.append(0)
-        sections.append({"name": name, "dtype": dtype, "offset": len(body), "length": int(a.size)})
-        body.extend((a.astype("<" + np.dtype(dtype).str[1:]) if a.dtype.itemsize > 1 else a).tobytes())
+    sec = container.Sections()
+    add = sec.add
 
     add("addrStreet", [a[0] for a in addr], "int32")
     add("addrNumber", [min(a[1], 65535) for a in addr], "uint16")
@@ -333,22 +313,16 @@ def main():
         "format": FORMAT_VERSION, "source": args.pbf.split("/")[-1],
         "built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "counts": {"streets": len(street_list), "addresses": len(addr), "pois": len(poi_list), "cities": len(cities)},
-        "sections": sections,
+        "sections": sec.list,
         "streets": street_list,
         "cities": [[c[0], round(c[1], 6), round(c[2], 6), city_en.get(c[0], "")] for c in cities],
         "pois": poi_list,
         "addrSuffix": suffixes,
     }
-    hjson = json.dumps(header, ensure_ascii=False, separators=(",", ":")).encode()
-    while (4 + len(hjson)) % 4:
-        hjson += b" "
-    raw = struct.pack("<I", len(hjson)) + hjson + bytes(body)
-    with gzip.open(args.out, "wb", compresslevel=9) as f:
-        f.write(raw)
-    import os
-    log(f"wrote {args.out}: {len(raw)/1e6:.1f} MB raw, {os.path.getsize(args.out)/1e6:.1f} MB gzip, {time.time()-t0:.0f}s")
+    raw_n = container.write(args.out, header, sec, ascii_only=False)[0]
+    log(f"wrote {args.out}: {raw_n/1e6:.1f} MB raw, {os.path.getsize(args.out)/1e6:.1f} MB gzip, {time.time()-t0:.0f}s")
     print(json.dumps({"streets": len(street_list), "addresses": len(addr), "pois": len(poi_list), "cities": len(cities),
-                      "raw_bytes": len(raw), "gz_bytes": os.path.getsize(args.out), "seconds": round(time.time() - t0)}))
+                      "raw_bytes": raw_n, "gz_bytes": os.path.getsize(args.out), "seconds": round(time.time() - t0)}))
 
 
 if __name__ == "__main__":

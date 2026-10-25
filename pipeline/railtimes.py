@@ -18,28 +18,17 @@ The history is kept an hour per file in --history and fetched only where missing
 the predictions on the learning days, was dropped 2026-10-25: backtested on two mornings' raw minute files it made
 every prediction early, by 0.7 to 1.6 minutes in the median.)
 """
-import argparse, concurrent.futures as cf, csv, datetime as dt, glob, io, json, math, os, statistics as st, sys, time
+import argparse, concurrent.futures as cf, datetime as dt, glob, json, math, os, statistics as st, sys, time
 import urllib.parse, urllib.request, zipfile
 from collections import defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from common import log, rows, stop_times, il_offset
 
 STRIDE = "https://open-bus-stride-api.hasadna.org.il/siri_vehicle_locations/list"
 AT = 300          # m: a train this close to a station is at it (the same in src/engine/delays.js)
 OFF_PATH = 600    # m: further from the line between its stations, a fix is not used (as in the app)
 HOURS = range(2, 23)   # UTC hours fetched per day: 05:00-02:00 Israel, the service day
-
-
-def log(*a):
-    print(*a, file=sys.stderr, flush=True)
-
-
-def il_offset(day):
-    """Israel's UTC offset on a date: +3 from the Friday before the last Sunday of March to the last Sunday of October."""
-    d = dt.date.fromisoformat(day)
-    def last_sunday(m):
-        x = dt.date(d.year, m, 31)
-        return x - dt.timedelta(days=(x.weekday() + 1) % 7)
-    start = last_sunday(3) - dt.timedelta(days=2)
-    return dt.timezone(dt.timedelta(hours=3 if start <= d < last_sunday(10) else 2))
 
 
 # ---------------------------------------------------------------- history
@@ -87,24 +76,13 @@ class Feed:
 
     def __init__(self, path):
         z = zipfile.ZipFile(path)
-        def rows(n):
-            with z.open(n) as f:
-                yield from csv.DictReader(io.TextIOWrapper(f, "utf-8-sig"))
-        def hms(s):
-            h, m, x = s.split(":")
-            return int(h) * 3600 + int(m) * 60 + int(x)
-        routes = {r["route_id"] for r in rows("routes.txt") if r["agency_id"] == "2"}   # Israel Railways
-        self.cal = {r["service_id"]: r for r in rows("calendar.txt")}
-        self.trips = {r["trip_id"]: r for r in rows("trips.txt") if r["route_id"] in routes}
-        self.stops = {r["stop_id"]: (float(r["stop_lat"]), float(r["stop_lon"]), r["stop_code"]) for r in rows("stops.txt")}
+        routes = {r["route_id"] for r in rows(z, "routes.txt") if r["agency_id"] == "2"}   # Israel Railways
+        self.cal = {r["service_id"]: r for r in rows(z, "calendar.txt")}
+        self.trips = {r["trip_id"]: r for r in rows(z, "trips.txt") if r["route_id"] in routes}
+        self.stops = {r["stop_id"]: (float(r["stop_lat"]), float(r["stop_lon"]), r["stop_code"]) for r in rows(z, "stops.txt")}
         times = defaultdict(list)
-        with z.open("stop_times.txt") as f:
-            rd = csv.reader(io.TextIOWrapper(f, "utf-8-sig"))
-            hdr = next(rd)
-            ti, ai, di, si, qi = (hdr.index(k) for k in ("trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"))
-            for r in rd:
-                if r[ti] in self.trips:
-                    times[r[ti]].append((int(r[qi]), r[si], hms(r[ai]), hms(r[di])))
+        for trip, seq, stop, arr, dep in stop_times(z, self.trips):
+            times[trip].append((seq, stop, arr, dep))
         self.times = {t: sorted(v) for t, v in times.items()}
         self.by_start = defaultdict(list)
         for t, v in self.times.items():

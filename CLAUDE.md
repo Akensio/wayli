@@ -90,6 +90,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/weekend.py` | The municipalities' weekend lines (Na'im BeSofash), which no feed carries, merged into the GTFS from Tel Aviv's GIS with estimated times (a build step). |
 | `pipeline/bustimes.py`, `.github/workflows/bustimes.yml` | Bus section times by hour and kind of day, learned nightly from 14 days of passage logs read from Hasadna's minute snapshots (`bustimes.bin.gz`), for bus delays, the live correction and traffic on the map; `--score DAY` measures against a held-out day. |
 | `pipeline/railtimes.py`, `.github/workflows/railtimes.yml` | Train section times learned nightly from the last week of Hasadna's train positions (`railtimes.json`), for train delays; `--score DAY` measures against a held-out day. |
+| `pipeline/container.py`, `pipeline/common.py` | What the scripts share: the data files' container (read in the app by `src/engine/container.js`); the log line, GTFS reading, Israel's UTC offset, distances. |
 | `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |
 | `relay/`, `.github/workflows/relay.yml` | The real-time relay (Hasadna's newest raw SIRI snapshot with CORS) and its deploy. |

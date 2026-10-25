@@ -2,33 +2,24 @@
 
 Used by compile.py when --streets is given. The graph comes from streets.py.
 """
-import gzip
 import heapq
-import json
 import math
-import struct
-import time
+import os
 import sys
+import time
 
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import container
+from common import log, EARTH_R
 
 SNAP_RADIUS = 250.0   # m: a stop farther than this from any walkable node keeps only straight-line footpaths
 
 
-def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
-
-
 def load(path):
-    with gzip.open(path, "rb") as f:
-        raw = f.read()
-    hlen = struct.unpack_from("<I", raw, 0)[0]
-    header = json.loads(raw[4:4 + hlen].decode())
-    base = 4 + hlen
-    g = {"header": header}
-    dt = {"int32": "<i4", "uint16": "<u2", "uint8": "u1", "float32": "<f4"}
-    for s in header["sections"]:
-        g[s["name"]] = np.frombuffer(raw, dtype=dt[s["dtype"]], count=s["length"], offset=base + s["offset"])
+    header, g = container.read(path)
+    g["header"] = header
     g["M"] = header["counts"]["nodes"]
     if header["format"] >= 2:
         M, cell = g["M"], header["cell_deg"]
@@ -80,10 +71,10 @@ def nodes_near(g, lat, lon, rings=1):
 
 
 def haversine_np(lat1, lon1, lat2, lon2):
-    R = 6371000.0
+    """common.haversine over numpy arrays."""
     p1, p2 = np.radians(lat1), np.radians(lat2)
     a = np.sin((p2 - p1) / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(np.radians(lon2 - lon1) / 2) ** 2
-    return 2 * R * np.arcsin(np.sqrt(a))
+    return 2 * EARTH_R * np.arcsin(np.sqrt(a))
 
 
 def snap(g, lat, lon):

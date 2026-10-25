@@ -3,12 +3,8 @@
 
     python3 -I pipeline/compile.py data/gtfs.zip --date 20261019 --out data/timetable.bin.gz
 
-Reads the zip in place (no extraction). The output is a gzip'd container:
-
-    u32 header length | header JSON (utf-8, padded to 4 bytes) | sections
-
-Each section is a little-endian typed array; the header lists its name,
-dtype, byte offset (from the start of the sections area) and length.
+Reads the zip in place (no extraction). The output is the container every data file
+comes in (pipeline/container.py): a JSON header listing typed-array sections.
 Times are stored compressed: per trip an absolute start time, then per stop
 the departure delta from the previous stop (u16) and the dwell (u16).
 The app expands them to absolute arrival/departure arrays on load.
@@ -17,11 +13,9 @@ import argparse
 import csv
 import re
 import datetime
-import gzip
-import io
 import json
 import math
-import struct
+import os
 import sys
 import time
 import zipfile
@@ -30,6 +24,8 @@ from collections import defaultdict
 import numpy as np
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+import container
+from common import log, member, rows, hms, haversine
 
 FORMAT_VERSION = 3   # 3: header `names`, stop/station/city names and headsigns in other languages
 WALK_SPEED = 1.2        # m/s
@@ -63,19 +59,6 @@ def route_cities(long_name):
         out.append(part.rsplit("-", 1)[-1].strip())
     return tuple(out)
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-
-
-def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
-
-
-def member(zf, name):
-    return io.TextIOWrapper(zf.open(name), encoding="utf-8-sig", newline="")
-
-
-def rows(zf, name):
-    with member(zf, name) as f:
-        yield from csv.DictReader(f)
 
 
 QUOTES = re.compile("''|[\"\u05f4]")   # the three spellings of a quote mark in the feed
@@ -127,11 +110,6 @@ def headsign_of(long_name):
     dest = re.sub(r"-\d+[#א-ת]*$", "", parts[1]).strip()
     i = dest.rfind("-")
     return dest[:i].strip() if i > 0 else dest
-
-
-def hms(s):
-    h, m, sec = s.split(":")
-    return int(h) * 3600 + int(m) * 60 + int(sec)
 
 
 def default_date():
@@ -186,15 +164,6 @@ def project_stops(slat, slon, plat, plon):
         segs.append(prev)
         fracs.append(float(t[j]))
     return segs, fracs, worst
-
-
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dp = p2 - p1
-    dl = math.radians(lon2 - lon1)
-    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * R * math.asin(math.sqrt(a))
 
 
 def main():
@@ -586,15 +555,8 @@ def main():
     log(f"{n_tr} footpaths: {n_geo} within {WALK_RADIUS:.0f} m, {n_station} inside {len(siblings)} stations")
 
     # ---- container ----
-    sections = []
-    body = bytearray()
-
-    def add(name, arr, dtype):
-        a = np.ascontiguousarray(np.asarray(arr, dtype=dtype))
-        while len(body) % 4:
-            body.append(0)
-        sections.append({"name": name, "dtype": dtype, "offset": len(body), "length": int(a.size)})
-        body.extend((a.astype("<" + np.dtype(dtype).str[1:]) if a.dtype.itemsize > 1 else a).tobytes())
+    sec = container.Sections()
+    add = sec.add
 
     add("patStopsOff", pat_stops_off, "int32")
     add("patStops", pat_stops, "int32")
@@ -659,7 +621,7 @@ def main():
                    "intercity_patterns": int(pat_intercity.sum())},
         "walk": {"radius_m": WALK_RADIUS, "speed_mps": WALK_SPEED, "min_s": MIN_WALK, "buffer_s": WALK_BUFFER,
                  "station_min_s": STATION_MIN, "transfer_slack_s": TRANSFER_SLACK, "chain_max_s": WALK_CHAIN_MAX},
-        "sections": sections,
+        "sections": sec.list,
         "routes": route_list,
         # every other line of the feed by its route id: number, operator, type, where it heads. A vehicle reports live
         # on a line the day has no trips of (a shared taxi running on Saturday that the feed schedules on weekdays
@@ -673,19 +635,13 @@ def main():
         "shapes": {"file": args.shapes.split("/")[-1], "patterns": int(n_shaped)} if args.shapes else None,
         "rail": {"pairs": len(rail_pair_off) - 1, "patterns": int(n_rail), "straight": int(n_rail_fallback)} if args.rail else None,
     }
-    hjson = json.dumps(header, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    while (4 + len(hjson)) % 4:
-        hjson += b" "
-    raw = struct.pack("<I", len(hjson)) + hjson + bytes(body)
-    with gzip.open(args.out, "wb", compresslevel=9) as f:
-        f.write(raw)
-    import os
+    raw_n, head_n = container.write(args.out, header, sec, ascii_only=False)
     gz = os.path.getsize(args.out)
-    log(f"wrote {args.out}: {len(raw)/1e6:.1f} MB raw, {gz/1e6:.1f} MB gzip, "
-        f"header {len(hjson)/1e6:.1f} MB, in {time.time()-t0:.0f}s")
+    log(f"wrote {args.out}: {raw_n/1e6:.1f} MB raw, {gz/1e6:.1f} MB gzip, "
+        f"header {head_n/1e6:.1f} MB, in {time.time()-t0:.0f}s")
     print(json.dumps({"date": args.date, "stops": S, "patterns": P, "trips": T, "events": n_events,
                       "footpaths": n_tr, "routes": len(route_list), "dropped": dropped,
-                      "raw_bytes": len(raw), "gz_bytes": gz, "seconds": round(time.time() - t0)}))
+                      "raw_bytes": raw_n, "gz_bytes": gz, "seconds": round(time.time() - t0)}))
 
     if args.debug_out:
         with open(args.debug_out, "w", encoding="utf-8") as f:
