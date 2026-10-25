@@ -1,9 +1,10 @@
 // How the roads run now, from the buses on them: each bus is followed across the snapshots read (the last 15
 // minutes); between two of its positions at least 90 s apart it covered part of its trip, and the time that took
-// against the part's usual time (live.js usualRun: learned by hour, else the timetable's) says how that stretch runs
-// now. Every section it covered gets that ratio. live.js applies them to the sections ahead of other buses
+// against the part's usual time (delays.js usualRun: learned by hour, else the timetable's) says how that stretch runs
+// now. Every section it covered gets that ratio. delays.js applies them to the sections ahead of other buses
 // (roadFactor), and the map colours the sections by them (trafficIn).
-import { secondsOn, hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops } from '../engine/live.js';
+import { secondsOn } from '../engine/clock.js';
+import { hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops } from '../engine/delays.js';
 import { metres } from '../engine/geo.js';
 import { ridePath } from './courses.js';
 import { tt, onNewDay } from './data.js';
@@ -108,7 +109,7 @@ export function noteRoads(vehicles) {
 /**
  * Traffic in a box, from the buses: each section that at least two buses ran in the last 15 minutes, drawn along its
  * course, with how its time now (the median of their ratios to its usual time, times that) compares with its best in
- * the day's hours (live.js freeRun): level 0 free (up to 1.5 times), 1 slow (to 2.2), 2 jammed (to 3.2), 3 stuck. On a
+ * the day's hours (delays.js freeRun): level 0 free (up to 1.5 times), 1 slow (to 2.2), 2 jammed (to 3.2), 3 stuck. On a
  * Thursday in Tel Aviv (2026-10-22) that made 10:00 mostly free and 17:00 a mix with jams where they were.
  */
 function trafficIn(box) {

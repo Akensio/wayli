@@ -2,7 +2,8 @@
 // lines, departures, from here, to here), a tapped place (to here, from here); and the vehicle markers of
 // a line with their delays.
 import type { Map as MLMap, Marker, LngLatLike } from 'maplibre-gl';
-import * as live from '../engine/live.js';
+import * as delays from '../engine/delays.js';
+import * as feed from '../engine/feed.js';
 import { esc } from '../widgets/html';
 import { t, lang } from '../lib/i18n';
 import { ic } from '../widgets/icons';
@@ -13,10 +14,9 @@ import * as nav from '../state/nav';
 import { popupState, pick, hooks } from './shared';
 import { viewFor } from './view';
 import { currentSheet, cameraPadding } from './render';
-import { fmt } from '../lib/time';
+import { fmt, timeOf } from '../lib/time';
 import { lineChipHtml } from '../widgets/LineChip';
 
-export const clock = (d: Date): string => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 export const heading = (v: { bearing?: number | null; velocity?: number | null }): number => (v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1);
 export const vehiclesForWorker = (vs: any[]) => vs.map((v) => ({ lineRef: v.lineRef, scheduledStart: v.scheduledStart.getTime(), lat: v.lat, lon: v.lon, recordedAt: v.recordedAt.getTime(), callSince: v.callSince, callSeenChange: v.callSeenChange }));
@@ -46,11 +46,11 @@ export function setPopupTitle(text: string): void { const b = popupState.current
 type VehicleInfo = { line: string; routeType: number; headsign: string; agency: string; delay?: number | null; stale: boolean; seen: Date; velocity?: number | null; trip: number; route: number | null; offDay?: boolean };
 /** A vehicle's bubble: line, direction, delay, when it reported, speed; its line, with its trip chosen. */
 export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void {
-  const d = v.delay != null ? live.delayMinutes(v.delay) : null;
+  const d = v.delay != null ? delays.delayMinutes(v.delay) : null;
   const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
   const ago = Date.now() - new Date(v.seen).getTime();
   const html = `<div class="pop"><div class="row">${lineChipHtml({ line: v.line, routeType: v.routeType, agency: v.agency })}<b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
-    `<div class="muted">${v.agency ? `<bdi>${esc(agencyName(v.agency))}</bdi> · ` : ''}${t('seenAgo', { time: clock(v.seen) })}${ago >= 180e3 ? ` (${t('agoMin', { n: Math.round(ago / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
+    `<div class="muted">${v.agency ? `<bdi>${esc(agencyName(v.agency))}</bdi> · ` : ''}${t('seenAgo', { time: timeOf(v.seen) })}${ago >= 180e3 ? ` (${t('agoMin', { n: Math.round(ago / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
     (d == null ? '' : `<div><span class="live ${v.stale ? 'unsure' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
     // a line the feed has no trips of today (it reports anyway): named, nothing to open
     (v.offDay ? `<div class="muted">${t('offDayLine')}</div></div>`
@@ -123,18 +123,18 @@ function addHeading(el: HTMLElement, deg: number): void {
 /** Every reporting vehicle of a line as a marker with its delay; the one running `mine` stands out. */
 export function lineVehicleMarkers(m: MLMap, markers: Marker[], vs: any[], statuses: any[], routeType: number, mine: number | null, fallback: { line?: string; headsign?: string; agency?: string; route?: number | null } = {}): void {
   const icon = ic(routeType === 2 ? 'train' : routeType === 0 ? 'tram' : 'bus');
-  const newest = live.newest(vs);
+  const newest = feed.newest(vs);
   vs.forEach((v, i) => {
-    if (!live.isFresh(v, 300, newest)) return;   // last seen long before this line's newest report: its position says nothing now
+    if (!feed.isFresh(v, 300, newest)) return;   // last seen long before this line's newest report: its position says nothing now
     const st = statuses[i] || { trip: -1 };
     const el = document.createElement('div');
     const isMine = mine != null && st.trip === mine;
     el.className = 'wayli-bus lbl' + (st.stale || st.trip < 0 ? ' stale' : '') + (isMine ? ' mine' : '');
-    const d = st.delay != null ? live.delayMinutes(st.delay) : null;
+    const d = st.delay != null ? delays.delayMinutes(st.delay) : null;
     el.innerHTML = `${icon}${isMine && d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;   // the number (minutes late) only on the rider's own vehicle; the bubble has it for the rest
     el.style.borderColor = routeColor(st.routeType ?? routeType, st.agency || fallback.agency);
     addHeading(el, heading(v));
-    el.title = `${clock(v.recordedAt)}${st.headsign ? ' · ' + st.headsign : ''}`;
+    el.title = `${timeOf(v.recordedAt)}${st.headsign ? ' · ' + st.headsign : ''}`;
     el.addEventListener('click', (e) => { e.stopPropagation(); vehiclePopup(m, [v.lon, v.lat], { line: st.line || fallback.line || '', routeType: st.routeType ?? routeType, headsign: st.headsign || fallback.headsign || '', agency: st.agency || fallback.agency || '', delay: st.delay, stale: !!st.stale, seen: v.recordedAt, velocity: v.velocity, trip: st.trip, route: st.route ?? fallback.route ?? null }); });
     markers.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(m));
   });

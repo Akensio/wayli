@@ -3,7 +3,7 @@
 import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
-import * as live from '../../engine/live.js';
+import * as clock from '../../engine/clock.js';
 import { view as followView, canStepBack } from '../../engine/follow.js';
 import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
@@ -39,7 +39,7 @@ export function Follow() {
   void lang.value; void follow.tick.value; void now.value;
   const a = follow.active.value;
   if (!a) return null;
-  const j = a.journey, nowS = live.nowOn(a.day), dest = a.q.to.name;
+  const j = a.journey, nowS = clock.nowOn(a.day), dest = a.q.to.name;
   const v = followView(j, a.state, nowS) as unknown as View;
   const badge = follow.liveBadge.value, liveLine = badge ? ` · ${badge.text}` : '';
   const pos = follow.pos.value, fresh = pos && Date.now() - pos.at < 90000;

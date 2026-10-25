@@ -1,7 +1,7 @@
 // One way to get there: times and duration, the legs as chips, the lines and where they head, the other
 // departures of the same lines, when to leave (counting down), how late the first ride runs, and the map
 // button that draws it on the map or takes it off.
-import * as live from '../../engine/live.js';
+import * as delays from '../../engine/delays.js';
 import { Icon } from '../../widgets/Icon';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t } from '../../lib/i18n';
@@ -23,7 +23,7 @@ export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveIn
 /** A ride planned with live data: how late its vehicle runs. */
 const LiveLine = ({ l }: { l?: Leg }) => {
   if (!l || !l.live) return null;
-  const d = live.delayMinutes(l.live.delay);
+  const d = delays.delayMinutes(l.live.delay);
   return <div class="muted"><span class={`live ${l.live.stale ? 'unsure' : 'ok'}`}>{d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d })}{l.live.stale ? ' ?' : ''}</span></div>;
 };
 

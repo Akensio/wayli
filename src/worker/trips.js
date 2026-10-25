@@ -1,7 +1,7 @@
 // Trips: a trip's stops and times (as scheduled, or as shifted by live data during a plan), the trip a reported
 // vehicle runs, and the direct trips between two places (the trains between two stations, a journey's ride options).
 import { routeLabel } from '../engine/raptor.js';
-import { secondsOn } from '../engine/live.js';
+import { secondsOn } from '../engine/clock.js';
 import { haversine } from '../engine/geo.js';
 import { tt } from './data.js';
 import { indexRoutes, routeById, routePats } from './lines.js';

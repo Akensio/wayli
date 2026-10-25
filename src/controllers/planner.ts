@@ -2,7 +2,8 @@
 // a plan from now takes the delays of the vehicles on the road into account. Also: a destination chosen
 // anywhere (a bubble, a saved place) planned from where you are, the last search shown again, the plan cleared.
 import { effect } from '@preact/signals';
-import * as live from '../engine/live.js';
+import * as clock from '../engine/clock.js';
+import * as feed from '../engine/feed.js';
 import { settings, recentPlaces, recentTrips, lastSearch } from '../lib/store.js';
 import { t, lang } from '../lib/i18n';
 import { dateOf } from '../lib/time';
@@ -65,11 +66,11 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   search.optOpen.value = '';
   const q: Query = { from, to, day, at: search.at.value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
-  const svc = live.serviceDay();
+  const svc = clock.serviceDay();
   const liveTried = map.liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200;
   let vehicles: unknown[] | null = null, liveAsOf: Date | null = null;
   if (liveTried && from.lat != null) {
-    try { vehicles = await live.vehiclesForPlanning(from.lat, from.lon, { timeoutMs: 8000 }); liveAsOf = live.newest(vehicles); } catch { vehicles = null; }
+    try { vehicles = await feed.vehiclesForPlanning(from.lat, from.lon, { timeoutMs: 8000 }); liveAsOf = feed.newest(vehicles); } catch { vehicles = null; }
   }
   q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null; q.liveTried = liveTried;
   try {
@@ -140,7 +141,7 @@ async function openView(v: results.View): Promise<void> {
   if (!data.ttReady.value) return;
   const gone = () => toast(t('notInDay'));
   if (v.type === 'trip') {
-    const same = data.dayInfo.value?.date === v.q.day && v.built === data.manifest.value?.built && v.j.arrive > live.nowOn(v.q.day);
+    const same = data.dayInfo.value?.date === v.q.day && v.built === data.manifest.value?.built && v.j.arrive > clock.nowOn(v.q.day);
     if (same) { nav.closeAll(); nav.showScreen('plan'); openDetail(v.j, v.q); } else results.hooks.replan(v.q);
     return;
   }

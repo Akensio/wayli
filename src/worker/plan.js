@@ -3,7 +3,8 @@
 // the easiest place to change, walks merged, slower departures of the same way, and ways grouped.
 import { profile, rank, journeySig, routeLabel } from '../engine/raptor.js';
 import { accessStops, route } from '../engine/streets.js';
-import { estimateDelay, secondsOn } from '../engine/live.js';
+import { secondsOn } from '../engine/clock.js';
+import { estimateDelay } from '../engine/delays.js';
 import { haversine } from '../engine/geo.js';
 import { hasCourse, pathTo, ridePath, streetPath } from './courses.js';
 import { st, tt } from './data.js';

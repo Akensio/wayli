@@ -2,7 +2,7 @@
 // the map and which one is highlighted, and the recent trips shown while there is nothing else. The list is
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
 import { signal, computed } from '@preact/signals';
-import * as live from '../engine/live.js';
+import * as clock from '../engine/clock.js';
 import { settings } from '../lib/store.js';
 import { lang } from '../lib/i18n';
 import * as search from './search';
@@ -49,7 +49,7 @@ function build(r: PlanResult | null, q: Query | null, at: number | null, f: Filt
   if (f.fTrain) groups = groups.filter((g) => first(g).legs.some((l) => l.type === 'ride' && l.routeType === 2));
   // arrive-by keeps its own order by arrival (the latest that is in time first); every other order sorts (stable)
   if (!(q.arriveBy && f.resultSort === 'arrive')) { const sk = sortKey[f.resultSort]; groups = groups.slice().sort((a, b) => sk(first(a)) - sk(first(b)) || sortKey.depart(first(a)) - sortKey.depart(first(b))); }
-  const nowSec = live.nowOn(q.day);
+  const nowSec = clock.nowOn(q.day);
   const isGone = (j: Journey) => !!q.isNow && rideDep(j) < nowSec - 60;              // the first ride has left
   const onStrip = (j: Journey) => rideDep(j) >= nowSec - 600 || (!!at && j.arrive > nowSec);   // left lately, or (restored) still under way
   const cards: Card[] = [], gone: Journey[] = [];

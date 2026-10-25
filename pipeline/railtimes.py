@@ -9,7 +9,7 @@ SIRI feed reported, about one a minute. For each past ride this finds when the t
 (the fixes within 300 m of it), and for each section between two stations learns the usual running time and how that
 time spreads along it (time fraction at each tenth of the way: trains pull out slowly, brake, and slow down in
 places), and how long a late train stands at each station (an early one waits for its time). Positions are taken along the straight line between the two
-stations, exactly as the app does (src/engine/live.js, projectOnStops), so the profile answers the app's own question.
+stations, exactly as the app does (src/engine/delays.js, projectOnStops), so the profile answers the app's own question.
 A ride is matched to the feed's trip by its line and scheduled start; its stops come from that trip.
 
 The history is kept an hour per file in --history and fetched only where missing (Hasadna caps a request at
@@ -23,7 +23,7 @@ import urllib.parse, urllib.request, zipfile
 from collections import defaultdict
 
 STRIDE = "https://open-bus-stride-api.hasadna.org.il/siri_vehicle_locations/list"
-AT = 300          # m: a train this close to a station is at it (the same in src/engine/live.js)
+AT = 300          # m: a train this close to a station is at it (the same in src/engine/delays.js)
 OFF_PATH = 600    # m: further from the line between its stations, a fix is not used (as in the app)
 HOURS = range(2, 23)   # UTC hours fetched per day: 05:00-02:00 Israel, the service day
 
@@ -131,7 +131,7 @@ def metres(a, b, c, d):
 
 
 def project(lat, lon, S):
-    """src/engine/live.js projectOnStops: the nearest straight segment between consecutive stops, the fraction along it."""
+    """src/engine/delays.js projectOnStops: the nearest straight segment between consecutive stops, the fraction along it."""
     best = (0, 0.0, float("inf"))
     kx, ky = 111320 * math.cos(lat * math.pi / 180), 110540
     for i in range(len(S) - 1):
@@ -249,7 +249,7 @@ def learn(all_rides):
 
 # ---------------------------------------------------------------- measuring (the app's two estimates, side by side)
 def ahead(sections, stands, S, k, x, t):
-    """src/engine/live.js railAhead for a train between stations k and k+1: its arrival at each later station."""
+    """src/engine/delays.js railAhead for a train between stations k and k+1: its arrival at each later station."""
     run = lambda j: sections[f'{S[j]["code"]}>{S[j + 1]["code"]}'][0] if f'{S[j]["code"]}>{S[j + 1]["code"]}' in sections else max(0, S[j + 1]["arr"] - S[j]["dep"])
     m = sections.get(f'{S[k]["code"]}>{S[k + 1]["code"]}')
     if m:

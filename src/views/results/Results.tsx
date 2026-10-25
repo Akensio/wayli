@@ -6,8 +6,8 @@ import { Icon } from '../../widgets/Icon';
 import { TimeRange } from '../../widgets/TimeRange';
 import type { IconName } from '../../widgets/icons';
 import { t, lang } from '../../lib/i18n';
-import * as live from '../../engine/live.js';
-import { fmt, secOf } from '../../lib/time';
+import * as clock from '../../engine/clock.js';
+import { fmt, secOf, timeOf } from '../../lib/time';
 import * as search from '../../state/search';
 import * as results from '../../state/results';
 import { describePlace } from '../../journey/format';
@@ -16,7 +16,6 @@ import { JourneyCard } from './JourneyCard';
 import { SortChip } from './SortMenu';
 import type { Journey, Query } from '../../journey/types';
 
-const clock = (ms: number) => new Date(ms).toLocaleTimeString(lang.value === 'he' ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 const plan = () => results.hooks.plan();
 
 function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
@@ -24,8 +23,8 @@ function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
   return (
     <div class="results-head muted">
       <span>
-        {at ? t('resultsFrom', { time: clock(at) }) + ' · ' : ''}{t('found', { n })}{note}{q.arriveBy ? ' · ' + t('arriveByNote', { time: fmt(secOf(q.at)) }) : ''}
-        {q.liveTried && <> · <span class={`live${q.liveAsOf ? ' ok' : ''}`}>{q.liveAsOf ? t('livePlanned', { time: clock(q.liveAsOf) }) : t('schedOnly')}</span></>}
+        {at ? t('resultsFrom', { time: timeOf(at) }) + ' · ' : ''}{t('found', { n })}{note}{q.arriveBy ? ' · ' + t('arriveByNote', { time: fmt(secOf(q.at)) }) : ''}
+        {q.liveTried && <> · <span class={`live${q.liveAsOf ? ' ok' : ''}`}>{q.liveAsOf ? t('livePlanned', { time: timeOf(q.liveAsOf) }) : t('schedOnly')}</span></>}
       </span>
       <span class="spacer" />
       {at && <button type="button" class="linkbtn" onClick={() => { search.resetNow(); plan(); }}>{t('planAgain')}</button>}
@@ -51,7 +50,7 @@ function Filters() {
  *  on a plan restored from earlier they are shown, since the rider is likely on the way already. */
 function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored: boolean }) {
   const [open, setOpen] = useState(false);
-  const nowSec = live.nowOn(q.day);
+  const nowSec = clock.nowOn(q.day);
   const rows = (
     <div class="gone-rows" hidden={!restored && !open}>
       {gone.slice().sort((a, b) => b.depart - a.depart).slice(0, 4).map((j) => (   // the four most recent: the one the rider is on is among them

@@ -6,7 +6,7 @@
 import { parseTimetable } from '../engine/raptor.js';
 import { parseStreets } from '../engine/streets.js';
 import { parsePlaces } from '../engine/places.js';
-import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/live.js';
+import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/delays.js';
 
 export let tt = null, st = null, pl = null, sh = null;
 export let lang = 'he';   // the language names are handed out in (setLang); the timetable carries what the feed translates

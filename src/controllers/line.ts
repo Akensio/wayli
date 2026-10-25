@@ -1,12 +1,12 @@
 // A line's page: its course and stops on the map, and its vehicles with their delays, every 20 s while open.
-import * as live from '../engine/live.js';
+import * as clock from '../engine/clock.js';
+import * as feed from '../engine/feed.js';
 import { t } from '../lib/i18n';
 import { toast } from '../widgets/toast';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as linePage from '../state/line';
 import * as map from '../map/index';
-import { clock } from '../map/popups';
 import type { LineInfo } from '../state/line';
 import { openStop } from './stop';
 import { recentViews } from '../lib/store.js';
@@ -15,6 +15,7 @@ import { lastPos } from '../state/position';
 import { tripStopsCached } from '../worker/client';
 import type { LineTime } from '../state/line';
 import { metres } from '../engine/geo.js';
+import { timeOf } from '../lib/time';
 
 let seq = 0, timer = 0, current: LineInfo | null = null;
 
@@ -53,8 +54,8 @@ async function setAnchor(i: number, my = seq, trip?: number): Promise<void> {
   if (!info || !info.stops[i]) return;
   // what is shown stays until the new times come (emptied first, the box collapsed and the rows' times blinked)
   linePage.anchor.value = i; linePage.loading.value = true;
-  const day = data.dayInfo.value?.date || '', svc = live.serviceDay(), today = day === svc.day;
-  const now = today ? live.nowOn(day) : null;
+  const day = data.dayInfo.value?.date || '', svc = clock.serviceDay(), today = day === svc.day;
+  const now = today ? clock.nowOn(day) : null;
   linePage.now.value = now;
   try {
     const rows = await call<LineTime[]>('lineTimes', { route: info.route, from: [info.stops[i].stop] });
@@ -90,15 +91,15 @@ async function lineLive(): Promise<void> {
   const my = seq;
   try {
     // a train line is many routes in the feed (one per train): every train in the country, then those of this line
-    const vs = ids.length > 1 ? (await live.trains()).filter((v: { lineRef: unknown }) => ids.includes(Number(v.lineRef))) : await live.vehiclesByLine(ids[0]);
+    const vs = ids.length > 1 ? (await feed.trains()).filter((v: { lineRef: unknown }) => ids.includes(Number(v.lineRef))) : await feed.vehiclesByLine(ids[0]);
     if (my !== seq) return;
     const st: any[] = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
     if (my !== seq) return;
     for (const mk of map.markers.lineVeh.splice(0)) mk.remove();
     const m = map.mapState.main;
     if (m && map.mapState.drawnFor === 'lineDetail') map.lineVehicleMarkers(m, map.markers.lineVeh, vs, st, info.routeType, null, { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route });
-    const nw = live.newest(vs);
-    linePage.liveText.value = vs.length && nw ? `${t('vehiclesOnLine', { n: vs.length })} · ${clock(nw)}` : t('noLineVehicles');
+    const nw = feed.newest(vs);
+    linePage.liveText.value = vs.length && nw ? `${t('vehiclesOnLine', { n: vs.length })} · ${timeOf(nw)}` : t('noLineVehicles');
     linePage.liveOk.value = vs.length > 0;
   } catch { /* the schedule stays */ }
 }

@@ -3,7 +3,7 @@
 import { Icon } from '../../widgets/Icon';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t, lang } from '../../lib/i18n';
-import * as live from '../../engine/live.js';
+import * as clock from '../../engine/clock.js';
 import { favs } from '../../lib/store.js';
 import * as detail from '../../state/detail';
 import { now } from '../../state/clock';
@@ -18,7 +18,7 @@ export function Detail() {
   const j = detail.journey.value, q = detail.query.value, bikeOnly = detail.bikeOnly.value, focus = detail.focus.value;
   if (!j || !q) return null;
   const key = tripKey(q), saved = !bikeOnly && favs.has('trips', key);
-  const over = live.nowOn(q.day) > j.arrive + 1800;
+  const over = clock.nowOn(q.day) > j.arrive + 1800;
   const title = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '')
     : <><TimeRange from={j.depart} to={j.arrive} class="" /> · {dur(j.arrive - j.depart)}</>;
   const toggleFav = () => { if (bikeOnly) return; favs.toggle('trips', key, { from: q.from, to: q.to, bike: q.bike, folding: q.folding }); detail.favTick.value++; detail.hooks.favChanged(); };
@@ -41,7 +41,7 @@ export function Detail() {
           <LegRow key={i} l={l} mode="detail" cls={i === focus ? 'focus' : ''}
             badge={detail.badges.value[String(l.trip ?? '')] || (l.live ? liveBadge({ time: l.depart!, delay: l.live.delay, passed: false, stale: l.live.stale }) : null)}
             onChip={() => detail.hooks.openLine(+l.route!, l.stopsAlong?.[0]?.stop)} onClick={() => detail.focusLeg(i)}
-            options={l.type === 'ride' && (l.stopsAlong?.length ?? 0) >= 2 ? { load: () => detail.hooks.rideOptions(l, q), liveFor: (rows) => detail.hooks.rideLive(rows, q.day), day: q.day, now: q.isNow ? live.nowOn(q.day) : null, onOpen: detail.hooks.openTrip } : undefined} />
+            options={l.type === 'ride' && (l.stopsAlong?.length ?? 0) >= 2 ? { load: () => detail.hooks.rideOptions(l, q), liveFor: (rows) => detail.hooks.rideLive(rows, q.day), day: q.day, now: q.isNow ? clock.nowOn(q.day) : null, onOpen: detail.hooks.openTrip } : undefined} />
         ))}
       </div>
     </>

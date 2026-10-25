@@ -1,6 +1,7 @@
 // Loading the data: the manifest (which days, which files), a day's timetable, then the address book, the
 // street graph and the courses in the background. The worker downloads and unpacks; the pill shows how far.
-import * as live from '../engine/live.js';
+import * as clock from '../engine/clock.js';
+import * as feed from '../engine/feed.js';
 import { t, lang, STR } from '../lib/i18n';
 import { calToday, dayLabel, two } from '../lib/time';
 import { call, DATA_URL, resetCaches } from '../worker/client';
@@ -14,7 +15,7 @@ import { setStatus, loadFailed } from './status';
 
 const manifest = (): Manifest => data.manifest.value!;
 // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
-live.snapshot.query = (filter: object) => call('liveQuery', { urls: live.RELAY_URLS, filter });
+feed.snapshot.query = (filter: object) => call('liveQuery', { urls: feed.RELAY_URLS, filter });
 // stored places shown in the other language are named again by the worker (state/names.ts)
 const WORDS = { he: { near: String(STR.he.nearName), point: String(STR.he.pointName) }, en: { near: String(STR.en.nearName), point: String(STR.en.pointName) } };
 names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });
@@ -26,7 +27,7 @@ export async function loadManifest(): Promise<void> {
   data.manifest.value = m;
   app.feedInfo.value = m.feed ? { start: m.feed.start, end: m.feed.end, built: m.built } : null;
   if (m.built) {
-    const b = live.ilParts(new Date(m.built));
+    const b = clock.ilParts(new Date(m.built));
     app.version.value = t('build', { v: `${two(b.m)}-${two(b.d)} ${two(b.h)}:${two(b.mi)}` });
   }
 }
@@ -38,7 +39,7 @@ export function renderDays(): void {
 }
 /** The best service day to plan on right now: tonight's until 03:00, else today. */
 export function startDay(): string {
-  const svc = live.serviceDay();
+  const svc = clock.serviceDay();
   for (const d of [svc.day, calToday()]) if (manifest().days.some((x) => x.date === d)) return d;
   return manifest().days[0].date;
 }

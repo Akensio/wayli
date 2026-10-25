@@ -1,15 +1,14 @@
 // The train timetable (the stop search's train chip: two stations at the top): the From station opens as the one stop
 // view (its departures, where its trains go), and once To is set the direct trains between the two with their live
 // times (every 45 s while open). A rider of trains thinks from station to station, not by line.
-import * as live from '../engine/live.js';
+import * as clock from '../engine/clock.js';
 import { t } from '../lib/i18n';
-import { calToday } from '../lib/time';
+import { calToday, timeOf } from '../lib/time';
 import { call } from '../worker/client';
 import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as st from '../state/station';
 import * as map from '../map/index';
-import { clock } from '../map/popups';
 import type { Station, TrainRow } from '../state/station';
 import { openStop } from './stop';
 import { liveRides } from './liverides';
@@ -18,8 +17,8 @@ import { recentViews } from '../lib/store.js';
 
 let seq = 0, timer = 0;
 const when = () => {
-  const day = search.day.value, isNow = day === live.serviceDay().day || day === calToday();
-  return { day, isNow, from: isNow ? live.nowOn(day) - 60 : search.atSeconds() };
+  const day = search.day.value, isNow = day === clock.serviceDay().day || day === calToday();
+  return { day, isNow, from: isNow ? clock.nowOn(day) - 60 : search.atSeconds() };
 };
 
 /** A station: the one stop view, for all its platforms (its departures, and where its trains go). */
@@ -52,7 +51,7 @@ async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<vo
     const r = await liveRides(rows, day);
     if (my !== seq) return;
     st.live.value = { ...st.live.value, ...r.live };
-    st.liveNote.value = r.newest ? t('liveUpdated', { time: clock(r.newest) }) : t('liveNoVehicle');
+    st.liveNote.value = r.newest ? t('liveUpdated', { time: timeOf(r.newest) }) : t('liveNoVehicle');
   } catch { st.liveNote.value = t('liveFail'); }
 }
 

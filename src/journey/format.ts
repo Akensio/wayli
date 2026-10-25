@@ -1,5 +1,6 @@
 // Words for journeys: durations, transfers, line names, the countdown to a departure.
-import * as live from '../engine/live.js';
+import * as clock from '../engine/clock.js';
+import * as delays from '../engine/delays.js';
 import { t, lang } from '../lib/i18n';
 import { fmt } from '../lib/time';
 import type { Place } from '../state/search';
@@ -13,7 +14,7 @@ export const lineText = (line?: string | null): string => (line === 'train' ? t(
 export const stopsText = (n: number): string => (n === 1 ? t('stops1') : t('stopsN', { n }));
 export const describePlace = (p: Place | null | undefined): string => (p ? p.name + ((p.platforms || 0) > 1 ? ` (${t('platforms', { n: p.platforms! })})` : '') : '');
 /** Minutes until a departure on a service day, from the real clock. */
-const minutesUntil = (sec: number, day: string): number => Math.round((sec - live.nowOn(day)) / 60);
+const minutesUntil = (sec: number, day: string): number => Math.round((sec - clock.nowOn(day)) / 60);
 /** "Leave now", "Leave in 5 min", "Departed", or nothing when it is hours away. */
 export function leaveText(sec: number, day: string): string {
   const n = minutesUntil(sec, day);
@@ -32,7 +33,7 @@ export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: n
 export function liveBadge(at: LiveAt): Badge {
   if (!at) return { text: t('liveNoVehicle'), cls: '' };
   if (at.passed) return { text: t('livePassed'), cls: 'gone' };
-  const d = live.delayMinutes(at.delay);
+  const d = delays.delayMinutes(at.delay);
   const delayText = `⦿ ${d === 0 ? t('onTime') : `${d > 0 ? '+' : ''}${d}`}${at.stale ? ' ?' : ''}`;
   const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
   return { text, cls: at.stale ? 'unsure' : 'ok', time: at.time, delayText };

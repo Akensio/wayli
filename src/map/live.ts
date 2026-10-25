@@ -2,7 +2,7 @@
 // results, or none while a journey, line or trip draws its own; the stops of the loaded day; what the note
 // at the bottom says about freshness.
 import type { Map as MLMap } from 'maplibre-gl';
-import * as live from '../engine/live.js';
+import * as feed from '../engine/feed.js';
 import { t } from '../lib/i18n';
 import { routeColor, textOn } from '../journey/colors';
 import { lineText } from '../journey/format';
@@ -115,7 +115,7 @@ export async function refreshLiveMap(): Promise<void> {
   if (!app.liveNote.value) app.liveNote.value = t('liveLoading');
   const b = m.getBounds();
   try {
-    const vs: any[] = await live.vehiclesInBounds({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
+    const vs: any[] = await feed.vehiclesInBounds({ south: b.getSouth(), north: b.getNorth(), west: b.getWest(), east: b.getEast() });
     if (my < lm.applied || !state.main || !state.styled) return;
     const need = Array.from(new Set(vs.map((v) => String(v.lineRef)).filter((id) => !lm.labels.has(id))));
     if (need.length && data.ttReady.value) {
@@ -126,9 +126,9 @@ export async function refreshLiveMap(): Promise<void> {
     if ((liveShow as Show | null) === 'none') return;   // a journey or line drew its own while this was on its way
     lm.applied = my;
     const now = Date.now();
-    const nwAll = live.newest(vs);
+    const nwAll = feed.newest(vs);
     const feedLag = nwAll ? (now - nwAll.getTime()) / 60000 : 0;   // minutes the whole feed is behind the clock
-    const features: GeoJSON.Feature[] = vs.filter((v) => live.isFresh(v, 300, nwAll)).map((v) => {   // fresh against this area's own newest report
+    const features: GeoJSON.Feature[] = vs.filter((v) => feed.isFresh(v, 300, nwAll)).map((v) => {   // fresh against this area's own newest report
       const lb = lm.labels.get(String(v.lineRef));
       const age = nwAll ? (nwAll.getTime() - v.recordedAt.getTime()) / 1000 : 0;   // behind the feed, not the clock
       const color = routeColor(lb ? lb.type : 3, lb && lb.agency);
@@ -139,7 +139,7 @@ export async function refreshLiveMap(): Promise<void> {
     for (const ck of new Set(features.map((f) => f.properties!.ckey as string))) if (!m.hasImage('wayli-arrow-' + ck)) m.addImage('wayli-arrow-' + ck, arrowImage('#' + ck), { pixelRatio: 2 });
     veh.setData({ type: 'FeatureCollection', features });
     refreshTraffic(m, b);
-    const nw = live.newest(vs);
+    const nw = feed.newest(vs);
     const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
     const near = nearOf(liveShow);
     const shown = Array.isArray(liveShow) ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length : features.length;
@@ -147,7 +147,7 @@ export async function refreshLiveMap(): Promise<void> {
     const scope = Array.isArray(liveShow) ? t(viewFor(currentSheet()).live === 'stop' ? 'liveScopeStop' : 'liveScopeSearch') : near ? t('liveNearOf', { n: nNear }) : '';
     const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
     // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
-    const via = live.source.relay ? '' : t('liveViaDb', { why: live.source.why });
+    const via = feed.source.relay ? '' : t('liveViaDb', { why: feed.source.why });
     app.liveNote.value = (shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw!.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope })) + via;
     app.liveLag.value = !!shown && ageMin >= 4;
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch { /* debugging only */ }

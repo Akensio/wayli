@@ -1,4 +1,4 @@
-// Backtest the app's train predictions on a morning's raw SIRI minute files: the app's own code (src/engine/live.js
+// Backtest the app's train predictions on a morning's raw SIRI minute files: the app's own code (src/engine/delays.js
 // estimateDelay, with the worker's frozen-fix filter and its reading of a train without GPS) is run every minute, and
 // each prediction of a later station is scored against when that train's GPS first came within 300 m of it.
 //
@@ -10,7 +10,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { gunzipSync, brotliDecompressSync } from 'node:zlib';
 import { parseTimetable } from '../src/engine/raptor.js';
-import * as live from '../src/engine/live.js';
+import * as clock from '../src/engine/clock.js';
+import * as delays from '../src/engine/delays.js';
 import { metres } from '../src/engine/geo.js';
 
 const [day, from = '07:30', to = '10:30'] = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !(all[i - 1] || '').startsWith('--'));
@@ -18,11 +19,11 @@ const opt = (name, dflt) => { const i = process.argv.indexOf(`--${name}`); retur
 if (!/^\d{8}$/.test(day || '')) { console.error('usage: node tools/trainbacktest.mjs YYYYMMDD [HH:MM] [HH:MM] [--timetable file] [--railtimes file]'); process.exit(2); }
 const load = (f) => { const b = gunzipSync(readFileSync(f)); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); };
 const tt = parseTimetable(load(opt('timetable', `data/timetable-${day}.bin.gz`)));
-live.setRailTimes(JSON.parse(readFileSync(opt('railtimes', 'data/railtimes.json'), 'utf8')));
+delays.setRailTimes(JSON.parse(readFileSync(opt('railtimes', 'data/railtimes.json'), 'utf8')));
 
 // Israel time to UTC for the window (Intl knows the day's offset), with 2 hours after it for the trains' real times
 const iso = `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}`;
-const offset = (ms) => { const p = live.ilParts(new Date(ms)); return Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi, p.s) - Math.floor(ms / 1000) * 1000; };
+const offset = (ms) => { const p = clock.ilParts(new Date(ms)); return Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi, p.s) - Math.floor(ms / 1000) * 1000; };
 const utc = (hm) => { const naive = Date.parse(`${iso}T${hm}:00Z`); return naive - offset(naive); };
 const T0 = utc(from), T1 = utc(to);
 
@@ -53,7 +54,7 @@ const byCode = new Map(); tt.stops.forEach((s, i) => { if (s[2]) byCode.set(Stri
 const trips = new Map();
 function tripOf(ride) {
   if (trips.has(ride)) return trips.get(ride);
-  const ri = byId.get(ride.slice(0, ride.indexOf('/'))), start = live.secondsOn(new Date(ride.slice(ride.indexOf('/') + 1)), day);
+  const ri = byId.get(ride.slice(0, ride.indexOf('/'))), start = clock.secondsOn(new Date(ride.slice(ride.indexOf('/') + 1)), day);
   let res = null;
   for (const p of ri == null ? [] : pats.get(ri) || []) {
     const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
@@ -72,7 +73,7 @@ for (const r of rows) { if (!byRide.has(r[1])) byRide.set(r[1], []); byRide.get(
 for (const [ride, rs] of byRide) {
   const stops = tripOf(ride); if (!stops) continue;
   const arr = new Array(stops.length).fill(null);
-  for (const r of rs.sort((a, b) => a[2] - b[2])) if (r[3] != null) stops.forEach((s, i) => { if (arr[i] == null && metres(r[3], r[4], s.lat, s.lon) <= 300) arr[i] = live.secondsOn(new Date(r[2]), day); });
+  for (const r of rs.sort((a, b) => a[2] - b[2])) if (r[3] != null) stops.forEach((s, i) => { if (arr[i] == null && metres(r[3], r[4], s.lat, s.lon) <= 300) arr[i] = clock.secondsOn(new Date(r[2]), day); });
   truth.set(ride, arr);
 }
 
@@ -85,7 +86,7 @@ for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
     const c = callSince.get(r[1]); if (r[6] != null && (!c || c.code !== String(r[6]))) callSince.set(r[1], { code: String(r[6]), since: r[2], change: !!c });
   }
   if (t < T0 || t > T1) continue;
-  const now = live.secondsOn(new Date(t), day);
+  const now = clock.secondsOn(new Date(t), day);
   for (const r of cur) {
     if (r[2] > t + 120e3 || r[2] < t - 1800e3) continue;
     const stops = tripOf(r[1]), tru = truth.get(r[1]); if (!stops || !tru) continue;
@@ -96,7 +97,7 @@ for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
       v.lat = tt.stopLat[s]; v.lon = tt.stopLon[s];
       const c = callSince.get(r[1]); if (c && c.code === String(r[6])) { v.callSince = c.since; v.callSeenChange = c.change; }
     }
-    const est = live.estimateDelay(v, stops, day); if (!est) continue;
+    const est = delays.estimateDelay(v, stops, day); if (!est) continue;
     for (let j = est.index + 1; j < stops.length; j++) {
       if (tru[j] == null || tru[j] <= now + 30) continue;
       const pred = est.arr ? est.arr[j] : stops[j].arr + est.delay;

@@ -3,7 +3,7 @@
 // app sets them through the actions here. What the planner itself does (routing, results, the map) stays
 // behind `hooks`, which the app fills in at start.
 import { signal, computed, effect } from '@preact/signals';
-import * as live from '../engine/live.js';
+import * as clock from '../engine/clock.js';
 import { t } from '../lib/i18n';
 import { calToday, hm, secOf, calendarOf } from '../lib/time';
 import * as settings from './settings';
@@ -213,7 +213,7 @@ export function stopMode(): void { barOpen.value = true; setKind('stop'); focusB
 export const atSeconds = (): number => secOf(at.value);
 export function setAt(sec: number): void { at.value = hm(Math.max(0, Math.min(sec, 86400 * 2 - 60))); timeTouched.value = true; }
 /** The time now on the selected day ("25:10" on the night's day, "01:10" on a day that starts now), else 08:00. */
-export function setDefaultTime(): void { const n = live.nowOn(day.value); at.value = n >= 0 && n < 86400 * 2 ? hm(n) : '08:00'; }
+export function setDefaultTime(): void { const n = clock.nowOn(day.value); at.value = n >= 0 && n < 86400 * 2 ? hm(n) : '08:00'; }
 
 /** What the time popover shows and sets: the calendar day and the clock, never the service day behind them. */
 export type When = { mode: 'now' | 'depart' | 'arrive'; cal: string; hh: string; mm: string };
@@ -224,7 +224,7 @@ function whenNow(): When {
 /** The calendar days the wheel offers: those the data covers from today on (today also after midnight, when the night
  *  is still in yesterday's timetable). */
 export const calDays = computed(() => {
-  const today = calToday(), svc = live.serviceDay();
+  const today = calToday(), svc = clock.serviceDay();
   const s = new Set(days.value.filter((d) => d >= today));
   if (svc.lateNight && days.value.includes(svc.day)) s.add(today);
   return s.size ? [...s].sort() : days.value;
@@ -236,7 +236,7 @@ export const calDays = computed(() => {
 function setWhen(w: When): void {
   if (w.mode === 'now') { resetNow(); return; }
   let sec = Number(w.hh) * 3600 + Number(w.mm) * 60, d = w.cal;
-  const eve = live.shiftDay(w.cal, -1);
+  const eve = clock.shiftDay(w.cal, -1);
   if (sec < 3 * 3600 && days.value.includes(eve)) { d = eve; sec += 86400; }
   else if (!days.value.includes(d)) d = days.value.find((x) => x >= d) || days.value[days.value.length - 1] || d;
   timeMode.value = w.mode;

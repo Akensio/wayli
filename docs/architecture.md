@@ -151,8 +151,10 @@ loaded; a new build reloads the page once, and notification taps reopen
 the app).
 - `engine/`: the logic with no screen, run in the data worker and in Node:
   `raptor.js` and `streets.js` (the router and the street graph),
-  `places.js` (the address book), `live.js` (real-time client and delay
-  estimate), `follow.js` (the trip-following state machine).
+  `places.js` (the address book), `clock.js` (Israel time), `feed.js` (the
+  live vehicles), `delays.js` (delay estimates), `follow.js` (the
+  trip-following state machine), `geo.js` (distances) and `modes.js` (what
+  runs a line).
 - `worker/`: the data worker (it holds the data and answers every query, so
   the UI never blocks), a module per kind of question (`data`, `search`,
   `plan`, `stops`, `lines`, `trips`, `courses`, `vehicles`, `traffic`, with
@@ -907,7 +909,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   from each ride's positions placed along its trip's stops as the app does,
   searched forward so a loop is not read backwards, interpolated between
   positions at most 3 minutes apart (85% of stops get one). From a bus's
-  position the app (live.js busAhead, in the data worker, where every
+  position the app (delays.js busAhead, in the data worker, where every
   estimate is made since then) adds the rest of its section and each
   section's learned time at the hour the bus will be there; its delay is
   the one at the next stop and the planner shifts each stop by its own.
@@ -917,7 +919,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   pace 52%), 5 ahead 63% (36%), 10 ahead 42% (19%); median error at 10
   stops -0.5 min (-2.5); at the peaks 10 ahead 39% (15%). Each of 18-21
   held out in turn gave the same within a point or two (10 ahead: 20% to
-  44% every day), and the app's own code (live.js) gives the measurement's
+  44% every day), and the app's own code (delays.js) gives the measurement's
   times to the second (2,990 of 3,000 predictions; the rest within 18 s,
   a position on the edge of two sections).
 - How the roads run now, from the buses: the data worker follows every bus

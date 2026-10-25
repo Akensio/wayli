@@ -2,7 +2,8 @@
 // minute old where Hasadna's database can be 15 minutes behind. It is downloaded here (4 MB of JSON once unpacked:
 // parsing it on the page would stall the screen), kept for 30 s, and every live question is answered from it.
 import { routeLabel } from '../engine/raptor.js';
-import { estimateDelay, secondsOn, hasBusTimes } from '../engine/live.js';
+import { secondsOn } from '../engine/clock.js';
+import { estimateDelay, hasBusTimes } from '../engine/delays.js';
 import { metres } from '../engine/geo.js';
 import { tt } from './data.js';
 import { headsign } from './names.js';
@@ -20,7 +21,7 @@ const FROZEN_MS = 120e3, MOVING_KMH = 5;
 const posSince = new Map();
    // ride -> { loc, since: ms, seen: ms }
 // A train without GPS names only a station (its call), from about a kilometre before it until about a kilometre before
-// the next: when the call first named that station says when it got there (live.js railAhead). `change`: a different
+// the next: when the call first named that station says when it got there (delays.js railAhead). `change`: a different
 // call was seen before it, so `since` is the change itself, not just when the app started looking.
 const callSince = new Map();
   // ride -> { code, since: ms, seen: ms, change }
@@ -88,7 +89,7 @@ function handedOver(early, trains) {
   }
   return best;
 }
-/** The snapshot's vehicles in live.js's shape. One with no position (most often a train) is put at the stop it
+/** The snapshot's vehicles in the shape feed.js gives Hasadna's. One with no position (most often a train) is put at the stop it
  *  reports when it is at it; Hasadna's database drops those (about one train in eight, 2026-10-21). A train
  *  that has taken its next trip's number while still running elsewhere goes back to the trip it is finishing when
  *  that is clear (handedOver), and is left out otherwise. */
@@ -200,7 +201,7 @@ export const vehiclesOps = {
     else if (filter.operator != null) vs = vs.filter((v) => v.operator === filter.operator);
     return vs;
   },
-  /** A vehicle's delay and its time at each stop ahead (live.js estimateDelay), made here where the learned times are. */
+  /** A vehicle's delay and its time at each stop ahead (delays.js estimateDelay), made here where the learned times are. */
   estimate({ vehicle, stops, day }) { return estimateDelay(vehicle, stops, day); },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {
