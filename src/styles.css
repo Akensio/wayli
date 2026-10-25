@@ -406,6 +406,8 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 @keyframes unfold { from { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-8px); } to { clip-path: inset(0 round 18px); } }
 @keyframes fold { from { clip-path: inset(0 round 18px); } to { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .topbar *, .topbar .trow, #sumRow, .pair #barBack, .pair #swap { animation: none !important; transition: none; } }
+/* without motion, the end of the icons' pop-out is set directly (the animation was what hid them: they stayed over the tag) */
+@media (prefers-reduced-motion: reduce) { .topbar.two .applogo, .topbar.two .userbtn { visibility: hidden; } }
 /* the menu at the start of the pill (the side the drawer comes from), the app's logo at its end (a tap starts a search) */
 .applogo { position: absolute; inset-inline-end: 7px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
 .applogo .logo { width: 100%; height: 100%; display: block; }

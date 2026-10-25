@@ -6,11 +6,11 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { Icon } from './Icon';
 import { t } from '../lib/i18n';
+import { two } from '../lib/time';
 
-export type TimeRow = { trip: number; dep: number; arr?: number | null; estimated?: boolean };
+type TimeRow = { trip: number; dep: number; arr?: number | null; estimated?: boolean };
 type Props = { rows: TimeRow[]; now: number | null; sel: number | null; onPick: (r: TimeRow) => void; dim?: boolean };
 
-const two = (n: number) => String(n).padStart(2, '0');
 
 export function Timetable({ rows, now, sel, onPick, dim = false }: Props) {
   const box = useRef<HTMLDivElement>(null);

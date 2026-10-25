@@ -4,7 +4,7 @@
 import { Icon } from '../../widgets/Icon';
 import { Wheel } from '../../widgets/Wheel';
 import { t, lang } from '../../lib/i18n';
-import { dayShort, calendarOf, calToday } from '../../lib/time';
+import { dayShort, calendarOf, calToday, two } from '../../lib/time';
 import * as search from '../../state/search';
 
 const Seg = <T extends string>({ id, value, options, onPick }: { id: string; value: T; options: { v: T; label: string }[]; onPick: (v: T) => void }) => (
@@ -13,7 +13,6 @@ const Seg = <T extends string>({ id, value, options, onPick }: { id: string; val
   </div>
 );
 
-const two = (n: number) => String(n).padStart(2, '0');
 const HOURS = Array.from({ length: 24 }, (_, h) => ({ key: two(h), label: two(h) }));
 const MINUTES = Array.from({ length: 60 }, (_, m) => ({ key: two(m), label: two(m) }));
 

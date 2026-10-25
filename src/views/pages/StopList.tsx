@@ -1,13 +1,12 @@
-// Stops as rows: name, city and code (and the distance and walk when known), their lines as chips.
+// Stops as rows: name, city and code, their lines as chips.
 // A tap opens the stop; a tap on a chip opens that line.
-import { Icon } from '../../widgets/Icon';
 import { t } from '../../lib/i18n';
 import type { Stop } from '../../state/stop';
 import { LineChip } from '../../widgets/LineChip';
 
-type Props = { stops: Stop[]; withDistance?: boolean; onStop: (stop: number) => void; onLine: (route: number) => void };
+type Props = { stops: Stop[]; onStop: (stop: number) => void; onLine: (route: number) => void };
 
-export function StopList({ stops, withDistance = false, onStop, onLine }: Props) {
+export function StopList({ stops, onStop, onLine }: Props) {
   if (!stops.length) return <div class="empty">{t('favEmptyStops')}</div>;
   return (
     <>
@@ -16,7 +15,6 @@ export function StopList({ stops, withDistance = false, onStop, onLine }: Props)
           <div class="name">{s.name}</div>
           <div class="meta">
             {s.city || ''}
-            {withDistance && s.distance != null && <> · {s.distance} {t('m')} · <Icon name="walk" /> {Math.max(1, Math.round(s.distance * 1.25 / 1.2 / 60))} {t('min')}</>}
             {s.code ? ` · ${s.code}` : ''}
           </div>
           <div class="chips">

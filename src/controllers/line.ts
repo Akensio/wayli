@@ -14,6 +14,7 @@ import * as data from '../state/data';
 import { lastPos } from '../state/position';
 import { tripStopsCached } from '../worker/client';
 import type { LineTime } from '../state/line';
+import { metres } from '../engine/geo.js';
 
 let seq = 0, timer = 0, current: LineInfo | null = null;
 
@@ -31,7 +32,7 @@ export async function openLine(route: number, at: { stop?: number; near?: { lat:
   const near = at.near || lastPos;
   if (a < 0 && near) {
     let bd = 3000;
-    info.stops.forEach((s, i) => { const d = live.metres(near.lat, near.lon, s.lat, s.lon); if (d < bd) { bd = d; a = i; } });
+    info.stops.forEach((s, i) => { const d = metres(near.lat, near.lon, s.lat, s.lon); if (d < bd) { bd = d; a = i; } });
   }
   setAnchor(Math.max(0, a), my, at.trip);
   nav.showOverlay('lineDetail');

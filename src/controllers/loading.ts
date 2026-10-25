@@ -2,7 +2,7 @@
 // street graph and the courses in the background. The worker downloads and unpacks; the pill shows how far.
 import * as live from '../engine/live.js';
 import { t, lang, STR } from '../lib/i18n';
-import { calToday, dayLabel } from '../lib/time';
+import { calToday, dayLabel, two } from '../lib/time';
 import { call, DATA_URL, resetCaches } from '../worker/client';
 import * as data from '../state/data';
 import * as search from '../state/search';
@@ -26,7 +26,7 @@ export async function loadManifest(): Promise<void> {
   data.manifest.value = m;
   app.feedInfo.value = m.feed ? { start: m.feed.start, end: m.feed.end, built: m.built } : null;
   if (m.built) {
-    const b = live.ilParts(new Date(m.built)), two = (n: number) => String(n).padStart(2, '0');
+    const b = live.ilParts(new Date(m.built));
     app.version.value = t('build', { v: `${two(b.m)}-${two(b.d)} ${two(b.h)}:${two(b.mi)}` });
   }
 }

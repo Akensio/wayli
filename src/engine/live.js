@@ -4,6 +4,7 @@
 // looking at, to Hasadna (a non-profit). Off by default nowhere, but one switch in settings turns it off.
 // SIRI's line_ref is the GTFS route_id, and a ride is identified by its scheduled start time, so a live
 // vehicle is matched to a timetable trip by (route, first departure) with no extra data.
+import { metres } from './geo.js';
 
 const STRIDE = 'https://open-bus-stride-api.hasadna.org.il';
 const TZ = 'Asia/Jerusalem';
@@ -165,12 +166,6 @@ export function matchTrip(vehicles, routeId, firstDep, day) {
     if (!best || v.recordedAt > best.recordedAt) best = v;
   }
   return best;
-}
-/** Metres between two points, flat-earth (fine within a city). */
-export function metres(lat1, lon1, lat2, lon2) {
-  const kx = 111320 * Math.cos((lat1 + lat2) / 2 * Math.PI / 180), ky = 110540;
-  const dx = (lon2 - lon1) * kx, dy = (lat2 - lat1) * ky;
-  return Math.sqrt(dx * dx + dy * dy);
 }
 /** Where along a stop sequence a point is: the nearest segment, the fraction along it, and how far off. */
 export function projectOnStops(lat, lon, stops) {

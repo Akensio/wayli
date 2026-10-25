@@ -11,3 +11,5 @@ backtest).
 | `places.js` | The offline address book: free-text search over streets, house numbers, cities and places. |
 | `live.js` | Real time: the vehicles from the relay or Hasadna, matching a vehicle to its trip, where it is along its stops, delay estimates for buses (learned section times) and trains (runs and stands), Israel-time helpers. |
 | `follow.js` | Following a trip: a pure state machine from the journey, the position and the clock to what to tell the rider and when. |
+| `geo.js` | Distances on the ground: `haversine` (great circle) and `metres` (a flat approximation for vehicles along their trips, the same as the pipeline's). |
+| `modes.js` | What kind of vehicle runs a line, from its GTFS route type: rail, lrt, cable, taxi, flex or bus. |

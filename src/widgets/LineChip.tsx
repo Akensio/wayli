@@ -8,12 +8,10 @@ import { ic } from './icons';
 import type { IconName } from './icons';
 import { chipColors } from '../journey/colors';
 import { LineName, lineNameHtml } from './RailLogo';
+import { modeOfType } from '../engine/modes.js';
 
 export type LineMode = 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex';
 const MODE_ICON: Partial<Record<LineMode, IconName>> = { lrt: 'tram', cable: 'cable', taxi: 'taxi' };   // a train: Israel Railways' mark (LineName)
-/** The mode of a GTFS route type, as the worker names it. */
-const modeOfType = (type?: number | null): LineMode =>
-  (type === 2 ? 'rail' : type === 0 ? 'lrt' : type === 5 || type === 6 || type === 7 ? 'cable' : type === 8 ? 'taxi' : type === 715 ? 'flex' : 'bus');
 
 type Line = { line?: string | null; routeType?: number | null; agency?: string | null; mode?: LineMode };
 /** The chip's class and colours, shared by the component and its HTML twin. */

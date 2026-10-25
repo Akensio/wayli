@@ -184,7 +184,7 @@ export type StopGroup = { key: string; name: string; city?: string; code?: strin
 let tripTo: { to: Place | null; text: string } | null = null;
 /** Switch what the bar searches for. The line and stop searches keep the To box for what they search. */
 /** The drawer's history follows the bar's kind (state/results recentTab; set from there, to keep this module free of it). */
-export let tabHook = (_k: Kind): void => {};
+let tabHook = (_k: Kind): void => {};
 export const onKind = (f: (k: Kind) => void): void => { tabHook = f; };
 export function setKind(k: Kind): void {
   if (kind.value === k) return;

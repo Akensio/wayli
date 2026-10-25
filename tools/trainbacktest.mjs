@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { gunzipSync, brotliDecompressSync } from 'node:zlib';
 import { parseTimetable } from '../src/engine/raptor.js';
 import * as live from '../src/engine/live.js';
+import { metres } from '../src/engine/geo.js';
 
 const [day, from = '07:30', to = '10:30'] = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !(all[i - 1] || '').startsWith('--'));
 const opt = (name, dflt) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : dflt; };
@@ -71,7 +72,7 @@ for (const r of rows) { if (!byRide.has(r[1])) byRide.set(r[1], []); byRide.get(
 for (const [ride, rs] of byRide) {
   const stops = tripOf(ride); if (!stops) continue;
   const arr = new Array(stops.length).fill(null);
-  for (const r of rs.sort((a, b) => a[2] - b[2])) if (r[3] != null) stops.forEach((s, i) => { if (arr[i] == null && live.metres(r[3], r[4], s.lat, s.lon) <= 300) arr[i] = live.secondsOn(new Date(r[2]), day); });
+  for (const r of rs.sort((a, b) => a[2] - b[2])) if (r[3] != null) stops.forEach((s, i) => { if (arr[i] == null && metres(r[3], r[4], s.lat, s.lon) <= 300) arr[i] = live.secondsOn(new Date(r[2]), day); });
   truth.set(ride, arr);
 }
 

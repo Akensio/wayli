@@ -6,7 +6,7 @@
 // egress (from a stop to the destination). The state points at the current leg and, on a ride, whether
 // the rider is still waiting for the vehicle or on it.
 
-import { metres } from './live.js';
+import { metres } from './geo.js';
 
 const AT_STOP = 60;        // m: close enough to count as being at a stop or the destination
 

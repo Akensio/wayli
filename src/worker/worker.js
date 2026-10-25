@@ -2,7 +2,9 @@
 import { parseTimetable, searchStops, profile, rank, journeySig, routeLabel, stopName, stationName, cityName, routeHeadsign, parseHeadsign } from '../engine/raptor.js';
 import { parseStreets, accessStops, route } from '../engine/streets.js';
 import { parsePlaces, searchPlaces, kindLabel, reverseGeocode, placeAt } from '../engine/places.js';
-import { estimateDelay, secondsOn, setRailTimes, parseBusTimes, setBusTimes, hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops, metres } from '../engine/live.js';
+import { estimateDelay, secondsOn, setRailTimes, parseBusTimes, setBusTimes, hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops } from '../engine/live.js';
+import { haversine, metres } from '../engine/geo.js';
+import { modeOfType } from '../engine/modes.js';
 
 let tt = null, st = null, pl = null, sh = null;
 let lang = 'he';   // the language names are handed out in (setLang); the timetable carries what the feed translates
@@ -77,11 +79,6 @@ async function fetchContainer(url, label) {
   return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
 }
 
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000, p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
-  const a = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((lon2 - lon1) * Math.PI / 360) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
 
 /** What a line is called: its number; trains, each a route of its own with its train number, are one line "train". */
 const lineLabel = (r) => (r[3] === 2 ? 'train' : routeLabel(r));
@@ -193,9 +190,6 @@ function indexRoutes() {
 }
 // ---- lines as riders know them: a number and operator in an area, both directions and their variants together
 let lineIdx = null;
-/** What kind of vehicle runs a GTFS route type: rail, lrt (light rail), cable (the Carmelit and the cable car),
- *  taxi (shared taxis), flex (on demand) or bus. */
-const modeOf = (type) => (type === 2 ? 'rail' : type === 0 ? 'lrt' : type === 5 || type === 6 || type === 7 ? 'cable' : type === 8 ? 'taxi' : type === 715 ? 'flex' : 'bus');
 /** The two ends of a route as the feed names them ('origin-city<->destination-city-1#' to ['origin-city', 'destination-city']). */
 function routeEnds(longName) {
   const parts = String(longName || '').split('<->');
@@ -226,7 +220,7 @@ function indexLines() {
   const groups = new Map();
   tt.routes.forEach((r, i) => {
     if (!(routePats.get(i) || []).length) return;
-    const mode = modeOf(r[3]), ends = routeEnds(r[1]);
+    const mode = modeOfType(r[3]), ends = routeEnds(r[1]);
     // a train line is its two stations (each train is a route of its own, with its train number). Any other line is its code in the feed (the "makat" its
     // directions and variants share), or, in a timetable built before it was kept, its number and operator where it runs.
     const key = mode === 'rail' ? `rail|${ends ? ends.slice().sort().join('|') : r[1]}`
@@ -1070,13 +1064,13 @@ const ops = {
     const rail = railStops(), lrt = lrtStops();
     // the To box of the train timetable: only the stations a train from the chosen one reaches without a change
     const reach = from && from.length ? new Set(ops.stationReach({ stops: from, fromTime: 0, mode: mode === 'lrt' ? 'lrt' : 'rail' }).map((d) => d.key)) : null;
-    const modeOf = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
+    const stopMode = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
     const gmode = (ss) => (ss.some((x) => rail[x]) ? 'rail' : ss.some((x) => lrt[x]) ? 'lrt' : 'bus');   // the number on a station's sign is no rider's
     const groupOf = stationOf;
     const out = new Map();
     const add = (s, score) => {
-      const g = groupOf(s), m = modeOf(s);
-      if (mode !== 'all' && m !== mode && !g.stops.some((x) => modeOf(x) === mode)) return;
+      const g = groupOf(s), m = stopMode(s);
+      if (mode !== 'all' && m !== mode && !g.stops.some((x) => stopMode(x) === mode)) return;
       if (reach && !reach.has(g.key)) return;
       const o = out.get(g.key);
       if (o) { if (score > o.score) o.score = score; return; }
@@ -1219,7 +1213,7 @@ const ops = {
     const own = parseHeadsign(r[1]);
     const others = g ? lineDirs(g).filter((d) => parseHeadsign(tt.routes[d.route][1]) !== own).map((d) => ({ route: d.route, headsign: d.headsign })) : [];
     const routeIds = sibs.map((ri) => liveId(tt.routes[ri])).filter((x) => x != null);
-    return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOf(r[3]), line: lineLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOfType(r[3]), line: lineLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
   /** The lines calling at a stop, for its page's map: one pattern per line (its busiest), with what names it in the
    *  live data and its colours. */

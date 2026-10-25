@@ -1,6 +1,7 @@
 // Wayli: offline address book (streets, house numbers, cities, notable places) from pipeline/places.py.
 // Free-text search that understands "הורדים 4, גבעתיים", "דיזנגוף סנטר", "חיפה", and the same typed in
 // Latin letters ("Havradim 4 givatayim", "Dizengoff Center", "Haifa").
+import { haversine } from './geo.js';
 
 const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
 const PUNCT = /[.'"״׳`/()\-,:]+/g;
@@ -23,11 +24,6 @@ const CITY_ALIASES = { 'תל אביב': 'תל אביב יפו', 'ת א': 'תל �
   'י ם': 'ירושלים', 'ים': 'ירושלים', 'מודיעין': 'מודיעין מכבים רעות', 'נוף הגליל': 'נוף הגליל', 'נצרת עילית': 'נוף הגליל' };
 const IMPORTANT = new Set(['amenity=hospital', 'healthcare=hospital', 'amenity=university', 'amenity=college', 'shop=mall', 'railway=station',
   'amenity=bus_station', 'aeroway=aerodrome', 'aeroway=terminal', 'tourism=museum', 'leisure=stadium', 'amenity=townhall']);
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000, p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
-  const a = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((lon2 - lon1) * Math.PI / 360) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
 /** Up to +3 for places within a few km of `near`, fading out by 30 km. */
 function proximity(near, lat, lon) {
   if (!near) return 0;

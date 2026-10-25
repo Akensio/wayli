@@ -19,6 +19,7 @@ import { arrowImage } from './images';
 import { heading, vehiclePopup } from './popups';
 import { viewFor } from './view';
 import { currentSheet } from './render';
+import { metres } from '../engine/geo.js';
 
 export const liveOn = (): boolean => !!settings.get().live && navigator.onLine !== false;
 const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label', 'lm-traffic'];
@@ -52,14 +53,14 @@ function liveShowFor(key: string): Show {
   // everything alike
   if (nearRoutes && nearRoutes.ids.length && state.main && lastPos) {
     const c = state.main.getCenter();
-    if (live.metres(c.lat, c.lng, lastPos.lat, lastPos.lon) < 2500) return { near: nearRoutes.ids };
+    if (metres(c.lat, c.lng, lastPos.lat, lastPos.lon) < 2500) return { near: nearRoutes.ids };
   }
   return 'all';
 }
 /** Refresh the lines around the rider when the position moved; applies the layer filter when it arrives. */
 export async function updateNearRoutes(): Promise<void> {
   if (!lastPos || !data.ttReady.value) return;
-  if (nearRoutes && live.metres(nearRoutes.lat, nearRoutes.lon, lastPos.lat, lastPos.lon) < 150) return;
+  if (nearRoutes && metres(nearRoutes.lat, nearRoutes.lon, lastPos.lat, lastPos.lon) < 150) return;
   const at = { lat: lastPos.lat, lon: lastPos.lon };
   try {
     const ids: string[] = await call('nearbyRoutes', { lat: at.lat, lon: at.lon, radius: 500 });

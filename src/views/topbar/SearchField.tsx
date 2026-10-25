@@ -16,6 +16,7 @@ import * as saved from '../../state/saved';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
 import { LineChip } from '../../widgets/LineChip';
 import { agencyName } from '../../journey/agencies';
+import { distText } from '../../journey/format';
 import { FromTo } from '../../widgets/FromTo';
 import type { View } from '../../state/results';
 
@@ -64,7 +65,7 @@ function StopRow({ g, onStop }: { g: StopGroup; onStop: (g: StopGroup) => void }
     <button type="button" class={`stoprow m-${g.mode}`} onClick={() => onStop(g)}>
       <span class="sic"><Icon name={STOP_ICON[g.mode]} /></span>
       <span class="txt"><bdi>{g.name}</bdi>
-        <small>{[g.city, g.code, g.dist != null ? t('stopAway', { m: g.dist < 100 ? g.dist : Math.round(g.dist / 50) * 50 }) : ''].filter(Boolean).join(' · ')}</small>
+        <small>{[g.city, g.code, g.dist != null ? distText(g.dist) : ''].filter(Boolean).join(' · ')}</small>
         {g.lines.length > 0 && <span class="slines">{g.lines.slice(0, 6).map((l) => <LineChip line={l.label} routeType={l.type} agency={l.agency} />)}</span>}
       </span>
     </button>
@@ -95,7 +96,7 @@ function LineRow({ g, onLine }: { g: LineGroup; onLine: (r: { route: number }) =
       <button type="button" class="lhead" onClick={() => onLine(g.dirs[0])}>
         <LineChip line={g.line} routeType={g.routeType} agency={g.agency} mode={g.mode} />
         <span class="txt"><bdi>{rail ? g.area.join(' – ') : g.area.join(' – ') || agencyName(g.agency)}</bdi>
-          <small>{rail ? t('tripsToday', { n: g.trips }) : agencyName(g.agency)}{g.estimated ? ' · ' + t('estShort') : ''}{g.dist != null ? ' · ' + t('lineAway', { m: g.dist < 100 ? g.dist : Math.round(g.dist / 50) * 50 }) : ''}</small></span>
+          <small>{rail ? t('tripsToday', { n: g.trips }) : agencyName(g.agency)}{g.estimated ? ' · ' + t('estShort') : ''}{g.dist != null ? ' · ' + t('lineAway', { d: distText(g.dist) }) : ''}</small></span>
       </button>
       {g.dirs.map((d) => (
         <button type="button" class="ldir" onClick={() => onLine(d)}>

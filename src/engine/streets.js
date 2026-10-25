@@ -1,6 +1,7 @@
 // Wayli: compact street graph for the first and last mile, on foot or by bike.
 // Loads the container from pipeline/streets.py; bounded Dijkstra from a point
 // to every transit stop nearby, and point-to-point routes for bike-only trips.
+import { haversine } from './geo.js';
 
 const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
 
@@ -34,11 +35,6 @@ export function parseStreets(ab) {
   return g;
 }
 
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000, p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
-  const a = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((lon2 - lon1) * Math.PI / 360) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
 
 /** The edge of `from` that reaches `to`, or -1. */
 function edgeBetween(g, from, to) {
