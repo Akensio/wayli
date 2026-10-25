@@ -132,7 +132,7 @@ function along(pos, stops, fromIdx) {
 /** The last stop of a ride the rider has reached: the one at the start of the stretch they are on, or the one at its
  *  end once they are at it. Never behind where they already were. (The nearest stop was often the one ahead, and
  *  "get off at the next stop" came a stop early, 2026-10-22.) */
-export function nearestStop(pos, stops, fromIdx) {
+function nearestStop(pos, stops, fromIdx) {
   if (stops.length < 2 || fromIdx >= stops.length - 1) return fromIdx;
   const p = along(pos, stops, fromIdx);
   if (p.d > 400) return fromIdx;   // far off the route: no step taken on its word

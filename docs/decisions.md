@@ -1153,3 +1153,21 @@ so they are not re-litigated.
   whole map, its style and every layer are MapLibre's: a rewrite, and a
   different look), a lower pixel density while tilted (changes the look),
   hiding the 3D buildings while tilted (same).
+- 2026-10-25: Gadi: tapping a stop on a line's page was jittery, and the
+  timetable should expand. The times shown now stay (dimmed) until the new
+  stop's arrive, instead of the box collapsing to "loading" and every row's
+  time blinking; the timetable shows a few hours and opens to the whole day
+  at a tap. The jitter he meant was more likely the search list itself: on
+  a stop or line picked there, the sheet slid and the map eased while the
+  bar stayed tall, then dropped 32 px (and the pill 11 px) half a second
+  later when its rows were removed. Now the rows that go fold during the
+  play-out and the kind row holds the pill's resting height, so the bar
+  shrinks with the sheet and nothing moves at the end (measured frame by
+  frame in headless Chromium). Gadi also asked for a thorough cleanup of code nobody uses:
+  removed the old trip page (earlier today), the feasibility harness
+  (`tools/feasibility.html`, `browser_bench.mjs`, `build_artifact.py`),
+  four dead functions, 13 strings and 7 style rules nothing read, and 44
+  exports nothing imported (now module-private). Found with a scan of
+  every export, `t()` key, class name and worker op against its uses, plus
+  `tsc --noUnusedLocals`; dynamic keys (`t('sort' + …)`, `m-${mode}`) were
+  checked by hand before anything went.

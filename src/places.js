@@ -9,7 +9,7 @@ const INNER_QUOTE = /(?<=[\p{L}])['"״׳`]+(?=[\p{L}])/gu;   // הל"ה, צה"ל
 /** Lower case, one space between words; a quote mark inside a word is dropped (הל"ה -> הלה), other punctuation separates. */
 export function norm(s) { return String(s || '').toLowerCase().replace(INNER_QUOTE, '').replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
 /** Looser form for matching Hebrew: drop a leading ה, collapse doubled ו/י, drop common street-word prefixes. */
-export function canon(word) {
+function canon(word) {
   let w = word.replace(/^(רחוב|רח|שדרות|שד|דרך|סמטת|כיכר|ככר)$/, '');
   if (!w) return '';
   if (w.length > 2 && w[0] === 'ה') w = w.slice(1);
@@ -29,7 +29,7 @@ function haversine(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 /** Up to +3 for places within a few km of `near`, fading out by 30 km. */
-export function proximity(near, lat, lon) {
+function proximity(near, lat, lon) {
   if (!near) return 0;
   const km = haversine(near.lat, near.lon, lat, lon) / 1000;
   return km <= 3 ? 3 - km * 0.05 : km >= 30 ? 0 : 2.85 * (30 - km) / 27;   // nearer first, even among places close by
@@ -100,9 +100,9 @@ export function kindLabel(kind, lang = 'he') {
 // consonant skeleton: vowels dropped, letters that sound alike merged, doubled letters collapsed.
 const LATIN_STOP = new Set(['street', 'st', 'road', 'rd', 'boulevard', 'blvd', 'avenue', 'ave', 'alley', 'lane', 'way', 'square', 'sq',
   'rehov', 'rechov', 'sderot', 'sd', 'derech', 'derekh', 'kikar', 'simtat', 'the']);
-export const isLatin = (w) => /[a-z]/.test(w);
+const isLatin = (w) => /[a-z]/.test(w);
 /** The words of an English name, lower case, without the street-type words. */
-export function wordsEn(s) { return norm(s).split(' ').filter((w) => w && !LATIN_STOP.has(w)); }
+function wordsEn(s) { return norm(s).split(' ').filter((w) => w && !LATIN_STOP.has(w)); }
 const HEB_SK = { 'ב': 'v', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'V', 'ז': 'z', 'ח': 'X', 'ט': 't', 'כ': 'K', 'ך': 'K', 'ל': 'l', 'מ': 'm', 'ם': 'm',
   'נ': 'n', 'ן': 'n', 'ס': 's', 'פ': 'p', 'ף': 'p', 'צ': 'z', 'ץ': 'z', 'ק': 'k', 'ר': 'r', 'ש': 's', 'ת': 't' };   // א ע י: dropped
 const squash = (s) => s.replace(/(.)\1+/g, '$1');
@@ -117,7 +117,7 @@ function expand(s) {
   }
   return [...new Set(out.map(squash))].filter(Boolean);
 }
-export function skelHe(word) {
+function skelHe(word) {
   const chars = [...word];
   let s = '';
   chars.forEach((c, i) => {
@@ -126,7 +126,7 @@ export function skelHe(word) {
   });
   return expand(s);
 }
-export function skelLatin(word) {
+function skelLatin(word) {
   const w = word.toLowerCase();
   let s = w.replace(/sch/g, 's').replace(/sh/g, 's').replace(/tch/g, 'z').replace(/ch|kh/g, 'x').replace(/ts|tz/g, 'z').replace(/th/g, 't')
     .replace(/ph/g, 'p').replace(/ck/g, 'k').replace(/[qc]/g, 'k').replace(/[bw]/g, 'v').replace(/f/g, 'p').replace(/j/g, 'J');   // x: a guttural (ח or כ)
@@ -200,7 +200,7 @@ const prefixSkel = (a, b) => a.length <= b.length && a.every((qa, i) => qa.some(
 /**
  * Parse free text: words, an optional house number, an optional city (after a comma, or trailing words naming a city).
  */
-export function parseQuery(pl, text) {
+function parseQuery(pl, text) {
   const parts = norm(text).split(/\s*,\s*/).filter(Boolean);
   let main = parts[0] || '', cityText = parts.slice(1).join(' ');
   const toks = main.split(' ').filter(Boolean);

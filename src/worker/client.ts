@@ -32,5 +32,5 @@ export const tripStopsCached = (trip: number): Promise<any> => { if (!tsCache.ha
 export const resetCaches = (): void => { tsCache.clear(); };
 /** A vehicle's delay and its time at each stop ahead, made in the worker where the learned section times are
  *  (live.js estimateDelay); null when it cannot be told. */
-export type Estimate = ReturnType<typeof estimateDelay>;
+type Estimate = ReturnType<typeof estimateDelay>;
 export const estimate = (vehicle: any, stops: any[], day: string): Promise<Estimate> => call<Estimate>('estimate', { vehicle: { ...vehicle }, stops, day }).catch(() => null);

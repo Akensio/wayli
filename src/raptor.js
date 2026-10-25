@@ -60,11 +60,11 @@ function expandTimes(tt) {
  *  - other bikes: trains outside the weekday peaks (Sun-Thu 06:00-09:00, 15:00-19:00),
  *    intercity buses in the luggage compartment (space permitting); not city buses or light rail.
  */
-export const BIKE_RULES = {
+const BIKE_RULES = {
   trainPeak: [[6 * 3600, 9 * 3600], [15 * 3600, 19 * 3600]],
   peakDays: [0, 1, 2, 3, 4],  // JS getDay(): Sunday..Thursday
 };
-export function bikeAllowed(tt, p, depTime, folding, weekday = true) {
+function bikeAllowed(tt, p, depTime, folding, weekday = true) {
   if (folding) return true;
   const type = tt.patType[p];
   if (type === 2) {
@@ -432,8 +432,8 @@ export function plan(tt, origins, dests, depTime, maxTransfersOrOpts = 3) {
   return { journeys: r.journeys, rounds: r.journeys.length ? Math.max(...r.journeys.map((j) => j.transfers + 1)) : 0, ms: r.ms };
 }
 
-export const TRANSFER_PENALTY = 300;  // s: an extra transfer has to save at least this much
-export const WALK_WEIGHT = 0.5;       // a minute walking costs this many minutes of riding, on top of its time
+const TRANSFER_PENALTY = 300;  // s: an extra transfer has to save at least this much
+const WALK_WEIGHT = 0.5;       // a minute walking costs this many minutes of riding, on top of its time
 
 export function cost(j) { return (j.arrive - j.depart) + TRANSFER_PENALTY * j.transfers + WALK_WEIGHT * j.walkSeconds; }
 
@@ -467,7 +467,7 @@ export function rank(journeys) {
   return out;
 }
 
-export function fmtTime(sec) {
+function fmtTime(sec) {
   const h = Math.floor(sec / 3600) % 24, m = Math.floor((sec % 3600) / 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }

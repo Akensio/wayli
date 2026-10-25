@@ -56,13 +56,13 @@ export function BikePopover() {
 
 /** The chips' texts, shared with the summary box: short, so the bicycle chip keeps its room ("18:30", "By 19:00",
  *  "Tomorrow 08:00"; the day only when it is not today, by the calendar). */
-export function timeChipText(): string {
+function timeChipText(): string {
   if (!search.timeTouched.value) return t('now');
   const { cal, time } = calendarOf(search.day.value, search.atSeconds());
   const day = cal !== calToday() ? dayShort(cal) + ' ' : '';
   return `${search.timeMode.value === 'arrive' ? t('arriveByShort') + ' ' : ''}${day}${time}`;
 }
-export function bikeChipText(): string {
+function bikeChipText(): string {
   const b = search.bike.value;
   return t(b === 'along' ? 'bikeAlong' : b === 'park' ? 'bikePark' : 'bikeNone') + (b !== 'none' && search.folding.value ? ' · ' + t('folding') : '');
 }

@@ -27,6 +27,7 @@ export const ICONS = {
   work: 'M4 8h16a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a1 1 0 0 1 1-1zM9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18',
   play: 'M7 4.5v15l12-7.5z',
   chevronDown: 'M6 9.5l6 6 6-6',
+  chevronUp: 'M6 15l6-6 6 6',
   check: 'M5 12.5l4.5 4.5L19 7.5',
   chevronEnd: 'M9 6l6 6-6 6',
   back: 'M15 6l-6 6 6 6',
@@ -46,7 +47,7 @@ export const ICONS = {
   info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.5M12 7.5h.01',
   shield: 'M12 2.5l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10v-6zM9 12l2 2 4-4',
 };
-export const FILLED_ICONS = new Set(['play']);
+const FILLED_ICONS = new Set(['play']);
 export type IconName = keyof typeof ICONS;
 
 /** An inline icon from the sprite as an HTML string; `cls` adds classes (e.g. `chev` for a chevron that flips in RTL). */

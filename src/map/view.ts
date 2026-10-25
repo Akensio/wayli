@@ -13,7 +13,7 @@ export type Draw =
   | 'pair'      // two stations' pins (the trains between them)
   | 'ring';     // the stops near the rider, inside a ring
 /** Where the camera goes: stays, fits what is drawn (or the focused ride), or centres on a point. */
-export type Camera = 'keep' | 'fit' | 'focus' | 'point';
+type Camera = 'keep' | 'fit' | 'focus' | 'point';
 /** Which live vehicles the map's own layer shows: every one (the lines near the rider in front), only those of the
  *  results' lines or the stop's lines, or none because the panel draws its own (a way's, a line's, the followed one). */
 export type Live = 'near' | 'results' | 'stop' | 'own' | 'none';

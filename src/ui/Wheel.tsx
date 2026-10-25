@@ -3,7 +3,7 @@
 // turns (what it sets is a draft, cheap to change), so a confirm right after a flick never misses it.
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-export const ROW = 36;    // px: one value
+const ROW = 36;    // px: one value
 const VISIBLE = 5;        // values in view, the chosen one in the middle
 type Item = { key: string; label: string };
 type Props = { id: string; label: string; items: Item[]; value: string; onChange: (key: string) => void; class?: string };

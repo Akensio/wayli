@@ -579,6 +579,12 @@ takes, today's count; a tap sets To); with both, the direct trains between
 them (`trainsBetween`): leave, arrive, how long, stops, where the train
 heads, live times for the next ones from one request for every train, a
 tap opening the train's stops. Connections stay with the trip search.
+Leaving the search (a stop or line picked from the list, back, a map tap),
+the rows play out: the ones that go also give up their height as they do,
+so the bar shrinks in step with the sheet's slide, and the kind row is as
+tall as the space the resting pill keeps (52 px with the gap), so the pill
+itself never moves between the modes; the removal of the rows at the end
+changes nothing on screen.
 The line and stop searches are a step of their own: the bar's back arrow or
 a tap on the map folds them to a pill of their own (the kind on a chip
 where the logo sits, its x back to the trip search), opening a line or a
@@ -1062,8 +1068,9 @@ Done 2026-10-16 (feed of 2026-10-15, service day Monday 2026-10-19), on a
 | Correctness | the planned train (trip `1_521131`) matches the raw `stop_times.txt` and its calendar row exactly |
 
 Verdict so far: on-device routing is comfortably viable on desktop, with two
-orders of magnitude to spare against the 1 s goal. Phone timing is pending:
-`app/feasibility.html` is published as a private Claude artifact for that.
+orders of magnitude to spare against the 1 s goal. Phone timing was then
+measured in the app itself; the feasibility page and its harness were
+removed in the 2026-10-25 cleanup.
 
 Things the test surfaced, for later:
 
@@ -1084,8 +1091,7 @@ Reproduce:
 ```
 curl -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
 python3 -I pipeline/compile.py data/gtfs.zip --date 20261019
-node app/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
-node app/browser_bench.mjs "מרכזית המפרץ" "מרכזית באר שבע" 08:00   # needs Playwright + Chromium
+node tools/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
 ```
 
 ## If on-device routing fails the test

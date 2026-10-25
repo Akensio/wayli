@@ -10,7 +10,7 @@ export const lineText = (line?: string | null): string => (line === 'train' ? t(
 export const stopsText = (n: number): string => (n === 1 ? t('stops1') : t('stopsN', { n }));
 export const describePlace = (p: Place | null | undefined): string => (p ? p.name + ((p.platforms || 0) > 1 ? ` (${t('platforms', { n: p.platforms! })})` : '') : '');
 /** Minutes until a departure on a service day, from the real clock. */
-export const minutesUntil = (sec: number, day: string): number => Math.round((sec - live.nowOn(day)) / 60);
+const minutesUntil = (sec: number, day: string): number => Math.round((sec - live.nowOn(day)) / 60);
 /** "Leave now", "Leave in 5 min", "Departed", or nothing when it is hours away. */
 export function leaveText(sec: number, day: string): string {
   const n = minutesUntil(sec, day);
@@ -23,7 +23,7 @@ export function leaveText(sec: number, day: string): string {
 export const inShort = (n: number): string => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
 /** A saved trip's key: the places and the bicycle choice. */
 export const tripKey = (q: { from: { name: string }; to: { name: string }; bike?: string; folding?: boolean }): string => `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`;
-export type LiveAt = { time: number; delay: number; passed?: boolean; stale?: boolean } | null;
+type LiveAt = { time: number; delay: number; passed?: boolean; stale?: boolean } | null;
 export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: number; delayText?: string };   // time: the live departure
 /** A live vehicle's standing as a badge: its time at the stop and how late, passed, or no vehicle found. */
 export function liveBadge(at: LiveAt): Badge {

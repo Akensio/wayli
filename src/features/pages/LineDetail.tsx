@@ -36,7 +36,7 @@ export function LineDetail() {
           <div class="muted small">{t('pickStopHint')}</div>
           {times === null ? <div class="empty">{t('loading')}</div>
             : !times.length ? <div class="empty">{t('noTimesHere')}</div>
-            : <Timetable rows={times} now={line.now.value} sel={line.sel.value} onPick={line.hooks.pick} />}
+            : <Timetable rows={times} now={line.now.value} sel={line.sel.value} onPick={line.hooks.pick} dim={line.loading.value} />}
         </>}
         <div id="lineStops">
           {info.stops.map((st, i) => {

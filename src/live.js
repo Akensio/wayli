@@ -5,7 +5,7 @@
 // SIRI's line_ref is the GTFS route_id, and a ride is identified by its scheduled start time, so a live
 // vehicle is matched to a timetable trip by (route, first departure) with no extra data.
 
-export const STRIDE = 'https://open-bus-stride-api.hasadna.org.il';
+const STRIDE = 'https://open-bus-stride-api.hasadna.org.il';
 const TZ = 'Asia/Jerusalem';
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

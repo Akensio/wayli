@@ -7,7 +7,7 @@ import { settings } from '../store.js';
 import { lang } from '../i18n';
 import type { Journey, PlanResult, Query } from '../journey/types';
 
-export type Status = 'idle' | 'planning' | 'locating';
+type Status = 'idle' | 'planning' | 'locating';
 export type Sort = 'depart' | 'arrive' | 'fast' | 'changes';
 export type Filters = { fDirect: boolean; fTrain: boolean; resultSort: Sort };
 /** One card: the first option of a group, the other departures of the same lines, and when to leave for it. */
@@ -103,7 +103,7 @@ export function clear(): void {
   result.value = null; query.value = null; resultsAt.value = null; status.value = 'idle';
   altShown.value = new Set(); altSel.value = -1;
 }
-export function selectAlt(idx: number): void { altSel.value = idx; altShown.value = new Set([...altShown.value, idx]); hooks.redraw(); }
+function selectAlt(idx: number): void { altSel.value = idx; altShown.value = new Set([...altShown.value, idx]); hooks.redraw(); }
 /** A way tapped on the map (its route or its minutes): highlighted, and its card brought into view in the sheet; the
  *  highlighted one tapped again opens a collapsed sheet on its card. */
 export function pickAlt(idx: number): void {

@@ -10,8 +10,6 @@ export function notePos(lat: number, lon: number): void {
   try { localStorage.setItem('wayli-geo', '1'); } catch { /* private mode */ }
   hooks.moved();
 }
-/** The last position if it is at most `maxAgeMs` old, else null. */
-export const freshPos = (maxAgeMs: number): LatLon | null => (lastPos && Date.now() - lastPosAt <= maxAgeMs ? lastPos : null);
 /**
  * Where the rider is now. GPS first; where it fails (inside a station, often), a coarse fix from the network; only then
  * the last position, and only when it is under 2 minutes old: an older one plans from where the rider was, not is.

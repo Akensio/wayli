@@ -50,17 +50,18 @@ export async function openTrip(trip: number, stop: number): Promise<void> {
 async function setAnchor(i: number, my = seq, trip?: number): Promise<void> {
   const info = current;
   if (!info || !info.stops[i]) return;
-  linePage.anchor.value = i; linePage.times.value = null; linePage.sel.value = null; linePage.selTimes.value = [];
+  // what is shown stays until the new times come (emptied first, the box collapsed and the rows' times blinked)
+  linePage.anchor.value = i; linePage.loading.value = true;
   const day = data.dayInfo.value?.date || '', svc = live.serviceDay(), today = day === svc.day;
   const now = today ? live.nowOn(day) : null;
   linePage.now.value = now;
   try {
     const rows = await call<LineTime[]>('lineTimes', { route: info.route, from: [info.stops[i].stop] });
     if (my !== seq || linePage.anchor.value !== i) return;
-    linePage.times.value = rows;
+    linePage.times.value = rows; linePage.loading.value = false;
     const first = (trip != null && rows.find((r) => r.trip === trip)) || (now != null && rows.find((r) => r.dep >= now - 30)) || rows[0];
-    if (first) pick(first, my);
-  } catch { if (my === seq) linePage.times.value = []; }
+    if (first) pick(first, my); else { linePage.sel.value = null; linePage.selTimes.value = []; }
+  } catch { if (my === seq) { linePage.times.value = []; linePage.loading.value = false; } }
 }
 /** A time chosen: that trip's time at every stop of the list. */
 async function pick(r: LineTime, my = seq): Promise<void> {

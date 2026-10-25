@@ -43,7 +43,7 @@ function keepInView(m: MLMap, el: HTMLElement): void {
 }
 /** The open bubble's title, changed in place (a name that arrives later): reopening it would flicker. */
 export function setPopupTitle(text: string): void { const b = popupState.current?.getElement()?.querySelector('.pop b'); if (b) b.textContent = text; }
-export type VehicleInfo = { line: string; routeType: number; headsign: string; agency: string; delay?: number | null; stale: boolean; seen: Date; velocity?: number | null; trip: number; route: number | null; offDay?: boolean };
+type VehicleInfo = { line: string; routeType: number; headsign: string; agency: string; delay?: number | null; stale: boolean; seen: Date; velocity?: number | null; trip: number; route: number | null; offDay?: boolean };
 /** A vehicle's bubble: line, direction, delay, when it reported, speed; its line, with its trip chosen. */
 export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void {
   const d = v.delay != null ? live.delayMinutes(v.delay) : null;

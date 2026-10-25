@@ -40,25 +40,6 @@ function haversine(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-/** Nearest node usable by `mode` ('walk' | 'bike') within `radius` metres, or -1. */
-export function nearestNode(g, lat, lon, mode = 'walk', radius = 300) {
-  const c = g.cell, cy = Math.floor(lat / c), cx = Math.floor(lon / c);
-  const flag = mode === 'bike' ? g.bikeFlag : g.walkFlag;
-  let best = -1, bestD = radius;
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-    const ci = g.cellIndex.get((cy + dy) * 100000 + (cx + dx));
-    if (ci === undefined) continue;
-    for (let n = g.cellStart[ci]; n < g.cellEnd[ci]; n++) {
-      const d = haversine(lat, lon, g.nodeLat[n], g.nodeLon[n]);
-      if (d >= bestD) continue;
-      let ok = false;
-      for (let e = g.edgeOff[n]; e < g.edgeOff[n + 1]; e++) if ((g.edgeFlags[e] >> g.flagShift) & flag) { ok = true; break; }
-      if (ok) { best = n; bestD = d; }
-    }
-  }
-  return { node: best, metres: bestD };
-}
-
 /** The edge of `from` that reaches `to`, or -1. */
 function edgeBetween(g, from, to) {
   for (let e = g.edgeOff[from]; e < g.edgeOff[from + 1]; e++) if (g.edgeTo[e] === to) return e;
@@ -72,7 +53,7 @@ function edgeBetween(g, from, to) {
  * Segments up to `slack` metres further than the nearest come too: the nearest can be a path that leads
  * nowhere, and the router picks the best way in.
  */
-export function nearestEdges(g, lat, lon, mode = 'walk', radius = 300, slack = 150, k = 8) {
+function nearestEdges(g, lat, lon, mode = 'walk', radius = 300, slack = 150, k = 8) {
   const c = g.cell, cy = Math.floor(lat / c), cx = Math.floor(lon / c);
   const flag = mode === 'bike' ? g.bikeFlag : g.walkFlag;
   const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
@@ -99,8 +80,6 @@ export function nearestEdges(g, lat, lon, mode = 'walk', radius = 300, slack = 1
   const all = [...found.values()].sort((a, b) => a.metres - b.metres);
   return all.length ? all.filter((p) => p.metres <= all[0].metres + slack).slice(0, k) : all;
 }
-/** The nearest point on a street usable by `mode`, or null. */
-export const nearestEdge = (g, lat, lon, mode = 'walk', radius = 300) => nearestEdges(g, lat, lon, mode, radius, 0, 1)[0] || null;
 
 /** Seconds along an open edge: its length at the speed of its kind, and its climbs (streets.py `CLIMB`, estimates): a
  *  walker loses seconds per metre up and on steep descents (not on steps, whose speed has the climb in it); a rider

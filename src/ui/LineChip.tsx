@@ -9,7 +9,7 @@ import { lineText } from '../journey/format';
 export type LineMode = 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex';
 const MODE_ICON: Partial<Record<LineMode, IconName>> = { rail: 'train', lrt: 'tram', cable: 'cable', taxi: 'taxi' };
 /** The mode of a GTFS route type, as the worker names it. */
-export const modeOfType = (type?: number | null): LineMode =>
+const modeOfType = (type?: number | null): LineMode =>
   (type === 2 ? 'rail' : type === 0 ? 'lrt' : type === 5 || type === 6 || type === 7 ? 'cable' : type === 8 ? 'taxi' : type === 715 ? 'flex' : 'bus');
 
 export function LineChip({ line, routeType, agency, mode = modeOfType(routeType), big = false }: { line: string; routeType?: number | null; agency?: string | null; mode?: LineMode; big?: boolean }) {

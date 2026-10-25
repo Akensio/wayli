@@ -7,7 +7,7 @@ const AGENCY_COLORS: [string, string][] = [
   ['נתיב אקספרס', '#8db600'], ['אלקטרה אפיקים', '#1d4f91'], ['תנופה', '#2a9fd6'], ['אקסטרה', '#c2185b'], ['גלים', '#3b8ea5'], ['בית שמש אקספרס', '#b06d1e'],
 ];
 const BUS_DEFAULT = '#4f7a6a', TRAIN_COLOR = '#1b3a6b', LRT_COLOR = '#d7263d', CABLE_COLOR = '#0e7490', TAXI_COLOR = '#f2c200';
-export const agencyColor = (agency?: string | null): string => { const a = String(agency || ''); for (const [k, c] of AGENCY_COLORS) if (a.startsWith(k)) return c; return BUS_DEFAULT; };
+const agencyColor = (agency?: string | null): string => { const a = String(agency || ''); for (const [k, c] of AGENCY_COLORS) if (a.startsWith(k)) return c; return BUS_DEFAULT; };
 export const routeColor = (type?: number | null, agency?: string | null): string =>
   (type === 2 ? TRAIN_COLOR : type === 0 ? LRT_COLOR : type === 5 || type === 6 || type === 7 ? CABLE_COLOR : type === 8 ? TAXI_COLOR : agencyColor(agency));
 /** Dark text on light colours, white on the rest. */

@@ -10,7 +10,7 @@ import * as settings from './settings';
 
 export type Place = { name: string; lat?: number | null; lon?: number | null; stops?: number[]; platforms?: number; code?: string; kind?: string; transient?: boolean; auto?: boolean };
 export type Side = 'from' | 'to';
-export type OptPanel = '' | 'time' | 'bike';
+type OptPanel = '' | 'time' | 'bike';
 
 // ---- the places
 export const from = signal<Place | null>(null);
@@ -205,11 +205,10 @@ export const atSeconds = (): number => secOf(at.value);
 export function setAt(sec: number): void { at.value = hm(Math.max(0, Math.min(sec, 86400 * 2 - 60))); timeTouched.value = true; }
 /** The time now on the selected day ("25:10" on the night's day, "01:10" on a day that starts now), else 08:00. */
 export function setDefaultTime(): void { const n = live.nowOn(day.value); at.value = n >= 0 && n < 86400 * 2 ? hm(n) : '08:00'; }
-export function chooseDay(d: string): void { if (d === day.value) return; day.value = d; timeTouched.value = true; hooks.dayChanged(d); }
 
 /** What the time popover shows and sets: the calendar day and the clock, never the service day behind them. */
 export type When = { mode: 'now' | 'depart' | 'arrive'; cal: string; hh: string; mm: string };
-export function whenNow(): When {
+function whenNow(): When {
   const { cal, time } = calendarOf(day.value || calToday(), atSeconds()), [hh, mm] = time.split(':');
   return { mode: timeTouched.value ? timeMode.value : 'now', cal, hh, mm };
 }
@@ -225,7 +224,7 @@ export const calDays = computed(() => {
  * Set a calendar day and clock. Before 03:00 the service day is the one before, its night (a day's timetable carries
  * the night after it, the next day's early trips included); otherwise the day itself, or the nearest day the data has.
  */
-export function setWhen(w: When): void {
+function setWhen(w: When): void {
   if (w.mode === 'now') { resetNow(); return; }
   let sec = Number(w.hh) * 3600 + Number(w.mm) * 60, d = w.cal;
   const eve = live.shiftDay(w.cal, -1);

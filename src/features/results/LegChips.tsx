@@ -4,7 +4,7 @@ import { chipColors } from '../../journey/colors';
 import { lineText } from '../../journey/format';
 import type { Leg } from '../../journey/types';
 
-export const LegChip = ({ l, alts }: { l: Leg; alts?: string[] | null }) => l.type === 'ride'
+const LegChip = ({ l, alts }: { l: Leg; alts?: string[] | null }) => l.type === 'ride'
   ? <span class={`chip t${l.routeType}`} style={chipColors(l.routeType, l.agency)}>{alts && alts.length > 1 ? alts.map(lineText).join(' / ') : lineText(l.line)}</span>
   : <span class={`chip ${l.mode === 'bike' ? 'bike' : 'walk'}`}><Icon name={l.mode === 'bike' ? 'bike' : 'walk'} /> {Math.round(l.seconds / 60)}</span>;
 

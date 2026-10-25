@@ -27,7 +27,7 @@ import { layoutTop } from './shell';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
 
-export function showPlanError(msg: string): void { results.error.value = msg; if (msg && sheet.state.value === 'peek') sheet.set('half'); }
+function showPlanError(msg: string): void { results.error.value = msg; if (msg && sheet.state.value === 'peek') sheet.set('half'); }
 
 /** A shared link's plan: from and to as "lat,lon,name", the day, the time, the bicycle, arrive-by. */
 export function parseShared(params: URLSearchParams): Shared | null {

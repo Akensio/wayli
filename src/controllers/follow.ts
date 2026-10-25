@@ -50,7 +50,7 @@ export function startTrip(j: Journey, q: Query): void {
   openFollow(a);
 }
 
-export function openFollow(a: ActiveTrip): void {
+function openFollow(a: ActiveTrip): void {
   if (fol && fol.a !== a) closeFollow(false);
   if (!fol) {
     const f: Following = { a, pos: null, watch: null, timers: [], wake: null, liveEst: null, liveChecked: false, alt: null, dismissed: {}, replanAt: 0, replanning: false, toldKey: null };

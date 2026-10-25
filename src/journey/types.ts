@@ -2,7 +2,7 @@
 import type { Place } from '../state/search';
 
 export type LatLon = [number, number];
-export type LiveInfo = { delay: number; stale?: boolean };
+type LiveInfo = { delay: number; stale?: boolean };
 export type Leg = {
   type: 'ride' | 'walk' | 'transfer' | 'access' | 'egress' | string;
   mode?: 'walk' | 'bike' | string;
@@ -20,7 +20,7 @@ export type Leg = {
   [k: string]: unknown;
 };
 export type Journey = { depart: number; arrive: number; transfers: number; legs: Leg[]; [k: string]: unknown };
-export type Group = { options: number[]; lines: string[][] | null };
+type Group = { options: number[]; lines: string[][] | null };
 export type PlanResult = {
   journeys: Journey[];
   groups?: Group[];
