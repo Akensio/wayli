@@ -86,6 +86,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `src/public/` | Copied as is into the build: icons, the web manifest. |
 | `package.json`, `vite.config.ts`, `tsconfig.json`, `eslint.config.mjs` | The toolchain: `npm run check` (lint and type-check) and `npm run build` (Vite, into `dist/`; the service worker is written there with the list of built files). Run `npm run check` before pushing app code; the workflow runs both before every build. |
 | `tools/` | `bench.mjs` runs the router in Node (plan, profile, bike reach) for measuring; `trainbacktest.mjs` scores the app's train predictions on a morning's raw minute files (kept in `data/siri/`); the `*.test.mjs` are `npm test`. |
+| `pipeline/places.py` | OpenStreetMap to the offline address book (streets, house numbers, cities, notable places), searched on the device by `src/engine/places.js`. |
 | `pipeline/weekend.py` | The municipalities' weekend lines (Na'im BeSofash), which no feed carries, merged into the GTFS from Tel Aviv's GIS with estimated times (a build step). |
 | `pipeline/bustimes.py`, `.github/workflows/bustimes.yml` | Bus section times by hour and kind of day, learned nightly from 14 days of passage logs read from Hasadna's minute snapshots (`bustimes.bin.gz`), for bus delays, the live correction and traffic on the map; `--score DAY` measures against a held-out day. |
 | `pipeline/railtimes.py`, `.github/workflows/railtimes.yml` | Train section times learned nightly from the last week of Hasadna's train positions (`railtimes.json`), for train delays; `--score DAY` measures against a held-out day. |
@@ -127,4 +128,10 @@ TypeScript and a Vite build; the app was moved into components feature by
 feature while staying live (`docs/architecture.md`, "The app"): the bar, the
 results, the sheet, the detail and follow screens, the pages, the navigation
 and shell, the map, and last the controllers behind them (`app.js` is
-gone; every UI module is type-checked).
+gone; every UI module is type-checked). 2026-10-25: trains show their number
+with Israel Railways' mark; live delays no longer send a rider to a train
+after it pulled in (the fixes are in `docs/decisions.md`); and a night of
+cleanup: views by feature, the data worker split by kind of question,
+`engine/live.js` split into `clock`, `feed` and `delays`, the strings with
+Hebrew and English side by side, the CSS one file per part of the screen
+(`src/styles/`), shared pieces in place of copies.
