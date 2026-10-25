@@ -13,16 +13,13 @@ import * as nav from '../state/nav';
 import * as stopPage from '../state/stop';
 import * as map from '../map/index';
 import type { StopInfo, Departure } from '../state/stop';
-import type { Place } from '../state/search';
 import { planTo, planFrom } from './planner';
 import { recentViews } from '../lib/store.js';
 import { openTrains, chooseStation } from './station';
 import { openLine, openTrip } from './line';
-import type { Dest } from '../state/station';
+import { asStation, type Dest } from '../state/station';
 
 let current: StopInfo | null = null, seq = 0, timer = 0;
-/** A stop as a place to plan from or to. */
-export const stopPlace = (s: { name: string; stop: number; lat: number; lon: number }): Place => ({ name: s.name, stops: [s.stop], lat: s.lat, lon: s.lon });
 
 export async function openStop(stop: number, where: { station?: number; stops?: number[] } = {}): Promise<void> {
   const my = ++seq;
@@ -93,9 +90,9 @@ Object.assign(stopPage.hooks, {
   openTo: (d: Dest) => {
     const c = current; if (!c) return;
     if (search.railPair.value && search.stFrom.value) chooseStation('to', d);
-    else openTrains({ key: '', name: c.name, stops: c.stops || [c.stop], lat: c.lat, lon: c.lon }, d);
+    else openTrains(asStation({ ...c, stops: c.stops || [c.stop] }), d);
   },
   openTrip: (trip: number, stop: number) => openTrip(trip, stop),
-  fromHere: () => { if (current) { planFrom(stopPlace(current)); sheet.set('half'); } },
-  toHere: () => { if (current) planTo(stopPlace(current)); },
+  fromHere: () => { if (current) { planFrom(search.stopPlace(current)); sheet.set('half'); } },
+  toHere: () => { if (current) planTo(search.stopPlace(current)); },
 });

@@ -8,6 +8,8 @@ import type { Place } from '../state/search';
 /** A distance as the rider reads it: to the metre close by, by 50 m within a kilometre, then in km (one decimal under 10). */
 export const distText = (m: number): string => (m < 100 ? t('distM', { m: Math.round(m) }) : m < 1000 ? t('distM', { m: Math.round(m / 50) * 50 })
   : t('distKm', { km: m < 10000 ? (Math.round(m / 100) / 10).toLocaleString(lang.value === 'he' ? 'he-IL' : 'en-GB') : Math.round(m / 1000) }));
+/** A walk's or a ride's length in whole minutes, never 0. */
+export const legMinutes: (sec: number) => number = clock.legMinutes;
 export const dur = (sec: number): string => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
 export const transfersText = (n: number): string => (n === 0 ? t('direct') : n === 1 ? t('transfer1') : t('transfers', { n }));
 export const lineText = (line?: string | null): string => (line === 'train' ? t('train') : line || '');

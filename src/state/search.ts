@@ -10,6 +10,9 @@ import * as settings from './settings';
 import type { View } from './results';
 
 export type Place = { name: string; lat?: number | null; lon?: number | null; stops?: number[]; platforms?: number; code?: string; kind?: string; transient?: boolean; auto?: boolean };
+/** A stop as a place to plan from or to; a station is all its platforms. */
+export const stopPlace = (s: { name: string; stop: number; stops?: number[] | null; lat: number; lon: number }): Place =>
+  ({ name: s.name, stops: s.stops && s.stops.length ? s.stops : [s.stop], lat: s.lat, lon: s.lon });
 export type Side = 'from' | 'to';
 type OptPanel = '' | 'time' | 'bike';
 

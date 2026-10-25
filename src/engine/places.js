@@ -2,13 +2,9 @@
 // Free-text search that understands "הורדים 4, גבעתיים", "דיזנגוף סנטר", "חיפה", and the same typed in
 // Latin letters ("Havradim 4 givatayim", "Dizengoff Center", "Haifa").
 import { haversine } from './geo.js';
+import { readContainer } from './container.js';
+import { norm, byScore } from './text.js';
 
-const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
-const PUNCT = /[.'"״׳`/()\-,:]+/g;
-const INNER_QUOTE = /(?<=[\p{L}])['"״׳`]+(?=[\p{L}])/gu;   // הל"ה, צה"ל, ג'וליס, Far'a: the mark is part of the word
-
-/** Lower case, one space between words; a quote mark inside a word is dropped (הל"ה -> הלה), other punctuation separates. */
-export function norm(s) { return String(s || '').toLowerCase().replace(INNER_QUOTE, '').replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
 /** Looser form for matching Hebrew: drop a leading ה, collapse doubled ו/י, drop common street-word prefixes. */
 function canon(word) {
   let w = word.replace(/^(רחוב|רח|שדרות|שד|דרך|סמטת|כיכר|ככר)$/, '');
@@ -32,11 +28,8 @@ function proximity(near, lat, lon) {
 }
 
 export function parsePlaces(ab) {
-  const headerLen = new DataView(ab).getUint32(0, true);
-  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
-  const base = 4 + headerLen;
-  const pl = { header, streets: header.streets, cities: header.cities, pois: header.pois, addrSuffix: header.addrSuffix || {} };
-  for (const s of header.sections) pl[s.name] = new TYPES[s.dtype](ab, base + s.offset, s.length);
+  const pl = readContainer(ab), header = pl.header;
+  Object.assign(pl, { streets: header.streets, cities: header.cities, pois: header.pois, addrSuffix: header.addrSuffix || {} });
   // address ranges per street (addresses are sorted by street, then number)
   const S = pl.streets.length, A = pl.addrStreet.length;
   const off = new Int32Array(S + 1);
@@ -197,7 +190,7 @@ const prefixSkel = (a, b) => a.length <= b.length && a.every((qa, i) => qa.some(
  * Parse free text: words, an optional house number, an optional city (after a comma, or trailing words naming a city).
  */
 function parseQuery(pl, text) {
-  const parts = norm(text).split(/\s*,\s*/).filter(Boolean);
+  const parts = String(text || '').split(',').map(norm).filter(Boolean);   // the city after a comma (norm makes a comma a space)
   let main = parts[0] || '', cityText = parts.slice(1).join(' ');
   const toks = main.split(' ').filter(Boolean);
   let number = null, suffix = '';
@@ -360,7 +353,7 @@ export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
       out.push({ kind: 'poi', name: poiName(pl, p, lang), poiKind: poi[1], city: cityOf(pl, poi[2], lang), lat: poi[3], lon: poi[4], score });
     }
   }
-  out.sort((a, b) => b.score - a.score || a.name.length - b.name.length);
+  out.sort(byScore);
   // one entry per (kind, name, city)
   const seen = new Set();
   const uniq = [];

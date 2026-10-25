@@ -4,14 +4,20 @@
 const TZ = 'Asia/Jerusalem';
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const fmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short' });
+const ilFormat = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short' });
 /** Date/time parts in Israel, whatever the phone's zone. */
 export function ilParts(date = new Date()) {
   const o = {};
-  for (const p of fmt.formatToParts(date)) o[p.type] = p.value;
+  for (const p of ilFormat.formatToParts(date)) o[p.type] = p.value;
   return { y: +o.year, m: +o.month, d: +o.day, h: (+o.hour) % 24, mi: +o.minute, s: +o.second, dow: DOW.indexOf(o.weekday) };
 }
-export const dayStr = (y, m, d) => `${y}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}`;
+/** A number in two digits: 7 → "07". */
+export const two = (n) => String(n).padStart(2, '0');
+/** Seconds on a service day as HH:MM (a late-night time past 24:00 wraps). */
+export const hhmm = (sec) => `${two(Math.floor(sec / 3600) % 24)}:${two(Math.floor((sec % 3600) / 60))}`;
+/** A walk's or a ride's length as the rider reads it, in whole minutes, never 0. */
+export const legMinutes = (sec) => Math.max(1, Math.round(sec / 60));
+export const dayStr = (y, m, d) => `${y}${two(m)}${two(d)}`;
 const utcDay = (s) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8));
 export function shiftDay(s, n) { const d = new Date(utcDay(s) + n * 86400000); return dayStr(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()); }
 /**

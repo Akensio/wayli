@@ -1,5 +1,5 @@
 // Node benchmark for the router over a compiled timetable.
-//   node app/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00 [window-minutes] [runs]
+//   node tools/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00 [window-minutes] [runs]
 // A place can also be "lat,lon" or "lat,lon:bike" (needs STREETS=data/streets.bin.gz in the environment).
 import { readFileSync, existsSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';

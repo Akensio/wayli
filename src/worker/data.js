@@ -6,6 +6,7 @@
 import { parseTimetable } from '../engine/raptor.js';
 import { parseStreets } from '../engine/streets.js';
 import { parsePlaces } from '../engine/places.js';
+import { readContainer } from '../engine/container.js';
 import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/delays.js';
 
 export let tt = null, st = null, pl = null, sh = null;
@@ -19,10 +20,7 @@ export const onNewLang = (f) => { langResets.push(f); };
 
 /** The compact shapes file: int32 coordinates (1e-5 degrees) per GTFS shape id. */
 function parseShapes(ab) {
-  const headerLen = new DataView(ab).getUint32(0, true);
-  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
-  const base = 4 + headerLen, out = { header };
-  for (const s of header.sections) out[s.name] = new Int32Array(ab, base + s.offset, s.length);
+  const out = readContainer(ab);
   out.index = new Map();
   for (let i = 0; i < out.shapeId.length; i++) out.index.set(out.shapeId[i], i);
   return out;

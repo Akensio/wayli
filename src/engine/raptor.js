@@ -7,17 +7,17 @@
 // times, so a station with many platforms, or a location with several stops
 // nearby, is one query.
 
-const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
+import { readContainer } from './container.js';
+import { hhmm } from './clock.js';
+import { norm, byScore } from './text.js';
+
 const INF = 0x7fffffff;
 
 /** Parse the decompressed timetable container into typed arrays. */
 export function parseTimetable(ab) {
-  const headerLen = new DataView(ab).getUint32(0, true);
-  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
-  const base = 4 + headerLen;
-  const tt = { header, counts: header.counts, routes: header.routes, stops: header.stops,
-               stations: header.stations || [], names: header.names || {} };
-  for (const s of header.sections) tt[s.name] = new TYPES[s.dtype](ab, base + s.offset, s.length);
+  const tt = readContainer(ab), header = tt.header;
+  Object.assign(tt, { counts: header.counts, routes: header.routes, stops: header.stops,
+                      stations: header.stations || [], names: header.names || {} });
   const w = header.walk || {};
   tt.slack = w.transfer_slack_s ?? 90;
   tt.chainMax = w.chain_max_s ?? 900;
@@ -77,10 +77,6 @@ function bikeAllowed(tt, p, depTime, folding, weekday = true) {
 }
 
 // ---------------------------------------------------------------- search
-
-const PUNCT = /[.'"״׳`/()\-,:]+/g;
-const INNER_QUOTE = /(?<=[\p{L}])['"״׳`]+(?=[\p{L}])/gu;   // a quote inside a word (הל"ה, ג'וליס) belongs to it
-function norm(s) { return s.toLowerCase().replace(INNER_QUOTE, '').replace(PUNCT, ' ').replace(/\s+/g, ' ').trim(); }
 
 function buildSearchIndex(tt) {
   const S = tt.stops.length;
@@ -178,7 +174,7 @@ export function searchStops(tt, query, limit = 12, lang = 'he') {
     for (const s of g.stops) { la += tt.stopLat[s]; lo += tt.stopLon[s]; }
     g.lat = la / g.stops.length; g.lon = lo / g.stops.length;
   }
-  out.sort((a, b) => b.score - a.score || a.name.length - b.name.length);
+  out.sort(byScore);
   return out.slice(0, limit);
 }
 
@@ -467,19 +463,14 @@ export function rank(journeys) {
   return out;
 }
 
-function fmtTime(sec) {
-  const h = Math.floor(sec / 3600) % 24, m = Math.floor((sec % 3600) / 60);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 export function routeLabel(route) { return route[0] || (route[3] === 2 ? 'train' : route[1]); }
 
 /** Human-readable journey, for logs and the test page. */
 export function describe(tt, j) {
   const name = (s) => (s < 0 ? 'start/end' : tt.stops[s][1]);
-  const lines = [`${fmtTime(j.depart)} -> ${fmtTime(j.arrive)}, ${Math.round((j.arrive - j.depart) / 60)} min, ${j.transfers} transfers, ${Math.round(j.walkSeconds / 60)} min walking`];
+  const lines = [`${hhmm(j.depart)} -> ${hhmm(j.arrive)}, ${Math.round((j.arrive - j.depart) / 60)} min, ${j.transfers} transfers, ${Math.round(j.walkSeconds / 60)} min walking`];
   for (const l of j.legs) {
-    if (l.type === 'ride') lines.push(`  ${fmtTime(l.depart)} ${routeLabel(l.route)} (${l.route[2]}) ${name(l.from)} -> ${name(l.to)} ${fmtTime(l.arrive)}, ${l.stops} stops`);
+    if (l.type === 'ride') lines.push(`  ${hhmm(l.depart)} ${routeLabel(l.route)} (${l.route[2]}) ${name(l.from)} -> ${name(l.to)} ${hhmm(l.arrive)}, ${l.stops} stops`);
     else if (l.seconds > 0) lines.push(`  ${l.type} ${Math.round(l.seconds / 60)} min: ${name(l.from)} -> ${name(l.to)}`);
   }
   return lines.join('\n');

@@ -9,7 +9,7 @@ import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as st from '../state/station';
 import * as map from '../map/index';
-import type { Station, TrainRow } from '../state/station';
+import { asStation, type Station, type TrainRow } from '../state/station';
 import { openStop } from './stop';
 import { liveRides } from './liverides';
 import { openTrip } from './line';
@@ -78,7 +78,6 @@ export function swapStations(): void {
   const a = search.stFrom.value, b = search.stTo.value;
   if (a && b) openTrains(asStation(a), asStation(b)); else if (a) openStation(asStation(a));
 }
-const asStation = (p: { name: string; stops?: number[]; lat?: number | null; lon?: number | null }): Station => ({ key: '', name: p.name, stops: p.stops || [], lat: p.lat || 0, lon: p.lon || 0 });
 
 Object.assign(st.hooks, {
   closeTrains: () => nav.close('trainTimes'),

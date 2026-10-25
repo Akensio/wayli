@@ -7,10 +7,9 @@ import { t } from './i18n';
 /** A moment's clock time in Israel, HH:MM: when a vehicle was seen, live times as of. */
 const ilTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jerusalem' });
 export const timeOf = (when: Date | number): string => ilTime.format(when);
-/** A number in two digits: 7 → "07". */
-export const two = (n: number): string => String(n).padStart(2, '0');
-/** Seconds on a service day as HH:MM (a late-night time past 24:00 wraps). */
-export const fmt = (sec: number): string => `${two(Math.floor(sec / 3600) % 24)}:${two(Math.floor((sec % 3600) / 60))}`;
+/** A number in two digits; seconds on a service day as HH:MM (both in engine/clock.js, shared with the worker). */
+export const two: (n: number) => string = clock.two;
+export const fmt: (sec: number) => string = clock.hhmm;
 /** A YYYYMMDD string as a local Date. */
 export const dateOf = (s: string): Date => new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
 /** Today's calendar date in Israel, YYYYMMDD. */

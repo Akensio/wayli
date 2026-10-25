@@ -11,6 +11,7 @@ import { routeColor } from '../journey/colors';
 import { agencyName } from '../journey/agencies';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
+import { stopPlace } from '../state/search';
 import { popupState, pick, hooks } from './shared';
 import { viewFor } from './view';
 import { currentSheet, cameraPadding } from './render';
@@ -60,7 +61,6 @@ export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void
     el.querySelector('[data-act="line"]')?.addEventListener('click', () => { closePopup(); if (v.trip >= 0) hooks.openTrip(v.trip, -1); else hooks.openLine(v.route!); });
   });
 }
-const stopPlace = (s: any) => ({ name: s.name, stops: s.stops && s.stops.length ? s.stops : [s.stop], lat: s.lat, lon: s.lon });
 /** A stop tapped on the map. With nothing else in the sheet, the stop itself opens there (its lines, departures, from
  *  here and to here); while the sheet is about something else (results, a trip, a line, the trains between two
  *  stations), a tap never takes it away: a bubble names the stop, when that ride passes it, its lines, and offers the

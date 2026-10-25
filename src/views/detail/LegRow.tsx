@@ -7,7 +7,7 @@ import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { FromTo } from '../../widgets/FromTo';
 import { routeColor } from '../../journey/colors';
-import { stopsText } from '../../journey/format';
+import { stopsText, legMinutes } from '../../journey/format';
 import { agencyName } from '../../journey/agencies';
 import type { Leg } from '../../journey/types';
 import type { Badge } from '../../journey/format';
@@ -33,7 +33,7 @@ const walkText = (l: Leg, mins: number) => {
 export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options }: Props) {
   const [stopsOpen, setStopsOpen] = useState(false), [optsOpen, setOptsOpen] = useState(false);
   const ride = l.type === 'ride';
-  const mins = Math.max(1, Math.round(l.seconds / 60));
+  const mins = legMinutes(l.seconds);
   const stopsAlong = (l.stopsAlong as StopAlong[] | undefined) || [];
   // one departure time: the newest live look at the vehicle (the badge) when there is one, else the planned one; the
   // badge then says only how late, so the planned and the live time never stand side by side (2026-10-22)

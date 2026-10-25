@@ -7,6 +7,7 @@
 // the rider is still waiting for the vehicle or on it.
 
 import { metres } from './geo.js';
+import { legMinutes } from './clock.js';
 
 const AT_STOP = 60;        // m: close enough to count as being at a stop or the destination
 
@@ -147,7 +148,7 @@ export function view(journey, state, nowSec) {
   const nextRide = legs.slice(state.step + (leg.type === 'ride' ? 1 : 0)).find((l) => l.type === 'ride');
   if (leg.type !== 'ride') {
     const toRide = legs[state.step + 1] && legs[state.step + 1].type === 'ride' ? legs[state.step + 1] : null;
-    return { kind: leg.type === 'egress' ? 'final' : 'walk', leg, toRide, minutes: Math.max(1, Math.round(leg.seconds / 60)), departsIn: toRide ? Math.round((toRide.depart - nowSec) / 60) : null };
+    return { kind: leg.type === 'egress' ? 'final' : 'walk', leg, toRide, minutes: legMinutes(leg.seconds), departsIn: toRide ? Math.round((toRide.depart - nowSec) / 60) : null };
   }
   const stops = leg.stopsAlong || [];
   const lastIdx = stops.length - 1;

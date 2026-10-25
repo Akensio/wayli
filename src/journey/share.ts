@@ -3,13 +3,13 @@ import { t } from '../lib/i18n';
 import { placeName } from '../state/names';
 import { fmt, hm } from '../lib/time';
 import { toast } from '../widgets/toast';
-import { dur, lineText } from './format';
+import { dur, lineText, legMinutes } from './format';
 import type { Journey, Query } from './types';
 
 export function shareJourney(j: Journey, q: Query, bikeOnly = false): void {
   const lines = [`${placeName(q.from)} → ${placeName(q.to)}`, `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`];
   for (const l of j.legs) {
-    const mins = Math.max(1, Math.round(l.seconds / 60));
+    const mins = legMinutes(l.seconds);
     if (l.type === 'ride') lines.push(`${fmt(l.depart!)} ${lineText(l.line)} ${l.from!.name} → ${l.to!.name} ${fmt(l.arrive!)}`);
     else lines.push(`${l.mode === 'bike' ? '🚲' : '🚶'} ${mins} ${t('min')}`);
   }

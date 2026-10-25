@@ -2,15 +2,11 @@
 // Loads the container from pipeline/streets.py; bounded Dijkstra from a point
 // to every transit stop nearby, and point-to-point routes for bike-only trips.
 import { haversine } from './geo.js';
-
-const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array };
+import { readContainer } from './container.js';
 
 export function parseStreets(ab) {
-  const headerLen = new DataView(ab).getUint32(0, true);
-  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
-  const base = 4 + headerLen;
-  const g = { header, M: header.counts.nodes, cell: header.cell_deg };
-  for (const s of header.sections) g[s.name] = new TYPES[s.dtype](ab, base + s.offset, s.length);
+  const g = readContainer(ab), header = g.header;
+  Object.assign(g, { M: header.counts.nodes, cell: header.cell_deg });
   if (header.format >= 2) {
     const M = g.M, cell = g.cell;
     g.nodeLat = new Float32Array(M); g.nodeLon = new Float32Array(M);
