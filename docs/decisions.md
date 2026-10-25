@@ -1199,3 +1199,6 @@ so they are not re-litigated.
   lines and stops a search and a view are the same act (a pick opens it),
   so only trips keep two histories (searches, ways opened). Lines can now be
   saved too (a star on the line page, kept by the feed's route id).
+- 2026-10-25: A ride in a journey lists every direct ride between its two stops (any line or train, by departure, live for the next ones), replacing the one line's times there: Gadi's journeys often have several lines or trains that would do, and he wants a station's view for just his stops. Live matching is one module for this and the trains between two stations.
+- 2026-10-25: The drawer gets a second level (Gadi): trips Opened · Searched · Saved, lines and stops Recent · Saved, Opened first since it is usually what is wanted again. A saved item is no longer hidden from the recent lists, as they are separate now.
+- 2026-10-25: The line and stop searches show recent ones above "near you" while empty (Gadi), filtered by the chips; in the train timetable, recent stations and station pairs in the From box. Platforms and light rail stops are recorded as stations so they come back as such.

@@ -424,12 +424,17 @@ a longer walk. The last search opens again, planned afresh, when the app is
 reopened within six hours; the
 recent searches sit under the form and re-plan from now. The sheet's
 history (`results/Recent.tsx`) has three tabs, trips, lines and stops, which
-follow the bar's kind and switch on their own, each with a count; in each,
-what was saved (a star on a journey, a line or a stop) and then what came
-lately (`recentViews` in `store.js`, on the phone only), a saved item not
-repeated among them. Trips have two histories, the searches and the ways
-opened; for a line or a stop, searching it and opening it are one act, so
-one list (stops with stations and pairs of stations). Entries keep what
+follow the bar's kind and switch on their own, each with a count, and a
+second level of lists under each: trips are Opened (the ways opened),
+Searched and Saved, lines and stops Recent and Saved (a star on a journey,
+a line or a stop; the recent from `recentViews` in `store.js`, on the phone
+only). What was opened comes first, as it is what is usually wanted again;
+each level opens on the first list with something in it. For a line or a
+stop, searching it and opening it are one act, so one recent list (stops
+with stations and pairs of stations). The line and stop searches list the
+four opened lately of the chips' kind above those near the rider while the
+box is empty; in the train timetable the From box offers recent stations
+(a pick sets From) and pairs (a pick fills both and opens the trains). Entries keep what
 names them in the feed (a route id, the number on a stop's sign, positions),
 since the timetable's own numbers change from day to day; the worker's
 `findRecent` finds them in the day loaded. A trip keeps its journey and
@@ -559,9 +564,15 @@ reaching past the half-open sheet it went unseen); a tap on a time fills the sto
 with that trip's time at every stop and how many minutes before or after
 the rider's stop. A tap on a stop row makes it the rider's stop. Line chips
 everywhere (stop cards, a stop's lines, a ride in a journey, a vehicle
-bubble) open the line page. A ride in a journey opens "Times of the line
-from" its stop: the day's departures there, a tap giving the arrival where
-the rider gets off and the ride's length.
+bubble) open the line page. A ride in a journey opens "Every direct ride
+from" its stop (worker `rideOptions`, `detail/RideOptions.tsx`): what a
+station shows, for that trip only, so every line or train that goes from
+where the ride boards straight to where it gets off (both widened to the
+station's platforms and same-named stops within 150 m), by departure, with
+when each gets there, the ride planned marked, live times for the next ones
+(`controllers/liverides.ts`, shared with the trains between two stations),
+six at first and the rest of the day at a tap; a row opens its line at the
+boarding stop with that trip chosen.
 
 Stops: the stop search is one box with chips for all, bus, train and light
 rail (worker `stopGroups`): stops by name or by the number on their sign
