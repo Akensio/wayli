@@ -19,15 +19,13 @@ assert.equal(v('follow').draw, 'journey'); assert.equal(v('follow').live, 'own')
 assert.equal(v('lineDetail').draw, 'line'); assert.equal(v('lineDetail').live, 'own');
 // a stop: its pin, its lines' courses faint, the camera on it, only its lines' vehicles
 assert.deepEqual(v('stopDetail'), { draw: 'stop', context: true, camera: 'point', maxZoom: 15, live: 'stop' });
-// stops near me: the ring, fitted
-assert.equal(v('screen-nearby').draw, 'ring'); assert.equal(v('screen-nearby').camera, 'fit');
 // the trains between two stations: their courses, fitted, only their vehicles
 assert.equal(v('trainTimes').draw, 'pair'); assert.equal(v('trainTimes').live, 'stop');
 // choosing a point: the map alone, no vehicles; pages and anything else: the camera stays
 assert.equal(v('picker').live, 'none'); assert.equal(v('picker').draw, 'nothing');
 for (const k of ['screen-saved', 'chooser', 'whatever']) { assert.equal(v(k).draw, 'nothing'); assert.equal(v(k).camera, 'keep'); }
 // every view draws something it can be fitted to, or keeps the camera
-for (const k of ['screen-plan', 'detail', 'follow', 'lineDetail', 'stopDetail', 'trainTimes', 'screen-nearby', 'picker']) {
+for (const k of ['screen-plan', 'detail', 'follow', 'lineDetail', 'stopDetail', 'trainTimes', 'picker']) {
   const x = v(k, { results: true });
   assert.ok(x.camera === 'keep' || x.draw !== 'nothing', `${k}: a camera move with nothing to aim at`);
 }

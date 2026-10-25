@@ -1,4 +1,5 @@
-// The menu drawer under the menu button: the screens, the line search, settings, reload, the build. It follows
+// The menu drawer under the menu button: the three searches (a trip, a line, a stop), a line, then saved, settings,
+// reload and the build. It follows
 // a finger swiping it back towards its edge, on it or on the dimmed map beside it (ui/swipeClose).
 import { useRef } from 'preact/hooks';
 import { Icon } from '../../ui/Icon';
@@ -26,9 +27,10 @@ export function Drawer() {
           <button type="button" class="iconbtn flat" id="menuClose" aria-label={t('close')} onClick={app.hooks.closeDrawer}><Icon name="close" /></button>
         </div>
         <Row icon="route" label={t('tabPlan')} screen="plan" onClick={() => app.hooks.go('plan')} />
-        <Row icon="locate" label={t('tabNearby')} screen="nearby" onClick={() => app.hooks.go('nearby')} />
         <button type="button" id="menuLines" onClick={app.hooks.lineSearch}><span class="ic"><Icon name="bus" /></span><span>{t('lineSearch')}</span></button>
         <button type="button" id="menuStops" onClick={app.hooks.stopSearch}><span class="ic"><Icon name="pin" /></span><span>{t('stopSearch')}</span></button>
+        {/* the three searches above, the pages below */}
+        <hr class="msep" />
         <Row icon="star" label={t('tabSaved')} screen="saved" onClick={() => app.hooks.go('saved')} />
         <Row icon="sliders" label={t('tabMore')} screen="more" onClick={app.hooks.openSettings} />
         <button type="button" id="menuReload" onClick={() => location.reload()}><span class="ic"><Icon name="refresh" /></span><span>{t('reload')}</span></button>

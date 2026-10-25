@@ -14,7 +14,7 @@ bikes, depart-at or arrive-by), groups the ways to go, plans with live
 delays and shows live times and a live map from Hasadna's Open Bus data,
 follows a trip, says when to get off and proposes a faster way when delays
 appear, has line pages, remembers
-recent and saved places, shows nearby stops and departures, shares a trip as
+recent and saved places, shows the stops around you and their departures, shares a trip as
 a link and works offline. Since v0.3 the map is the home screen: live
 vehicles of the lines around you on it, the planner in one bar over it,
 every panel in a bottom sheet; lines carry their operator's colour. A GitHub Action rebuilds

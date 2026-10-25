@@ -19,8 +19,7 @@ from nothing else.
 | Following | the trip, the rider | fits the trip | its own (the followed vehicle) |
 | A line | its course and stops | fits it | its own (the line's vehicles) |
 | A stop or station | its pin, the lines calling there faint | centres on it | the lines calling there |
-| Trains between two stations | both pins | fits both | every one |
-| Stops near me | a ring, the stops in it | fits the ring | every one |
+| Trains between two stations | the next train's course and stations, other routes faint | fits them | those trains |
 | A page, the place chooser | nothing more | stays | as before (none while picking a point) |
 
 The camera aims at the part of the screen the map shows, between the bar

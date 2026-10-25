@@ -7,8 +7,6 @@ import * as app from '../state/app';
 import * as nav from '../state/nav';
 import * as sheet from '../state/sheet';
 import * as search from '../state/search';
-import * as data from '../state/data';
-import * as nearby from '../state/nearby';
 import * as chooser from '../state/chooser';
 import * as saved from '../state/saved';
 import * as results from '../state/results';
@@ -24,7 +22,6 @@ import { closeDetail } from './detail';
 import { openStop, closeStop } from './stop';
 import { openLine, closeLine, openTrip } from './line';
 import { closeTrains } from './station';
-import { loadNearby } from './nearby';
 import { isFollowing, closeFollow } from './follow';
 import { setLang } from './lang';
 import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
@@ -121,16 +118,18 @@ Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(tr
   } });
 positionHooks.moved = () => map.updateNearRoutes();
 // Back and the top bar, on Android: one step that undoes the bar a piece at a time (the keyboard, then the list, then
-// the line or stop search, back to the trip search folded) and is made again while anything is left. One re-made step
+// the line or stop search, back to the trip search folded; the trip search open, folded to its pill or summary) and is
+// made again while anything is left. One re-made step
 // rather than one each: Chrome groups close watchers made from the same tap, so a step per piece could close two at once.
 let barStep: nav.Entry | null = null;
-const barBusy = () => !!(search.typing.value || search.listing.value || search.kind.value !== 'trip');
+const barBusy = () => !!(search.typing.value || search.listing.value || search.kind.value !== 'trip' || search.barOpen.value);
 function barBack(): void {
   barStep = null;
   const typing = search.typing.peek(), listing = search.listing.peek();
   if (typing) search.boxes.get(typing)?.blur();
   else if (listing) search.boxes.get(listing)?.closeList();
   else if (search.kind.peek() !== 'trip') { search.leaveLineMode(); search.foldBar(); }
+  else if (search.barOpen.peek()) search.foldBar();   // what was planned stays, as after a map tap
   setTimeout(syncBarStep, 30);   // a blur lands a moment later
 }
 function syncBarStep(): void {
@@ -160,7 +159,6 @@ Object.assign(nav.hooks, {
   clearPlan: () => clearPlan(),
   leaveSearch: () => { search.leaveLineMode(); search.foldBar(); },
   changed: (again = false) => map.redrawMap(again),
-  screenShown: (name: string) => { if (name === 'nearby' && data.ttReady.value && nearby.status.value !== 'ready') loadNearby(); },
 });
 sheet.hooks.changed = (prev, st) => {
   if (prev === 'full' && st !== 'full') map.refreshLiveMap();

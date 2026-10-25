@@ -11,7 +11,7 @@ import { LineChip } from '../../ui/LineChip';
 import type { LineMode } from '../../ui/LineChip';
 import { t, lang } from '../../i18n';
 import { dayLabel, calToday, calendarOf, secOf } from '../../time';
-import { recentTrips, recentViews, favs } from '../../store.js';
+import { recentTrips, recentViews, favs, recentKeep } from '../../store.js';
 import * as results from '../../state/results';
 import * as search from '../../state/search';
 import * as nav from '../../state/nav';
@@ -84,11 +84,12 @@ export function Recent() {
   const savedTrips = Object.values(favs.get('trips') as Record<string, SavedTrip>);
   const savedLines = Object.values(favs.get('lines') as Record<string, View>);
   const savedStops = Object.values(favs.get('stops') as Record<string, SavedStop>);
-  const searches = (recentTrips.list() as Recent[]).slice(0, 8);
-  const ways = views.filter((v) => v.type === 'trip').slice(0, 8);
-  const lines = views.filter((v) => v.type === 'line').slice(0, 10);
+  const keep = recentKeep();
+  const searches = (recentTrips.list() as Recent[]).slice(0, keep);
+  const ways = views.filter((v) => v.type === 'trip').slice(0, keep);
+  const lines = views.filter((v) => v.type === 'line').slice(0, keep);
   // the train timetable (two stations at the top) keeps to stations and the trains between them
-  const stops = views.filter((v) => (pair ? v.type === 'trains' || v.type === 'station' : v.type === 'stop' || v.type === 'station' || v.type === 'trains')).slice(0, 10);
+  const stops = views.filter((v) => (pair ? v.type === 'trains' || v.type === 'station' : v.type === 'stop' || v.type === 'station' || v.type === 'trains')).slice(0, keep);
   const n: Record<Tab, Record<string, number>> = {
     trip: { opened: ways.length, searched: searches.length, saved: savedTrips.length },
     line: { recent: lines.length, saved: savedLines.length },

@@ -146,7 +146,7 @@ Layout, one folder per concern:
   (`search` the bar, `results` the plan with its cards as a computed,
   `sheet` the bottom sheet's size, `nav` the stack of panels and screens with
   their history entries, `detail`, `follow`, `stop`, `line`, `trip`,
-  `nearby`, `saved`, `chooser`, `settings`, `app`, `data` what is loaded,
+  `saved`, `chooser`, `settings`, `app`, `data` what is loaded,
   `position`, `clock` a 20-second tick for countdowns). Each exports a
   `hooks` object the app fills in at start with what the feature needs from
   the rest (planning, the worker, panels to open), so a feature never
@@ -173,8 +173,8 @@ Layout, one folder per concern:
 - `controllers/`: what happens behind the screens, one module each, and the
   only place that fills in the `hooks`: `loading` (the manifest, a day's
   timetable, the other data files), `planner` (planning, a destination from
-  anywhere, the last search, clearing), `detail`, `stop`, `line`, `trip`,
-  `nearby` (each page's worker calls and live polls), `follow` (the trip
+  anywhere, the last search, clearing), `detail`, `stop`, `line`, `trip`
+  (each page's worker calls and live polls), `follow` (the trip
   being followed: the position watch, the timers, the live vehicle, the
   re-planning, the resume bar), `alerts`, `lang`, `status`, `shell`
   (install, online, the drawer's actions, what closing each panel stops).
@@ -245,13 +245,19 @@ time and bike chips and the Go button, with the origin prefilled as "my
 location" (resolved when the plan is made; typing or the menu replaces it)
 and the menu button out of the way; and, once a plan is made, one summary box (to, then from, time
 and bike on a second line) that a tap reopens into the rows and a map tap
-folds back. A box focused with text in it puts the caret at the end, the
+or Back folds (Android: Back takes the keyboard, then the list, then folds
+the open search). Every panel in the sheet has Back (one step) and an X
+(`ui/CloseAll`: every panel at once). The menu lists the three searches,
+a line, then saved, settings and reload. "Recent items to keep" (5, 10,
+20 or 40 of each kind; ways opened at most 20, as they carry their
+journey) is a setting. A journey's detail and the follow screen while
+waiting have Pay, a link to HopOn (Rav-Pass)'s store page (`journey/pay.ts`). A box focused with text in it puts the caret at the end, the
 text not selected (Gadi: editing it is more common than replacing it). The suggestion list while typing hangs below all the rows, so
 it never covers the other field. A bottom sheet with three heights (a
 strip, about half the screen, nearly full; it is always its full height
 and slides by a composited transform, so the slide and the snap run on the
 GPU while only the body's height is set per state) carries every panel: the plan
-screen (results and recent searches only), nearby, saved, settings,
+screen (results and recent searches only), saved, settings,
 and the panels for a journey, a stop, a line, the place
 chooser and the trip being followed. Settings, saved and the place chooser
 need no map, so they are pages: the sheet grows over the whole screen with
@@ -542,7 +548,10 @@ bus, light rail or cable line is its code in the feed (route_desc's
 "makat", shared by its directions and variants; the compiler keeps it as
 the route's sixth field, and older timetables fall back to number,
 operator and end cities), a train line is every train between the same two
-stations (the feed lists each train as a route of its own). Each line is
+stations (the feed lists each train as a route of its own, its route_desc
+the train number: the compiler makes it the route's short name, so a
+train's chip shows its number, as on the station boards, while the line
+is "train"). Each line is
 one entry: its chip, where it runs (a bus's cities, a train's stations),
 its operator, how far its nearest stop is, then a row per direction with
 today's trips. Empty, the box lists the lines with a stop within 800 m of
@@ -624,8 +633,8 @@ rows change once, the old ones dimmed until the new ones come. The boxes are sea
 with a combobox role), so phones do not offer saved passwords over the
 keyboard.
 
-Nearby and stops: stops around the device with the lines serving them and
-the walk in minutes. A stop has one view, in the sheet, wherever it is
+Stops: the stop search lists those around the device (with their lines and
+how far) while its box is empty. A stop has one view, in the sheet, wherever it is
 opened (a tap on the map, which opens it directly with no bubble first; a
 search; a line, a trip, a saved stop): its lines (a tap opens one), from
 here and to here, its next departures with live times (below), refreshed
@@ -710,8 +719,8 @@ of them is highlighted, so a rider who zoomed in keeps the view; each card has a
 Collapsed, the sheet is a handle alone, or, with results, a handle and one
 line about the highlighted way (times, minutes, transfers, the countdown)
 that opens the list on a tap. The chip strip that used to sit there (plan,
-home, work, recents, nearby) is gone: the search pill and its list cover it,
-and the drawer keeps "stops near me". The top bar is pills: the search
+home, work, recents, nearby) is gone: the search pill and its list cover it
+(the menu's "stops near me" went too, 2026-10-25: the stop search does it). The top bar is pills: the search
 field, the summary box, the chips and the Go button.
 
 Not yet: crowd reports, Arabic (the data format carries it, the interface
@@ -984,7 +993,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   on the map (line, direction, agency, when it reported, speed, delay) with
   one button to its line, that vehicle's trip chosen. A tap on a stop opens its
   view in the sheet when the sheet holds nothing of its own (the map at
-  rest, nearby, another stop); while it holds results, a journey, a trip
+  rest, another stop); while it holds results, a journey, a trip
   being followed, a line or the trains between two stations, a stop tap
   never takes that away: a bubble names the stop, when the highlighted way,
   the journey or the chosen trip of the line passes it, its lines, and stop

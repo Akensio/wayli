@@ -9,7 +9,7 @@ import * as saved from '../../state/saved';
 import * as results from '../../state/results';
 import { StopList } from './StopList';
 import type { Place } from '../../state/search';
-import type { Stop } from '../../state/nearby';
+import type { Stop } from '../../state/stop';
 import type { View } from '../../state/results';
 import { LineChip } from '../../ui/LineChip';
 import type { LineMode } from '../../ui/LineChip';

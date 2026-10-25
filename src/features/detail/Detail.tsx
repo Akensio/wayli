@@ -10,6 +10,8 @@ import { now } from '../../state/clock';
 import { dur, tripKey, liveBadge } from '../../journey/format';
 import { shareJourney } from '../../journey/share';
 import { LegRow } from './LegRow';
+import { CloseAll } from '../../ui/CloseAll';
+import { payLink } from '../../journey/pay';
 
 export function Detail() {
   void lang.value; void now.value; void detail.favTick.value;
@@ -26,10 +28,12 @@ export function Detail() {
         <button type="button" class="ghost" id="detailBack" onClick={detail.hooks.close}>{t('back')}</button>
         <h2 id="detailTitle">{title}</h2>
         <button type="button" class={`star${saved ? ' on' : ''}`} id="detailStar" title={t('savePlace')} onClick={toggleFav}><Icon name="star" /></button>
+        <CloseAll />
       </div>
       <div class="actions">
         <button type="button" class="primary slim" id="detailStart" hidden={bikeOnly} disabled={over} title={over ? t('tripOver') : ''} onClick={() => detail.hooks.startTrip(j, q)}><Icon name="play" /> <span>{t('startTrip')}</span></button>
         <button type="button" class="ghost" id="detailShare" onClick={() => shareJourney(j, q, bikeOnly)}><Icon name="share" /> <span>{t('share')}</span></button>
+        {!bikeOnly && <a class="ghost btnlink" id="detailPay" href={payLink()} target="_blank" rel="noopener" title={t('payHint')}><Icon name="card" /> <span>{t('pay')}</span></a>}
       </div>
       <div class="muted center" id="detailNote">{bikeOnly ? '' : t('legHint')}</div>
       <div class={`legs${focus >= 0 ? ' focused' : ''}`} id="detailLegs">

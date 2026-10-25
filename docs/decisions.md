@@ -1204,3 +1204,8 @@ so they are not re-litigated.
 - 2026-10-25: The line and stop searches show recent ones above "near you" while empty (Gadi), filtered by the chips; in the train timetable, recent stations and station pairs in the From box. Platforms and light rail stops are recorded as stations so they come back as such.
 - 2026-10-25: The trains between two stations are drawn on the map (Gadi): the next train's course and stations, other routes faint, only those trains live; the same for light rail. Their bar folds to a trip-like summary (To; From · Train), X back to the trip pill.
 - 2026-10-25: A focused box keeps its text unselected with the caret at the end (Gadi), replacing select-all on focus.
+- 2026-10-25: Trains are shown by their train number (Gadi: as on the station boards), from GTFS `route_desc`, which equals SIRI's VehicleRef for every train checked (76 of 76 in a snapshot); the compiler puts it in the route's short name. A train *line* (every train between two stations) is still "train".
+- 2026-10-25: Back on Android folds an open trip search (keyboard, list, search); every panel gets an X closing all panels besides Back (Gadi).
+- 2026-10-25: The Nearby screen ("stops near me") is removed (Gadi asked; agreed): the stop search's empty list is the stops around you with their lines and distance. The menu separates the three searches from the pages with a line.
+- 2026-10-25: How many recent items to keep is a setting (5/10/20/40 of each kind; default 10). Pay links to HopOn (Rav-Pass), the Ministry-licensed payment app, through its store page: opening an app straight from a web page is unreliable across phones.
+- 2026-10-25: Not built yet, to discuss: separate pages for ride and search history (the drawer's second level may already cover it).

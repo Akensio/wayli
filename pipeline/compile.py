@@ -244,8 +244,13 @@ def main():
     routes_raw = {}
     route_line = {}  # route_id -> the line's code (MOT "makat", shared by its directions and variants)
     for r in rows(zf, "routes.txt"):
-        routes_raw[r["route_id"]] = (r.get("route_short_name", ""), r.get("route_long_name", ""),
-                                     r.get("agency_id", ""), int(r.get("route_type", "3") or 3))
+        rtype = int(r.get("route_type", "3") or 3)
+        short = r.get("route_short_name", "")
+        # a train has no short name: each is a route of its own whose route_desc is its train number, the number on the
+        # station boards and the VehicleRef in SIRI (all 76 trains of a 2026-10-25 snapshot matched)
+        if rtype == 2 and not short and r.get("route_desc", "").isdigit():
+            short = r["route_desc"]
+        routes_raw[r["route_id"]] = (short, r.get("route_long_name", ""), r.get("agency_id", ""), rtype)
         m = re.match(r"(\d+)-\d+-", r.get("route_desc", ""))   # route_desc is "makat-direction-alternative"
         route_line[r["route_id"]] = m.group(1) if m else ""
 

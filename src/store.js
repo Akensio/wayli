@@ -4,7 +4,7 @@
 const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const set = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-const DEFAULTS = { map: 'system', theme: 'system', live: true, traffic: true, notify: true, sound: true, maxWalk: 15, lang: null, fDirect: false, fTrain: false, mapTint: 'teal', terrain: false, stopFilter: 'all' };   // mapTint: 'teal' | 'neutral'   // map and theme: 'light' | 'dark' | 'system' (the old map value 'auto' reads as 'system')
+const DEFAULTS = { map: 'system', theme: 'system', live: true, traffic: true, notify: true, sound: true, maxWalk: 15, recentN: 10, lang: null, fDirect: false, fTrain: false, mapTint: 'teal', terrain: false, stopFilter: 'all' };   // mapTint: 'teal' | 'neutral'   // map and theme: 'light' | 'dark' | 'system' (the old map value 'auto' reads as 'system')
 export const settings = {
   get() { return { ...DEFAULTS, ...get('wayli-settings', {}) }; },
   set(patch) { const s = { ...this.get(), ...patch }; set('wayli-settings', s); return s; },
@@ -12,6 +12,9 @@ export const settings = {
 
 /** A place as the planner takes it: {name, lat, lon, stops?}. Two places are the same within ~30 m or by name. */
 const samePlace = (a, b) => a.name === b.name || (a.lat != null && b.lat != null && Math.abs(a.lat - b.lat) < 3e-4 && Math.abs(a.lon - b.lon) < 3e-4);
+/** How many of each kind of recent thing are kept (a setting): places, searches, ways opened, lines, stops. */
+export const RECENT_CHOICES = [5, 10, 20, 40];
+export const recentKeep = () => { const n = +settings.get().recentN; return RECENT_CHOICES.includes(n) ? n : 10; };
 const slim = (p) => ({ name: p.name, lat: p.lat, lon: p.lon, stops: p.stops || undefined, platforms: p.platforms || undefined });
 
 export const recentPlaces = {
@@ -20,7 +23,7 @@ export const recentPlaces = {
     if (!p || p.transient) return;
     const l = this.list().filter((x) => !samePlace(x, p));
     l.unshift({ ...slim(p), at: Date.now() });
-    set('wayli-recent-places', l.slice(0, 10));
+    set('wayli-recent-places', l.slice(0, recentKeep()));
   },
   remove(p) { set('wayli-recent-places', this.list().filter((x) => !samePlace(x, p))); },
   clear() { set('wayli-recent-places', null); },
@@ -35,7 +38,7 @@ export const recentTrips = {
     const key = (x) => `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
     const l = this.list().filter((x) => key(x) !== key(q));
     l.unshift({ from: slim(q.from), to: slim(q.to), bike: q.bike, folding: !!q.folding, at: Date.now(), day: q.day, time: q.at, arriveBy: !!q.arriveBy });
-    set('wayli-recent-trips', l.slice(0, 8));
+    set('wayli-recent-trips', l.slice(0, recentKeep()));
   },
   clear() { set('wayli-recent-trips', null); },
 };
@@ -47,16 +50,26 @@ export const recentTrips = {
  */
 const viewKey = (v) => v.type === 'line' ? `line:${v.ref}` : v.type === 'stop' ? `stop:${v.code || `${v.lat},${v.lon}`}` : v.type === 'station' ? `station:${v.name}`
   : v.type === 'trains' ? `trains:${v.from.name}|${v.to.name}` : `trip:${v.q.from.name}|${v.q.to.name}|${v.q.day}|${v.j.depart}`;
+// the kept number of each kind (a way opened carries its whole journey: at most 20 of those)
+function capViews(l) {
+  const n = recentKeep(), seen = { trip: 0, line: 0, stop: 0 };
+  const kind = (x) => (x.type === 'trip' ? 'trip' : x.type === 'line' ? 'line' : 'stop');
+  return l.filter((x) => { const k = kind(x); return ++seen[k] <= (k === 'trip' ? Math.min(n, 20) : n); });
+}
+/** The setting lowered: every list cut to it now. */
+export function trimRecents() {
+  const n = recentKeep();
+  set('wayli-recent-places', get('wayli-recent-places', []).slice(0, n));
+  set('wayli-recent-trips', get('wayli-recent-trips', []).slice(0, n));
+  set('wayli-recent-views', capViews(get('wayli-recent-views', [])));
+}
 export const recentViews = {
   list() { return get('wayli-recent-views', []); },
   add(v) {
     const k = viewKey(v);
     let l = this.list().filter((x) => viewKey(x) !== k);
     l.unshift({ ...v, at: Date.now() });
-    // trips carry their journey: a few of them, among up to 30 entries
-    let trips = 0;
-    l = l.filter((x) => x.type !== 'trip' || ++trips <= 6);
-    set('wayli-recent-views', l.slice(0, 30));
+    set('wayli-recent-views', capViews(l));
   },
   clear() { set('wayli-recent-views', null); },
 };

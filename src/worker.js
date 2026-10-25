@@ -83,13 +83,15 @@ function haversine(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/** What a line is called: its number; trains, each a route of its own with its train number, are one line "train". */
+const lineLabel = (r) => (r[3] === 2 ? 'train' : routeLabel(r));
 /** Lines (route labels) serving a stop, deduplicated, with their vehicle type. */
 function linesAt(stop, limit = 12) {
   const seen = new Map();
   for (let i = tt.stopPatsOff[stop]; i < tt.stopPatsOff[stop + 1]; i++) {
     const p = tt.stopPats[2 * i];
     const r = tt.routes[tt.patRoute[p]];
-    const label = routeLabel(r);
+    const label = lineLabel(r);
     if (!seen.has(label)) seen.set(label, { label, type: r[3], agency: r[2], route: tt.patRoute[p] });
   }
   return Array.from(seen.values()).slice(0, limit);
@@ -224,12 +226,12 @@ function indexLines() {
   tt.routes.forEach((r, i) => {
     if (!(routePats.get(i) || []).length) return;
     const mode = modeOf(r[3]), ends = routeEnds(r[1]);
-    // trains have no numbers: a train line is its two stations. Any other line is its code in the feed (the "makat" its
+    // a train line is its two stations (each train is a route of its own, with its train number). Any other line is its code in the feed (the "makat" its
     // directions and variants share), or, in a timetable built before it was kept, its number and operator where it runs.
     const key = mode === 'rail' ? `rail|${ends ? ends.slice().sort().join('|') : r[1]}`
       : r[5] ? `${mode}|${r[2]}|${r[5]}` : `${mode}|${routeLabel(r)}|${r[2]}|${ends ? ends.map(endCity).sort().join('|') : ''}`;
     let g = groups.get(key);
-    if (!g) groups.set(key, (g = { key, mode, label: routeLabel(r), routes: [], trips: 0, names: [] }));
+    if (!g) groups.set(key, (g = { key, mode, label: lineLabel(r), routes: [], trips: 0, names: [] }));
     g.routes.push(i); g.trips += tripsOf(i);
     if (mode === 'rail' && ends) for (const e of ends) { const x = e.toLowerCase(); if (!g.names.includes(x)) g.names.push(x); }
   });
@@ -1195,7 +1197,7 @@ const ops = {
     const own = parseHeadsign(r[1]);
     const others = g ? lineDirs(g).filter((d) => parseHeadsign(tt.routes[d.route][1]) !== own).map((d) => ({ route: d.route, headsign: d.headsign })) : [];
     const routeIds = sibs.map((ri) => liveId(tt.routes[ri])).filter((x) => x != null);
-    return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOf(r[3]), line: routeLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOf(r[3]), line: lineLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
   /** The lines calling at a stop, for its page's map: one pattern per line (its busiest), with what names it in the
    *  live data and its colours. */
@@ -1273,16 +1275,6 @@ const ops = {
   },
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
   reverse({ lat, lon }) { return reverseIn(lat, lon, lang); },
-  nearby({ lat, lon, limit = 15, radius = 1200 }) {
-    const out = [];
-    for (let s = 0; s < tt.stops.length; s++) {
-      const d = haversine(lat, lon, tt.stopLat[s], tt.stopLon[s]);
-      if (d <= radius) out.push({ ...stopOut(s), distance: Math.round(d) });
-    }
-    out.sort((a, b) => a.distance - b.distance);
-    return out.slice(0, limit).map((o) => ({ ...o, lines: linesAt(o.stop) }));
-  },
-  /** A stop's lines; for a station (parent index), the lines of all its platforms under the station's name. */
   /** A stop, or a station with all its platforms (`station`, or `stops` that share one): what the stop view shows
    *  about it, with the stops it stands for and whether trains call there. */
   stopInfo({ stop, station = -1, stops = null }) {

@@ -11,6 +11,7 @@ import { lineText, inShort } from '../../journey/format';
 import { LegChips } from '../results/LegChips';
 import { LegRow } from '../detail/LegRow';
 import type { Leg } from '../../journey/types';
+import { payLink } from '../../journey/pay';
 
 type View = { kind: 'done' | 'walk' | 'final' | 'wait' | 'ride'; leg: Leg; toRide?: Leg; minutes: number; departsIn: number; stopsLeft: number; alight: { name: string }; nextStop: { name: string } };
 
@@ -76,6 +77,7 @@ export function Follow() {
           <button type="button" id="followBack" disabled={!canStepBack(a.state)} onClick={follow.hooks.back}><Icon name="back" class="chev" /> {t('prevStep')}</button>
           <button type="button" class="next" id="followSkip" hidden={v.kind === 'done'} onClick={follow.hooks.skip}>{t('nextStep')} <Icon name="chevronEnd" class="chev" /></button>
         </div>
+        {v.kind === 'wait' && <a class="ghost btnlink" id="followPay" href={payLink()} target="_blank" rel="noopener" title={t('payHint')}><Icon name="card" /> <span>{t('pay')}</span></a>}
         <div class="gps" id="followGps"><Icon name="locate" /> {fresh ? t('gpsOk', { acc: Math.round(pos!.acc || 0) }) : t('gpsNo')}</div>
       </div>
       {alt && <AltCard alt={alt} />}

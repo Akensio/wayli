@@ -4,7 +4,7 @@ import { Icon } from '../../ui/Icon';
 import { t } from '../../i18n';
 import { chipColors } from '../../journey/colors';
 import { lineText } from '../../journey/format';
-import type { Stop } from '../../state/nearby';
+import type { Stop } from '../../state/stop';
 
 type Props = { stops: Stop[]; withDistance?: boolean; onStop: (stop: number) => void; onLine: (route: number) => void };
 

@@ -181,6 +181,9 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .dropdown .grp { font-size: 11px; color: var(--ink-2); padding: 6px 12px 2px; text-transform: uppercase; letter-spacing: .04em; }
 .actions { display: flex; gap: 8px; padding: 10px 16px 0; align-items: center; }
 .actions .primary { margin: 0; flex: 1; }
+a.btnlink { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font: inherit; }
+a.btnlink.ghost { background: var(--chip); color: var(--ink); border-radius: 8px; padding: 8px 12px; }
+#followPay { margin-top: 8px; padding: 6px 12px; font-size: 14px; }
 button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .center { text-align: center; padding: 6px 16px 0; }
 .leg .what .live { display: inline-block; margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -490,6 +493,7 @@ body:not(.booted) .drawer { transition: none; }   /* no slide across the screen 
 .iconbtn.flat { box-shadow: none; background: var(--chip); width: 36px; height: 36px; font-size: 15px; }
 .drawer > button { display: flex; align-items: center; gap: 14px; width: 100%; background: none; border: 0; color: var(--ink); padding: 14px 12px; border-radius: 12px; cursor: pointer; font-size: 17px; text-align: start; }
 .drawer > button:active { background: var(--chip); }
+.drawer .msep { border: 0; border-top: 1px solid var(--line); margin: 8px 12px; }
 .drawer > button .ic { width: 28px; text-align: center; font-size: 20px; display: grid; place-items: center; color: var(--accent-text); }
 .drawer > button .ic .i { width: 22px; height: 22px; }
 .drawer .foot { margin-top: auto; padding: 0 12px; font-size: 12px; }
@@ -583,6 +587,10 @@ body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-
 .detail { display: block; }
 .detail[hidden] { display: none; }
 .detail .bar { display: flex; align-items: center; gap: 10px; padding: 4px 0 10px; }
+.detail .bar .closeall { margin-inline-start: auto; flex: none; width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.detail .bar .closeall .i { width: 16px; height: 16px; }
+.detail .bar .star { margin-inline-start: auto; }
+.detail .bar .star + .closeall { margin-inline-start: 0; }
 .detail .bar h2 { font-size: 16px; margin: 0; flex: 1; font-variant-numeric: tabular-nums; }
 .detail .legs { padding: 4px 0 24px; }
 .detail .actions { padding: 0 0 6px; }

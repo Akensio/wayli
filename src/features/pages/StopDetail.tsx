@@ -12,6 +12,7 @@ import { now } from '../../state/clock';
 import { chipColors } from '../../journey/colors';
 import { lineText, inText, dur } from '../../journey/format';
 import { LineChip } from '../../ui/LineChip';
+import { CloseAll } from '../../ui/CloseAll';
 
 export function StopDetail() {
   void lang.value; void now.value; void stop.favTick.value;
@@ -25,6 +26,7 @@ export function StopDetail() {
         <button type="button" class="ghost" id="stopBack" onClick={stop.hooks.close}>{t('back')}</button>
         <h2 id="stopTitle">{info.name}</h2>
         <button type="button" class={`star${on ? ' on' : ''}`} id="stopStar" title={t('savePlace')} onClick={toggleFav}><Icon name="star" /></button>
+        <CloseAll />
       </div>
       <div class="legs">
         <div class="muted" id="stopMeta">{info.city || ''}{info.code ? ' · ' + info.code : ''}</div>

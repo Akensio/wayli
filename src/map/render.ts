@@ -10,13 +10,11 @@ import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as sheet from '../state/sheet';
 import * as results from '../state/results';
-import * as nearby from '../state/nearby';
 import * as detail from '../state/detail';
 import * as follow from '../state/follow';
 import * as linePage from '../state/line';
 import * as stopPage from '../state/stop';
 import * as station from '../state/station';
-import { lastPos } from '../state/position';
 import type { Journey } from '../journey/types';
 import type { TrainRow } from '../state/station';
 import { state, markers, EMPTY, stale, stopKindProp } from './shared';
@@ -45,7 +43,7 @@ const pin = (m: MLMap, lon: number, lat: number) => {
   const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = 'var(--accent)';
   markers.journey.push(new maplibregl.Marker({ element: el }).setLngLat([lon, lat]).addTo(m));
 };
-/** The rider's own dot, where the map's is not shown (nearby, following). */
+/** The rider's own dot, where the map's is not shown (following). */
 export function drawMe(pos: { lat: number; lon: number }): void {
   const m = state.main;
   if (!m || !state.styled) return;
@@ -174,19 +172,6 @@ const RECIPES: Record<View['draw'], Recipe> = {
     setData(m, 'context', { type: 'FeatureCollection', features: lines });
     setData(m, 'context-stops', { type: 'FeatureCollection', features: dots });
     return { bounds: b, id: `${p.from.name}|${p.to.name}|course` };
-  },
-  /** The stops near the rider, inside a ring out to the farthest listed. */
-  ring: (m) => {
-    const stops = nearby.stops.value;
-    if (!lastPos || !stops.length) return null;
-    ensureJourneyLayers(m);
-    const r = Math.max(150, (stops[stops.length - 1].distance || 0) + 30), ring: [number, number][] = [];
-    for (let i = 0; i <= 64; i++) { const a = i / 64 * 2 * Math.PI; ring.push([lastPos.lon + r / 111000 / Math.cos(lastPos.lat * Math.PI / 180) * Math.cos(a), lastPos.lat + r / 111000 * Math.sin(a)]); }
-    setData(m, 'context', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#12998b' }, geometry: { type: 'LineString', coordinates: ring } }] });
-    setData(m, 'stops', { type: 'FeatureCollection', features: stops.map((s) => ({ type: 'Feature', properties: { stop: s.stop, ...stopKindProp(s.stop) }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } })) });
-    drawMe(lastPos);
-    const b = new maplibregl.LngLatBounds(); ring.forEach((c) => b.extend(c));
-    return { bounds: b, id: `${stops.length}|${stops[0].stop}|${lastPos.lat.toFixed(4)},${lastPos.lon.toFixed(4)}` };
   },
 };
 

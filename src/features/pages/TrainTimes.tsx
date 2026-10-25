@@ -6,6 +6,8 @@ import { fmt } from '../../time';
 import * as st from '../../state/station';
 import { dur, inText } from '../../journey/format';
 import { now } from '../../state/clock';
+import { CloseAll } from '../../ui/CloseAll';
+import { LineChip } from '../../ui/LineChip';
 
 export function TrainTimes() {
   void lang.value; void now.value;
@@ -17,6 +19,7 @@ export function TrainTimes() {
       <div class="bar">
         <button type="button" class="ghost" id="trainsBack" onClick={st.hooks.closeTrains}>{t('back')}</button>
         <h2 id="trainsTitle"><bdi>{t('lineEnds', { a: p.from.name, b: p.to.name })}</bdi></h2>
+        <CloseAll />
       </div>
       <div class="legs">
         <div class="row"><h2 class="sec" style="margin:8px 0">{t(st.mode.value === 'lrt' ? 'directLrt' : 'directTrains')}</h2><span class="muted" id="trainsLive">{st.liveNote.value}</span></div>
@@ -31,7 +34,7 @@ export function TrainTimes() {
                 <span class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}>{fmt(dep)}</span>
                 <span class="arrow"><Icon name="chevronEnd" class="chev" /></span>
                 <span class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}>{fmt(arr)}</span>
-                <span class="what"><span>{dur(arr - dep)} · {r.stops === 1 ? t('stops1') : t('stopsN', { n: r.stops })}</span><small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
+                <span class="what"><span><LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)} · {r.stops === 1 ? t('stops1') : t('stopsN', { n: r.stops })}</span><small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
                 <span class="in">{lv && !lv.passed ? <><span class={`live ${lv.stale ? 'unsure' : 'ok'}`}>⦿{lv.delayMin ? ` ${lv.delayMin > 0 ? '+' : ''}${lv.delayMin}` : ''}{lv.stale ? '?' : ''}</span> </> : null}{lv && lv.passed ? t('livePassed') : st.isNow.value ? inText(dep, day) : ''}</span>
               </div>
             );

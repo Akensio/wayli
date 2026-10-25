@@ -1,4 +1,4 @@
-// Where the rider is: the base screen (plan, nearby, saved, more) and the panels open over it (a detail, a
+// Where the rider is: the base screen (plan, saved, more) and the panels open over it (a detail, a
 // page, the drawer, the map picker). Every panel and every screen change is a history entry, so the phone's
 // back button (or the browser's) closes the panel or returns to the previous screen instead of leaving the
 // app. Closing with an in-app button goes through history too, so both paths look the same.
@@ -50,7 +50,7 @@ export const pageTitle = (): string => { const k = key.value; return PAGE_TITLE[
 const SHEET_FOR: Record<string, sheet.SheetState | (() => sheet.SheetState)> = {
   // "my location" alone is no search: the sheet stays folded
   'screen-plan': () => (results.showing.value || (search.from.value && !search.from.value.auto) || search.to.value ? 'half' : 'peek'),
-  'screen-nearby': 'half', 'screen-saved': 'full', chooser: 'full',
+  'screen-saved': 'full', chooser: 'full',
 };
 
 /** Apply what is on top: the drawer, the settings page, the page look, the sheet's size; the map follows. */

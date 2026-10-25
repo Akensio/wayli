@@ -12,6 +12,7 @@ import { Timetable } from '../../ui/Timetable';
 import { LineChip } from '../../ui/LineChip';
 import { favs } from '../../store.js';
 import * as results from '../../state/results';
+import { CloseAll } from '../../ui/CloseAll';
 
 export function LineDetail() {
   void lang.value;
@@ -30,6 +31,7 @@ export function LineDetail() {
         <LineChip line={info.line} routeType={info.routeType} agency={info.agency} mode={info.mode} big />
         <span class={`livebadge ${line.liveOk.value ? 'ok' : ''}`} id="lineLive" hidden={!lv}>{lv}</span>
         {key && <button type="button" class={`star${on ? ' on' : ''}`} id="lineStar" title={t('savePlace')} aria-pressed={on} onClick={toggleFav}><Icon name="star" /></button>}
+        <CloseAll />
       </div>
       <div class="legs">
         <h2 id="lineTitle"><bdi>{info.mode === 'rail' && info.ends ? t('lineEnds', { a: info.ends[0], b: info.ends[1] }) : t('toward', { headsign: info.headsign })}</bdi></h2>

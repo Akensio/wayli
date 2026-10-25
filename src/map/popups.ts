@@ -69,7 +69,7 @@ export async function stopPopup(m: MLMap, lngLat: LngLatLike, stop: number, stat
   if (nav.isOpen('picker')) return;   // in pick mode the map tap handler picks the stop instead
   const st = station != null && station !== '' ? +(station as number) : undefined;
   const draw = viewFor(currentSheet()).draw;
-  if (draw === 'nothing' || draw === 'ring' || draw === 'stop') { closePopup(); hooks.openStop(stop, st); return; }
+  if (draw === 'nothing' || draw === 'stop') { closePopup(); hooks.openStop(stop, st); return; }
   let info: any;
   try { info = await call('stopInfo', { stop, station: st ?? -1 }); } catch { return; }
   const at = hooks.timeAt(stop), onLine = nav.key.value === 'lineDetail';
