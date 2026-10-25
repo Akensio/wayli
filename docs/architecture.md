@@ -153,8 +153,12 @@ the app).
   `raptor.js` and `streets.js` (the router and the street graph),
   `places.js` (the address book), `live.js` (real-time client and delay
   estimate), `follow.js` (the trip-following state machine).
-- `worker/`: `worker.js`, the data worker (it holds the data and answers
-  every query, so the UI never blocks), and `client.ts`, the UI's end of it.
+- `worker/`: the data worker (it holds the data and answers every query, so
+  the UI never blocks), a module per kind of question (`data`, `search`,
+  `plan`, `stops`, `lines`, `trips`, `courses`, `vehicles`, `traffic`, with
+  `names`), `worker.js` the message loop over their ops, and `client.ts`,
+  the UI's end of it. Only `data.js` assigns what is loaded; what the other
+  parts derive from it registers its reset with `onNewDay` / `onNewLang`.
 - `state/`: one small module per feature holding its signals and actions
   (`search` the bar, `results` the plan with its cards as a computed,
   `sheet` the bottom sheet's size, `nav` the stack of panels and screens with

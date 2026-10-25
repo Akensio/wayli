@@ -76,7 +76,7 @@ for (const [ride, rs] of byRide) {
   truth.set(ride, arr);
 }
 
-// minute by minute, as the app sees the trains (src/worker/worker.js remember and snapVehicles)
+// minute by minute, as the app sees the trains (src/worker/vehicles.js remember and snapVehicles)
 const posSince = new Map(), callSince = new Map(), res = [];
 for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
   const cur = rows.filter((r) => r[0] === t);

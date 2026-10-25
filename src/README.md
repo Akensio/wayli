@@ -9,7 +9,7 @@ Preact with signals; Vite builds it into `dist/`.
  nightly files (pipeline/)            live vehicles (Hasadna, via relay/)
           │                                        │
           ▼                                        ▼
-  worker/worker.js ── uses ── engine/       engine/live.js
+  worker/ (data)  ─── uses ── engine/       engine/live.js
           ▲                                        ▲
           │ worker/client.ts                       │
   controllers/  ── fill the hooks of ──▶  state/  ◀── read by ── views/ (+ widgets/)
