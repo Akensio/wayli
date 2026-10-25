@@ -522,9 +522,17 @@ still match in the To box (three lines above the places). A line page shows the
 direction's course on the map with every stop as a dot and the line's
 vehicles reporting now, each with its delay (tap one for its trip's stops), the other
 directions as buttons, today's trip count and first and last departure,
-and the stop list (tap a stop for its page). Line chips everywhere (stop
-cards, a stop's lines, a ride in a journey, a vehicle bubble) open the line
-page.
+and the line as a timetable at the rider's stop: the stop the line was
+opened from (a stop's view, a ride's boarding stop, the stop of the other
+direction), else the nearest within 3 km, else the first. The day's times
+there (worker `lineTimes`) show as a printed timetable, a row per hour,
+past ones grey and the next one marked; a tap on a time fills the stop list
+with that trip's time at every stop and how many minutes before or after
+the rider's stop. A tap on a stop row makes it the rider's stop. Line chips
+everywhere (stop cards, a stop's lines, a ride in a journey, a vehicle
+bubble) open the line page. A ride in a journey opens "Times of the line
+from" its stop: the day's departures there, a tap giving the arrival where
+the rider gets off and the ride's length.
 
 Stops: the stop search is one box with chips for all, bus, train and light
 rail (worker `stopGroups`): stops by name or by the number on their sign
@@ -898,9 +906,15 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   name, anything else by reverse geocoding) and "to here" and "from here";
   with the sheet open, a map tap only collapses it. A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
-  buttons to its trip's stops and its line page; a tap on any stop dot opens
-  a bubble with the stop's lines and departures / from here / to here. No
-  tap on a map jumps to a page by itself.
+  buttons to its trip's stops and its line page. A tap on a stop opens its
+  view in the sheet when the sheet holds nothing of its own (the map at
+  rest, nearby, another stop); while it holds results, a journey, a trip
+  being followed, a line or the trains between two stations, a stop tap
+  never takes that away: a bubble names the stop, when the highlighted way,
+  the journey or the chosen trip of the line passes it, its lines, and stop
+  details / from here / to here (on a line, "times here" first, making it
+  the rider's stop). The map slides so a bubble sits whole between the bar
+  and the sheet.
 - Planning with live data: a plan from now (the current service day,
   within 20 minutes of the clock) first fetches the vehicles within 12 km of
   the origin and every train in the country (Israel Railways is SIRI

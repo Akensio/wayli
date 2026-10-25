@@ -1095,4 +1095,14 @@ so they are not re-litigated.
   interest (poi_r1/r7), at stops the feed still lists (codes 4002, 26967)
   but no line serves today. The basemap's bus and rail points are no longer
   drawn: the map's stops are the feed's, served that day.
-
+- 2026-10-25: Gadi: a line should show the day's times, and how long it
+  takes from and to each stop relative to a stop of his choice; a ride in a
+  trip, the times its line comes to his stop; and a stop tapped on the map
+  while looking at a search should not swap the sheet for the stop. The
+  line page became a timetable anchored at "your stop" (where it was opened
+  from, else the nearest) with each stop's time and minutes from it; a ride
+  lists its line's departures from the boarding stop with the arrival where
+  he gets off; a stop tap shows a bubble while the sheet holds a search,
+  journey, line or trains, and opens the stop view only at rest. Rejected:
+  a full stops-by-trips grid (unreadable on a phone at 40 stops by 50 trips)
+  and relative times from the line's first stop (not where anyone stands).

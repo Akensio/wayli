@@ -1,4 +1,4 @@
-// A line's page: its course, stops and other directions, and its vehicles now.
+// A line in the sheet: its course, stops and other directions, its vehicles now, and its timetable at a stop.
 import { signal } from '@preact/signals';
 import type { LineMode } from '../ui/LineChip';
 
@@ -8,5 +8,13 @@ export type LineInfo = { route: number; ref?: string | null; routeId?: number | 
 export const info = signal<LineInfo | null>(null);
 export const liveText = signal('');
 export const liveOk = signal(false);
+// the line as a timetable at the rider's stop: which of its stops that is, the day's times there, the time chosen and
+// that trip's times at every stop of the list (by its index)
+export type LineTime = { trip: number; dep: number; arr?: number | null; estimated?: boolean };
+export const anchor = signal(-1);
+export const times = signal<LineTime[] | null>(null);   // null while loading
+export const now = signal<number | null>(null);         // seconds on the line's day, null when not today
+export const sel = signal<number | null>(null);         // the trip chosen
+export const selTimes = signal<(number | null)[]>([]);  // its time at each stop of the list
 
-export const hooks = { close: () => {}, openLine: (_route: number) => {}, openStop: (_stop: number) => {} };
+export const hooks = { close: () => {}, openLine: (_route: number) => {}, openStop: (_stop: number) => {}, setAnchor: (_i: number) => {}, pick: (_t: LineTime) => {} };

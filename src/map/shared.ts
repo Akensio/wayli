@@ -33,4 +33,6 @@ export const hooks = {
   openStop: (_stop: number, _station?: number) => {},   // a station: all its platforms
   planTo: (_p: Place) => {},
   planFrom: (_p: Place) => {},     // "from here": the place in the From box, the bar open
+  timeAt: (_stop: number): number | null => null,   // when what the sheet holds passes that stop (the ride, the trip chosen)
+  lineAt: (_stop: number): boolean => false,        // the line in the sheet as a timetable at that stop, if it calls there
 };

@@ -36,7 +36,8 @@ export function Detail() {
         {j.legs.map((l, i) => (
           <LegRow key={i} l={l} mode="detail" cls={i === focus ? 'focus' : ''}
             badge={detail.badges.value[String(l.trip ?? '')] || (l.live ? liveBadge({ time: l.depart!, delay: l.live.delay, passed: false, stale: l.live.stale }) : null)}
-            onChip={() => detail.hooks.openLine(+l.route!)} onClick={() => detail.focusLeg(i)} />
+            onChip={() => detail.hooks.openLine(+l.route!, l.stopsAlong?.[0]?.stop)} onClick={() => detail.focusLeg(i)}
+            times={() => detail.hooks.rideTimes(l)} now={q.isNow ? live.nowOn(q.day) : null} />
         ))}
       </div>
     </>

@@ -87,7 +87,7 @@ Object.assign(stopPage.hooks, {
   show: () => nav.showOverlay('stopDetail'),
   close: () => nav.close('stopDetail'),
   refresh: () => { if (current) openStop(current.stop, { stops: current.stops }); },
-  openLine: (route: number) => openLine(route),
+  openLine: (route: number) => { const c = current; openLine(route, c ? { stop: c.stop, near: c } : {}); },   // as a timetable at this stop
   // a destination of a station: the trains between the two; in the train timetable (the two boxes at the top), as its To
   openTo: (d: Dest) => {
     const c = current; if (!c) return;

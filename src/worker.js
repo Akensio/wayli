@@ -180,6 +180,12 @@ function mainPat(ri) {
   for (const p of routePats.get(ri) || []) { const n = tt.patTripsOff[p + 1] - tt.patTripsOff[p]; if (n > most) { most = n; best = p; } }
   return best;
 }
+/** The routes that make one line with `ri`: itself, or for a train every train between the same two stations. */
+function lineSiblings(ri) {
+  if (!lineIdx) indexLines();
+  const g = lineIdx.groups[lineIdx.byRoute.get(ri)];
+  return g && g.mode === 'rail' ? g.routes.filter((x) => tt.routes[x][1] === tt.routes[ri][1]) : [ri];
+}
 const tripsOf = (ri) => { let n = 0; for (const p of routePats.get(ri) || []) n += tt.patTripsOff[p + 1] - tt.patTripsOff[p]; return n; };
 /** A pattern's first and last stop by name (a train's stations). */
 function endNames(p) {
@@ -1073,11 +1079,40 @@ const ops = {
   },
   /** One direction of a line: its main pattern's stops and course, today's trips, and its other directions. A train
    *  line is every train between the same two stations, each of which the feed lists as a route of its own. */
+  /**
+   * A line's trips through a stop all day: when each leaves it and, with `to`, reaches that stop after it. `from` and
+   * `to` are stops (a station's platforms); the line is a route, or the route of a `pattern` (a ride of a journey). A
+   * train line is every train between the same two stations, as on its page.
+   */
+  lineTimes({ route = -1, pattern = -1, from, to = null }) {
+    if (!routePats) indexRoutes();
+    const ri0 = route >= 0 ? route : tt.patRoute[pattern];
+    // a stop of a station stands for all its platforms (a train may call at another)
+    const widen = (ss) => new Set(ss.flatMap((s) => (tt.stopParent[s] >= 0 ? tt.stationStops.get(tt.stopParent[s]) || [s] : [s])));
+    const fromSet = widen(from), toSet = to && to.length ? widen(to) : null, out = [];
+    for (const ri of lineSiblings(ri0)) {
+      const r = tt.routes[ri];
+      for (const p of routePats.get(ri) || []) {
+        const o = tt.patStopsOff[p], ns = tt.patStopsOff[p + 1] - o;
+        let i = -1, j = -1;
+        for (let k = 0; k < ns - 1 && i < 0; k++) if (fromSet.has(tt.patStops[o + k])) i = k;
+        if (i < 0) continue;
+        if (toSet) { for (let k = i + 1; k < ns && j < 0; k++) if (toSet.has(tt.patStops[o + k])) j = k; if (j < 0) continue; }
+        const base = tt.tripTimesOff[p];
+        for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) {
+          const row = base + (t - tt.patTripsOff[p]) * ns;
+          out.push({ trip: t, dep: tt.dep[row + i], arr: j >= 0 ? tt.arr[row + j] : null, routeId: liveId(r), firstDep: tt.dep[row], estimated: !!r[6] });
+        }
+      }
+    }
+    out.sort((a, b) => a.dep - b.dep);
+    return out;
+  },
   lineInfo({ route }) {
-    if (!lineIdx) indexLines();
     const r = tt.routes[route];
+    if (!lineIdx) indexLines();
     const g = lineIdx.groups[lineIdx.byRoute.get(route)];
-    const sibs = g && g.mode === 'rail' ? g.routes.filter((ri) => tt.routes[ri][1] === r[1]) : [route];
+    const sibs = lineSiblings(route);
     const pats = sibs.flatMap((ri) => routePats.get(ri) || []);
     let best = -1, bestTrips = -1, trips = 0, first = Infinity, last = -Infinity;
     for (const p of pats) {

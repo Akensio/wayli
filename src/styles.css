@@ -307,6 +307,7 @@ body:not(.booted) .pagelayer { transition: none; }
 .wayli-bus.mine { box-shadow: 0 0 0 3px var(--accent), 0 1px 4px rgba(0,0,0,.4); z-index: 2; }
 
 /* ---- bubbles on the map */
+.wayli-pop { z-index: 3; }   /* over the map's own buttons (the locate button), which sit at 2 */
 .wayli-pop .maplibregl-popup-content { background: var(--surface); color: var(--ink); border-radius: 12px; padding: 10px 28px 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.25); font: 14px/1.4 var(--font); }
 /* the pointer is a border triangle: colour only the side that faces the spot (two coloured sides draw a square) */
 .wayli-pop.maplibregl-popup-anchor-bottom .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--surface); }
@@ -707,3 +708,22 @@ label.pilltoggle[hidden] { display: none; }
 /* the stop view's lines: their chips in a row that wraps; a tap opens the line */
 .stoplines { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
 .linkchip { background: none; border: 0; padding: 0; cursor: pointer; line-height: 0; }
+/* a line's timetable at a stop: a row per hour, the minutes after it */
+.timetable { max-height: 228px; overflow: auto; margin: 8px 0 10px; border: 1px solid var(--line); border-radius: 12px; padding: 4px 8px; overscroll-behavior: contain; }
+.tt-row { display: flex; align-items: flex-start; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); direction: ltr; }
+.tt-row:last-child { border-bottom: 0; }
+.tt-h { font-weight: 700; min-width: 24px; padding-top: 4px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.tt-mins { display: flex; flex-wrap: wrap; gap: 4px; }
+.tt-m { border: 0; background: var(--chip); color: var(--ink); border-radius: 8px; padding: 3px 7px; font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.tt-m.past { opacity: .4; }
+.tt-m.next { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tt-m.sel { background: var(--accent); color: var(--accent-ink); }
+/* the stops with the time chosen: the rider's stop marked, the ones before it quieter */
+.linerow .tag { display: inline-block; margin-inline-start: 6px; background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 0 5px; font-size: 11px; font-weight: 700; }
+.linerow.anchor { background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 8px; }
+.linerow.before .name, .linerow.before .at { opacity: .6; }
+.linerow .at { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 44px; text-align: end; }
+.linerow .rel { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; min-width: 34px; text-align: end; }
+.linerow .ghost.slim { padding: 3px 8px; font-size: 12px; }
+.muted.small { font-size: 12px; }
+.pop .pop-at { margin: 4px 0 2px; font-weight: 600; color: var(--accent-text, var(--accent)); }

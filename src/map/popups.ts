@@ -12,6 +12,9 @@ import { agencyName } from '../journey/agencies';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import { popupState, pick, hooks } from './shared';
+import { viewFor } from './view';
+import { currentSheet, cameraPadding } from './render';
+import { fmt } from '../time';
 
 export const clock = (d: Date): string => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
@@ -25,7 +28,18 @@ export function openPopup(m: MLMap, lngLat: LngLatLike, html: string, wire?: (el
   popupState.current = p;
   const el = p.getElement();
   if (wire && el) wire(el);
+  if (el) requestAnimationFrame(() => { if (popupState.current === p) keepInView(m, el); });
   p.on('close', () => { if (popupState.current === p) popupState.current = null; });
+}
+/** A bubble wholly in the part of the map the screen shows (between the bar and the sheet): the map slides by what
+ *  sticks out, its top edge first when it is taller than that. */
+function keepInView(m: MLMap, el: HTMLElement): void {
+  const pad = cameraPadding(), c = m.getContainer().getBoundingClientRect(), r = el.getBoundingClientRect();
+  const top = c.top + pad.top - 8, bottom = c.bottom - pad.bottom + 8;
+  let dy = r.bottom > bottom ? r.bottom - bottom : 0;
+  if (r.top - dy < top) dy = r.top - top;
+  const dx = r.left < c.left + 8 ? r.left - c.left - 8 : r.right > c.right - 8 ? r.right - c.right + 8 : 0;
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) m.panBy([dx, dy], { duration: 250 });
 }
 /** The open bubble's title, changed in place (a name that arrives later): reopening it would flicker. */
 export function setPopupTitle(text: string): void { const b = popupState.current?.getElement()?.querySelector('.pop b'); if (b) b.textContent = text; }
@@ -46,12 +60,30 @@ export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void
     el.querySelector('[data-act="line"]')?.addEventListener('click', () => { closePopup(); hooks.openLine(v.route!); });
   });
 }
-/** A stop tapped on the map: the stop itself in the sheet (no bubble in between: the sheet has its lines, departures,
- *  from here and to here); a station's badge opens the whole station. */
-export function stopPopup(_m: MLMap, _lngLat: LngLatLike, stop: number, station?: unknown): void {
+const stopPlace = (s: any) => ({ name: s.name, stops: s.stops && s.stops.length ? s.stops : [s.stop], lat: s.lat, lon: s.lon });
+/** A stop tapped on the map. With nothing else in the sheet, the stop itself opens there (its lines, departures, from
+ *  here and to here); while the sheet is about something else (results, a trip, a line, the trains between two
+ *  stations), a tap never takes it away: a bubble names the stop, when that ride passes it, its lines, and offers the
+ *  stop's details, from here and to here (on a line, its times at this stop). A station's badge is the whole station. */
+export async function stopPopup(m: MLMap, lngLat: LngLatLike, stop: number, station?: unknown): Promise<void> {
   if (nav.isOpen('picker')) return;   // in pick mode the map tap handler picks the stop instead
-  closePopup();
-  hooks.openStop(stop, station != null && station !== '' ? +(station as number) : undefined);
+  const st = station != null && station !== '' ? +(station as number) : undefined;
+  const draw = viewFor(currentSheet()).draw;
+  if (draw === 'nothing' || draw === 'ring' || draw === 'stop') { closePopup(); hooks.openStop(stop, st); return; }
+  let info: any;
+  try { info = await call('stopInfo', { stop, station: st ?? -1 }); } catch { return; }
+  const at = hooks.timeAt(stop), onLine = nav.key.value === 'lineDetail';
+  const html = `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
+    (at != null ? `<div class="pop-at">${esc(t(onLine ? 'lineHere' : 'rideHere', { time: fmt(at) }))}</div>` : '') +
+    `<div class="chips">${info.lines.slice(0, 8).map((l: any) => `<span class="chip t${l.type}" data-route="${l.route ?? ''}"${chipStyle(l.type, l.agency)}>${esc(lineText(l.label))}</span>`).join('')}</div>` +
+    `<div class="row">${onLine ? `<button type="button" class="primary slim" data-act="times">${t('timesHere')}</button>` : ''}<button type="button" class="ghost" data-act="stop">${t('stopDetails')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
+  openPopup(m, lngLat, html, (el) => {
+    el.querySelector('[data-act="times"]')?.addEventListener('click', () => { closePopup(); hooks.lineAt(stop); });
+    el.querySelector('[data-act="stop"]')?.addEventListener('click', () => { closePopup(); hooks.openStop(stop, st); });
+    el.querySelector('[data-act="from"]')?.addEventListener('click', () => { closePopup(); hooks.planFrom(stopPlace(info)); });
+    el.querySelector('[data-act="to"]')?.addEventListener('click', () => { closePopup(); hooks.planTo(stopPlace(info)); });
+    for (const c of el.querySelectorAll<HTMLElement>('.chip[data-route]')) if (c.dataset.route !== '') c.addEventListener('click', () => { closePopup(); hooks.openLine(+c.dataset.route!); });
+  });
 }
 /** A tap on the bare map (sheet collapsed): a bubble pointing at the spot, naming a place of the basemap under the
  *  finger, anything else by reverse geocoding (the name fills in when it arrives), with "to here" and "from here". */
@@ -74,7 +106,7 @@ export async function placeBubble(m: MLMap, e: { point: { x: number; y: number }
   } catch { p = { ...p, name: t('pointName') }; }
   if (my === pick.seq && popupState.current === mine) setPopupTitle(p.name);
 }
-/** Stop dots on a journey or line map open the stop on a tap. */
+/** Stop dots on a journey or line map answer a tap (stopPopup: a bubble, the sheet keeps the journey or line). */
 export function wireStopLayers(m: MLMap, layers: string[]): void {
   for (const layer of layers) {
     m.on('click', layer, (e) => { const f = e.features && e.features[0]; if (f && f.properties.stop != null && f.properties.stop !== '') stopPopup(m, (f.geometry as any).coordinates, +f.properties.stop); });

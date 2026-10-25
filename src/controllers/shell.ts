@@ -12,6 +12,9 @@ import * as nearby from '../state/nearby';
 import * as chooser from '../state/chooser';
 import * as saved from '../state/saved';
 import * as results from '../state/results';
+import * as detail from '../state/detail';
+import * as follow from '../state/follow';
+import * as line from '../state/line';
 import { getPosition, hooks as positionHooks } from '../state/position';
 import * as map from '../map/index';
 import { toast } from '../ui/toast';
@@ -104,7 +107,19 @@ Object.assign(chooser.hooks, {
 });
 Object.assign(saved.hooks, { planTo: (p: Place) => planTo(p), choosePlace: (title: string) => chooser.open(title), openStop: (stop: number) => openStop(stop), openLine: (route: number) => openLine(route) });
 // what the map's bubbles ask of the app
-Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(trip, stop), openLine: (route: number) => openLine(route), openStop: (stop: number, station?: number) => openStop(stop, station != null ? { station } : {}), planTo: (p: Place) => planTo(p), planFrom: (p: Place) => planFrom(p) });
+Object.assign(map.hooks, { openTrip: (trip: number, stop: number) => openTrip(trip, stop), openLine: (route: number) => openLine(route), openStop: (stop: number, station?: number) => openStop(stop, station != null ? { station } : {}), planTo: (p: Place) => planTo(p), planFrom: (p: Place) => planFrom(p),
+  timeAt: (stop: number): number | null => {
+    const key = nav.key.value;
+    const j = key === 'detail' ? detail.journey.value : key === 'follow' ? follow.active.value?.journey : key === 'screen-plan' ? results.highlighted.value?.j : null;
+    if (j) { for (const l of j.legs) { const s = l.stopsAlong?.find((x) => x.stop === stop); if (s) return s.arr; } return null; }
+    if (key === 'lineDetail') { const i = line.info.value?.stops.findIndex((s) => s.stop === stop) ?? -1; return i >= 0 ? line.selTimes.value[i] ?? null : null; }
+    return null;
+  },
+  lineAt: (stop: number): boolean => {
+    const i = line.info.value?.stops.findIndex((s) => s.stop === stop) ?? -1;
+    if (i < 0) return false;
+    line.hooks.setAnchor(i); return true;
+  } });
 positionHooks.moved = () => map.updateNearRoutes();
 // Back and the top bar, on Android: one step that undoes the bar a piece at a time (the keyboard, then the list, then
 // the line or stop search, back to the trip search folded) and is made again while anything is left. One re-made step

@@ -24,7 +24,10 @@ from nothing else.
 | A page, the place chooser | nothing more | stays | as before (none while picking a point) |
 
 The camera aims at the part of the screen the map shows, between the bar
-and the sheet; the locate button too.
+and the sheet; the locate button too. A stop tapped on the map opens the
+stop view only when the map draws nothing of the sheet's own (nothing yet,
+a stop, the ring); otherwise it gets a bubble and the sheet keeps what it
+holds (2026-10-25, `stopPopup` in `src/map/popups.ts`, by `viewFor`).
 
 - Owner: `src/map/view.ts` decides (pure), `src/map/render.ts` carries it
   out. Panels fill their state and never draw the map themselves; a panel

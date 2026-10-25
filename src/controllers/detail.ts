@@ -61,7 +61,12 @@ Object.assign(detail.hooks, {
   show: () => nav.showOverlay('detail'),
   close: () => nav.close('detail'),
   redraw: () => map.redrawMap(true),
-  openLine: (route: number) => openLine(route),
+  openLine: (route: number, stop?: number) => openLine(route, stop != null ? { stop } : {}),
+  rideTimes: (l: Journey['legs'][number]) => {
+    const along = l.stopsAlong || [];
+    if (l.pattern == null || along.length < 2) return Promise.resolve([]);
+    return call('lineTimes', { pattern: l.pattern, from: [along[0].stop], to: [along[along.length - 1].stop] });
+  },
   startTrip: (j: Journey, q: Query) => startTrip(j, q),
   favChanged: () => saved.refresh(),
 });
