@@ -36,10 +36,22 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    changed. Push to the branch the session was given unless Gadi has said to
    push `main`. Gadi's tasks and deadlines live in his private task system,
    not here: no TODO lists or task files in this repo.
-7. Before writing code in a new area, state the approach in a paragraph (in
-   the conversation, or in `docs/architecture.md` if it is a lasting design
-   choice), then build it. Prefer the simplest thing that meets the
-   non-negotiables.
+7. Design before code (Gadi, 2026-10-25). Never go straight to code. For any
+   change beyond a small tweak, new code or a change to existing behaviour
+   alike, first explain the algorithm or design in natural language, with a
+   diagram where it helps, the way programmers did before AI: what the
+   natural thing to do is, and why. Name what the change touches and who
+   depends on it; when the meaning of something changes (what a time, a
+   field or a function stands for), list everything that reads it before
+   changing any of it. Then write the code to match that explanation, and
+   treat the code itself as an app for the next programmer: clear parts,
+   each saying what it promises and to whom, ready for someone else to pick
+   up. The explanation lives in the conversation; only a genuinely
+   complicated algorithm gets its design (words and diagrams) into
+   `docs/architecture.md`. Prefer the simplest design that meets the
+   non-negotiables. (Why: on 2026-10-25 a train's shown time changed from
+   departure to arrival while the planner kept the departure, and a plan
+   sent Gadi to a train after it had pulled in.)
 8. Standing instruction from Gadi (2026-10-16): use your own judgment and
    build something good, well past an MVP, without waiting for his input at
    each step. He sets direction and priorities (accuracy over speed,
