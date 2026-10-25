@@ -74,7 +74,7 @@ type At = { name: string; lat: number; lon: number };
 export type View = { at?: number } & (
   | { type: 'line'; ref: string; line: string; routeType: number; agency: string; headsign: string; mode?: string }
   | { type: 'stop'; code: string; name: string; city?: string; lat: number; lon: number }
-  | ({ type: 'station' } & At)
+  | ({ type: 'station'; mode?: 'rail' | 'lrt' } & At)
   | { type: 'trains'; from: At; to: At; mode?: 'rail' | 'lrt' }
   | { type: 'trip'; q: Query; j: Journey; built?: string });
 export const hooks = {

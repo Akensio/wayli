@@ -7,6 +7,7 @@ import * as live from '../live.js';
 import { t } from '../i18n';
 import { calToday, hm, secOf, calendarOf } from '../time';
 import * as settings from './settings';
+import type { View } from './results';
 
 export type Place = { name: string; lat?: number | null; lon?: number | null; stops?: number[]; platforms?: number; code?: string; kind?: string; transient?: boolean; auto?: boolean };
 export type Side = 'from' | 'to';
@@ -98,6 +99,7 @@ export const hooks = {
   chooseStation: (_side: Side, _g: StopGroup) => {},
   swapStations: () => {},
   openLine: (_r: any) => {},
+  openRecent: (_v: View) => {},   // a recent line, stop or station from the list under the box
   kindChanged: (_k: Kind) => {},   // the line and stop searches are a step back can undo
   getPosition: async (): Promise<{ lat: number; lon: number }> => { throw new Error('no location'); },
   pickOnMap: async (_start: Place | null): Promise<Place | null> => null,

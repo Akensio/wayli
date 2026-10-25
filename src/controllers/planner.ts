@@ -122,6 +122,7 @@ Object.assign(search.hooks, {
   // a station picked among all stops: the train timetable opens with it as the From station
   openStopGroup: (g: search.StopGroup) => openStop(g.stops[0], { stops: g.stops }),   // a station too: the one stop view (the train chip is the timetable of two stations)
   chooseStation: (side: search.Side, g: search.StopGroup) => chooseStation(side, g),
+  openRecent: (v: results.View) => openRecent(v),
   swapStations: () => swapStations(),
   openLine: (r: any) => openLine(r.route),
   getPosition: () => getPosition(),
@@ -144,15 +145,27 @@ async function openView(v: results.View): Promise<void> {
   }
   if (v.type === 'line') { const r = await call<number>('findRecent', { kind: 'line', ref: v.ref }); if (r >= 0) openLine(r); else gone(); return; }
   if (v.type === 'stop') { const s = await call<number>('findRecent', { kind: 'stop', code: v.code, lat: v.lat, lon: v.lon }); if (s >= 0) openStop(s); else gone(); return; }
-  type Found = { name: string; stops: number[]; lat: number; lon: number } | null;
-  const mode = v.type === 'trains' && v.mode === 'lrt' ? 'lrt' : 'rail';
-  const station = async (a: { name: string; lat: number; lon: number }) => {
-    const f = await call<Found>('findRecent', { kind: 'station', lat: a.lat, lon: a.lon, mode });
-    return f ? { ...f, key: f.name, name: a.name } : null;
-  };
-  if (v.type === 'station') { const s = await station(v); if (s) openStation(s); else gone(); return; }
-  const [a, b] = await Promise.all([station(v.from), station(v.to)]);
+  const mode = v.mode === 'lrt' ? 'lrt' : 'rail';
+  if (v.type === 'station') { const s = await findStation(v, mode); if (s) openStation(s); else gone(); return; }
+  const [a, b] = await Promise.all([findStation(v.from, mode), findStation(v.to, mode)]);
   if (a && b) openTrains(a, b, mode); else gone();
+}
+/** A station of the history, found in the day loaded now by where it is. */
+async function findStation(a: { name: string; lat: number; lon: number }, mode: 'rail' | 'lrt') {
+  const f = await call<{ name: string; stops: number[]; lat: number; lon: number } | null>('findRecent', { kind: 'station', lat: a.lat, lon: a.lon, mode });
+  return f ? { ...f, key: f.name, name: a.name } : null;
+}
+/** A recent line, stop or station picked in the list under the box. In the train timetable (two stations at the top) a
+ *  station is the From one and a pair fills both; otherwise it opens as from the drawer and the bar folds. */
+async function openRecent(v: results.View): Promise<void> {
+  if (!search.railPair.value || (v.type !== 'station' && v.type !== 'trains')) { await openView(v); search.foldBar(); return; }
+  const mode = search.pairMode.value;
+  if (v.type === 'station') { const s = await findStation(v, mode); if (s) chooseStation('from', s); else toast(t('notInDay')); return; }
+  const [a, b] = await Promise.all([findStation(v.from, mode), findStation(v.to, mode)]);
+  if (!a || !b) { toast(t('notInDay')); return; }
+  search.stFrom.value = { name: a.name, stops: a.stops, lat: a.lat, lon: a.lon }; search.stFromText.value = a.name;
+  search.stTo.value = { name: b.name, stops: b.stops, lat: b.lat, lon: b.lon }; search.stToText.value = b.name;
+  openTrains(a, b, mode);
 }
 /** Bring a way's card into view in the sheet's list, with a flash so the eye finds it; a collapsed sheet opens first
  *  when asked (otherwise the peek line already says which way it is). */

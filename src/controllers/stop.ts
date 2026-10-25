@@ -29,7 +29,8 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
   if (my !== seq) return;
   current = info;
   const members = info.stops && info.stops.length ? info.stops : [stop];
-  recentViews.add(info.station != null && info.station >= 0 ? { type: 'station', name: info.name, lat: info.lat, lon: info.lon }
+  // a station, or a platform the trains of a station call at (one platform, a light rail stop): kept as a station
+  recentViews.add((info.station != null && info.station >= 0) || info.reach ? { type: 'station', name: info.name, lat: info.lat, lon: info.lon, mode: info.reach || undefined }
     : { type: 'stop', code: info.code || '', name: info.name, city: info.city, lat: info.lat, lon: info.lon });
   // the map draws the stop and its lines' courses (map/render.ts)
   const day = search.day.value, svc = live.serviceDay();

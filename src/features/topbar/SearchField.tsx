@@ -1,7 +1,7 @@
 // A search box of the bar: the pill with its tag, the typed text, a small x to clear it, and the list under it:
 // the quick entries (my location, pick on the map, home, work, recents) while empty, matching stops, places
 // and lines while typing. In the line search (`kind` line) the list holds lines only, in the stop search stops only:
-// those near the rider while empty, those matching as it is typed. The list ends above the keyboard and scrolls inside itself.
+// while empty the ones opened lately (of the kind the chips choose) and those near the rider, those matching as it is typed. The list ends above the keyboard and scrolls inside itself.
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { placeName, named } from '../../state/names';
@@ -10,12 +10,14 @@ import type { Signal } from '@preact/signals';
 import { t, lang } from '../../i18n';
 import { ic } from '../../ui/icons';
 import { Icon } from '../../ui/Icon';
-import { savedPlaces, recentPlaces } from '../../store.js';
+import { savedPlaces, recentPlaces, recentViews } from '../../store.js';
 import * as search from '../../state/search';
 import * as saved from '../../state/saved';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
 import { LineChip } from '../../ui/LineChip';
 import { agencyName } from '../../journey/agencies';
+import { FromTo } from '../../ui/FromTo';
+import type { View } from '../../state/results';
 
 type Suggestion = { kind: string; name: string; city?: string; platforms?: number; label?: string; approx?: number | null; lat?: number; lon?: number; stops?: number[]; code?: string };
 type Props = {
@@ -53,7 +55,7 @@ function fitDrop(el: HTMLElement) {
   el.style.maxHeight = `${Math.max(120, Math.min(360, bottom - top - 8))}px`;
 }
 
-type Rows = { quick: boolean; lines: LineGroup[]; results: Suggestion[]; placesLoaded: boolean; near?: boolean; stops?: StopGroup[] };
+type Rows = { quick: boolean; lines: LineGroup[]; results: Suggestion[]; placesLoaded: boolean; near?: boolean; stops?: StopGroup[]; recent?: View[] };
 const STOP_ICON = { bus: 'bus', rail: 'train', lrt: 'tram' } as const;
 
 /** A stop in the list: what stops there, its name, where, the number on its sign, how far; a bus stop's lines. */
@@ -64,6 +66,22 @@ function StopRow({ g, onStop }: { g: StopGroup; onStop: (g: StopGroup) => void }
       <span class="txt"><bdi>{g.name}</bdi>
         <small>{[g.city, g.code, g.dist != null ? t('stopAway', { m: g.dist < 100 ? g.dist : Math.round(g.dist / 50) * 50 }) : ''].filter(Boolean).join(' · ')}</small>
         {g.lines.length > 0 && <span class="slines">{g.lines.slice(0, 6).map((l) => <LineChip line={l.label} routeType={l.type} agency={l.agency} />)}</span>}
+      </span>
+    </button>
+  );
+}
+
+/** Something opened lately: a line (its chip, where it goes), a stop, a station, or the trains between two stations. */
+function RecentRow({ v, onOpen }: { v: View; onOpen: (v: View) => void }) {
+  return (
+    <button type="button" class="quick recentrow" onClick={() => onOpen(v)}>
+      {v.type === 'line' ? <LineChip line={v.line} routeType={v.routeType} agency={v.agency} mode={v.mode as LineGroup['mode'] | undefined} />
+        : <span class="ic"><Icon name={v.type === 'station' || v.type === 'trains' ? (v.mode === 'lrt' ? 'tram' : 'train') : 'pin'} /></span>}
+      <span class="txt">
+        {v.type === 'line' ? <><bdi>{t('toward', { headsign: v.headsign })}</bdi><small>{agencyName(v.agency)}</small></>
+          : v.type === 'trains' ? <FromTo from={v.from.name} to={v.to.name} />
+          : v.type === 'stop' ? <><bdi>{v.name}</bdi><small>{[v.city, v.code].filter(Boolean).join(' · ')}</small></>
+          : v.type === 'station' ? <bdi>{v.name}</bdi> : null}
       </span>
     </button>
   );
@@ -109,12 +127,22 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
 
   const pick = (p: Place) => { open.value = false; onPick(named(p)); };
   const show = () => { open.value = true; requestAnimationFrame(() => { if (dropRef.current) fitDrop(dropRef.current); }); };
+  // what was opened lately, of the kind the chips choose (the To box of the train timetable lists only where trains go)
+  const recentFor = (): View[] => {
+    const vs = recentViews.list() as View[];
+    if (lineKind) { const f = search.lineFilter.value; return vs.filter((v) => v.type === 'line' && (f === 'all' || (v.mode || 'bus') === f)).slice(0, 4); }
+    if (stationSide === 'to') return [];
+    const f = stationSide ? search.pairMode.value : search.stopFilter.value;
+    return vs.filter((v) => (v.type === 'stop' ? f === 'all' || f === 'bus'
+      : v.type === 'station' || v.type === 'trains' ? f === 'all' || f === (v.mode || 'rail') : false)).slice(0, 4);
+  };
+  const openRecent = (v: View) => { open.value = false; inputRef.current?.blur(); search.hooks.openRecent(v); };
   // the line search's list: the lines matching what is typed, or near the rider while empty
   const lineList = async (q: string) => {
     const my = ++seq.current;
     const found = search.hooks.ttReady() ? await search.hooks.lineGroups(q, search.lineFilter.value).catch(() => []) : [];
     if (my !== seq.current) return;
-    setRows({ quick: false, lines: found, results: [], placesLoaded: true, near: !q });
+    setRows({ quick: false, lines: found, results: [], placesLoaded: true, near: !q, recent: q ? [] : recentFor() });
     show();
   };
   // the stop search's list: the stops matching the name or sign number, or near the rider (every station for trains)
@@ -123,7 +151,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
     const from = stationSide === 'to' ? search.stFrom.value?.stops : undefined;
     const found = search.hooks.ttReady() ? await search.hooks.stopGroups(q, stationSide ? search.pairMode.value : search.stopFilter.value, from).catch(() => []) : [];
     if (my !== seq.current) return;
-    setRows({ quick: false, lines: [], results: [], placesLoaded: true, near: !q, stops: found });
+    setRows({ quick: false, lines: [], results: [], placesLoaded: true, near: !q, stops: found, recent: q ? [] : recentFor() });
     show();
   };
   const quickMenu = () => {
@@ -263,6 +291,8 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
           ))}
         </>}
         {rows && !rows.quick && <>
+          {rows.recent && rows.recent.length > 0 && <div class="grp">{t('recentOnly')}</div>}
+          {(rows.recent || []).map((v) => <RecentRow v={v} onOpen={openRecent} />)}
           {rows.lines.length > 0 && <div class="grp">{rows.near && search.lineFilter.value === 'all' ? t('linesNear') : t('grpLines')}</div>}
           {rows.lines.map((g) => <LineRow key={g.key} g={g} onLine={(r) => { open.value = false; onLine?.(r); }} />)}
           {rows.stops && rows.stops.length > 0 && <div class="grp">{rows.near ? (search.stopFilter.value === 'rail' ? t('stationsAll') : search.stopFilter.value === 'lrt' ? t('stationsLrt') : t('stopsNear')) : t('grpStops')}</div>}
@@ -277,7 +307,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
               </button>
             );
           })}
-          {!rows.results.length && !rows.lines.length && !(rows.stops && rows.stops.length) && <button type="button" disabled>{lineKind ? (rows.near ? t('linesHint') : t('lineNoMatch')) : stopKind ? (rows.near ? t('stopsHint') : t('noMatch')) : rows.placesLoaded ? t('noMatch') : t('placesPending')}</button>}
+          {!rows.results.length && !rows.lines.length && !(rows.stops && rows.stops.length) && !(rows.recent && rows.recent.length) && <button type="button" disabled>{lineKind ? (rows.near ? t('linesHint') : t('lineNoMatch')) : stopKind ? (rows.near ? t('stopsHint') : t('noMatch')) : rows.placesLoaded ? t('noMatch') : t('placesPending')}</button>}
         </>}
       </div>
     </div>
