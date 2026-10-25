@@ -717,7 +717,9 @@ label.pilltoggle[hidden] { display: none; }
 .timetable.full { max-height: none; }
 .timetable.dim { opacity: .45; }   /* another stop's times on their way: what is shown stays, faded */
 .timetable { transition: opacity .15s; }
-.tt-more { position: sticky; bottom: -4px; display: flex; align-items: center; justify-content: center; gap: 4px; width: calc(100% + 16px); margin: 0 -8px -4px; padding: 7px 0 9px; border: 0; border-top: 1px solid var(--line); background: var(--surface); color: var(--accent-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.tt-bar { display: flex; justify-content: flex-end; margin: 6px 0 -2px; }   /* the toggle above the box: always in sight */
+.tt-more { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: 999px; padding: 5px 12px; background: var(--chip); color: var(--accent-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.tt-more.on { background: var(--accent); color: var(--accent-ink); }
 .tt-more .i { width: 16px; height: 16px; }
 /* the stops with the time chosen: the rider's stop marked, the ones before it quieter */
 .linerow .tag { display: inline-block; margin-inline-start: 6px; background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 0 5px; font-size: 11px; font-weight: 700; }

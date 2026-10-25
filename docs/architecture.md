@@ -549,7 +549,9 @@ and the line as a timetable at the rider's stop: the stop the line was
 opened from (a stop's view, a ride's boarding stop, the stop of the other
 direction), else the nearest within 3 km, else the first. The day's times
 there (worker `lineTimes`) show as a printed timetable, a row per hour,
-past ones grey and the next one marked; a tap on a time fills the stop list
+past ones grey and the next one marked, a few hours tall around the next
+one or the whole day with "All day" above it (above, since under a box
+reaching past the half-open sheet it went unseen); a tap on a time fills the stop list
 with that trip's time at every stop and how many minutes before or after
 the rider's stop. A tap on a stop row makes it the rider's stop. Line chips
 everywhere (stop cards, a stop's lines, a ride in a journey, a vehicle

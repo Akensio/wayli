@@ -1185,3 +1185,6 @@ so they are not re-litigated.
   A train's shown time at a station is now when it pulls in, and its delay
   is against the arrival, not after its stand. Typical miss on the two
   mornings 2.6 -> 2.1 and 1.9 -> 1.9 minutes; the timetable alone 3.1 and 1.6.
+- 2026-10-25: Gadi: the timetable should expand (he had not found the "All
+  day" button: it was under the box, below the half-open sheet's edge). The
+  toggle is now a chip above the box, in sight whenever the times are.
