@@ -15,6 +15,9 @@ const two = (n: number) => String(n).padStart(2, '0');
 export function Timetable({ rows, now, sel, onPick, dim = false }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [full, setFull] = useState(false);
+  // closed again for every new set of times (another stop, line or ride): the same component stays mounted, and kept the
+  // whole day open across them
+  useLayoutEffect(() => { setFull(false); }, [rows]);
   const next = now == null ? null : rows.find((r) => r.dep >= now - 30) || null;
   // the hours of the day in order (a night's 24:10 is the next day's 00, after 23)
   const hours: { h: number; rows: TimeRow[] }[] = [];
