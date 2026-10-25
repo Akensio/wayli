@@ -161,7 +161,12 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 .rtabs .chipbtn .i { width: 16px; height: 16px; }
 .rtabs .chipbtn.on { background: var(--ink); color: var(--bg); }
 .rtabs .chipbtn .n { font-size: 11px; font-weight: 700; opacity: .7; margin-inline-start: 2px; }
-.sec .secstar { width: 14px; height: 14px; color: var(--warn); margin-inline-end: 5px; vertical-align: -2px; }
+.rsubs { display: flex; gap: 18px; margin: 4px 2px 2px; border-bottom: 1px solid var(--line); }
+.rsubs button { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 8px 0 7px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--ink-2); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.rsubs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+.rsubs .n { font-size: 11px; font-weight: 700; opacity: .7; }
+.rsubs .secstar, .sec .secstar { width: 14px; height: 14px; color: var(--warn); margin-inline-end: 5px; vertical-align: -2px; }
+.rsubs .secstar { margin-inline-end: 0; }
 .recent { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
 .recent .ic { color: var(--ink-2); } .recent .txt { flex: 1; min-width: 0; } .recent .txt small { display: block; color: var(--ink-2); font-size: 12px; }
 .recent .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -394,7 +399,7 @@ body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating
 @keyframes popOut { to { opacity: 0; scale: .5; } }
 @keyframes unfold { from { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-8px); } to { clip-path: inset(0 round 18px); } }
 @keyframes fold { from { clip-path: inset(0 round 18px); } to { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-6px); } }
-@media (prefers-reduced-motion: reduce) { .topbar *, .topbar .trow, #sumRow, .pair #barBack, .pair #swap { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .topbar *, .topbar .trow, #sumRow, .pair #barBack, .pair #swap { animation: none !important; transition: none; } }
 /* the menu at the start of the pill (the side the drawer comes from), the app's logo at its end (a tap starts a search) */
 .applogo { position: absolute; inset-inline-end: 7px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
 .applogo .logo { width: 100%; height: 100%; display: block; }
@@ -513,8 +518,8 @@ body:not(.booted) .drawer { transition: none; }   /* no slide across the screen 
 .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + 6px) !important; transition: bottom .25s; }
 /* pages: a map-less screen takes the whole screen; the sheet is the page, with a header of its own */
 body.page .sheet { height: 100% !important; transform: none !important; border-radius: 0; box-shadow: none; transition: none; }
-body.page .sheet-body { flex: 1; height: auto !important; }
-body.page #topbar, body.page .floating, body.page .livenote, body.page .handle, body.page .maplibregl-ctrl-bottom-right, body.page .maplibregl-ctrl-bottom-left { display: none !important; }
+body.page .sheet-body { flex: 1; height: auto; }
+body.page #topbar, body.page .floating, body.page .livenote, body.page .handle, body.page .maplibregl-ctrl-bottom-right, body.page .maplibregl-ctrl-bottom-left { display: none; }
 .pagehead { display: none; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px; border-bottom: 1px solid var(--line); flex: none; }
 body.page .pagehead { display: flex; }
 .pagehead h2 { margin: 0; font-size: 18px; flex: 1; }
@@ -705,7 +710,7 @@ label.pilltoggle[hidden] { display: none; }
 .rideopts { margin-top: 4px; } .rideopts .trainrow { padding: 8px 2px; } .rideopts .trainrow .time { font-size: 15px; } .rideopts .chip { font-size: 12px; padding: 1px 6px; }
 #trainsTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* a part going away as its layout changes (ui/flip): a still copy that fades where it was; its entrances do not replay */
-.flip-ghost, .flip-ghost * { animation: none !important; transition: none !important; }
+.flip-ghost, .flip-ghost * { animation: none !important; transition: none; }
 .est { color: var(--warn); }
 .journey .top .est { font-weight: 700; margin-inline-end: 2px; }
 .dep .head small.est { display: block; font-size: 11px; }

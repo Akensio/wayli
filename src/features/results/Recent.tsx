@@ -1,7 +1,9 @@
 // The history under the bar while there are no results, in three tabs (trips, lines, stops) that follow the bar's kind
-// and switch on their own: in each what was saved, then what came lately. Trips have two histories, the searches (a tap
-// plans the same trip from now) and the ways opened; for a line or a stop searching it and opening it are the same act,
-// so one list: the lines opened, the stops and stations opened with the trains looked up between two stations.
+// and switch on their own, each with a second level: trips are the ways opened, the searches (a tap plans the same trip
+// from now) and the saved; for a line or a stop searching it and opening it are the same act, so the recent (the lines
+// opened; the stops and stations opened with the trains looked up between two stations) and the saved. Each level opens
+// on the first list with something in it, the rider's choice kept for the session.
+import { signal } from '@preact/signals';
 import { Icon } from '../../ui/Icon';
 import { placeName, named } from '../../state/names';
 import { FromTo } from '../../ui/FromTo';
@@ -65,8 +67,15 @@ function ViewRow({ v }: { v: View }) {
 
 type SavedTrip = { from: Recent['from']; to: Recent['to']; bike: string; folding?: boolean };
 type SavedStop = { name: string; city?: string; code?: string; lat: number; lon: number };
+type Tab = 'trip' | 'line' | 'stop';
 const TABS = [{ k: 'trip', icon: 'route', label: 'kindTrip' }, { k: 'line', icon: 'bus', label: 'kindLine' }, { k: 'stop', icon: 'pin', label: 'kindStopSearch' }] as const;
-const Sec = ({ title, saved = false }: { title: string; saved?: boolean }) => <h2 class="sec">{saved && <Icon name="star" class="secstar" />}{title}</h2>;
+// the second level: what was opened comes first, as it is what is usually wanted again
+const SUBS: Record<Tab, { k: string; label: string; empty: string }[]> = {
+  trip: [{ k: 'opened', label: 'subOpened', empty: 'recentNone' }, { k: 'searched', label: 'subSearched', empty: 'recentNone' }, { k: 'saved', label: 'savedTitle', empty: 'favEmptyTrips' }],
+  line: [{ k: 'recent', label: 'recentOnly', empty: 'recentNone' }, { k: 'saved', label: 'savedTitle', empty: 'favEmptyLines' }],
+  stop: [{ k: 'recent', label: 'recentOnly', empty: 'recentNone' }, { k: 'saved', label: 'savedTitle', empty: 'favEmptyStops' }],
+};
+const sub = signal<Partial<Record<Tab, string>>>({});   // the rider's choice per tab, for the session
 
 export function Recent() {
   void lang.value; void results.recentTick.value; void nav.key.value;   // the history grows while a panel is open
@@ -75,62 +84,61 @@ export function Recent() {
   const savedTrips = Object.values(favs.get('trips') as Record<string, SavedTrip>);
   const savedLines = Object.values(favs.get('lines') as Record<string, View>);
   const savedStops = Object.values(favs.get('stops') as Record<string, SavedStop>);
-  // what is saved is listed once, under Saved, not again among the recent
-  const ends = (x: { from: { name: string }; to: { name: string } }) => `${x.from.name}|${x.to.name}`;
-  const savedEnds = new Set(savedTrips.map(ends)), savedRefs = new Set(savedLines.map((v) => (v.type === 'line' ? v.ref : ''))), savedCodes = new Set(savedStops.map((x) => x.code || x.name));
-  const searches = (recentTrips.list() as Recent[]).filter((r) => !savedEnds.has(ends(r))).slice(0, 5);
-  const ways = views.filter((v) => v.type === 'trip').slice(0, 5);
-  const lines = views.filter((v) => v.type === 'line' && !savedRefs.has(v.ref)).slice(0, 10);
+  const searches = (recentTrips.list() as Recent[]).slice(0, 8);
+  const ways = views.filter((v) => v.type === 'trip').slice(0, 8);
+  const lines = views.filter((v) => v.type === 'line').slice(0, 10);
   // the train timetable (two stations at the top) keeps to stations and the trains between them
-  const stops = views.filter((v) => (pair ? v.type === 'trains' || v.type === 'station' : v.type === 'stop' || v.type === 'station' || v.type === 'trains'))
-    .filter((v) => v.type !== 'stop' || !savedCodes.has(v.code || v.name)).slice(0, 10);
-  const count = { trip: savedTrips.length + searches.length + ways.length, line: savedLines.length + lines.length, stop: savedStops.length + stops.length };
-  const hidden = results.showing.value || !(count.trip + count.line + count.stop);
+  const stops = views.filter((v) => (pair ? v.type === 'trains' || v.type === 'station' : v.type === 'stop' || v.type === 'station' || v.type === 'trains')).slice(0, 10);
+  const n: Record<Tab, Record<string, number>> = {
+    trip: { opened: ways.length, searched: searches.length, saved: savedTrips.length },
+    line: { recent: lines.length, saved: savedLines.length },
+    stop: { recent: stops.length, saved: savedStops.length },
+  };
+  const total = (k: Tab) => Object.values(n[k]).reduce((a, b) => a + b, 0);
+  const hidden = results.showing.value || !(total('trip') + total('line') + total('stop'));
+  // the sub-tab chosen, else the first with something in it
+  const cur = sub.value[tab] ?? (SUBS[tab].find((x) => n[tab][x.k] > 0) ?? SUBS[tab][0]).k;
+  const curSub = SUBS[tab].find((x) => x.k === cur)!;
   const replan = (r: Recent | SavedTrip) => results.hooks.replan({ ...(r as Recent), from: named(r.from), to: named(r.to), at: (r as Recent).time || (r as Recent).at || '', day: (r as Recent).day || '', arriveBy: !!(r as Recent).arriveBy });
+  const list = `${tab}:${cur}`;
   return (
     <div id="recentBox" hidden={hidden}>
       <div class="rtabs" role="tablist">
         {TABS.map((x) => (
           <button type="button" role="tab" aria-selected={tab === x.k} class={`chipbtn${tab === x.k ? ' on' : ''}`} data-tab={x.k} onClick={() => { results.recentTab.value = x.k; }}>
-            <Icon name={x.icon} />{t(x.label)}{count[x.k] > 0 && <small class="n">{count[x.k]}</small>}
+            <Icon name={x.icon} />{t(x.label)}{total(x.k) > 0 && <small class="n">{total(x.k)}</small>}
           </button>
         ))}
       </div>
-      {tab === 'trip' && <>
-        {savedTrips.length > 0 && <Sec title={t('savedTitle')} saved />}
-        {savedTrips.map((v) => (
-          <div class="recent" onClick={() => replan(v)}>
-            <span class="ic"><Icon name="star" /></span>
-            <span class="txt"><span class="name"><FromTo from={placeName(v.from)} to={placeName(v.to)} /></span>
-              <small>{v.bike && v.bike !== 'none' ? <><Icon name="bike" /> {t(v.bike === 'along' ? 'bikeAlong' : 'bikePark')}</> : t('bikeNone')}</small></span>
-          </div>
+      <div class="rsubs" role="tablist">
+        {SUBS[tab].map((x) => (
+          <button type="button" role="tab" aria-selected={cur === x.k} class={cur === x.k ? 'on' : ''} data-sub={x.k} onClick={() => { sub.value = { ...sub.value, [tab]: x.k }; }}>
+            {x.k === 'saved' && <Icon name="star" class="secstar" />}{t(x.label)}{n[tab][x.k] > 0 && <small class="n">{n[tab][x.k]}</small>}
+          </button>
         ))}
-        {searches.length > 0 && <Sec title={t('recentTitle')} />}
-        {searches.map((r) => (
-          <div class="recent" onClick={() => replan(r)}>
-            <span class="ic"><Icon name="history" /></span>
-            <span class="txt">
-              <span class="name"><FromTo from={placeName(r.from)} to={placeName(r.to)} /></span>
-              <small>{whenText(r.day, r.time)}{r.bike && r.bike !== 'none' && <> · <Icon name="bike" /></>}{r.arriveBy ? ' · ' + t('arriveBy') : ''}</small>
-            </span>
-          </div>
-        ))}
-        {ways.length > 0 && <Sec title={t('openedWays')} />}
-        {ways.map((v) => <ViewRow v={v} />)}
-      </>}
-      {tab === 'line' && <>
-        {savedLines.length > 0 && <Sec title={t('savedTitle')} saved />}
-        {savedLines.map((v) => <ViewRow v={v} />)}
-        {lines.length > 0 && <Sec title={t('recentOnly')} />}
-        {lines.map((v) => <ViewRow v={v} />)}
-      </>}
-      {tab === 'stop' && <>
-        {savedStops.length > 0 && <Sec title={t('savedTitle')} saved />}
-        {savedStops.map((s) => <ViewRow v={{ type: 'stop', code: s.code || '', name: s.name, city: s.city, lat: s.lat, lon: s.lon }} />)}
-        {stops.length > 0 && <Sec title={t('recentOnly')} />}
-        {stops.map((v) => <ViewRow v={v} />)}
-      </>}
-      {!count[tab] && <div class="empty">{t('recentNone')}</div>}
+      </div>
+      {list === 'trip:saved' && savedTrips.map((v) => (
+        <div class="recent" onClick={() => replan(v)}>
+          <span class="ic"><Icon name="star" /></span>
+          <span class="txt"><span class="name"><FromTo from={placeName(v.from)} to={placeName(v.to)} /></span>
+            <small>{v.bike && v.bike !== 'none' ? <><Icon name="bike" /> {t(v.bike === 'along' ? 'bikeAlong' : 'bikePark')}</> : t('bikeNone')}</small></span>
+        </div>
+      ))}
+      {list === 'trip:searched' && searches.map((r) => (
+        <div class="recent" onClick={() => replan(r)}>
+          <span class="ic"><Icon name="history" /></span>
+          <span class="txt">
+            <span class="name"><FromTo from={placeName(r.from)} to={placeName(r.to)} /></span>
+            <small>{whenText(r.day, r.time)}{r.bike && r.bike !== 'none' && <> · <Icon name="bike" /></>}{r.arriveBy ? ' · ' + t('arriveBy') : ''}</small>
+          </span>
+        </div>
+      ))}
+      {list === 'trip:opened' && ways.map((v) => <ViewRow v={v} />)}
+      {list === 'line:saved' && savedLines.map((v) => <ViewRow v={v} />)}
+      {list === 'line:recent' && lines.map((v) => <ViewRow v={v} />)}
+      {list === 'stop:saved' && savedStops.map((s) => <ViewRow v={{ type: 'stop', code: s.code || '', name: s.name, city: s.city, lat: s.lat, lon: s.lon }} />)}
+      {list === 'stop:recent' && stops.map((v) => <ViewRow v={v} />)}
+      {!n[tab][cur] && <div class="empty">{t(curSub.empty)}</div>}
     </div>
   );
 }
