@@ -5,12 +5,12 @@ import { t, lang } from '../../lib/i18n';
 import * as nav from '../../state/nav';
 import * as sheet from '../../state/sheet';
 import { PlanScreen } from '../results/PlanScreen';
-import { Saved } from '../pages/Saved';
+import { Saved } from '../saved/Saved';
 import { Detail } from '../detail/Detail';
-import { StopDetail } from '../pages/StopDetail';
-import { LineDetail } from '../pages/LineDetail';
-import { TrainTimes } from '../pages/TrainTimes';
-import { Chooser } from '../pages/Chooser';
+import { StopDetail } from '../stop/StopDetail';
+import { LineDetail } from '../line/LineDetail';
+import { TrainTimes } from '../station/TrainTimes';
+import { Chooser } from '../chooser/Chooser';
 import { Follow } from '../follow/Follow';
 
 export function Sheet() {

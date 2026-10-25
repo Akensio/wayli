@@ -11,10 +11,10 @@ import { installRipple } from './widgets/ripple';
 import { TopBar } from './views/topbar/TopBar';
 import { Floating, PickBar, LiveNote, Menus } from './views/shell/Floating';
 import { Sheet } from './views/shell/Sheet';
-import { Drawer } from './views/pages/Drawer';
-import { SettingsPage } from './views/pages/SettingsPage';
-import { attachSheetGestures } from './views/sheet/gestures';
-import { attachBarPull } from './views/sheet/pullRefresh';
+import { Drawer } from './views/menu/Drawer';
+import { SettingsPage } from './views/settings/SettingsPage';
+import { attachSheetGestures } from './views/shell/gestures';
+import { attachBarPull } from './views/shell/pullRefresh';
 import * as sheet from './state/sheet';
 
 const el = (id: string) => document.getElementById(id)!;

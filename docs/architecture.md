@@ -174,9 +174,12 @@ the app).
   `alerts`, `lang`, `status`, `shell` (install, online, the drawer's
   actions, what closing each panel stops).
 - `views/`: the parts of the screen, Preact components drawing from the
-  state modules only (`topbar/`, `results/`, `detail/`, `follow/`,
-  `pages/`, `shell/` the sheet with every panel, the floating pills, the
-  pick bar; `sheet/` the gestures and the pull to refresh).
+  state modules only, a folder per feature named as in `state/` and
+  `controllers/`: `topbar/`, `results/`, `detail/`, `follow/`, `stop/`,
+  `line/`, `station/` (the trains between two stations), `saved/`,
+  `settings/`, `menu/`, `chooser/`, and `shell/` (the sheet with every
+  panel, the floating pills, the pick bar, the gestures and the pull to
+  refresh).
 - `widgets/`: the small pieces several views share (icons, line chips, the
   timetable, the close-all X, the toast, the ripple, the swipe to close,
   HTML escaping). A view is a place on the screen; a widget has no place
