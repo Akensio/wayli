@@ -153,8 +153,9 @@ the app).
   `raptor.js` and `streets.js` (the router and the street graph),
   `places.js` (the address book), `clock.js` (Israel time), `feed.js` (the
   live vehicles), `delays.js` (delay estimates), `follow.js` (the
-  trip-following state machine), `geo.js` (distances) and `modes.js` (what
-  runs a line).
+  trip-following state machine), `geo.js` (distances, and where a point is
+  along a trip), `modes.js` (what runs a line), `container.js` (reading the
+  data files) and `text.js` (how the searches compare names).
 - `worker/`: the data worker (it holds the data and answers every query, so
   the UI never blocks), a module per kind of question (`data`, `search`,
   `plan`, `stops`, `lines`, `trips`, `courses`, `vehicles`, `traffic`, with
@@ -174,8 +175,9 @@ the app).
   only place that fills in the `hooks`: `loading` (the manifest, a day's
   timetable, the other data files), `planner` (planning, a destination from
   anywhere, the last search, clearing), `detail`, `stop`, `line`, `station`
-  (each page's worker calls and live polls; `liverides` the live times of
-  rides between two stops), `follow` (the trip being followed: the position
+  (each page's worker calls and live polls; `livepoll` a panel's live times
+  every 45 s while it is open; `liverides` the live times of rides between
+  two stops), `follow` (the trip being followed: the position
   watch, the timers, the live vehicle, the re-planning, the resume bar),
   `alerts`, `lang`, `status`, `shell` (install, online, the drawer's
   actions, what closing each panel stops).
@@ -209,7 +211,8 @@ the app).
   English names, sharing, the pay link.
 - `lib/`: used everywhere: `i18n.ts` (every string in Hebrew and English),
   `time.ts`, `store.js` (settings, history, saved places and the trip in
-  progress, all in localStorage).
+  progress, all in localStorage; every write bumps its `stored` signal, which
+  the pages showing what it keeps read).
 - `types/` (global declarations), `public/` (manifest, icons).
 
 Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap
@@ -747,10 +750,12 @@ field, the summary box, the chips and the Go button.
 Not yet: crowd reports, Arabic (the data format carries it, the interface
 does not), the bike-on-board rules for light rail, fares.
 
-## Compact timetable (format 2, built by `pipeline/compile.py`)
+## Compact timetable (format 3, built by `pipeline/compile.py`)
 
-One file per service day, gzipped: a u32 header length, a JSON header, then
-little-endian typed arrays the app views in place:
+One file per service day, in the container every data file comes in
+(`pipeline/container.py` writes it, `src/engine/container.js` reads it),
+gzipped: a u32 header length, a JSON header, then little-endian typed arrays
+the app views in place:
 
 - header: feed dates, counts, the section table, routes (line number, long
   name, operator, type, GTFS route id, line code from route_desc), stops
@@ -791,6 +796,9 @@ station's platforms into one result.
 
 ## Pipeline
 
+- Shared by the scripts: `pipeline/container.py` (the data files' container)
+  and `pipeline/common.py` (the log line, GTFS reading, Israel's UTC offset,
+  distances).
 - Source: Israel Ministry of Transport GTFS, published daily at
   gtfs.mot.gov.il (`israel-public-transportation.zip`). Data terms still to
   be checked.
