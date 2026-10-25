@@ -134,10 +134,16 @@ export function TopBar() {
       <div class="trow" id="sumRow" hidden={!sum}>
         <div class="sumbox">
           <button type="button" class="sumtxt" id="sumEdit" onClick={() => { search.barOpen.value = true; }}>
-            <span class="l1" id="sumTo"><span class="tag">{t('tagTo')}</span>{search.to.value ? placeName(search.to.value) : search.toText.value}</span>
-            <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.from.value ? placeName(search.from.value) : (search.fromText.value || t('myLoc'))}<span class="sep">·</span><TimeChipInner /><span class="sep">·</span><BikeChipInner /></span>
+            {pair ? <>
+              {/* the trains between two stations, as a trip's summary: To above, From and the kind of train below */}
+              <span class="l1" id="sumTo"><span class="tag">{t('tagTo')}</span>{search.stToText.value}</span>
+              <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.stFromText.value}<span class="sep">·</span><Icon name={search.pairMode.value === 'lrt' ? 'tram' : 'train'} />{t(search.pairMode.value === 'lrt' ? 'fLrt' : 'fRail')}</span>
+            </> : <>
+              <span class="l1" id="sumTo"><span class="tag">{t('tagTo')}</span>{search.to.value ? placeName(search.to.value) : search.toText.value}</span>
+              <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.from.value ? placeName(search.from.value) : (search.fromText.value || t('myLoc'))}<span class="sep">·</span><TimeChipInner /><span class="sep">·</span><BikeChipInner /></span>
+            </>}
           </button>
-          <button type="button" class="clearbtn" id="sumClear" aria-label={t('clearText')} onClick={search.hooks.clearPlan}><Icon name="close" /></button>
+          <button type="button" class="clearbtn" id="sumClear" aria-label={t('clearText')} onClick={pair ? search.hooks.endStations : search.hooks.clearPlan}><Icon name="close" /></button>
         </div>
       </div>
       <div class="trow opts lfilters keepdrop" onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) e.preventDefault(); }} id="lineRow" data-flip={`chips-${kind}`} key={kind} hidden={!edit || !line} role="tablist" aria-label={t('lineModes')}>

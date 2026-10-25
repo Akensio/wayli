@@ -235,7 +235,10 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
     focusedAt.current = Date.now(); focused.value = true;
     onFocusProp?.();
     if (place.value?.transient) text.value = '';
-    else inputRef.current?.select();   // the quick entries first, whatever is in the box; typing replaces it
+    else {   // the caret at the end of what is there (after the tap has placed it), the text not selected (Gadi)
+      const el = inputRef.current;
+      if (el) setTimeout(() => { if (document.activeElement === el) { const n = el.value.length; el.setSelectionRange(n, n); } }, 0);
+    }
     quickMenu();
   };
   const onBlur = () => setTimeout(() => {

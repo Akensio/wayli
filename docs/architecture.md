@@ -245,7 +245,8 @@ time and bike chips and the Go button, with the origin prefilled as "my
 location" (resolved when the plan is made; typing or the menu replaces it)
 and the menu button out of the way; and, once a plan is made, one summary box (to, then from, time
 and bike on a second line) that a tap reopens into the rows and a map tap
-folds back. The suggestion list while typing hangs below all the rows, so
+folds back. A box focused with text in it puts the caret at the end, the
+text not selected (Gadi: editing it is more common than replacing it). The suggestion list while typing hangs below all the rows, so
 it never covers the other field. A bottom sheet with three heights (a
 strip, about half the screen, nearly full; it is always its full height
 and slides by a composited transform, so the slide and the snap run on the
@@ -595,7 +596,11 @@ where its trains go (`stationReach`: the next train there and how long it
 takes, today's count; a tap sets To); with both, the direct trains between
 them (`trainsBetween`): leave, arrive, how long, stops, where the train
 heads, live times for the next ones from one request for every train, a
-tap opening the train's stops. Connections stay with the trip search.
+tap opening the train's stops. The map draws the next train's course
+(worker `rideCourses`) with the stations it calls at, the other ways the
+trains take faint under it, and only these trains live; the bar folds to
+a summary like a trip's (To, then From and the kind), a tap reopening the
+two boxes and its X ending the search. Connections stay with the trip search.
 Leaving the search (a stop or line picked from the list, back, a map tap),
 the rows play out: the ones that go also give up their height as they do,
 so the bar shrinks in step with the sheet's slide, and the kind row is as

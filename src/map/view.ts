@@ -10,7 +10,7 @@ export type Draw =
   | 'journey'   // one way, its stops; with `context`, the whole lines of its rides faint around it
   | 'line'      // a line's course and every stop of it
   | 'stop'      // a stop's pin; with `context`, the courses of the lines calling there, faint
-  | 'pair'      // two stations' pins (the trains between them)
+  | 'pair'      // the trains between two stations: the next one's course with its stations, other courses faint
   | 'ring';     // the stops near the rider, inside a ring
 /** Where the camera goes: stays, fits what is drawn (or the focused ride), or centres on a point. */
 type Camera = 'keep' | 'fit' | 'focus' | 'point';
@@ -30,7 +30,7 @@ export function viewFor(s: Sheet): View {
     case 'follow': return { draw: 'journey', context: false, camera: 'fit', maxZoom: 16, live: 'own' };
     case 'lineDetail': return { draw: 'line', context: false, camera: 'fit', maxZoom: 15, live: 'own' };
     case 'stopDetail': return { draw: 'stop', context: true, camera: 'point', maxZoom: 15, live: 'stop' };
-    case 'trainTimes': return { draw: 'pair', context: false, camera: 'fit', maxZoom: 13, live: 'near' };
+    case 'trainTimes': return { draw: 'pair', context: false, camera: 'fit', maxZoom: 13, live: 'stop' };
     case 'screen-nearby': return { draw: 'ring', context: false, camera: 'fit', maxZoom: 16, live: 'near' };
     case 'picker': return { ...REST, live: 'none' };   // choosing a point: the map alone
     default: return REST;                              // pages over everything, the place chooser

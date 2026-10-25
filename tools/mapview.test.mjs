@@ -21,8 +21,8 @@ assert.equal(v('lineDetail').draw, 'line'); assert.equal(v('lineDetail').live, '
 assert.deepEqual(v('stopDetail'), { draw: 'stop', context: true, camera: 'point', maxZoom: 15, live: 'stop' });
 // stops near me: the ring, fitted
 assert.equal(v('screen-nearby').draw, 'ring'); assert.equal(v('screen-nearby').camera, 'fit');
-// the trains between two stations: both pins, fitted
-assert.equal(v('trainTimes').draw, 'pair');
+// the trains between two stations: their courses, fitted, only their vehicles
+assert.equal(v('trainTimes').draw, 'pair'); assert.equal(v('trainTimes').live, 'stop');
 // choosing a point: the map alone, no vehicles; pages and anything else: the camera stays
 assert.equal(v('picker').live, 'none'); assert.equal(v('picker').draw, 'nothing');
 for (const k of ['screen-saved', 'chooser', 'whatever']) { assert.equal(v(k).draw, 'nothing'); assert.equal(v(k).camera, 'keep'); }

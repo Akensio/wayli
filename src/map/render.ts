@@ -18,6 +18,7 @@ import * as stopPage from '../state/stop';
 import * as station from '../state/station';
 import { lastPos } from '../state/position';
 import type { Journey } from '../journey/types';
+import type { TrainRow } from '../state/station';
 import { state, markers, EMPTY, stale, stopKindProp } from './shared';
 import { ensureJourneyLayers, drawJourney, withCourses, boundsOf } from './layers';
 import { applyLiveShow, setStopLines } from './live';
@@ -145,12 +146,34 @@ const RECIPES: Record<View['draw'], Recipe> = {
     if (v.context) stopCourses(m, seq, info.stop, info.stops && info.stops.length ? info.stops : [info.stop]);
     return { point: [info.lon, info.lat], id: `${info.stop}|${(info.stops || []).join(',')}` };
   },
-  /** The trains between two stations: both pins. */
-  pair: (m) => {
+  /** The trains between two stations: the next one's course in its colour with the stations it calls at, the other
+   *  ways the trains take faint under it (a train that calls at more stations, or goes round), and only their vehicles.
+   *  Both pins until the trains are known. */
+  pair: async (m, _v, seq) => {
     const p = station.pair.value;
     if (!p) return null;
-    pin(m, p.from.lon, p.from.lat); pin(m, p.to.lon, p.to.lat);
-    return { bounds: new maplibregl.LngLatBounds([p.from.lon, p.from.lat], [p.from.lon, p.from.lat]).extend([p.to.lon, p.to.lat]), id: `${p.from.name}|${p.to.name}` };
+    const b = new maplibregl.LngLatBounds([p.from.lon, p.from.lat], [p.from.lon, p.from.lat]).extend([p.to.lon, p.to.lat]);
+    const rows = station.trains.value;
+    setStopLines([...new Set((rows || []).map((r) => r.routeId).filter((x) => x != null).map(String))]);
+    const ways = new Map<string, TrainRow>();
+    for (const r of (rows || []).slice(0, 24)) { const k = `${r.pattern}|${r.boardPos}|${r.alightPos}`; if (!ways.has(k)) ways.set(k, r); }
+    const legs = [...ways.values()];
+    let courses: { path: [number, number][]; stops: { lat: number; lon: number; stop: number }[] }[] = [];
+    if (legs.length) courses = await call<typeof courses>('rideCourses', { legs: legs.map((r) => ({ pattern: r.pattern, boardPos: r.boardPos, alightPos: r.alightPos })) }).catch(() => []);
+    if (stale(seq)) return null;
+    if (!courses.length) { pin(m, p.from.lon, p.from.lat); pin(m, p.to.lon, p.to.lat); return { bounds: b, id: `${p.from.name}|${p.to.name}` }; }
+    const next = legs[0], c0 = courses[0];
+    const ride: Journey = { depart: 0, arrive: 0, transfers: 0, legs: [{ type: 'ride', seconds: 0, routeType: next.routeType, agency: next.agency, path: c0.path, pattern: null, stopsAlong: c0.stops } as any] };
+    b.extend(drawJourney(m, ride, markers.journey, -1, false));
+    const color = routeColor(next.routeType, next.agency), lines: GeoJSON.Feature[] = [], dots: GeoJSON.Feature[] = [], seen = new Set(c0.stops.map((s) => s.stop));
+    courses.slice(1).forEach((c) => {
+      lines.push({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: c.path.map((q) => [q[1], q[0]]) } });
+      for (const s of c.stops) if (!seen.has(s.stop)) { seen.add(s.stop); dots.push({ type: 'Feature', properties: { color, stop: s.stop, ...stopKindProp(s.stop) }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } }); }
+      for (const q of c.path) b.extend([q[1], q[0]]);
+    });
+    setData(m, 'context', { type: 'FeatureCollection', features: lines });
+    setData(m, 'context-stops', { type: 'FeatureCollection', features: dots });
+    return { bounds: b, id: `${p.from.name}|${p.to.name}|course` };
   },
   /** The stops near the rider, inside a ring out to the farthest listed. */
   ring: (m) => {

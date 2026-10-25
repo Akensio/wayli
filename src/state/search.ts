@@ -78,9 +78,11 @@ effect(() => {
   wasOpen = open;
 });
 
-/** The bar's three looks: the prompt pill, the two rows with options, or the summary of a plan. */
+/** The bar's three looks: the prompt pill, the two rows with options, or the summary of a plan (or of the trains between
+ *  two stations, once both are set). */
 export const mode = computed<'rest' | 'edit' | 'summary'>(() => {
-  const has = kind.value === 'trip' && !!(to.value || (from.value && !from.value.auto));   // the line and stop searches rest as a pill
+  // the line and stop searches rest as a pill, but for the two stations of a train timetable
+  const has = kind.value === 'trip' ? !!(to.value || (from.value && !from.value.auto)) : railPair.value && !!stFrom.value && !!stTo.value;
   if (barOpen.value || leaving.value) return 'edit';
   return has ? 'summary' : 'rest';
 });
@@ -99,7 +101,8 @@ export const hooks = {
   chooseStation: (_side: Side, _g: StopGroup) => {},
   swapStations: () => {},
   openLine: (_r: any) => {},
-  openRecent: (_v: View) => {},   // a recent line, stop or station from the list under the box
+  openRecent: (_v: View) => {},
+  endStations: () => {},          // the X of the two stations' summary: back to the trip pill   // a recent line, stop or station from the list under the box
   kindChanged: (_k: Kind) => {},   // the line and stop searches are a step back can undo
   getPosition: async (): Promise<{ lat: number; lon: number }> => { throw new Error('no location'); },
   pickOnMap: async (_start: Place | null): Promise<Place | null> => null,

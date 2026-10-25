@@ -909,6 +909,14 @@ const ops = {
   streetPaths({ legs }) { return legs.map((l) => streetPath(l.from, l.to, l.mode)); },
   /** Courses for ride legs planned before the shapes were loaded: null where there is none. */
   ridePaths({ legs }) { return legs.map((l) => ridePath(l.pattern, l.boardPos, l.alightPos)); },
+  /** Rides as the map draws them: each one's course from where it is boarded to where it is left, and its stops. */
+  rideCourses({ legs }) {
+    return legs.map((l) => {
+      const o = tt.patStopsOff[l.pattern], stops = [];
+      for (let i = l.boardPos; i <= l.alightPos; i++) { const st = tt.patStops[o + i]; stops.push({ lat: tt.stopLat[st], lon: tt.stopLon[st], stop: st }); }
+      return { path: ridePath(l.pattern, l.boardPos, l.alightPos) || stops.map((x) => [x.lat, x.lon]), stops };
+    });
+  },
   /** The whole course of each pattern and all its stops, for drawing a line around a ride. */
   patternCourse({ patterns }) {
     return patterns.map((p) => {
@@ -1131,7 +1139,7 @@ const ops = {
           const base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns, dep = tt.dep[base + pos];
           if (dep < fromTime || seen.has(t)) continue;
           seen.add(t);
-          out.push({ trip: t, dep, arr: tt.arr[base + j], stops: j - pos, boardPos: pos, alightPos: j, line: routeLabel(r), routeType: r[3], agency: r[2], routeId: liveId(r), estimated: !!r[6],
+          out.push({ trip: t, pattern: p, dep, arr: tt.arr[base + j], stops: j - pos, boardPos: pos, alightPos: j, line: routeLabel(r), routeType: r[3], agency: r[2], routeId: liveId(r), estimated: !!r[6],
             headsign: headsign(tt.patRoute[p]), firstDep: tt.dep[base], fromStop: s, toStop: tt.patStops[o + j] });
         }
       }

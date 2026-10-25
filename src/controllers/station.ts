@@ -36,6 +36,7 @@ export async function openTrains(from: Station, to: Station, mode: 'rail' | 'lrt
   const rows = await call<TrainRow[]>('trainsBetween', { from: from.stops, to: to.stops, fromTime: w.from });
   if (my !== seq) return;
   st.trains.value = rows;
+  map.redrawMap(true);   // their courses and vehicles
   clearInterval(timer);
   if (w.isNow) {
     liveTrains(rows, w.day, my);
@@ -62,8 +63,14 @@ export function chooseStation(side: search.Side, g: Station): void {
   const box = side === 'from' ? search.stFrom : search.stTo, text = side === 'from' ? search.stFromText : search.stToText;
   box.value = { name: g.name, stops: g.stops, lat: g.lat, lon: g.lon }; text.value = g.name;
   const f = search.stFrom.value, to = search.stTo.value;
-  if (f && to) { openTrains(asStation(f), asStation(to)); return; }
+  if (f && to) { search.foldBar(); openTrains(asStation(f), asStation(to)); return; }   // the bar folds to its summary
   if (f) { openStation(asStation(f)); search.focusBox('toQ'); } else search.focusBox('fromQ');
+}
+/** The two stations' summary closed: their timetable goes, and the bar is the trip pill again. */
+export function endStations(): void {
+  closeTrains();
+  for (const id of ['trainTimes', 'stopDetail']) if (nav.isOpen(id)) nav.close(id);
+  search.clearStations(); search.setKind('trip'); search.foldBar();
 }
 export function swapStations(): void {
   const f = search.stFrom.value, ft = search.stFromText.value;

@@ -20,7 +20,7 @@ import type { Query, PlanResult } from '../journey/types';
 import { startDay } from './loading';
 import { openLine } from './line';
 import { openStop } from './stop';
-import { chooseStation, swapStations, openStation, openTrains } from './station';
+import { chooseStation, swapStations, openStation, openTrains, endStations } from './station';
 import { openDetail } from './detail';
 import { startTrip } from './follow';
 import { layoutTop } from './shell';
@@ -123,6 +123,7 @@ Object.assign(search.hooks, {
   openStopGroup: (g: search.StopGroup) => openStop(g.stops[0], { stops: g.stops }),   // a station too: the one stop view (the train chip is the timetable of two stations)
   chooseStation: (side: search.Side, g: search.StopGroup) => chooseStation(side, g),
   openRecent: (v: results.View) => openRecent(v),
+  endStations: () => endStations(),
   swapStations: () => swapStations(),
   openLine: (r: any) => openLine(r.route),
   getPosition: () => getPosition(),
@@ -165,7 +166,7 @@ async function openRecent(v: results.View): Promise<void> {
   if (!a || !b) { toast(t('notInDay')); return; }
   search.stFrom.value = { name: a.name, stops: a.stops, lat: a.lat, lon: a.lon }; search.stFromText.value = a.name;
   search.stTo.value = { name: b.name, stops: b.stops, lat: b.lat, lon: b.lon }; search.stToText.value = b.name;
-  openTrains(a, b, mode);
+  search.foldBar(); openTrains(a, b, mode);
 }
 /** Bring a way's card into view in the sheet's list, with a flash so the eye finds it; a collapsed sheet opens first
  *  when asked (otherwise the peek line already says which way it is). */
