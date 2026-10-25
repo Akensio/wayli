@@ -193,15 +193,22 @@ export function projectOnStops(lat, lon, stops) {
 // really takes and how the time spreads along it, and how long trains stand at each station. With it a train's
 // position says when it reaches the next station, and from there each later one: it leaves a station no earlier
 // than the timetable, after its usual stand. Sections never seen fall back to the timetable's.
-/** @type {{ s: Record<string, number[]>, d: Record<string, number>, h?: number } | null}
- *  s: "code>code" -> [run, g0..g10]; d: code -> dwell; h: seconds a late train makes up per station beyond the next */
+/** @type {{ s: Record<string, number[]>, d: Record<string, number> } | null}
+ *  s: "code>code" -> [run, g0..g10]; d: code -> dwell. (An `h`, seconds a late train was taken to make up per station,
+ *  is ignored: it made every prediction early, 2026-10-25.) */
 let railTimes = null;
 export function setRailTimes(m) { railTimes = m && m.s ? m : null; }
 const AT_STATION = 300;   // m: a train this close to a station is at it (the same in pipeline/railtimes.py)
 const section = (stops, k) => (railTimes && stops[k].code != null && stops[k + 1].code != null ? railTimes.s[`${stops[k].code}>${stops[k + 1].code}`] || null : null);
 const along = (g, x) => { const p = x * 10, i = Math.min(9, Math.floor(p)); return g[i + 1] + (g[i + 2] - g[i + 1]) * (p - i); };   // g[0] is the run
-/** A train's times from here on, from the learned sections: arrival and departure at each later station. */
-function railAhead(stops, pr, seen, lat, lon) {
+/** A train's times from here on, from the learned sections: arrival and departure at each later station. A train
+ *  without GPS (`call`) is put at the station its call names, and not as standing there now: the call names a station
+ *  from about a kilometre before it until about a kilometre before the next, so a train still named after one may
+ *  well have left it (2026-10-25: named Herzliya at 09:08, it had left at 09:04 and was on time). It reached that
+ *  station when the call first named it (`call.at`), stands its usual stand, and has not reached the next one yet:
+ *  it gets there no sooner than `call.now` plus the last kilometre (45 s). */
+const LAST_KM = 45;
+function railAhead(stops, pr, seen, lat, lon, call = null) {
   const n = stops.length, k = pr.index;
   let at = -1;
   if (metres(lat, lon, stops[k].lat, stops[k].lon) <= AT_STATION) at = k;
@@ -211,7 +218,12 @@ function railAhead(stops, pr, seen, lat, lon) {
   const stand = (j) => { const d = railTimes.d[stops[j].code]; return d != null ? d : stops[j].dep - stops[j].arr; };
   const arr = new Array(n).fill(null), dep = new Array(n).fill(null);
   let i, t, index, frac;
-  if (at >= 0) {   // standing at a station: it leaves at its time, or now if that has passed
+  if (at >= 0 && call) {   // without GPS: reached it then, stands, and is not at the next one before now + the last km
+    arr[at] = seen;
+    if (at === n - 1) return { arr, dep, index: n - 2, frac: 1, next: at };
+    dep[at] = Math.max(stops[at].dep, seen + stand(at), call.now + LAST_KM - run(at));
+    t = dep[at] + run(at); i = at + 1; index = at; frac = 0;
+  } else if (at >= 0) {   // standing at a station: it leaves at its time, or now if that has passed
     arr[at] = seen;
     if (at === n - 1) return { arr, dep, index: n - 2, frac: 1, next: at };
     dep[at] = Math.max(stops[at].dep, seen);
@@ -226,9 +238,9 @@ function railAhead(stops, pr, seen, lat, lon) {
     arr[i] = t;
     if (i === n - 1) break;
     dep[i] = Math.max(stops[i].dep, t + stand(i));
-    t = dep[i] + Math.max(run(i) / 2, run(i) - (railTimes.h || 0));
+    t = dep[i] + run(i);
   }
-  return { arr, dep, index, frac, next: at >= 0 ? at : next };
+  return { arr, dep, index, frac, next: at >= 0 ? at : next, at };
 }
 
 // ------------------------------------------------------------------ buses: learned running times
@@ -327,11 +339,23 @@ export function estimateDelay(vehicle, stops, day) {
   if (pr.metres > 600) return null;   // not on this trip's path (or a very different route shape)
   const seen = secondsOn(vehicle.recordedAt, day);
   const ageSec = (Date.now() - vehicle.recordedAt.getTime()) / 1000;
-  const ahead = (railTimes && railAhead(stops, pr, seen, vehicle.lat, vehicle.lon)) || (busTimes && busAhead(stops, pr, seen, day, vehicle.recordedAt.getTime(), vehicle.rideId));
+  // a train without GPS: when its call first named the station (or that station's time, when the change was not seen)
+  let call = null;
+  if (vehicle.callSince != null && railTimes) {
+    const k = stops.findIndex((s) => metres(s.lat, s.lon, vehicle.lat, vehicle.lon) <= AT_STATION);
+    if (k >= 0) {
+      const since = secondsOn(new Date(vehicle.callSince), day) + LAST_KM;
+      call = { at: vehicle.callSeenChange ? since : Math.min(since, stops[k].arr), now: seen };
+    }
+  }
+  const ahead = (railTimes && railAhead(stops, pr, call ? call.at : seen, vehicle.lat, vehicle.lon, call)) || (busTimes && busAhead(stops, pr, seen, day, vehicle.recordedAt.getTime(), vehicle.rideId));
   if (ahead) {
-    const j = ahead.next, last = j === stops.length - 1;
-    const delay = Math.max(-900, Math.min(5400, Math.round(last ? ahead.arr[j] - stops[j].arr : ahead.dep[j] - stops[j].dep)));
-    return { delay, index: ahead.index, frac: ahead.frac, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle, arr: ahead.arr, dep: ahead.dep };
+    // late is when it comes, against the one time the feed lists per station: arriving on time and standing its usual
+    // stand is on time (a departure-based delay made every train late by its stand, 2026-10-25); a train standing at
+    // the station already is late by when it leaves
+    const j = ahead.next, standing = ahead.at === j && j < stops.length - 1;
+    const delay = Math.max(-900, Math.min(5400, Math.round(standing ? ahead.dep[j] - stops[j].dep : ahead.arr[j] - stops[j].arr)));
+    return { delay, index: ahead.index, frac: ahead.frac, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle, arr: ahead.arr, dep: ahead.dep, at: ahead.at };
   }
   let delay;
   if (pr.index === 0 && pr.frac < 0.05) delay = Math.max(0, seen - stops[0].dep);
@@ -342,11 +366,12 @@ export function estimateDelay(vehicle, stops, day) {
   delay = Math.max(-900, Math.min(5400, Math.round(delay)));
   return { delay, index: pr.index, frac: pr.frac, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle };
 }
-/** The live time at a stop of the trip, given a delay estimate; passed when the vehicle is beyond it. */
+/** The live time at a stop of the trip, given a delay estimate; passed when the vehicle is beyond it. A train's time
+ *  is when it pulls in (the rider must be on the platform then), or when it leaves if it is standing there already. */
 export function liveAt(est, stops, stopIndex) {
   if (!est) return null;
   const passed = est.index > stopIndex || (est.index === stopIndex && est.frac > 0.2);
-  const own = est.dep ? (est.dep[stopIndex] ?? est.arr[stopIndex]) : null;   // a train's own time there
+  const own = est.dep ? (est.at === stopIndex ? est.dep[stopIndex] ?? est.arr[stopIndex] : est.arr[stopIndex] ?? est.dep[stopIndex]) : null;
   const time = own != null ? Math.round(own) : stops[stopIndex].dep + est.delay;
   return { time, delay: time - stops[stopIndex].dep, passed, stale: est.stale };
 }

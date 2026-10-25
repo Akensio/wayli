@@ -1171,3 +1171,17 @@ so they are not re-litigated.
   every export, `t()` key, class name and worker op against its uses, plus
   `tsc --noUnusedLocals`; dynamic keys (`t('sort' + …)`, `m-${mode}`) were
   checked by hand before anything went.
+- 2026-10-25: Gadi: a train shown 6 minutes late at Hashalom came on time;
+  what does the algorithm actually do? Replayed on the raw minute files the
+  relay passed him: at 09:08 the train sent no GPS, only "call: Herzliya",
+  which the app read as standing at Herzliya then and leaving late; the call
+  names a station until the train nears the next, and it had left Herzliya
+  on time at 09:04. Fixed: a train without GPS reached the named station when
+  the call first named it, and is only known not to be at the next one yet.
+  Backtested (`tools/trainbacktest.mjs`, every train every minute 07:30-10:30
+  on two mornings) the catch-up per station (h) made predictions early and
+  was dropped (rejected: keeping it, or tuning it to 10 s, on two mornings'
+  evidence; learning per section how late trains recover is the real fix).
+  A train's shown time at a station is now when it pulls in, and its delay
+  is against the arrival, not after its stand. Typical miss on the two
+  mornings 2.6 -> 2.1 and 1.9 -> 1.9 minutes; the timetable alone 3.1 and 1.6.

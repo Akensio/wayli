@@ -14,9 +14,9 @@ A ride is matched to the feed's trip by its line and scheduled start; its stops 
 
 The history is kept an hour per file in --history and fetched only where missing (Hasadna caps a request at
 15000 rows; an hour of trains is about 3500). Writes {"built", "days", "s": {"code>code": [run, g0..g10]},
-"d": {code: dwell}, "h": seconds}: seconds, the profile's fractions rounded. h is what a late train makes up per
-station beyond the next, which the usual times miss (about 20 s, 2026-10-19/20); predictions further out drifted
-late by that much per station without it.
+"d": {code: dwell}}: seconds, the profile's fractions rounded. (A per-station catch-up, "h", learned from the drift of
+the predictions on the learning days, was dropped 2026-10-25: backtested on two mornings' raw minute files it made
+every prediction early, by 0.7 to 1.6 minutes in the median.)
 """
 import argparse, concurrent.futures as cf, csv, datetime as dt, glob, io, json, math, os, statistics as st, sys, time
 import urllib.parse, urllib.request, zipfile
@@ -248,7 +248,7 @@ def learn(all_rides):
 
 
 # ---------------------------------------------------------------- measuring (the app's two estimates, side by side)
-def ahead(sections, stands, S, k, x, t, hop=0):
+def ahead(sections, stands, S, k, x, t):
     """src/live.js railAhead for a train between stations k and k+1: its arrival at each later station."""
     run = lambda j: sections[f'{S[j]["code"]}>{S[j + 1]["code"]}'][0] if f'{S[j]["code"]}>{S[j + 1]["code"]}' in sections else max(0, S[j + 1]["arr"] - S[j]["dep"])
     m = sections.get(f'{S[k]["code"]}>{S[k + 1]["code"]}')
@@ -264,27 +264,11 @@ def ahead(sections, stands, S, k, x, t, hop=0):
         if j == len(S) - 1:
             break
         d = max(S[j]["dep"], a + stands.get(S[j]["code"], S[j]["dep"] - S[j]["arr"]))
-        a = d + max(run(j) / 2, run(j) - hop)
+        a = d + run(j)
     return arr
 
 
-def drift(sections, stands, rides_):
-    """What a late train makes up per station beyond the next, which the usual times do not show: the median of the
-    prediction's error growth per station, on the learning days themselves (a third of the rides)."""
-    g = []
-    for R in rides_[::3]:
-        S = R["S"]
-        for t, k, x in R["moving"]:
-            pr = ahead(sections, stands, S, k, x, t)
-            for n in (2, 3, 4, 5):
-                j = k + n
-                if j < len(S) and j in R["arr"] and k + 1 in R["arr"]:
-                    g.append(((pr[j] - R["arr"][j]) - (pr[k + 1] - R["arr"][k + 1])) / (n - 1))
-    g.sort()
-    return round(g[len(g) // 2]) if g else 0
-
-
-def score(sections, stands, hop, test):
+def score(sections, stands, test):
     errs = {"timetable pace": defaultdict(list), "learned": defaultdict(list)}
     for R in test:
         if not R["exact"]:
@@ -292,7 +276,7 @@ def score(sections, stands, hop, test):
         S = R["S"]
         for t, k, x in R["moving"]:
             old = t - (S[k]["dep"] + x * max(0, S[k + 1]["arr"] - S[k]["dep"]))
-            new = ahead(sections, stands, S, k, x, t, hop)
+            new = ahead(sections, stands, S, k, x, t)
             for n in (1, 2, 3, 5):
                 j = k + n
                 if j < len(S) and j in R["arr"]:
@@ -327,14 +311,13 @@ def main():
     feed = Feed(a.gtfs)
     learnt = [r for d in days for r in rides(feed, a.history, d)]
     sections, stands = learn(learnt)
-    hop = drift(sections, stands, learnt)
-    log(f"learned from {len(learnt)} rides on {len(days)} days: {len(sections)} sections, {len(stands)} stations, {hop} s made up per station")
+    log(f"learned from {len(learnt)} rides on {len(days)} days: {len(sections)} sections, {len(stands)} stations")
     if a.score:
-        score(sections, stands, hop, rides(feed, a.history, a.score))
+        score(sections, stands, rides(feed, a.history, a.score))
         return
     built = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with open(a.out, "w") as f:
-        json.dump({"built": built, "days": days, "s": sections, "d": stands, "h": hop}, f, separators=(",", ":"))
+        json.dump({"built": built, "days": days, "s": sections, "d": stands}, f, separators=(",", ":"))
     log(f"wrote {a.out}: {os.path.getsize(a.out)} bytes")
 
 

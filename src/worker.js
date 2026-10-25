@@ -318,7 +318,7 @@ function applyLive(vehicles) {
   }
   for (const [t, { v, rec }] of byTrip) {
     const { p, ns, base, stops } = tripStopList(t);
-    const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: rec, rideId: v.rideId }, stops, day);
+    const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: rec, rideId: v.rideId, callSince: v.callSince, callSeenChange: v.callSeenChange }, stops, day);
     if (!est) continue;
     tripLive.set(t, { delay: est.delay, index: est.index, seen: rec.getTime(), stale: est.ageSec > 240, lat: v.lat, lon: v.lon });
     if (Math.abs(est.delay) < 60 && !est.dep) continue;   // a train with learned sections has its own time at each station
@@ -526,17 +526,31 @@ let snap = null, snapLoading = null, stopByCode = null;
 // it was first seen there; the first load also reads the snapshot of 3 minutes before, so this works at once.
 const FROZEN_MS = 120e3, MOVING_KMH = 5;
 const posSince = new Map();   // ride -> { loc, since: ms, seen: ms }
+// A train without GPS names only a station (its call), from about a kilometre before it until about a kilometre before
+// the next: when the call first named that station says when it got there (live.js railAhead). `change`: a different
+// call was seen before it, so `since` is the change itself, not just when the app started looking.
+const callSince = new Map();  // ride -> { code, since: ms, seen: ms, change }
 const snapTime = (id) => { const m = /^(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)\/(\d\d)$/.exec(id || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : NaN; };
 function remember(j, t) {
   for (const d of (j && j.Siri && j.Siri.ServiceDelivery && j.Siri.ServiceDelivery.StopMonitoringDelivery) || []) {
     for (const x of d.MonitoredStopVisit || []) {
-      const m = x.MonitoredVehicleJourney, l = m && m.VehicleLocation; if (!l) continue;
-      const key = `${m.LineRef}/${m.OriginAimedDepartureTime}`, loc = `${l.Latitude},${l.Longitude}`, o = posSince.get(key);
+      const m = x.MonitoredVehicleJourney; if (!m) continue;
+      const key = `${m.LineRef}/${m.OriginAimedDepartureTime}`, c = m.MonitoredCall;
+      if (c && c.StopPointRef != null) {
+        const code = String(c.StopPointRef), rt = Date.parse(x.RecordedAtTime) || t, k = callSince.get(key);
+        if (!k) callSince.set(key, { code, since: rt, seen: t, change: false });
+        else if (k.code === code) { k.since = Math.min(k.since, rt); k.seen = Math.max(k.seen, t); }
+        else if (t < k.seen) k.change = true;   // an older snapshot, read late, with the call before: the change came after it
+        else callSince.set(key, { code, since: rt, seen: t, change: true });
+      }
+      const l = m.VehicleLocation; if (!l) continue;
+      const loc = `${l.Latitude},${l.Longitude}`, o = posSince.get(key);
       // snapshots can come in out of order (the earlier one follows in the background): keep the earliest time at this place
       if (o && o.loc === loc) { o.since = Math.min(o.since, t); o.seen = Math.max(o.seen, t); } else posSince.set(key, { loc, since: t, seen: t });
     }
   }
   for (const [k, o] of posSince) if (t - o.seen > SNAP_WINDOW_MS) posSince.delete(k);
+  for (const [k, o] of callSince) if (t - o.seen > SNAP_WINDOW_MS) callSince.delete(k);
 }
 function codeIndex() {
   if (!stopByCode) { stopByCode = new Map(); for (let i = 0; i < tt.stops.length; i++) if (tt.stops[i][2]) stopByCode.set(String(tt.stops[i][2]), i); }
@@ -612,6 +626,10 @@ function snapVehicles(j, t) {
       const v = { lineRef: String(m.LineRef), lat, lon, bearing: Number(m.Bearing) || 0, velocity: Number(m.Velocity) || 0, recordedAt,
         scheduledStart: new Date(m.OriginAimedDepartureTime), rideId: `${m.LineRef}/${m.OriginAimedDepartureTime}`, vehicleRef: m.VehicleRef,
         operator: Number(m.OperatorRef), atStop };
+      if (atStop && v.operator === 2) {   // a train known only by its call: when the call first named this station
+        const k = callSince.get(v.rideId);
+        if (k && k.code === String(m.MonitoredCall.StopPointRef)) { v.callSince = k.since; v.callSeenChange = k.change; }
+      }
       if (notYetItsTrip(v)) early.push(v); else out.push(v);
     }
   }
@@ -1189,7 +1207,7 @@ const ops = {
       const t = tripFor(v.lineRef, secondsOn(new Date(v.scheduledStart), day));
       if (t < 0) return { trip: -1 };
       const { stops } = tripStopList(t);
-      const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: new Date(v.recordedAt) }, stops, day);
+      const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: new Date(v.recordedAt), callSince: v.callSince, callSeenChange: v.callSeenChange }, stops, day);
       const ri = tt.patRoute[tt.tripPat[t]];
       return { trip: t, delay: est ? est.delay : null, stale: est ? est.ageSec > 240 : true, index: est ? est.index : -1, headsign: headsign(ri), route: ri, line: routeLabel(tt.routes[ri]), agency: tt.routes[ri][2], routeType: tt.routes[ri][3] };
     });

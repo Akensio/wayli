@@ -818,12 +818,30 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   between the stations the app projects on), learned from the last week's
   positions: each ride's arrival and departure at a station are when its
   fixes come within 300 m of it and leave. Also the stand a late train makes
-  at each station, and what a late train makes up per station beyond the
-  next (about 20 s, which the usual times miss). From a train's position the
-  app then works out when it reaches the next station and, leaving each
-  station no earlier than the timetable, every later one; its delay is the
-  one at the next station, and the planner shifts each station's time by its
-  own amount. Measured on a day held out of the learning (2026-10-21, 8,000
+  at each station. From a train's position the app then works out when it
+  reaches the next station and, leaving each station no earlier than the
+  timetable after its usual stand, every later one. Its time at a station is
+  when it pulls in (the rider must be on the platform then; the feed lists
+  one time per station), or when it leaves if it is standing there already,
+  and its delay is its arrival at the next station against that listed time:
+  a departure-based delay made every train late by its stand. A train without
+  GPS names only a station (its call), from about a kilometre before it until
+  about a kilometre before the next: it reached that station when the call
+  first named it (the worker remembers when; on opening, no later than that
+  station's time) and has not reached the next one yet. Read as standing
+  there now, a train on time was shown 6 minutes late (Herzliya, 2026-10-25).
+  `tools/trainbacktest.mjs` runs this code on a morning's raw minute files
+  and scores every prediction against when the train's GPS reached the
+  station: 07:30-10:30 on 2026-10-25, a typical miss of 2.1 minutes (the
+  timetable alone 3.1; the code before that day 2.6, 2.3 early in the
+  median), on 2026-10-21 1.9 (timetable 1.6; before, 1.9). A learned
+  per-station catch-up for late trains (h, 26 s) was dropped then: it made
+  the median 0.7 to 1.6 minutes early, though on 2026-10-21 it trimmed the
+  worst tenth (90% within 7.6 minutes against 8.9 without). Late trains do
+  recover on lines with slack in the timetable and not on others; learning
+  that per section is the next step. Trains standing at their first station
+  are the weakest case (assumed to leave on time; typically 1.4 minutes
+  later). Measured on a day held out of the learning (2026-10-21, 8,000
   positions, against the arrivals the train actually made), arrivals within
   a minute: next station 86% (timetable pace 46%), two ahead 57% (32%),
   three 44% (31%), five 37% (29%); on 2026-10-20 held out, 86% (46%), 60%
@@ -1002,7 +1020,8 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   Hasadna's API answers when the relay fails or its snapshot is over 10
   minutes old. Two things only the raw file allows: a train with no GPS
   (about one in eight; the database drops them) is placed at the station
-  it reports, which steps along its route; and a frozen position, the same
+  it reports, which steps along its route (and when it first reported that
+  station is kept: see Trains above); and a frozen position, the same
   fix repeated with a speed above 5 km/h for 2 minutes (37% of trains with
   GPS, no bus, at 19:26 that day; read as current it added a minute of
   delay every minute, +37 min on one), is dropped so its trip shows the

@@ -19,7 +19,7 @@ import { fmt } from '../time';
 export const clock = (d: Date): string => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 export const heading = (v: { bearing?: number | null; velocity?: number | null }): number => (v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1);
-export const vehiclesForWorker = (vs: any[]) => vs.map((v) => ({ lineRef: v.lineRef, scheduledStart: v.scheduledStart.getTime(), lat: v.lat, lon: v.lon, recordedAt: v.recordedAt.getTime() }));
+export const vehiclesForWorker = (vs: any[]) => vs.map((v) => ({ lineRef: v.lineRef, scheduledStart: v.scheduledStart.getTime(), lat: v.lat, lon: v.lon, recordedAt: v.recordedAt.getTime(), callSince: v.callSince, callSeenChange: v.callSeenChange }));
 export const closePopup = (): void => { if (popupState.current) { popupState.current.remove(); popupState.current = null; } };
 
 export function openPopup(m: MLMap, lngLat: LngLatLike, html: string, wire?: (el: HTMLElement) => void): void {
