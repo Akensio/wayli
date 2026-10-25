@@ -1,7 +1,7 @@
 // Where the rider is: the last position known, from the map's locate button, the follow mode's watch or a
 // request; `getPosition` asks the device only when the last one is older than 20 s.
-export type LatLon = { lat: number; lon: number };
-export let lastPos: LatLon | null = null;
+export type Position = { lat: number; lon: number };   // (journey/types LatLon is a [lat, lon] pair on a path)
+export let lastPos: Position | null = null;
 let lastPosAt = 0;
 export const hooks = { moved: () => {} };   // the lines around the rider follow the position
 
@@ -16,7 +16,7 @@ export function notePos(lat: number, lon: number): void {
  * Where the rider is now. GPS first; where it fails (inside a station, often), a coarse fix from the network; only then
  * the last position, and only when it is under 2 minutes old: an older one plans from where the rider was, not is.
  */
-export function getPosition(): Promise<LatLon> {
+export function getPosition(): Promise<Position> {
   return new Promise((resolve, reject) => {
     if (lastPos && Date.now() - lastPosAt < 20000) { resolve(lastPos); return; }
     const fallback = (err: unknown) => { if (lastPos && Date.now() - lastPosAt < 120000) resolve(lastPos); else reject(err); };

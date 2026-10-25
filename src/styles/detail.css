@@ -4,8 +4,8 @@
 .leg .t { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 14px; padding-top: 2px; }
 .leg .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--ink-2); margin-top: 6px; }
 .leg.ride .dot { background: var(--bus); }
-.leg.ride.t2 .dot { background: #1b3a6b; }
-.leg.ride.t0 .dot { background: #d7263d; }
+.leg.ride.t2 .dot { background: var(--rail-brand); }
+.leg.ride.t0 .dot { background: var(--lrt-brand); }
 .leg .what { font-size: 15px; }
 .leg .what small { display: block; color: var(--ink-2); font-size: 13px; }
 .leg .what .live { display: inline-block; margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }

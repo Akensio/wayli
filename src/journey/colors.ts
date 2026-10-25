@@ -6,6 +6,7 @@ const AGENCY_COLORS: [string, string][] = [
   ['אגד', '#008761'], ['דרך אגד', '#008761'], ['דן', '#2457d6'], ['מטרופולין', '#f07f1a'], ['קווים', '#7b2d90'], ['סופרבוס', '#d94e1f'],
   ['נתיב אקספרס', '#8db600'], ['אלקטרה אפיקים', '#1d4f91'], ['תנופה', '#2a9fd6'], ['אקסטרה', '#c2185b'], ['גלים', '#3b8ea5'], ['בית שמש אקספרס', '#b06d1e'],
 ];
+// TRAIN_COLOR and LRT_COLOR are also --rail-brand and --lrt-brand in styles/base.css
 const BUS_DEFAULT = '#4f7a6a', TRAIN_COLOR = '#1b3a6b', LRT_COLOR = '#d7263d', CABLE_COLOR = '#0e7490', TAXI_COLOR = '#f2c200';
 const agencyColor = (agency?: string | null): string => { const a = String(agency || ''); for (const [k, c] of AGENCY_COLORS) if (a.startsWith(k)) return c; return BUS_DEFAULT; };
 export const routeColor = (type?: number | null, agency?: string | null): string =>

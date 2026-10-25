@@ -195,8 +195,8 @@ input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-se
 /* the stop search's list: what stops there, the name, where and the sign's number, a bus stop's lines */
 .dropdown button.stoprow { display: flex; align-items: flex-start; gap: 10px; }
 .dropdown .stoprow .sic { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--chip); color: var(--ink-2); margin-top: 1px; }
-.dropdown .stoprow.m-rail .sic { background: #1b3a6b; color: #fff; }
-.dropdown .stoprow.m-lrt .sic { background: #d7263d; color: #fff; }
+.dropdown .stoprow.m-rail .sic { background: var(--rail-brand); color: #fff; }
+.dropdown .stoprow.m-lrt .sic { background: var(--lrt-brand); color: #fff; }
 .dropdown .stoprow .sic .i { width: 17px; height: 17px; }
 .dropdown .stoprow .txt { flex: 1; min-width: 0; font-weight: 600; }
 .dropdown .stoprow .txt small { font-weight: 400; }
