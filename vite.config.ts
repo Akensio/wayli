@@ -29,7 +29,9 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
     modulePreload: false,
-    rollupOptions: { output: { entryFileNames: 'assets/[name]-[hash].js', chunkFileNames: 'assets/[name]-[hash].js', assetFileNames: 'assets/[name]-[hash][extname]' } },
+    rollupOptions: { output: { entryFileNames: 'assets/[name]-[hash].js', chunkFileNames: 'assets/[name]-[hash].js',
+      // MapLibre's worker is an .mjs asset: as .js, so every host serves it as JavaScript (a module worker insists)
+      assetFileNames: (a) => ((a.names?.[0] || a.name || '').endsWith('.mjs') ? 'assets/[name]-[hash].js' : 'assets/[name]-[hash][extname]') } },
   },
   worker: { format: 'es' },
 });

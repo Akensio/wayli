@@ -62,25 +62,27 @@ export function setBasemapLang(m: MLMap): void {
 }
 /** The ground's heights when the map is tilted, if the rider turned them on (settings, off by default): AWS's open
  *  Terrain Tiles (no key; elevation as colours, `terrarium`), the map raised by them and lightly shaded. Only while
- *  tilted: seen from straight above heights change nothing, and the tiles cost data. */
+ *  tilted: seen from straight above heights change nothing, and the tiles cost data. The tiles stop at zoom 12 (the
+ *  data underneath is 30 m anyway): a quarter of the tiles to fetch and decode, the same hills. The source and the
+ *  shading layer are made as soon as the style is, so the first tilt only turns the heights on. */
 const DEM_TILES = ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'];
 const DEM_ATTR = '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a>';
 export const TERRAIN_PITCH = 10;
 export function applyTerrain(m: MLMap): void {
-  const want = !!settings.get().terrain && m.getPitch() >= TERRAIN_PITCH;
+  const on = !!settings.get().terrain, want = on && m.getPitch() >= TERRAIN_PITCH;
   try {
-    if (want && !m.getSource('wayli-dem')) {
-      // two sources of the same tiles (cached once): MapLibre draws the shading worse from the terrain's own source
-      m.addSource('wayli-dem', { type: 'raster-dem', tiles: DEM_TILES, tileSize: 256, encoding: 'terrarium', maxzoom: 14, attribution: DEM_ATTR });
-      m.addSource('wayli-dem-shade', { type: 'raster-dem', tiles: DEM_TILES, tileSize: 256, encoding: 'terrarium', maxzoom: 14 });
+    if (on && !m.getSource('wayli-dem')) {
+      // two sources of the same tiles (fetched once): MapLibre shades badly from the source the terrain stands on
+      m.addSource('wayli-dem', { type: 'raster-dem', tiles: DEM_TILES, tileSize: 256, encoding: 'terrarium', maxzoom: 12, attribution: DEM_ATTR });
+      m.addSource('wayli-dem-shade', { type: 'raster-dem', tiles: DEM_TILES, tileSize: 256, encoding: 'terrarium', maxzoom: 12 });
       const under = (m.getStyle().layers || []).find((l: any) => l.type === 'fill-extrusion' || /^(tunnel|road|highway|bridge|building)/.test(l.id))?.id;
       const dark = wantDarkMap();
       m.addLayer({ id: 'wayli-shade', type: 'hillshade', source: 'wayli-dem-shade', layout: { visibility: 'none' },
         paint: { 'hillshade-exaggeration': 0.22, 'hillshade-shadow-color': dark ? '#000000' : '#4d5b55', 'hillshade-highlight-color': dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.35)', 'hillshade-accent-color': dark ? '#000000' : '#4d5b55', 'hillshade-illumination-anchor': 'viewport' } } as any, under);
     }
-    const on = !!m.getTerrain();
-    if (want && !on) m.setTerrain({ source: 'wayli-dem', exaggeration: 1.5 });
-    else if (!want && on) m.setTerrain(null as any);
+    const up = !!m.getTerrain();
+    if (want && !up) m.setTerrain({ source: 'wayli-dem', exaggeration: 1.5 });
+    else if (!want && up) m.setTerrain(null as any);
     if (m.getLayer('wayli-shade')) m.setLayoutProperty('wayli-shade', 'visibility', want ? 'visible' : 'none');
   } catch { /* an older MapLibre, or a style still loading: the map stays flat */ }
 }

@@ -191,7 +191,7 @@ Layout, one folder per concern:
   notification taps reopen the app), `styles.css`, `public/` (manifest,
   icons).
 
-Maps are MapLibre GL (cdnjs) over OpenFreeMap
+Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap
 vector tiles (no key, no cost): the Liberty style, with every colour
 replaced on the device from one of two palettes by role and road class
 (`mapstyle.js`), so both maps keep all of Liberty's detail (road classes,
@@ -275,8 +275,14 @@ depth: a sky and a haze towards the horizon (MapLibre's sky, pitch up to
 follow the light or dark style. With "3D heights" on in the settings (off by
 default), a map tilted past 10° also stands on the ground's real heights
 (exaggerated 1.5 times) with a light hill shading: AWS's open Terrain Tiles
-(terrarium encoding, no key, to zoom 14), fetched only while tilted, since
-from straight above heights change nothing and the tiles cost data.
+(terrarium encoding, no key, to zoom 12: the data underneath is 30 m, so
+the hills are the same and the phone decodes a quarter of the tiles),
+fetched only while tilted, since from straight above heights change nothing
+and the tiles cost data; the source and the shading layer are made with the
+style, so the first tilt only turns the heights on. MapLibre 6 was taken
+for this (2026-10-25): its terrain renders through shared framebuffers,
+frees its textures at rest, and no longer throws the camera when the
+heights switch on during a gesture.
 Picking a point
 is a mode of the same map: the sheet and bar give way to a hint and a
 Cancel; a tap drops the pin. The strip at the bottom when nothing is open offers plan, home,

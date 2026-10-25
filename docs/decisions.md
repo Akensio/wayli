@@ -1137,3 +1137,19 @@ so they are not re-litigated.
   stop list, no map). Re-opening a panel now redraws the map; the trip
   page is gone: a departure, a train row and a vehicle open the line at
   that stop with that trip chosen.
+- 2026-10-25: Gadi: the 3D heights are slow and clunky on his phone; the
+  look must stay. MapLibre upgraded 4.7 to 6.15 (BSD-3), whose changelog
+  from 5.x on is largely terrain work: shared render-to-texture
+  framebuffers, pooled drape textures freed at rest, cheaper DEM lookups,
+  hillshade artifacts on mobile GPUs fixed, the camera no longer jumping or
+  sliding when terrain switches on mid-gesture. With it: height tiles to
+  zoom 12 instead of 14 (the data is 30 m anyway) and the height source made
+  with the style rather than at the first tilt. The 6.x breaking changes
+  touched us in two places: ESM only (no default export; its worker is a
+  file of its own, bundled as an asset and named to it) and GeoJSON types
+  no longer global (`@types/geojson`, MIT). Speed could not be measured
+  here (the headless browser renders on the CPU; 1-3 frames a sweep either
+  way), so Gadi judges on the phone. Rejected: another map library (the
+  whole map, its style and every layer are MapLibre's: a rewrite, and a
+  different look), a lower pixel density while tilted (changes the look),
+  hiding the 3D buildings while tilted (same).
