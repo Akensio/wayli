@@ -259,7 +259,11 @@ The map's own buttons (locate, compass) sit in the bottom corner above the
 sheet and fade with the map under a fully open sheet. Tilted, the map gets
 depth: a sky and a haze towards the horizon (MapLibre's sky, pitch up to
 72°), a low side light shading the basemap's extruded buildings; colours
-follow the light or dark style.
+follow the light or dark style. With "3D heights" on in the settings (off by
+default), a map tilted past 10° also stands on the ground's real heights
+(exaggerated 1.5 times) with a light hill shading: AWS's open Terrain Tiles
+(terrarium encoding, no key, to zoom 14), fetched only while tilted, since
+from straight above heights change nothing and the tiles cost data.
 Picking a point
 is a mode of the same map: the sheet and bar give way to a hint and a
 Cancel; a tap drops the pin. The strip at the bottom when nothing is open offers plan, home,

@@ -42,6 +42,7 @@ export function Settings() {
           <Item icon="moon" label={t('setMap')}><Seg id="setMap" value={settings.mapChoice()} options={looks} onPick={(v) => look({ map: v })} /></Item>
           <Item icon="sun" label={t('setTheme')}><Seg id="setTheme" value={s.theme || 'system'} options={looks} onPick={(v) => look({ theme: v })} /></Item>
           <Item icon="map" label={t('setTint')}><Seg id="setTint" value={s.mapTint === 'neutral' ? 'neutral' : 'teal'} options={[{ v: 'teal', label: t('tintTeal') }, { v: 'neutral', label: t('tintNeutral') }]} onPick={(v) => look({ mapTint: v })} /></Item>
+          <Toggle icon="mountain" id="setTerrain" label={<><span>{t('setTerrain')}</span><small>{t('terrainHint')}</small></>} on={!!s.terrain} onChange={(on) => look({ terrain: on })} />
         </div>
       </div>
       <div class="group">

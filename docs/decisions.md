@@ -1106,3 +1106,11 @@ so they are not re-litigated.
   journey, line or trains, and opens the stop view only at rest. Rejected:
   a full stops-by-trips grid (unreadable on a phone at 40 stops by 50 trips)
   and relative times from the line's first stop (not where anyone stands).
+- 2026-10-25: Gadi: with the map tilted and the buildings in 3D, the ground
+  should have its heights too, as a setting off by default; no contour
+  lines (redundant). Terrain from AWS's open Terrain Tiles (free, no key,
+  the same kind of static tiles as the basemap; attribution in the map's
+  credits), exaggerated 1.5 times, with a light hill shading, only while
+  the map is tilted past 10°. Rejected: MapTiler's terrain (needs a key and
+  an account), a hillshade on the flat map (changes the 2D look nobody
+  asked to change), and contour lines.

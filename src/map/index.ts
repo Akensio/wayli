@@ -7,7 +7,7 @@ import * as sheet from '../state/sheet';
 import * as results from '../state/results';
 import { lastPos, notePos } from '../state/position';
 import { state, popupState, EMPTY, settleWaiters } from './shared';
-import { styleReady, mapStyle, makeMap, setBasemapLang, applySky, wantDarkMap } from './basemap';
+import { styleReady, mapStyle, makeMap, setBasemapLang, applySky, applyTerrain, TERRAIN_PITCH, wantDarkMap } from './basemap';
 import { BADGE_KINDS, stationImage } from './images';
 import { ensureJourneyLayers } from './layers';
 import { stopPopup, placeBubble } from './popups';
@@ -60,6 +60,9 @@ export async function initMap(): Promise<void> {
   m.addControl(compass, 'bottom-right');
   const compassVis = () => { const on = Math.abs(m.getBearing()) > 0.5 || m.getPitch() > 0.5; (compass as any)._container.classList.toggle('wayli-hidden', !on); };
   compassVis(); for (const ev of ['rotate', 'pitch', 'moveend', 'load'] as const) m.on(ev, compassVis);
+  // heights come and go as the map tilts past the threshold (and only then: a check per frame is cheap)
+  let tilted = m.getPitch() >= TERRAIN_PITCH;
+  m.on('pitch', () => { const now = m.getPitch() >= TERRAIN_PITCH; if (now !== tilted) { tilted = now; applyTerrain(m); } });
   geoCtl.on('geolocate', (p: any) => notePos(p.coords.latitude, p.coords.longitude));
   startHeading(); attachHeading(m);   // Android needs no tap for the compass
   m.once('load', () => { const a = document.querySelector('.maplibregl-ctrl-attrib'); if (a) a.classList.remove('maplibregl-compact-show'); });
@@ -108,6 +111,7 @@ function setupMapLayers(m: MLMap): void {
   if (m.getLayer('poi_transit')) m.setLayoutProperty('poi_transit', 'visibility', 'none');
   setBasemapLang(m);
   applySky(m);
+  applyTerrain(m);
   const dark = wantDarkMap();
   // traffic from the buses: under the basemap's labels and everything of ours
   const firstLabel = m.getStyle().layers.find((l) => l.type === 'symbol')?.id;
@@ -136,6 +140,7 @@ function setupMapLayers(m: MLMap): void {
 export async function applyMapStyle(): Promise<void> {
   await styleReady();
   if (!state.main) return;
+  applyTerrain(state.main);   // the heights setting needs no new style
   const st = mapStyle();
   if (st === state.currentStyle) return;
   state.currentStyle = st; state.styled = false; lm.stops = false;
