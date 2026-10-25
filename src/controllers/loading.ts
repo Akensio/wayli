@@ -1,8 +1,8 @@
 // Loading the data: the manifest (which days, which files), a day's timetable, then the address book, the
 // street graph and the courses in the background. The worker downloads and unpacks; the pill shows how far.
-import * as live from '../live.js';
-import { t, lang, STR } from '../i18n';
-import { calToday, dayLabel } from '../time';
+import * as live from '../engine/live.js';
+import { t, lang, STR } from '../lib/i18n';
+import { calToday, dayLabel } from '../lib/time';
 import { call, DATA_URL, resetCaches } from '../worker/client';
 import * as data from '../state/data';
 import * as search from '../state/search';

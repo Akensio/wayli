@@ -1,6 +1,6 @@
-// Train delays from learned section times (src/live.js, railAhead): node tools/railtimes.test.mjs (exits 1 on a failure).
+// Train delays from learned section times (src/engine/live.js, railAhead): node tools/railtimes.test.mjs (exits 1 on a failure).
 import assert from 'node:assert/strict';
-import { setRailTimes, estimateDelay, liveAt } from '../src/live.js';
+import { setRailTimes, estimateDelay, liveAt } from '../src/engine/live.js';
 
 const T = (h, m, s = 0) => h * 3600 + m * 60 + s;
 const day = '20261021';

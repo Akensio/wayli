@@ -1,9 +1,9 @@
-# Deploys the real-time relay (worker/) to Cloudflare Workers when it changes, then checks it answers with a snapshot.
+# Deploys the real-time relay (relay/) to Cloudflare Workers when it changes, then checks it answers with a snapshot.
 name: relay
 on:
   push:
     branches: [main]
-    paths: ['worker/**', '.github/workflows/relay.yml']
+    paths: ['relay/**', '.github/workflows/relay.yml']
   workflow_dispatch:
 jobs:
   deploy:
@@ -15,7 +15,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: worker
+          workingDirectory: relay
           wranglerVersion: '4.151.3'   # 3.x (the action's default) failed to enable the workers.dev route right after the upload
       - name: Check the relay
         env:

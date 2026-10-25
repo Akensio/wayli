@@ -24,7 +24,7 @@ Three parts, in order of how much they matter:
 3. **The worker**: the smallest possible server (Cloudflare Workers + D1,
    free tier at first) for the three things that cannot run on the phone:
    relaying real-time data (SIRI credentials cannot ship in a public app;
-   built 2026-10-21 as `worker/relay.js`, see "Real-time"),
+   built 2026-10-21 as `relay/relay.js`, see "Real-time"),
    collecting and serving crowd reports, and sending push alerts.
 
 ## Trip planning on the device (leading option, under test)
@@ -88,7 +88,7 @@ are a required mode. Built the same day:
   Ranking: Pareto by departure, arrival and transfers, then an extra
   transfer has to save at least 5 minutes. The departure shown is the latest
   that still makes the first vehicle.
-- **First and last mile** (`src/streets.js`): Dijkstra on the street graph
+- **First and last mile** (`src/engine/streets.js`): Dijkstra on the street graph
   from a point, on foot (15 min) or by bike (20 min), to every stop it can
   reach; those become the origins or destinations. A point joins the
   network on the street segments in front of it (the nearest, and others
@@ -141,60 +141,69 @@ shell, the worker and the data modules and writes the service worker with
 the list of built files, since their names carry content hashes);
 `pipeline/build_site.py` joins the build with the data.
 
-Layout, one folder per concern:
+Layout, one folder per concern (each with a README; `src/README.md` is
+the overview). At the top of `src/` only the entry files: `index.html`
+(roots only), `main.ts` (renders the views, attaches the gestures, then
+imports `boot.ts`), `boot.ts` (starts the controllers after the first
+paint), `styles.css` and `sw.template.js` (the service worker: the shell
+and every downloaded data file are cached, so the app works offline once
+loaded; a new build reloads the page once, and notification taps reopen
+the app).
+- `engine/`: the logic with no screen, run in the data worker and in Node:
+  `raptor.js` and `streets.js` (the router and the street graph),
+  `places.js` (the address book), `live.js` (real-time client and delay
+  estimate), `follow.js` (the trip-following state machine).
+- `worker/`: `worker.js`, the data worker (it holds the data and answers
+  every query, so the UI never blocks), and `client.ts`, the UI's end of it.
 - `state/`: one small module per feature holding its signals and actions
   (`search` the bar, `results` the plan with its cards as a computed,
   `sheet` the bottom sheet's size, `nav` the stack of panels and screens with
-  their history entries, `detail`, `follow`, `stop`, `line`, `trip`,
+  their history entries, `detail`, `follow`, `stop`, `line`, `station`,
   `saved`, `chooser`, `settings`, `app`, `data` what is loaded,
   `position`, `clock` a 20-second tick for countdowns). Each exports a
   `hooks` object the app fills in at start with what the feature needs from
   the rest (planning, the worker, panels to open), so a feature never
   imports the app.
-- `features/`: the components, drawing from the state modules only
-  (`topbar/`, `results/`, `detail/`, `follow/`, `pages/`, `shell/` the sheet
-  with every panel, the floating pills, the pick bar; `sheet/` the gestures
-  and the pull to refresh). `index.html` is roots only; `main.ts` renders
-  the components, attaches the gestures, then imports `boot.ts`.
+- `controllers/`: what happens behind the screens, one module each, and the
+  only place that fills in the `hooks`: `loading` (the manifest, a day's
+  timetable, the other data files), `planner` (planning, a destination from
+  anywhere, the last search, clearing), `detail`, `stop`, `line`, `station`
+  (each page's worker calls and live polls; `liverides` the live times of
+  rides between two stops), `follow` (the trip being followed: the position
+  watch, the timers, the live vehicle, the re-planning, the resume bar),
+  `alerts`, `lang`, `status`, `shell` (install, online, the drawer's
+  actions, what closing each panel stops).
+- `views/`: the parts of the screen, Preact components drawing from the
+  state modules only (`topbar/`, `results/`, `detail/`, `follow/`,
+  `pages/`, `shell/` the sheet with every panel, the floating pills, the
+  pick bar; `sheet/` the gestures and the pull to refresh).
+- `widgets/`: the small pieces several views share (icons, line chips, the
+  timetable, the close-all X, the toast, the ripple, the swipe to close,
+  HTML escaping). A view is a place on the screen; a widget has no place
+  of its own.
 - `map/`: the one map (`index.ts`: init, the layers, taps), `view.ts`
   (what the map shows for what the sheet holds: what is drawn, the camera,
   which live vehicles; pure, tested by `tools/mapview.test.mjs`),
   `render.ts` (carries that out from the panels' state, the one camera,
   aimed between the bar and the sheet, the locate button's included; a
   panel's own live vehicles go on after the drawing through `afterDraw`),
-  `basemap` (Liberty recoloured, theme, labels' language), `layers` (a
-  journey with its stops and pins, the other ways muted under it), `live`
-  (the vehicles in view, the day's stops, the note), `popups` (bubbles for
-  a vehicle and a tapped place; a line's vehicle markers), `picker` (a
-  point on the map), `shared` (the map, its markers).
+  `style.js` (the Liberty style's colours from two palettes), `basemap`
+  (theme, labels' language), `layers` (a journey with its stops and pins,
+  the other ways muted under it), `live` (the vehicles in view, the day's
+  stops, the note), `popups` (bubbles for a vehicle and a tapped place; a
+  line's vehicle markers), `picker` (a point on the map), `shared` (the
+  map, its markers).
 - `journey/`: types, line colours, the words for journeys, operators'
-  English names, sharing. `ui/`: icons, the toast, the ripple, HTML
-  escaping. `time.ts`.
-- `controllers/`: what happens behind the screens, one module each, and the
-  only place that fills in the `hooks`: `loading` (the manifest, a day's
-  timetable, the other data files), `planner` (planning, a destination from
-  anywhere, the last search, clearing), `detail`, `stop`, `line`, `trip`
-  (each page's worker calls and live polls), `follow` (the trip
-  being followed: the position watch, the timers, the live vehicle, the
-  re-planning, the resume bar), `alerts`, `lang`, `status`, `shell`
-  (install, online, the drawer's actions, what closing each panel stops).
-  `boot.ts` starts them after the first paint.
-- `worker/client.ts`: the UI's end of the data worker (`worker.js`, which
-  holds the data and answers every query, so the UI never blocks).
-- Pure modules shared with Node: `raptor.js` and `streets.js` (the router
-  and street graph), `places.js` (the address book), `live.js` (real-time
-  client and delay estimate), `follow.js` (the trip-following state
-  machine), `store.js` (settings, history, saved places and the trip in
-  progress, all in localStorage), `mapstyle.js`, `sw.template.js` (the
-  service worker: the shell and every downloaded data file are cached, so
-  the app works offline once loaded; a new build reloads the page once, and
-  notification taps reopen the app), `styles.css`, `public/` (manifest,
-  icons).
+  English names, sharing, the pay link.
+- `lib/`: used everywhere: `i18n.ts` (every string in Hebrew and English),
+  `time.ts`, `store.js` (settings, history, saved places and the trip in
+  progress, all in localStorage).
+- `types/` (global declarations), `public/` (manifest, icons).
 
 Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap
 vector tiles (no key, no cost): the Liberty style, with every colour
 replaced on the device from one of two palettes by role and road class
-(`mapstyle.js`), so both maps keep all of Liberty's detail (road classes,
+(`map/style.js`), so both maps keep all of Liberty's detail (road classes,
 3D buildings, stops, places) while the roads recede and the transit lines
 drawn over them carry the colour. Light: warm off-white land, white
 streets with soft grey casings, pale sand motorways, muted water (the
@@ -247,7 +256,7 @@ and the menu button out of the way; and, once a plan is made, one summary box (t
 and bike on a second line) that a tap reopens into the rows and a map tap
 or Back folds (Android: Back takes the keyboard, then the list, then folds
 the open search). Every panel in the sheet has Back (one step) and an X
-(`ui/CloseAll`: every panel at once). The menu lists the three searches,
+(`widgets/CloseAll`: every panel at once). The menu lists the three searches,
 a line, then saved, settings and reload. "Recent items to keep" (5, 10,
 20 or 40 of each kind; ways opened at most 20, as they carry their
 journey) is a setting. A journey's detail and the follow screen while
@@ -317,7 +326,7 @@ from the start edge over a dimmed map, a history entry like the panels,
 headed by the logo with "no account, everything stays on the phone", then
 the screens and the build time. It follows a finger swiping it back to its
 edge, on the drawer or on the dimmed map beside it, and closes past a third
-of its width or on a flick (`ui/swipeClose`, `touch-action: pan-y` on the
+of its width or on a flick (`widgets/swipeClose`, `touch-action: pan-y` on the
 layers and on their scrolling bodies, since a scroller starts touch-action
 afresh). Settings is a page
 of its own over everything, the drawer included (`SettingsPage`, a layer
@@ -351,7 +360,7 @@ open (a change to the time or bike plans again); a tap on the map, a result
 opened, a drag of the sheet, X or back folds them.
 
 Icons are one hand-drawn stroke set on a 24-unit grid (`ICONS` in
-`ui/icons.ts`): injected once as an inline SVG sprite and used as `<use>`
+`widgets/icons.ts`): injected once as an inline SVG sprite and used as `<use>`
 references in markup and templates, and drawn with the same paths through
 `Path2D` on the canvases that become the map's station and stop badges. No
 emoji anywhere in the interface: emoji render differently on every phone
@@ -505,7 +514,7 @@ as restaurants, cafés, bars, hotels, shops, pharmacies, banks, schools,
 synagogues and offices): about 45k streets, 212k house numbers, 49k places
 (16k landmarks, 33k everyday), 2.9 MB gzipped. Landmarks rank above streets
 at an equal match, everyday places level with them, so an exact name wins
-without burying street searches in shops. `src/places.js` parses free text ("הורדים 4,
+without burying street searches in shops. `src/engine/places.js` parses free text ("הורדים 4,
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
 ranks stops, addresses, streets, places and cities together, nearer ones
 first when the user's location is known (distance breaks ties even among
@@ -535,7 +544,7 @@ nearest house number, place or street, else the nearest stop. Nothing leaves
 the device.
 
 Lines: the bar, while editing, has a Trip / Line / Stop switch above its rows
-(its highlight slides to the chosen one; switching animates through `ui/flip`:
+(its highlight slides to the chosen one; switching animates through `widgets/flip`:
 the parts marked `data-flip` that stay glide to their new place, new ones pop
 in, those that go fade where they were, one rule for every pair of states).
 The line search is one box (the full keyboard: numbers carry letters, "4א",
@@ -1040,7 +1049,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   public before that step (`open-bus-siri-requester.hasadna.org.il/YYYY/MM/DD/HH/MM.br`,
   UTC, about 250 KB brotli, 4.3 MB of SIRI JSON, the newest under a minute
   old, half the positions under 40 s) but carry no CORS header. The relay
-  (`worker/relay.js`, a Cloudflare Worker on the free plan at
+  (`relay/relay.js`, a Cloudflare Worker on the free plan at
   https://relay.waynet.app/siri/latest and, where carriers do not block
   workers.dev, https://wayli-relay.wayli.workers.dev/siri/latest, deployed by
   `.github/workflows/relay.yml`) reads `daemon_status.json` for the newest

@@ -24,7 +24,7 @@ export default tseslint.config(
     },
   },
   // the relay runs on Cloudflare Workers (fetch, Response, URL: the service-worker globals)
-  { files: ['worker/**/*.js'], languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.serviceworker } }, rules: { 'no-undef': 'error' } },
+  { files: ['relay/**/*.js'], languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.serviceworker } }, rules: { 'no-undef': 'error' } },
   // TypeScript itself rejects undeclared names, and knows type-only names (GeoJSON, DOM types) that this rule does not
   { files: ['src/**/*.{ts,tsx}', 'vite.config.ts'], rules: { 'no-undef': 'off' } },
 );

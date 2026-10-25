@@ -2,7 +2,7 @@
 // lines that do it): each ride's vehicle, matched by its line and first departure, placed on its trip, and its time at
 // the stop it is boarded at and the one it is left at. The vehicles come by line: from the relay that is a filter on
 // the minute's snapshot already in the worker; only without it is each line a request to Hasadna.
-import * as live from '../live.js';
+import * as live from '../engine/live.js';
 import { tripStopsCached, estimate } from '../worker/client';
 import type { TrainRow, LiveTrain } from '../state/station';
 

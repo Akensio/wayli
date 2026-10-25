@@ -2,12 +2,12 @@
 // next ride's vehicle every 30 s, a look for a faster way every minute when there is reason to; alerts on the
 // way; the trip kept in the store so it survives a reload, with a bar to come back to it when hidden. The
 // screen (features/follow) draws what is published into state/follow.ts.
-import * as live from '../live.js';
-import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney, stepForward, stepBack } from '../follow.js';
-import { settings, activeTrip } from '../store.js';
-import { t } from '../i18n';
-import { dateOf, fmt } from '../time';
-import { toast } from '../ui/toast';
+import * as live from '../engine/live.js';
+import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney, stepForward, stepBack } from '../engine/follow.js';
+import { settings, activeTrip } from '../lib/store.js';
+import { t } from '../lib/i18n';
+import { dateOf, fmt } from '../lib/time';
+import { toast } from '../widgets/toast';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import * as data from '../state/data';
 import * as nav from '../state/nav';

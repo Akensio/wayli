@@ -2,10 +2,10 @@
 // lines, departures, from here, to here), a tapped place (to here, from here); and the vehicle markers of
 // a line with their delays.
 import type { Map as MLMap, Marker, LngLatLike } from 'maplibre-gl';
-import * as live from '../live.js';
-import { esc } from '../ui/html';
-import { t, lang } from '../i18n';
-import { ic } from '../ui/icons';
+import * as live from '../engine/live.js';
+import { esc } from '../widgets/html';
+import { t, lang } from '../lib/i18n';
+import { ic } from '../widgets/icons';
 import { chipStyle, routeColor } from '../journey/colors';
 import { lineText } from '../journey/format';
 import { agencyName } from '../journey/agencies';
@@ -14,7 +14,7 @@ import * as nav from '../state/nav';
 import { popupState, pick, hooks } from './shared';
 import { viewFor } from './view';
 import { currentSheet, cameraPadding } from './render';
-import { fmt } from '../time';
+import { fmt } from '../lib/time';
 
 export const clock = (d: Date): string => d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */

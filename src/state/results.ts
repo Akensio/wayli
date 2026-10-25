@@ -2,9 +2,9 @@
 // the map and which one is highlighted, and the recent trips shown while there is nothing else. The list is
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
 import { signal, computed } from '@preact/signals';
-import * as live from '../live.js';
-import { settings } from '../store.js';
-import { lang } from '../i18n';
+import * as live from '../engine/live.js';
+import { settings } from '../lib/store.js';
+import { lang } from '../lib/i18n';
 import * as search from './search';
 import type { Journey, PlanResult, Query } from '../journey/types';
 

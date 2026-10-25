@@ -46,7 +46,7 @@ MIN_COMPONENT = 50  # drop islands smaller than this many nodes
 SAMPLE_M = 25.0
 HYSTERESIS_M = 2.0
 SMOOTH_PX = 2   # measured 2026-10-25: flat Tel Aviv rides lost most of their false climbs, hills kept theirs
-# What a climb costs, read by the app (src/streets.js) and the compiler (streetgraph.py) alike. On foot: 3 s more per
+# What a climb costs, read by the app (src/engine/streets.js) and the compiler (streetgraph.py) alike. On foot: 3 s more per
 # metre up (Tobler's hiking function at 5-15 % against a flat 1.2 m/s), 1 s per metre down on a descent steeper than
 # 10 %. By bike: a climb goes no faster than an ordinary rider rises, about 500 m an hour (0.14 m/s, ~120 W at 85 kg
 # with the bike), and a descent saves 1.5 s per metre down up to 7 m/s. Estimates, to measure against real rides.

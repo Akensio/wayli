@@ -1,7 +1,7 @@
 // Words for journeys: durations, transfers, line names, the countdown to a departure.
-import * as live from '../live.js';
-import { t } from '../i18n';
-import { fmt } from '../time';
+import * as live from '../engine/live.js';
+import { t } from '../lib/i18n';
+import { fmt } from '../lib/time';
 import type { Place } from '../state/search';
 
 export const dur = (sec: number): string => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };

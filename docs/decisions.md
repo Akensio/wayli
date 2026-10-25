@@ -978,7 +978,7 @@ so they are not re-litigated.
   storage and still fetch the same files).
 - 2026-10-23 Gadi: animate switching between the search types, without an
   if-else per transition. Built as one layout-animation helper (FLIP,
-  `src/ui/flip.ts`) keyed on what the bar searches for, and a sliding
+  `src/widgets/flip.ts`) keyed on what the bar searches for, and a sliding
   highlight in the switch. Also: the kind-of-line chips scroll with a finger
   (the bar's buttons had touch gestures off).
 - 2026-10-23 Gadi: a tap on the time chip while it says "now" should open on
@@ -1209,3 +1209,4 @@ so they are not re-litigated.
 - 2026-10-25: The Nearby screen ("stops near me") is removed (Gadi asked; agreed): the stop search's empty list is the stops around you with their lines and distance. The menu separates the three searches from the pages with a line.
 - 2026-10-25: How many recent items to keep is a setting (5/10/20/40 of each kind; default 10). Pay links to HopOn (Rav-Pass), the Ministry-licensed payment app, through its store page: opening an app straight from a web page is unreliable across phones.
 - 2026-10-25: Not built yet, to discuss: separate pages for ride and search history (the drawer's second level may already cover it).
+- 2026-10-25: Code layout reorganized (Gadi: 15 loose files in src, ui vs features unclear): src/ keeps only the entry files; engine/ (logic with no screen: raptor, streets, places, live, follow), worker/ (the data worker and its client), lib/ (i18n, time, store); features/ renamed views/ (parts of the screen) and ui/ renamed widgets/ (pieces shared by views); the relay moved from worker/ to relay/, so worker/ means one thing. A README in every folder (src/README.md the overview, with what may import what).

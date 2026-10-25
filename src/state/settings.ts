@@ -1,6 +1,6 @@
 // The settings as the pages read them: the store is the truth (store.js), this signal says when it changed.
 import { signal } from '@preact/signals';
-import { settings as store } from '../store.js';
+import { settings as store } from '../lib/store.js';
 
 export type Settings = { theme?: string; map?: string; mapTint?: string; maxWalk: number; live?: boolean; traffic?: boolean; notify?: boolean; sound?: boolean; terrain?: boolean; stopFilter?: string; lookSplit?: boolean; [k: string]: unknown };
 export const tick = signal(0);

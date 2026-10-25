@@ -3,7 +3,7 @@
 // code, an address-book place by its exact position) and shown under its name in the current language; until the
 // answer comes, and where nothing is found (a point dropped on the map), the stored name shows.
 import { signal } from '@preact/signals';
-import { lang, t } from '../i18n';
+import { lang, t } from '../lib/i18n';
 import * as data from './data';
 import type { Place } from './search';
 

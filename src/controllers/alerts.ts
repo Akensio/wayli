@@ -1,8 +1,8 @@
 // Alerts while following a trip: vibration, three beeps and a notification (through the service worker, so a
 // tap reopens the app), and always a toast. And the trip in the notification bar (tripStatus).
-import { settings } from '../store.js';
-import { t, lang } from '../i18n';
-import { toast } from '../ui/toast';
+import { settings } from '../lib/store.js';
+import { t, lang } from '../lib/i18n';
+import { toast } from '../widgets/toast';
 
 let audio: AudioContext | null = null;
 /** Audio may only start from a tap: called when a trip starts, so the beeps can play later. */

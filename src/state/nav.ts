@@ -10,7 +10,7 @@
 // CloseWatcher, each entry gets one instead of a history entry: back closes the panel with the app's own
 // animation and the browser draws nothing. Everywhere else, history as above.
 import { signal, computed } from '@preact/signals';
-import { t } from '../i18n';
+import { t } from '../lib/i18n';
 import * as sheet from './sheet';
 import * as results from './results';
 import * as search from './search';

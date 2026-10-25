@@ -1,4 +1,4 @@
-// Backtest the app's train predictions on a morning's raw SIRI minute files: the app's own code (src/live.js
+// Backtest the app's train predictions on a morning's raw SIRI minute files: the app's own code (src/engine/live.js
 // estimateDelay, with the worker's frozen-fix filter and its reading of a train without GPS) is run every minute, and
 // each prediction of a later station is scored against when that train's GPS first came within 300 m of it.
 //
@@ -9,8 +9,8 @@
 // later than the train. 2026-10-25: 2.1 minutes typical (median |error|) against the timetable's 3.1.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { gunzipSync, brotliDecompressSync } from 'node:zlib';
-import { parseTimetable } from '../src/raptor.js';
-import * as live from '../src/live.js';
+import { parseTimetable } from '../src/engine/raptor.js';
+import * as live from '../src/engine/live.js';
 
 const [day, from = '07:30', to = '10:30'] = process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !(all[i - 1] || '').startsWith('--'));
 const opt = (name, dflt) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : dflt; };
@@ -75,7 +75,7 @@ for (const [ride, rs] of byRide) {
   truth.set(ride, arr);
 }
 
-// minute by minute, as the app sees the trains (src/worker.js remember and snapVehicles)
+// minute by minute, as the app sees the trains (src/worker/worker.js remember and snapVehicles)
 const posSince = new Map(), callSince = new Map(), res = [];
 for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
   const cur = rows.filter((r) => r[0] === t);

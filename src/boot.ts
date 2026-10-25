@@ -1,7 +1,7 @@
 // Starting the app, after the components have painted: the service worker, the map, a trip in progress, then
 // the data (the manifest, the day to start on, a shared link or the last search, the timetable, then the
 // address book, the street graph and the courses in the background).
-import { lastSearch } from './store.js';
+import { lastSearch } from './lib/store.js';
 import * as search from './state/search';
 import * as results from './state/results';
 import * as saved from './state/saved';
@@ -9,7 +9,7 @@ import { warmPosition } from './state/position';
 import * as map from './map/index';
 import { loadFailed } from './controllers/status';
 import { applyLang } from './controllers/lang';
-import { t } from './i18n';
+import { t } from './lib/i18n';
 import { loadManifest, renderDays, startDay, hasDay, loadDay, loadPlaces, loadStreets, loadShapes, loadRailTimes, loadBusTimes } from './controllers/loading';
 import { plan, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';

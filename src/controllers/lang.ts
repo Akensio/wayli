@@ -1,6 +1,6 @@
 // The language: the page's lang and direction, then everything that carries names asks again (the worker's
 // stop names and headsigns, the basemap's labels, the plan shown).
-import { lang, storeLang } from '../i18n';
+import { lang, storeLang } from '../lib/i18n';
 import { call } from '../worker/client';
 import * as search from '../state/search';
 import * as results from '../state/results';

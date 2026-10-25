@@ -1,8 +1,8 @@
 // Picking a place on the map: a tap drops a pin with a bubble (the place's name, a Choose button); another
 // tap moves it; a tap on a stop picks the stop; Cancel in the bar leaves.
 import type { Map as MLMap } from 'maplibre-gl';
-import { esc } from '../ui/html';
-import { t } from '../i18n';
+import { esc } from '../widgets/html';
+import { t } from '../lib/i18n';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as search from '../state/search';

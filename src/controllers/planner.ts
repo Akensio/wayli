@@ -2,10 +2,10 @@
 // a plan from now takes the delays of the vehicles on the road into account. Also: a destination chosen
 // anywhere (a bubble, a saved place) planned from where you are, the last search shown again, the plan cleared.
 import { effect } from '@preact/signals';
-import * as live from '../live.js';
-import { settings, recentPlaces, recentTrips, lastSearch } from '../store.js';
-import { t, lang } from '../i18n';
-import { dateOf } from '../time';
+import * as live from '../engine/live.js';
+import { settings, recentPlaces, recentTrips, lastSearch } from '../lib/store.js';
+import { t, lang } from '../lib/i18n';
+import { dateOf } from '../lib/time';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as search from '../state/search';
@@ -14,7 +14,7 @@ import * as sheet from '../state/sheet';
 import * as nav from '../state/nav';
 import { lastPos, getPosition } from '../state/position';
 import * as map from '../map/index';
-import { toast } from '../ui/toast';
+import { toast } from '../widgets/toast';
 import type { Place } from '../state/search';
 import type { Query, PlanResult } from '../journey/types';
 import { startDay } from './loading';

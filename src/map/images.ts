@@ -1,5 +1,5 @@
 // Marker images drawn on canvas at 2x: station badges and the vehicles' heading arrows.
-import { ICONS } from '../ui/icons';
+import { ICONS } from '../widgets/icons';
 import { routeColor } from '../journey/colors';
 
 export const BADGE_KINDS = ['rail', 'lrt', 'station', 'bus'] as const;

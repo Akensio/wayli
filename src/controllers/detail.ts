@@ -1,8 +1,8 @@
 // The journey detail: the journey on the map (one ride alone when focused), and for a journey happening around
 // now, a live badge on each ride and every vehicle of those lines on the map.
-import * as live from '../live.js';
+import * as live from '../engine/live.js';
 import * as search from '../state/search';
-import { t } from '../i18n';
+import { t } from '../lib/i18n';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import * as data from '../state/data';
 import * as detail from '../state/detail';
@@ -15,7 +15,7 @@ import { openLine, openTrip } from './line';
 import { liveRides } from './liverides';
 import type { TrainRow } from '../state/station';
 import { startTrip } from './follow';
-import { recentViews } from '../store.js';
+import { recentViews } from '../lib/store.js';
 
 let seq = 0;   // the journey shown; a live answer for an older one is dropped
 

@@ -1,8 +1,8 @@
 // Sharing a journey: its legs as text and a link that opens the same plan.
-import { t } from '../i18n';
+import { t } from '../lib/i18n';
 import { placeName } from '../state/names';
-import { fmt, hm } from '../time';
-import { toast } from '../ui/toast';
+import { fmt, hm } from '../lib/time';
+import { toast } from '../widgets/toast';
 import { dur, lineText } from './format';
 import type { Journey, Query } from './types';
 

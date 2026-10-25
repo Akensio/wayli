@@ -60,13 +60,11 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/streets.py`, `pipeline/streetgraph.py`, `pipeline/elevation.py` | OpenStreetMap extract to the compact street graph, with the climbs along each street from open elevation tiles; reader and stop-to-stop walking times for the compiler. |
 | `pipeline/shapes.py` | GTFS shapes to the compact courses file (simplified polylines per shape); the compiler (`--shapes`) records each pattern's course and where its stops fall on it. |
 | `pipeline/rail.py` | OpenStreetMap railways to a small rail graph with an A* router; the compiler (`--rail`) draws train patterns along the track, since the feed has no shapes for trains. |
-| `src/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
-| `src/streets.js` | Street graph loader; first/last mile on foot or by bike to stops; point-to-point routes. |
-| `pipeline/places.py`, `src/places.js` | Offline address book from OpenStreetMap (streets, house numbers, cities, notable places) and the free-text search over it. |
-| `src/index.html`, `src/main.ts`, `src/boot.ts`, `src/worker.js`, `src/sw.template.js`, `src/styles.css` | The shell: roots only, the entry that renders the components, the start-up of the controllers, the data worker, the service worker template, the styles. Hebrew/RTL first, English toggle. |
-| `src/state/`, `src/features/`, `src/controllers/`, `src/map/`, `src/journey/`, `src/ui/`, `src/worker/` | The app proper: one state module per feature with its `hooks`; the Preact components; what happens behind them (loading, planning, live polling, follow mode, alerts), the only place that fills the hooks; the map; journey types, colours and words; icons, toast, ripple; the worker client. Layout in `docs/architecture.md`, "The app". |
-| `src/live.js`, `src/follow.js`, `src/store.js` | Real-time client (Hasadna Open Bus, delay estimate, Israel-time helpers); trip-following state machine (pure, testable in Node); on-device store (settings, history, saved places, trip in progress). |
-| `src/mapstyle.js` | The basemap, light and dark: OpenFreeMap's Liberty style with every colour replaced from one of two palettes at runtime. MapLibre 6 is bundled (`src/map/maplibre.ts`, with its worker as an asset). |
+| `src/` | The app; `src/README.md` explains the layout and each folder has its own README. At the top only the entry files: `index.html`, `main.ts` (renders the views), `boot.ts` (starts the controllers), `styles.css`, `sw.template.js` (the service worker). |
+| `src/engine/` | The logic with no screen, run in the data worker and in Node (`tools/`): `raptor.js` (timetable, stop search, RAPTOR with window queries and ranking), `streets.js` (first/last mile on foot or by bike, with climbs), `places.js` (offline address book search), `live.js` (Hasadna real time, delay estimates, Israel time), `follow.js` (the trip-following state machine). |
+| `src/worker/` | The data worker (`worker.js`: loads the day's files, answers every query) and the app's client for it. |
+| `src/state/`, `src/controllers/`, `src/views/`, `src/widgets/` | The app: one state module per feature with its `hooks`; what happens behind them (loading, planning, live polling, follow mode, alerts), the only place that fills the hooks; the views, the parts of the screen (Preact); widgets, the small pieces several views share (icons, line chips, the timetable, toast). Layout in `docs/architecture.md`, "The app". |
+| `src/map/`, `src/journey/`, `src/lib/` | The map (MapLibre 6 bundled, the basemap's style with its two palettes, what is drawn for each panel); a journey's types, colours, words, sharing and the pay link; helpers used everywhere (strings in both languages, time, the on-device store). |
 | `src/public/` | Copied as is into the build: icons, the web manifest. |
 | `package.json`, `vite.config.ts`, `tsconfig.json`, `eslint.config.mjs` | The toolchain: `npm run check` (lint and type-check) and `npm run build` (Vite, into `dist/`; the service worker is written there with the list of built files). Run `npm run check` before pushing app code; the workflow runs both before every build. |
 | `tools/` | `bench.mjs` runs the router in Node (plan, profile, bike reach) for measuring; `trainbacktest.mjs` scores the app's train predictions on a morning's raw minute files (kept in `data/siri/`); the `*.test.mjs` are `npm test`. |
@@ -75,13 +73,13 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/railtimes.py`, `.github/workflows/railtimes.yml` | Train section times learned nightly from the last week of Hasadna's train positions (`railtimes.json`), for train delays; `--score DAY` measures against a held-out day. |
 | `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |
-| `worker/`, `.github/workflows/relay.yml` | The real-time relay (Hasadna's newest raw SIRI snapshot with CORS) and its deploy. |
+| `relay/`, `.github/workflows/relay.yml` | The real-time relay (Hasadna's newest raw SIRI snapshot with CORS) and its deploy. |
 | `data/`, `site/`, `dist/`, `node_modules/` | Gitignored: downloads, compiled files, the built site, the build, the toolchain. |
 
-`worker/relay.js` is the real-time relay, a Cloudflare Worker (free plan,
+`relay/relay.js` is the real-time relay, a Cloudflare Worker (free plan,
 https://wayli-relay.wayli.workers.dev), deployed by
 `.github/workflows/relay.yml` with the repo's `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID` secrets whenever `worker/` changes. Reports and push
+`CLOUDFLARE_ACCOUNT_ID` secrets whenever `relay/` changes. Reports and push
 will join it when that work starts.
 
 ## Current state

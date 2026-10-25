@@ -3,8 +3,8 @@
 // A place can also be "lat,lon" or "lat,lon:bike" (needs STREETS=data/streets.bin.gz in the environment).
 import { readFileSync, existsSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { parseTimetable, searchStops, plan, profile, describe } from '../src/raptor.js';
-import { parseStreets, accessStops, route } from '../src/streets.js';
+import { parseTimetable, searchStops, plan, profile, describe } from '../src/engine/raptor.js';
+import { parseStreets, accessStops, route } from '../src/engine/streets.js';
 
 const [file, fromQ, toQ, timeStr = '08:00', windowStr = '60', runsStr = '10'] = process.argv.slice(2);
 let t = performance.now();

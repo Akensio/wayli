@@ -1,7 +1,7 @@
 // The shell around the screens: the top bar's height for the map and the sheet, install (Chrome's prompt or
 // Safari's steps), online and offline, the drawer's actions, and what closing each panel must stop.
 import { effect } from '@preact/signals';
-import { t } from '../i18n';
+import { t } from '../lib/i18n';
 import { call } from '../worker/client';
 import * as app from '../state/app';
 import * as nav from '../state/nav';
@@ -15,7 +15,7 @@ import * as follow from '../state/follow';
 import * as line from '../state/line';
 import { getPosition, hooks as positionHooks } from '../state/position';
 import * as map from '../map/index';
-import { toast } from '../ui/toast';
+import { toast } from '../widgets/toast';
 import type { Place } from '../state/search';
 import { clearPlan, planTo, planFrom, revealCard } from './planner';
 import { closeDetail } from './detail';

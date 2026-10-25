@@ -46,7 +46,7 @@ def load(path):
     speed = np.array([header["walk_speed"][str(k)] for k in range(6)], np.float64)
     sec = g["edgeLen"] / speed[kind]
     c = header.get("climb")
-    if c and "edgeUp" in g:   # climbs, as the app counts them on foot (src/streets.js secondsOn)
+    if c and "edgeUp" in g:   # climbs, as the app counts them on foot (src/engine/streets.js secondsOn)
         up = g["edgeUp"].astype(np.float64); down = g["edgeDown"].astype(np.float64)
         extra = c["walk_up"] * up + np.where(down > c["steep"] * g["edgeLen"], c["walk_down_steep"] * down, 0.0)
         sec = sec + np.where(kind == 4, 0.0, extra)

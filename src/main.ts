@@ -6,15 +6,15 @@ import './map/maplibre';   // first: the map library as a global, before any mod
 // following locate button when they came first, 2026-10-22)
 import './styles.css';
 import { render, h } from 'preact';
-import { installSprite } from './ui/icons';
-import { installRipple } from './ui/ripple';
-import { TopBar } from './features/topbar/TopBar';
-import { Floating, PickBar, LiveNote, Menus } from './features/shell/Floating';
-import { Sheet } from './features/shell/Sheet';
-import { Drawer } from './features/pages/Drawer';
-import { SettingsPage } from './features/pages/SettingsPage';
-import { attachSheetGestures } from './features/sheet/gestures';
-import { attachBarPull } from './features/sheet/pullRefresh';
+import { installSprite } from './widgets/icons';
+import { installRipple } from './widgets/ripple';
+import { TopBar } from './views/topbar/TopBar';
+import { Floating, PickBar, LiveNote, Menus } from './views/shell/Floating';
+import { Sheet } from './views/shell/Sheet';
+import { Drawer } from './views/pages/Drawer';
+import { SettingsPage } from './views/pages/SettingsPage';
+import { attachSheetGestures } from './views/sheet/gestures';
+import { attachBarPull } from './views/sheet/pullRefresh';
 import * as sheet from './state/sheet';
 
 const el = (id: string) => document.getElementById(id)!;

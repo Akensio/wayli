@@ -1,5 +1,5 @@
 // The status pill: what is loading and how far, a ready line that fades after four seconds, errors that stay.
-import { t } from '../i18n';
+import { t } from '../lib/i18n';
 import * as app from '../state/app';
 import { hooks as workerHooks } from '../worker/client';
 import type { Progress } from '../worker/client';

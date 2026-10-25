@@ -1,9 +1,9 @@
 // A stop in the sheet, the one view of a stop wherever it was opened (the map, a search, a line, a trip): its lines,
 // next departures (from now, or from the bar's time on another day) refreshed with live times every 45 s while it is
 // open, from here and to here; a station is all its platforms, and where its trains go without a change.
-import * as live from '../live.js';
-import { t } from '../i18n';
-import { calToday } from '../time';
+import * as live from '../engine/live.js';
+import { t } from '../lib/i18n';
+import { calToday } from '../lib/time';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import * as search from '../state/search';
 import * as sheet from '../state/sheet';
@@ -14,7 +14,7 @@ import { clock } from '../map/popups';
 import type { StopInfo, Departure } from '../state/stop';
 import type { Place } from '../state/search';
 import { planTo, planFrom } from './planner';
-import { recentViews } from '../store.js';
+import { recentViews } from '../lib/store.js';
 import { openTrains, chooseStation } from './station';
 import { openLine, openTrip } from './line';
 import type { Dest } from '../state/station';

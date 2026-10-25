@@ -1,6 +1,6 @@
 // The trip-following state machine's manual steps: node tools/follow.test.mjs (exits 1 on a failure).
 import assert from 'node:assert/strict';
-import { initialState, advance, stepForward, stepBack, canStepBack } from '../src/follow.js';
+import { initialState, advance, stepForward, stepBack, canStepBack } from '../src/engine/follow.js';
 
 const T = (h, m) => h * 3600 + m * 60;
 const stop = (n, lat, arr) => ({ stop: n, name: `s${n}`, lat, lon: 34.8, arr });

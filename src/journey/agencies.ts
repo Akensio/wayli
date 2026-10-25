@@ -1,5 +1,5 @@
 // Operators' names in English, where the feed has only Hebrew.
-import { lang } from '../i18n';
+import { lang } from '../lib/i18n';
 
 const AGENCY_EN: Record<string, string> = { 'רכבת ישראל': 'Israel Railways', 'אגד': 'Egged', 'אלקטרה אפיקים תחבורה': 'Electra Afikim', 'אלקטרה אפיקים': 'Electra Afikim', 'דן': 'Dan', 'ש.א.מ': 'Sham',
   'נסיעות ותיירות': 'Nesiot VeTayarut', 'גי.בי.טורס': 'GB Tours', 'מועצה אזורית אילות': 'Eilot Regional Council', 'נתיב אקספרס': 'Nateev Express', 'מטרופולין': 'Metropoline',

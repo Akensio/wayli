@@ -1,7 +1,7 @@
 // A line's page: its course and stops on the map, and its vehicles with their delays, every 20 s while open.
-import * as live from '../live.js';
-import { t } from '../i18n';
-import { toast } from '../ui/toast';
+import * as live from '../engine/live.js';
+import { t } from '../lib/i18n';
+import { toast } from '../widgets/toast';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as linePage from '../state/line';
@@ -9,7 +9,7 @@ import * as map from '../map/index';
 import { clock } from '../map/popups';
 import type { LineInfo } from '../state/line';
 import { openStop } from './stop';
-import { recentViews } from '../store.js';
+import { recentViews } from '../lib/store.js';
 import * as data from '../state/data';
 import { lastPos } from '../state/position';
 import { tripStopsCached } from '../worker/client';

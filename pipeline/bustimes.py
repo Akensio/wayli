@@ -12,7 +12,7 @@ Source: Hasadna's copy of the Ministry's SIRI feed, one snapshot of every vehicl
 (https://open-bus-siri-requester.hasadna.org.il/, YYYY/MM/DD/HH/MM.br in UTC; the same files the app's relay passes on).
 For each service day just over its minutes are read once, 04:00 to 03:00 the next morning (about 1,380 files,
 ~300 MB), and every bus ride (a line and its scheduled start; trains have pipeline/railtimes.py) is matched to its
-trip in the feed. Each position is placed along the trip's stops as the app does (src/live.js, projectOnStops: the
+trip in the feed. Each position is placed along the trip's stops as the app does (src/engine/live.js, projectOnStops: the
 nearest straight segment between consecutive stops), searched forward from the last one so a loop is not read
 backwards; where the ride passed each stop is interpolated between the positions either side, at most 3 minutes
 apart. That is the day's passage log, kept in --history (one gzipped JSON line per ride: its route, start, stop codes,
@@ -217,7 +217,7 @@ class Feed:
 
 # ---------------------------------------------------------------- passing the stops
 def proj(lat, lon, S, lo, hi):
-    """src/live.js projectOnStops over the segments lo..hi: the nearest one, the fraction along it, metres off."""
+    """src/engine/live.js projectOnStops over the segments lo..hi: the nearest one, the fraction along it, metres off."""
     best = (lo, 0.0, float("inf"))
     kx, ky = 111320 * math.cos(lat * math.pi / 180), 110540
     for i in range(lo, hi + 1):
