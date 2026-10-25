@@ -335,10 +335,24 @@ function busAhead(stops, pr, seen, day, seenMs, ride) {
  */
 export function estimateDelay(vehicle, stops, day) {
   if (!stops || stops.length < 2) return null;
-  const pr = projectOnStops(vehicle.lat, vehicle.lon, stops);
-  if (pr.metres > 600) return null;   // not on this trip's path (or a very different route shape)
   const seen = secondsOn(vehicle.recordedAt, day);
   const ageSec = (Date.now() - vehicle.recordedAt.getTime()) / 1000;
+  // a report an hour after its trip should have ended is no position of that trip (a vehicle still naming a trip it
+  // finished long ago: one named its 15:05 trip at 21:37, 2026-10-25)
+  if (seen > stops[stops.length - 1].arr + 3600) return null;
+  // seen before its trip begins: it waits to start it (at its terminal, or still finishing the trip before on roads
+  // this one shares), and has not run any of it. Placed along the trip it read as up to 15 minutes early, 73 buses in a
+  // snapshot of 2026-10-25 21:38, most of them at a loop's terminal, which is near its last stops as well as its first.
+  if (seen < stops[0].dep - 120) return { delay: 0, index: 0, frac: 0, offPath: 0, seen, ageSec, stale: ageSec > 240, vehicle, waiting: true };
+  const pr = projectOnStops(vehicle.lat, vehicle.lon, stops);
+  if (pr.metres > 600) return null;   // not on this trip's path (or a very different route shape)
+  // placed further along than it could have gone since its start (in under half the scheduled time, starting up to two
+  // minutes early): it is at its start, which a loop shares with its end (2026-10-25 21:38: 62 buses, 2 minutes after
+  // their start, read as 15 minutes early 30 minutes along). It leaves when it leaves, late only once its time has passed.
+  const schedHere = stops[pr.index].dep + pr.frac * Math.max(0, stops[pr.index + 1].arr - stops[pr.index].dep);
+  if (schedHere - stops[0].dep > 300 && seen - (stops[0].dep - 120) < 0.5 * (schedHere - stops[0].dep)) {
+    return { delay: Math.max(0, seen - stops[0].dep), index: 0, frac: 0, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle, waiting: true };
+  }
   // a train without GPS: when its call first named the station (or that station's time, when the change was not seen)
   let call = null;
   if (vehicle.callSince != null && railTimes) {

@@ -1014,10 +1014,18 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   the origin and every train in the country (Israel Railways is SIRI
   operator 2, one query), hands them to the worker, which matches each to
   its trip, estimates its delay and shifts that trip's times from where the
-  vehicle is onwards before routing. A trip never moves past the next trip
-  of its pattern or before the previous one, so the router's sorted-trip
-  searches still hold; a vehicle so late that the next one catches up shows
-  as departing with it. Everything is undone after the plan. So a train
+  vehicle is onwards before routing. A train is boarded at the time it pulls
+  in, the time the rider is shown (its learned stand comes after; one
+  standing at the station already, until it leaves). Trips of a pattern stay
+  in order at every stop, so the router's sorted-trip searches still hold:
+  where a trip is now due after the one behind it, the earlier is brought
+  forward to the later one's time, never the later one pushed back (the
+  rider is at the stop for whichever comes first). A vehicle seen before
+  its trip begins, or further along than it could have gone since its start
+  (a loop's terminal is near its last stops too), waits at its first stop,
+  on time; a report an hour past its trip's end, and the older report of a
+  bus that has started its next trip, are not used. Everything is undone
+  after the plan. So a train
   whose scheduled departure has passed but which is still on its way is
   offered at its real time, and a bus running early is not. The results
   say "live times as of HH:MM" or "schedule only"; each planned ride shows

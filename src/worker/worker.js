@@ -181,9 +181,10 @@ function resolvePlace(place, mode, maxSeconds) {
 // ---------------------------------------------------------------- live data in the timetable
 // A plan "from now" first moves the delayed trips: each reported vehicle is matched to its trip
 // (route id + first departure) and the delay estimated from its position shifts that trip's times from
-// where it is onwards. Trips of a pattern stay in order at every stop (a trip never moves past the
-// next one or before the previous one), so the router's binary searches hold. Everything is undone
-// after the plan.
+// where it is onwards. Trips of a pattern stay in order at every stop, so the router's binary searches
+// hold: where a trip is now due after the one behind it, the earlier is brought forward to the later
+// one's time (the rider is at the stop for whichever comes first; pushing the later one back had the
+// plan walk the rider up after the bus it showed, 2026-10-25). Everything is undone after the plan.
 let routeById = null, routePats = null;
 function indexRoutes() {
   routeById = new Map(); routePats = new Map();
@@ -307,7 +308,7 @@ function tripStopList(t) {
 }
 let liveEdits = [], tripLive = new Map();
 function applyLive(vehicles) {
-  const day = tt.header.date, now = Date.now();
+  const day = tt.header.date, now = Date.now(), touched = new Set();
   const byTrip = new Map();   // the latest report per trip
   for (const v of vehicles) {
     const rec = new Date(v.recordedAt), start = new Date(v.scheduledStart);
@@ -324,16 +325,31 @@ function applyLive(vehicles) {
     if (!est) continue;
     tripLive.set(t, { delay: est.delay, index: est.index, seen: rec.getTime(), stale: est.ageSec > 240, lat: v.lat, lon: v.lon });
     if (Math.abs(est.delay) < 60 && !est.dep) continue;   // a train with learned sections has its own time at each station
-    const prevBase = t > tt.patTripsOff[p] ? base - ns : -1, nextBase = t + 1 < tt.patTripsOff[p + 1] ? base + ns : -1;
+    touched.add(p);
     for (let i = est.index; i < ns; i++) {
       const idx = base + i;
-      let nd = est.dep && est.dep[i] != null ? Math.round(est.dep[i]) : tt.dep[idx] + est.delay;
-      let na = est.arr && est.arr[i] != null ? Math.round(est.arr[i]) : est.dep && est.dep[i] != null ? nd : tt.arr[idx] + est.delay;
-      if (nextBase >= 0) { nd = Math.min(nd, tt.dep[nextBase + i]); na = Math.min(na, tt.arr[nextBase + i]); }
-      if (prevBase >= 0) { nd = Math.max(nd, tt.dep[prevBase + i]); na = Math.max(na, tt.arr[prevBase + i]); }
+      const own = (x) => (x && x[i] != null ? Math.round(x[i]) : null);
+      let na = own(est.arr) ?? own(est.dep) ?? tt.arr[idx] + est.delay;
+      // boarded when it pulls in, the time the rider is shown (liveAt): a train leaves after its learned stand, which
+      // has its approach in it and runs long (2:53 at Rehovot), and the plan had the rider walk up after it had come in
+      // (2026-10-25, Gadi: leave at 21:28 for the train shown at 21:26). One standing there already leaves at its time.
+      let nd = est.at === i ? own(est.dep) ?? na : own(est.arr) ?? own(est.dep) ?? tt.dep[idx] + est.delay;
       if (na > nd) na = nd;
       liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
       tt.dep[idx] = nd; tt.arr[idx] = na;
+    }
+  }
+  // in order again: from the last trip back, none later at a stop than the one after it
+  for (const p of touched) {
+    const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p], t0 = tt.patTripsOff[p], t1 = tt.patTripsOff[p + 1];
+    for (let t = t1 - 2; t >= t0; t--) {
+      const base = tt.tripTimesOff[p] + (t - t0) * ns, next = base + ns;
+      for (let i = 0; i < ns; i++) {
+        const idx = base + i;
+        if (tt.dep[idx] <= tt.dep[next + i] && tt.arr[idx] <= tt.arr[next + i]) continue;
+        liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
+        tt.dep[idx] = Math.min(tt.dep[idx], tt.dep[next + i]); tt.arr[idx] = Math.min(tt.arr[idx], tt.arr[next + i], tt.dep[idx]);
+      }
     }
   }
   return tripLive.size;
@@ -605,7 +621,8 @@ function handedOver(early, trains) {
  *  that has taken its next trip's number while still running elsewhere goes back to the trip it is finishing when
  *  that is clear (handedOver), and is left out otherwise. */
 function snapVehicles(j, t) {
-  const out = [], early = [], now = Date.now();
+  let out = [];
+  const early = [], now = Date.now();
   const codes = tt ? codeIndex() : null;
   for (const d of (j && j.Siri && j.Siri.ServiceDelivery && j.Siri.ServiceDelivery.StopMonitoringDelivery) || []) {
     for (const x of d.MonitoredStopVisit || []) {
@@ -635,6 +652,11 @@ function snapVehicles(j, t) {
       if (notYetItsTrip(v)) early.push(v); else out.push(v);
     }
   }
+  // one report per bus: a bus that started its next trip often still has a report of the one before in the snapshot
+  // (570 of 4,798 vehicles, 2026-10-25 21:38), older, from where that trip ended, which read hugely late or early
+  const newest = new Map();
+  for (const v of out) if (v.operator !== 2 && v.vehicleRef != null) { const k = `${v.operator}/${v.vehicleRef}`, o = newest.get(k); if (!o || v.recordedAt > o.recordedAt) newest.set(k, v); }
+  if (newest.size) out = out.filter((v) => v.operator === 2 || v.vehicleRef == null || newest.get(`${v.operator}/${v.vehicleRef}`) === v);
   if (!early.length) return out;
   const trains = out.filter((v) => v.operator === 2 && !v.atStop), gone = new Set();
   for (const v of early) {
