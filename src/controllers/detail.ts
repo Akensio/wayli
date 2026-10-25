@@ -11,7 +11,9 @@ import * as saved from '../state/saved';
 import * as map from '../map/index';
 import { liveBadge } from '../journey/format';
 import type { Journey, Query } from '../journey/types';
-import { openLine } from './line';
+import { openLine, openTrip } from './line';
+import { liveRides } from './liverides';
+import type { TrainRow } from '../state/station';
 import { startTrip } from './follow';
 import { recentViews } from '../store.js';
 
@@ -62,11 +64,15 @@ Object.assign(detail.hooks, {
   close: () => nav.close('detail'),
   redraw: () => map.redrawMap(true),
   openLine: (route: number, stop?: number) => openLine(route, stop != null ? { stop } : {}),
-  rideTimes: (l: Journey['legs'][number]) => {
+  // every line doing the ride: from now on today, else from a little before the ride planned
+  rideOptions: (l: Journey['legs'][number], q: Query) => {
     const along = l.stopsAlong || [];
-    if (l.pattern == null || along.length < 2) return Promise.resolve([]);
-    return call('lineTimes', { pattern: l.pattern, from: [along[0].stop], to: [along[along.length - 1].stop] });
+    if (along.length < 2) return Promise.resolve([]);
+    const fromTime = q.isNow ? live.nowOn(q.day) - 120 : (l.depart ?? 0) - 1200;
+    return call('rideOptions', { from: [along[0].stop], to: [along[along.length - 1].stop], fromTime, limit: 60 });
   },
+  rideLive: async (rows: TrainRow[], day: string) => (map.liveOn() ? (await liveRides(rows, day)).live : {}),
+  openTrip: (trip: number, stop: number) => openTrip(trip, stop),
   startTrip: (j: Journey, q: Query) => startTrip(j, q),
   favChanged: () => saved.refresh(),
 });

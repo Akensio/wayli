@@ -1,9 +1,8 @@
 // One leg of a journey as a row: the times down the side, a dot in the line's colour, and what to do:
 // ride a line toward its headsign (from, to, stops, operator), or walk or ride the bicycle somewhere.
 import { useState } from 'preact/hooks';
-import { Timetable } from '../../ui/Timetable';
-import type { TimeRow } from '../../ui/Timetable';
-import { dur } from '../../journey/format';
+import { RideOptions } from './RideOptions';
+import type { TrainRow, LiveTrain } from '../../state/station';
 import { t } from '../../i18n';
 import { fmt } from '../../time';
 import { FromTo } from '../../ui/FromTo';
@@ -21,8 +20,8 @@ type Props = {
   badge?: Badge | null;
   onChip?: () => void;         // the line chip opens the line
   onClick?: () => void;        // a ride focuses on the map
-  times?: () => Promise<TimeRow[]>;   // the day's times of the ride's line from its stop (the detail)
-  now?: number | null;                // seconds on the ride's day, when it is today
+  // the detail: every line that does this ride, from its stop to the one it is left at, with live times
+  options?: { load: () => Promise<TrainRow[]>; liveFor: (rows: TrainRow[]) => Promise<Record<string, LiveTrain>>; day: string; now: number | null; onOpen: (trip: number, stop: number) => void };
 };
 
 const walkText = (l: Leg, mins: number) => {
@@ -30,15 +29,8 @@ const walkText = (l: Leg, mins: number) => {
   return l.mode === 'bike' ? t('bikeTo', { min: mins, name: l.to!.name }) : t('walkTo', { min: mins, name: l.to!.name });
 };
 
-export function LegRow({ l, mode, cls = '', badge, onChip, onClick, times: loadTimes, now = null }: Props) {
-  const [stopsOpen, setStopsOpen] = useState(false);
-  // the line's other times from the same stop, each with when it reaches the stop to get off at
-  const [rideTimes, setRideTimes] = useState<TimeRow[] | null | false>(false), [picked, setPicked] = useState<TimeRow | null>(null);
-  const toggleTimes = () => {
-    if (rideTimes !== false) { setRideTimes(false); return; }
-    setRideTimes(null);
-    loadTimes!().then((rows) => { setRideTimes(rows); setPicked(rows.find((r) => r.trip === l.trip) || null); }).catch(() => setRideTimes([]));
-  };
+export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options }: Props) {
+  const [stopsOpen, setStopsOpen] = useState(false), [optsOpen, setOptsOpen] = useState(false);
   const ride = l.type === 'ride';
   const mins = Math.max(1, Math.round(l.seconds / 60));
   const stopsAlong = (l.stopsAlong as StopAlong[] | undefined) || [];
@@ -53,7 +45,7 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick, times: loadT
     : <>{tf(l.depart!)}{ride && <><br />{tf(l.arrive!)}</>}</>;
   return (
     <div class={`leg ${l.type}${ride ? ' t' + l.routeType : ''}${cls ? ' ' + cls : ''}`}
-      onClick={onClick && ride ? (e) => { if ((e.target as HTMLElement).closest('.toggle, .stoplist, .ridetimes')) return; onClick(); } : undefined}>
+      onClick={onClick && ride ? (e) => { if ((e.target as HTMLElement).closest('.toggle, .stoplist, .rideopts')) return; onClick(); } : undefined}>
       <span class="t">{times}</span>
       <span class="dot" style={ride ? { background: routeColor(l.routeType, l.agency) } : undefined} />
       <span class="what">
@@ -65,13 +57,9 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick, times: loadT
             <button type="button" class="toggle" onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</button>
             <div class="stoplist" hidden={!stopsOpen}>{stopsAlong.map((s) => <div><span>{fmt(s.arr)}</span><span>{s.name}</span></div>)}</div>
           </>}
-          {mode === 'detail' && loadTimes && l.pattern != null && <>
-            <button type="button" class="toggle" onClick={toggleTimes}>{rideTimes !== false ? t('hideTimes') : t('rideTimes', { name: l.from!.name })}</button>
-            {rideTimes === null && <div class="muted small">{t('loading')}</div>}
-            {rideTimes && rideTimes.length > 0 && <div class="ridetimes">
-              <Timetable rows={rideTimes} now={now} sel={picked ? picked.trip : null} onPick={setPicked} />
-              {picked && picked.arr != null && <div class="muted small">{fmt(picked.dep)} → {fmt(picked.arr)} · {dur(picked.arr - picked.dep)}</div>}
-            </div>}
+          {mode === 'detail' && options && <>
+            <button type="button" class="toggle" onClick={() => setOptsOpen(!optsOpen)}>{optsOpen ? t('hideTimes') : t('rideOptions', { name: l.from!.name })}</button>
+            {optsOpen && <RideOptions mine={l.trip ?? null} {...options} />}
           </>}
         </> : walkText(l, mins)}
       </span>

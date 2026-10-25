@@ -4,7 +4,7 @@
 import * as live from '../live.js';
 import { t } from '../i18n';
 import { calToday } from '../time';
-import { call, tripStopsCached, estimate } from '../worker/client';
+import { call } from '../worker/client';
 import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as st from '../state/station';
@@ -12,6 +12,7 @@ import * as map from '../map/index';
 import { clock } from '../map/popups';
 import type { Station, TrainRow } from '../state/station';
 import { openStop } from './stop';
+import { liveRides } from './liverides';
 import { openTrip } from './line';
 import { recentViews } from '../store.js';
 
@@ -37,34 +38,20 @@ export async function openTrains(from: Station, to: Station, mode: 'rail' | 'lrt
   st.trains.value = rows;
   clearInterval(timer);
   if (w.isNow) {
-    liveTrains(rows, w.day, my, from);
-    timer = window.setInterval(() => { if (!nav.isOpen('trainTimes')) clearInterval(timer); else liveTrains(rows, w.day, my, from); }, 45000);
+    liveTrains(rows, w.day, my);
+    timer = window.setInterval(() => { if (!nav.isOpen('trainTimes')) clearInterval(timer); else liveTrains(rows, w.day, my); }, 45000);
   }
 }
 export function closeTrains(): void { clearInterval(timer); seq++; }
 
-/** Live times of the next trains between the two stations: every train in the country is one request; the light rail's
- *  are among the vehicles around the station. */
-async function liveTrains(rows: TrainRow[], day: string, my: number, from: Station): Promise<void> {
+/** Live times of the trains between the two stations (controllers/liverides). */
+async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<void> {
   if (!map.liveOn()) { st.liveNote.value = t('liveOff'); return; }
-  const now = live.nowOn(day);
-  const soon = rows.filter((r) => r.routeId != null && r.dep - now < 7200).slice(0, 10);
-  if (!soon.length) return;
   try {
-    const vs: any[] = st.mode.value === 'lrt' ? await live.vehiclesNear(from.lat, from.lon, 20, { sinceSec: 1800, limit: 1500 }) : await live.trains();
+    const r = await liveRides(rows, day);
     if (my !== seq) return;
-    for (const r of soon) {
-      const v = live.matchTrip(vs, r.routeId, r.firstDep, day);
-      if (!v) continue;
-      const ts = await tripStopsCached(r.trip);
-      const est = await estimate(v, ts.stops, day);
-      if (my !== seq) return;
-      const a = live.liveAt(est, ts.stops, r.boardPos), b = live.liveAt(est, ts.stops, r.alightPos);
-      if (!a || !b) continue;
-      st.live.value = { ...st.live.value, [String(r.trip)]: { passed: a.passed, dep: a.time, arr: b.time, delayMin: live.delayMinutes(a.delay), stale: !!a.stale } };
-    }
-    const nw = live.newest(vs);
-    st.liveNote.value = nw ? t('liveUpdated', { time: clock(nw) }) : t('liveNoVehicle');
+    st.live.value = { ...st.live.value, ...r.live };
+    st.liveNote.value = r.newest ? t('liveUpdated', { time: clock(r.newest) }) : t('liveNoVehicle');
   } catch { st.liveNote.value = t('liveFail'); }
 }
 

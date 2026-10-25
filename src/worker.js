@@ -1098,6 +1098,24 @@ const ops = {
     }
     return Array.from(dests.values()).sort((a, b) => a.name.localeCompare(b.name));
   },
+  /**
+   * A ride of a journey as a station sees it: every trip, of any line, that goes from where the ride boards straight to
+   * where it gets off, from `fromTime` on. Both ends are widened to the whole place: a station's platforms, or the stops
+   * of the same name within 150 m (one street corner's stops for different lines).
+   */
+  rideOptions({ from, to, fromTime, limit = 40 }) {
+    const widen = (ss) => {
+      const out = new Set();
+      for (const s of ss) {
+        for (const x of stationOf(s).stops) out.add(x);
+        if (tt.stopParent[s] >= 0) continue;
+        const name = sName(s);
+        for (let x = 0; x < tt.stops.length; x++) if (tt.stopParent[x] < 0 && sName(x) === name && haversine(tt.stopLat[s], tt.stopLon[s], tt.stopLat[x], tt.stopLon[x]) <= 150) out.add(x);
+      }
+      return [...out];
+    };
+    return ops.trainsBetween({ from: widen(from), to: widen(to), fromTime, limit });
+  },
   /** The direct trains between two stations (their platforms), leaving from `fromTime` on: when, how long, which train. */
   trainsBetween({ from, to, fromTime, limit = 24 }) {
     const B = new Set(to), out = [], seen = new Set();
@@ -1121,37 +1139,32 @@ const ops = {
     out.sort((a, b) => a.dep - b.dep || a.arr - b.arr);
     return out.slice(0, limit);
   },
-  /** One direction of a line: its main pattern's stops and course, today's trips, and its other directions. A train
-   *  line is every train between the same two stations, each of which the feed lists as a route of its own. */
   /**
-   * A line's trips through a stop all day: when each leaves it and, with `to`, reaches that stop after it. `from` and
-   * `to` are stops (a station's platforms); the line is a route, or the route of a `pattern` (a ride of a journey). A
-   * train line is every train between the same two stations, as on its page.
+   * A line's trips through a stop all day, by when each leaves it. `from` is a stop (a station's platforms all count,
+   * since a train may call at another); a train line is every train between the same two stations, as on its page.
    */
-  lineTimes({ route = -1, pattern = -1, from, to = null }) {
+  lineTimes({ route, from }) {
     if (!routePats) indexRoutes();
-    const ri0 = route >= 0 ? route : tt.patRoute[pattern];
-    // a stop of a station stands for all its platforms (a train may call at another)
-    const widen = (ss) => new Set(ss.flatMap((s) => (tt.stopParent[s] >= 0 ? tt.stationStops.get(tt.stopParent[s]) || [s] : [s])));
-    const fromSet = widen(from), toSet = to && to.length ? widen(to) : null, out = [];
-    for (const ri of lineSiblings(ri0)) {
+    const fromSet = new Set(from.flatMap((s) => (tt.stopParent[s] >= 0 ? tt.stationStops.get(tt.stopParent[s]) || [s] : [s]))), out = [];
+    for (const ri of lineSiblings(route)) {
       const r = tt.routes[ri];
       for (const p of routePats.get(ri) || []) {
         const o = tt.patStopsOff[p], ns = tt.patStopsOff[p + 1] - o;
-        let i = -1, j = -1;
+        let i = -1;
         for (let k = 0; k < ns - 1 && i < 0; k++) if (fromSet.has(tt.patStops[o + k])) i = k;
         if (i < 0) continue;
-        if (toSet) { for (let k = i + 1; k < ns && j < 0; k++) if (toSet.has(tt.patStops[o + k])) j = k; if (j < 0) continue; }
         const base = tt.tripTimesOff[p];
         for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) {
           const row = base + (t - tt.patTripsOff[p]) * ns;
-          out.push({ trip: t, dep: tt.dep[row + i], arr: j >= 0 ? tt.arr[row + j] : null, routeId: liveId(r), firstDep: tt.dep[row], estimated: !!r[6] });
+          out.push({ trip: t, dep: tt.dep[row + i], arr: null, routeId: liveId(r), firstDep: tt.dep[row], estimated: !!r[6] });
         }
       }
     }
     out.sort((a, b) => a.dep - b.dep);
     return out;
   },
+  /** One direction of a line: its main pattern's stops and course, today's trips, and its other directions. A train
+   *  line is every train between the same two stations, each of which the feed lists as a route of its own. */
   lineInfo({ route }) {
     const r = tt.routes[route];
     if (!lineIdx) indexLines();

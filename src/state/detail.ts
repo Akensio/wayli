@@ -1,7 +1,7 @@
 // The journey detail: the journey shown, one ride of it focused on the map (or none), and the live badges
 // of its rides as they come in.
 import { signal } from '@preact/signals';
-import type { TimeRow } from '../ui/Timetable';
+import type { TrainRow, LiveTrain } from './station';
 import type { Journey, Query, Leg } from '../journey/types';
 import type { Badge } from '../journey/format';
 
@@ -18,7 +18,9 @@ export const hooks = {
   close: () => {},
   redraw: () => {},                // the map draws the journey, the focused ride alone
   openLine: (_route: number, _stop?: number) => {},   // at the ride's boarding stop
-  rideTimes: async (_l: Leg): Promise<TimeRow[]> => [],   // the day's times of a ride's line, from its stop to the one it leaves at
+  rideOptions: async (_l: Leg, _q: Query): Promise<TrainRow[]> => [],   // every line doing a ride, from its stop to the one it is left at
+  rideLive: async (_rows: TrainRow[], _day: string): Promise<Record<string, LiveTrain>> => ({}),
+  openTrip: (_trip: number, _stop: number) => {},                   // a row: its line at the stop, that trip chosen
   startTrip: (_j: Journey, _q: Query) => {},
   favChanged: () => {},            // the saved screen lists the trips again
 };
