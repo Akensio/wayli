@@ -271,6 +271,8 @@ def main():
         col = {name: i for i, name in enumerate(header)}
         ti, ai, di, si, qi = (col["trip_id"], col["arrival_time"], col["departure_time"],
                               col["stop_id"], col["stop_sequence"])
+        if ti != 0:   # each line's trip is read before the line is split, which needs it first
+            sys.exit("stop_times.txt: trip_id is not the first column")
         skip_next = set()   # next-day trips that start too late to belong to this night
         for line in f:
             n_lines += 1

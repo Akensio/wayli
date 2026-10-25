@@ -67,7 +67,6 @@ def read_shapes_txt(zf, tol_m):
     """shape_id -> (lat, lon) float64 arrays, simplified. Rows are grouped by shape in the feed; a
     shape split across the file is merged."""
     shapes = {}
-    pending = {}  # id -> [seq list, lat list, lon list]
     n_rows = 0
     with zf.open("shapes.txt") as raw:
         f = io.TextIOWrapper(raw, encoding="utf-8-sig", newline="")

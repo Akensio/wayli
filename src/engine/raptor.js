@@ -187,7 +187,7 @@ export function searchStops(tt, query, limit = 12, lang = 'he') {
 function now() { return (typeof performance !== 'undefined' ? performance.now() : Date.now()); }
 
 /** Normalise an origin/destination argument: a stop index, a search group, or [{stop, walk}]. */
-function asPlaces(tt, x) {
+function asPlaces(x) {
   if (typeof x === 'number') return [{ stop: x, walk: 0 }];
   if (Array.isArray(x)) return x.map((e) => (typeof e === 'number' ? { stop: e, walk: 0 } : e));
   if (x && x.stops) return x.stops.map((s) => ({ stop: s, walk: 0 }));
@@ -201,7 +201,7 @@ function asPlaces(tt, x) {
  */
 export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
   const t0 = now();
-  origins = asPlaces(tt, origins); dests = asPlaces(tt, dests);
+  origins = asPlaces(origins); dests = asPlaces(dests);
   const maxTransfers = opts.maxTransfers ?? 3;
   const slack = opts.slack ?? tt.slack;
   // optional restriction to vehicle types (GTFS route_type), and the bike-on-board rules

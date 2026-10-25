@@ -24,7 +24,7 @@ turned round first. Stops follow in the order the course reaches them. A line dr
 turned round first. The answers are kept in --cache, used when the municipality's server does not answer (it times out
 at times); with neither, the feed is left as it is.
 """
-import argparse, csv, io, json, math, os, re, shutil, sys, time, urllib.parse, urllib.request, zipfile
+import argparse, csv, io, json, math, os, re, sys, time, urllib.parse, urllib.request, zipfile
 from collections import defaultdict
 
 GIS = "https://gisn.tel-aviv.gov.il/arcgis/rest/services/IView2/MapServer"
@@ -212,7 +212,6 @@ def merge(gtfs, dirs, stops_by_code):
                 for j in range(len(S) - 1)]
         for k, (h0, h1) in HOURS.items():
             runs = [max(30, round(g / SPEED[k])) for g in gaps]
-            total = sum(runs)
             t0 = h0
             while t0 <= h1:   # the last trip leaves at the end of the service
                 tid = f"{rid}-{k}-{t0 // 60}"
