@@ -3,22 +3,8 @@
 // buses that just ran a section), the delay against the timetable, and a stop's live time for the rider.
 import { metres } from './geo.js';
 import { secondsOn } from './clock.js';
+import { projectOnStops } from './geo.js';
 
-/** Where along a stop sequence a point is: the nearest segment, the fraction along it, and how far off. */
-export function projectOnStops(lat, lon, stops) {
-  let best = { index: 0, frac: 0, metres: Infinity };
-  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
-  for (let i = 0; i < stops.length - 1; i++) {
-    const ax = (stops[i].lon - lon) * kx, ay = (stops[i].lat - lat) * ky;
-    const bx = (stops[i + 1].lon - lon) * kx, by = (stops[i + 1].lat - lat) * ky;
-    const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
-    let f = len2 > 0 ? -(ax * dx + ay * dy) / len2 : 0;
-    f = Math.max(0, Math.min(1, f));
-    const px = ax + f * dx, py = ay + f * dy, d = Math.sqrt(px * px + py * py);
-    if (d < best.metres) best = { index: i, frac: f, metres: d };
-  }
-  return best;
-}
 // ------------------------------------------------------------------ trains: learned running times
 // A train does not run at one speed between stations: it pulls out slowly, runs fast, brakes, and some sections are
 // slow. pipeline/railtimes.py learns from the last days' positions how long each section between two stations

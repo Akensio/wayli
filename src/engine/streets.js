@@ -1,7 +1,7 @@
 // Wayli: compact street graph for the first and last mile, on foot or by bike.
 // Loads the container from pipeline/streets.py; bounded Dijkstra from a point
 // to every transit stop nearby, and point-to-point routes for bike-only trips.
-import { haversine } from './geo.js';
+import { haversine, scaleAt, nearestOnSegment } from './geo.js';
 import { readContainer } from './container.js';
 
 export function parseStreets(ab) {
@@ -48,7 +48,7 @@ function edgeBetween(g, from, to) {
 function nearestEdges(g, lat, lon, mode = 'walk', radius = 300, slack = 150, k = 8) {
   const c = g.cell, cy = Math.floor(lat / c), cx = Math.floor(lon / c);
   const flag = mode === 'bike' ? g.bikeFlag : g.walkFlag;
-  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+  const { kx, ky } = scaleAt(lat);
   const found = new Map();   // one per segment, either direction
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
     const ci = g.cellIndex.get((cy + dy) * 100000 + (cx + dx));
@@ -58,10 +58,7 @@ function nearestEdges(g, lat, lon, mode = 'walk', radius = 300, slack = 150, k =
       for (let e = g.edgeOff[u]; e < g.edgeOff[u + 1]; e++) {
         if (!((g.edgeFlags[e] >> g.flagShift) & flag)) continue;
         const v = g.edgeTo[e];
-        const bx = (g.nodeLon[v] - lon) * kx, by = (g.nodeLat[v] - lat) * ky;
-        const sx = bx - ax, sy = by - ay, ss = sx * sx + sy * sy;
-        const f = ss > 0 ? Math.max(0, Math.min(1, -(ax * sx + ay * sy) / ss)) : 0;
-        const d = Math.hypot(ax + f * sx, ay + f * sy);
+        const { f, d } = nearestOnSegment(ax, ay, (g.nodeLon[v] - g.nodeLon[u]) * kx, (g.nodeLat[v] - g.nodeLat[u]) * ky);
         if (d >= radius) continue;
         const key = Math.min(u, v) * g.M + Math.max(u, v);
         if (found.has(key)) continue;
@@ -184,7 +181,7 @@ export function accessStops(g, stopNode, lat, lon, mode, maxSeconds, extraPerSto
     const n = stopNode[s];
     if (n >= 0) { if (!byNode.has(n)) byNode.set(n, []); byNode.get(n).push(s); }
   }
-  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+  const { kx, ky } = scaleAt(lat);
   const out = [];
   // the first metres to the street are always on foot (in the seeds)
   // the extra seconds to reach the stop itself count within maxSeconds, so the whole walk keeps to the rider's setting

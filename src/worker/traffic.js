@@ -4,8 +4,8 @@
 // now. Every section it covered gets that ratio. delays.js applies them to the sections ahead of other buses
 // (roadFactor), and the map colours the sections by them (trafficIn).
 import { secondsOn } from '../engine/clock.js';
-import { hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops, median } from '../engine/delays.js';
-import { metres } from '../engine/geo.js';
+import { hasBusTimes, setRoadsNow, usualRun, freeRun, median } from '../engine/delays.js';
+import { metres, scaleAt, nearestOnSegment, projectOnStops } from '../engine/geo.js';
 import { ridePath } from './courses.js';
 import { tt, onNewDay } from './data.js';
 import { tripFor, tripStopList } from './trips.js';
@@ -46,16 +46,14 @@ function sectionsOf(p) {
 function projectOnCourse(lat, lon, p, stops) {
   const secs = sectionsOf(p);
   if (!secs || secs.length !== stops.length - 1) return projectOnStops(lat, lon, stops);
-  const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 110540;
+  const { kx, ky } = scaleAt(lat);
   let best = { index: 0, frac: 0, metres: Infinity };
   secs.forEach((sec, k) => {
     const b = sec.box;
     if (lat < b[0] || lat > b[1] || lon < b[2] || lon > b[3]) return;
     for (let i = 0; i < sec.pts.length - 1; i++) {
-      const ax = (sec.pts[i][1] - lon) * kx, ay = (sec.pts[i][0] - lat) * ky, bx = (sec.pts[i + 1][1] - lon) * kx, by = (sec.pts[i + 1][0] - lat) * ky;
-      const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
-      const f = len2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
-      const d = Math.hypot(ax + f * dx, ay + f * dy);
+      const ax = (sec.pts[i][1] - lon) * kx, ay = (sec.pts[i][0] - lat) * ky;
+      const { f, d } = nearestOnSegment(ax, ay, (sec.pts[i + 1][1] - sec.pts[i][1]) * kx, (sec.pts[i + 1][0] - sec.pts[i][0]) * ky);
       if (d < best.metres) best = { index: k, frac: sec.len > 0 ? (sec.cum[i] + f * (sec.cum[i + 1] - sec.cum[i])) / sec.len : 0, metres: d };
     }
   });

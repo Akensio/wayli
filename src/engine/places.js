@@ -1,7 +1,7 @@
 // Wayli: offline address book (streets, house numbers, cities, notable places) from pipeline/places.py.
 // Free-text search that understands "הורדים 4, גבעתיים", "דיזנגוף סנטר", "חיפה", and the same typed in
 // Latin letters ("Havradim 4 givatayim", "Dizengoff Center", "Haifa").
-import { haversine } from './geo.js';
+import { haversine, scaleAt } from './geo.js';
 import { readContainer } from './container.js';
 import { norm, byScore } from './text.js';
 
@@ -235,9 +235,9 @@ const cityOf = (pl, he, lang) => (lang === 'en' && he && pl.cityEnByHe.get(he)) 
 /** What is at (lat, lon): the nearest house number within 120 m, else a notable place within 150 m, else the nearest street within 400 m. */
 export function reverseGeocode(pl, lat, lon, lang = 'he') {
   let best = null, bd = 120;
+  const { kx, ky } = scaleAt(lat);
   for (let i = 0; i < pl.addrLat.length; i++) {
-    const dlat = (pl.addrLat[i] - lat) * 111000, dlon = (pl.addrLon[i] - lon) * 111000 * Math.cos(lat * Math.PI / 180);
-    const d = Math.sqrt(dlat * dlat + dlon * dlon);
+    const d = Math.hypot((pl.addrLon[i] - lon) * kx, (pl.addrLat[i] - lat) * ky);
     if (d < bd) { bd = d; best = i; }
   }
   if (best !== null) {

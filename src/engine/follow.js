@@ -6,7 +6,7 @@
 // egress (from a stop to the destination). The state points at the current leg and, on a ride, whether
 // the rider is still waiting for the vehicle or on it.
 
-import { metres } from './geo.js';
+import { metres, projectOnStops } from './geo.js';
 import { legMinutes } from './clock.js';
 
 const AT_STOP = 60;        // m: close enough to count as being at a stop or the destination
@@ -119,16 +119,8 @@ export const canStepBack = (state) => state.done || state.step > 0 || state.onBo
 /** Where the rider is along a ride's stops, from stop `fromIdx` on: the stretch between stop i and stop i+1 they are
  *  nearest to, how far along it (f) and how far off it (d, metres). */
 function along(pos, stops, fromIdx) {
-  let best = { i: fromIdx, f: 0, d: Infinity };
-  const kx = 111320 * Math.cos(pos.lat * Math.PI / 180), ky = 110540;
-  for (let i = fromIdx; i < stops.length - 1; i++) {
-    const ax = (stops[i].lon - pos.lon) * kx, ay = (stops[i].lat - pos.lat) * ky;
-    const dx = (stops[i + 1].lon - stops[i].lon) * kx, dy = (stops[i + 1].lat - stops[i].lat) * ky, l2 = dx * dx + dy * dy;
-    const f = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
-    const d = Math.hypot(ax + f * dx, ay + f * dy);
-    if (d < best.d) best = { i, f, d };
-  }
-  return best;
+  const p = projectOnStops(pos.lat, pos.lon, stops, fromIdx);
+  return { i: p.index, f: p.frac, d: p.metres };
 }
 /** The last stop of a ride the rider has reached: the one at the start of the stretch they are on, or the one at its
  *  end once they are at it. Never behind where they already were. (The nearest stop was often the one ahead, and
