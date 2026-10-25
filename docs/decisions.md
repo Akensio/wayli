@@ -1188,3 +1188,8 @@ so they are not re-litigated.
 - 2026-10-25: Gadi: the timetable should expand (he had not found the "All
   day" button: it was under the box, below the half-open sheet's edge). The
   toggle is now a chip above the box, in sight whenever the times are.
+- 2026-10-25: Gadi: the timetable comes closed by default (it stayed open
+  across stops and lines once opened: the component outlived them). The
+  locate button moves the map to the rider without changing the zoom; a
+  second tap, on the rider already, sets a fixed zoom (15). Following the
+  rider moves the map the same way, its zoom left alone.

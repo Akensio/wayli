@@ -218,7 +218,8 @@ a standing vehicle reports zero).
 Layout (v0.3, map first): one map under everything, showing every vehicle
 reporting in view with its line number and heading, the stops when zoomed
 in, the rider's position (MapLibre's locate control, started on its own once
-location was allowed before; a turquoise dot with a cone showing which way
+location was allowed before; a tap on it brings the map to the rider at the
+zoom it has, a second tap there sets the neighbourhood's zoom, 15; a turquoise dot with a cone showing which way
 the phone faces, from its compass, `map/heading.ts`: every kind of reading is
 listened to, and where the browser has a permission for it (an iPhone, Chrome
 on a Pixel) it is asked from a tap, the locate button's or the first on the

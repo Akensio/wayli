@@ -24,6 +24,7 @@ export { pickOnMap, closePicker } from './picker';
 export { hooks } from './shared';
 export { redrawMap, drawMe, afterDraw, cameraPadding } from './render';
 import { redrawMap, cameraPadding } from './render';
+import { centreOffset } from './view';
 let geoCtl: GeolocateControl | null = null;
 
 export async function initMap(): Promise<void> {
@@ -47,12 +48,27 @@ export async function initMap(): Promise<void> {
   // is still locating, or has failed); here that tap re-centres instead (nothing while still locating; a failure tries
   // again). Turning location off is the phone's permission, not a map button.
   const g: any = geoCtl;
+  // A tap on it brings the map to the rider at the zoom it has; a second tap, with the map on the rider already, sets the
+  // neighbourhood's zoom (Gadi, 2026-10-25: the zoom used to jump on the first tap). Following the rider moves the map
+  // the same way, its zoom left alone. MapLibre's own move (fitting the accuracy circle) is replaced; the event data
+  // tells it the move was its own, so it keeps following.
+  const LOCATE_ZOOM = 15;
+  const toMe = (pos: GeolocationPosition, zoom?: number) => {
+    const pad = cameraPadding();
+    m.easeTo({ center: [pos.coords.longitude, pos.coords.latitude], offset: centreOffset(pad), ...(zoom != null ? { zoom } : {}), duration: 500 }, { geolocateSource: true });
+  };
+  const onMe = (pos: GeolocationPosition) => {
+    const pad = cameraPadding(), [ox, oy] = centreOffset(pad), c = m.getContainer();
+    const p = m.project([pos.coords.longitude, pos.coords.latitude]);
+    return Math.hypot(p.x - (c.clientWidth / 2 + ox), p.y - (c.clientHeight / 2 + oy)) < 40;
+  };
+  g._updateCamera = (pos: GeolocationPosition) => toMe(pos);
   g._geolocateButton.addEventListener('click', (e: Event) => {
     startHeading();   // the compass for the cone on the dot; an iPhone asks for it here, on the tap
     const st = g._watchState;
     if (!['ACTIVE_LOCK', 'WAITING_ACTIVE', 'ACTIVE_ERROR', 'BACKGROUND_ERROR'].includes(st)) return;   // on, or back to following: as MapLibre does
     e.stopImmediatePropagation(); e.preventDefault();
-    if (st === 'ACTIVE_LOCK' && g._lastKnownPosition) g._updateCamera(g._lastKnownPosition);
+    if (st === 'ACTIVE_LOCK' && g._lastKnownPosition) toMe(g._lastKnownPosition, onMe(g._lastKnownPosition) ? LOCATE_ZOOM : undefined);
     else if (st !== 'WAITING_ACTIVE') { try { g.trigger(); g.trigger(); } catch { /* no geolocation */ } }   // off and on: a fresh try
   }, { capture: true });
   // a compass under it: shows the rotation and the tilt, a tap sets north up and flat; hidden while there is nothing to reset
