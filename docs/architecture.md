@@ -145,7 +145,7 @@ Layout, one folder per concern (each with a README; `src/README.md` is
 the overview). At the top of `src/` only the entry files: `index.html`
 (roots only), `main.ts` (renders the views, attaches the gestures, then
 imports `boot.ts`), `boot.ts` (starts the controllers after the first
-paint), `styles.css` and `sw.template.js` (the service worker: the shell
+paint) and `sw.template.js` (the service worker: the shell
 and every downloaded data file are cached, so the app works offline once
 loaded; a new build reloads the page once, and notification taps reopen
 the app).
@@ -190,6 +190,9 @@ the app).
   timetable, the close-all X, the toast, the ripple, the swipe to close,
   HTML escaping). A view is a place on the screen; a widget has no place
   of its own.
+- `styles/`: the CSS, one file per part of the screen (`base`, `widgets`,
+  `topbar`, `shell`, `results`, `detail`, `follow`, `stops`, `menu`,
+  `map`), imported by `index.css` in that order, which decides ties.
 - `map/`: the one map (`index.ts`: init, the layers, taps), `view.ts`
   (what the map shows for what the sheet holds: what is drawn, the camera,
   which live vehicles; pure, tested by `tools/mapview.test.mjs`),

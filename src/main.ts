@@ -4,7 +4,7 @@
 import './map/maplibre';   // first: the map library as a global, before any module that uses it
 // then the app's styles, after the map library's: its defaults must not win a tie (a tap's lingering :hover greyed the
 // following locate button when they came first, 2026-10-22)
-import './styles.css';
+import './styles/index.css';
 import { render, h } from 'preact';
 import { installSprite } from './widgets/icons';
 import { installRipple } from './widgets/ripple';

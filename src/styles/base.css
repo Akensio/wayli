@@ -1,0 +1,114 @@
+/* base.css: colours, the page, buttons, fields, icons, text helpers, touch feedback and the shared animations.
+   Wayli app. Layout (v0.3): the map under everything, a floating search bar, a bottom sheet. Hebrew first, RTL. */
+:root { --spring: cubic-bezier(.34, 1.7, .5, 1);
+  --bg: #f4f5f2; --surface: #ffffff; --ink: #1b1f24; --ink-2: #5b6470; --line: #dde0da;
+  --accent: #12998b; --accent-ink: #ffffff; --accent-text: #0d7f72; --ok: #1f7a4d; --warn: #9a5b00; --chip: #eceee9;
+  --train: #1f5fa8; --bus: #2a7d4f; --lrt: #8a3fb0; --bike: #1f5fa8;
+  --font: "Heebo", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+/* the interface's dark colours: chosen in settings (data-theme) or the device's, unless light was chosen */
+:root[data-theme="dark"] {
+    --bg: #15181c; --surface: #1e2227; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #2d3339;
+    --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --chip: #262b31;
+    --train: #6ea8ff; --bus: #6fcf97; --lrt: #c48fe0; --bike: #6ea8ff;
+    color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181c; --surface: #1e2227; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #2d3339;
+    --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --chip: #262b31;
+    --train: #6ea8ff; --bus: #6fcf97; --lrt: #c48fe0; --bike: #6ea8ff;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* touch feedback of our own, instead of the browser's blue flash: buttons press down, rows and cards tint, and a
+   soft ripple spreads from the finger (script adds .ripple on pointerdown to anything tappable) */
+button, .chipbtn, .journey, .item.act, .drawer > button, .recent, .saved-row, .stop, .gone .txt, .dropdown button, .opt { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button, .chipbtn, .iconbtn, .userbtn, .seg button, .stepper button, .opt { transition: transform .08s ease, background-color .12s ease, box-shadow .12s ease; }
+button:active:not(.handle), .chipbtn:active, .opt:active { transform: scale(.95); }
+.journey:active, .item.act:active, .drawer > button:active, .recent:active, .saved-row:active, .stop:active, .gone .txt:active, .dropdown button:active { background-color: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.rippling { position: relative; overflow: hidden; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+button:focus-visible, .chipbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* the icon set: stroke icons that take the text colour; `.fill` or a `.star.on` parent fills them */
+.i { width: 1.15em; height: 1.15em; vertical-align: -.22em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.i.fill, .star.on .i { fill: currentColor; }
+[dir="rtl"] .i.chev { transform: scaleX(-1); }
+.ic .i { width: 20px; height: 20px; vertical-align: middle; }
+button, input, select { font: inherit; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row > * { min-width: 0; }
+.swap { background: var(--chip); border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--ink); font-size: 13px; }
+input[type=time], select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+label.check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+label.check input { width: 18px; height: 18px; margin: 0; }
+.muted { color: var(--ink-2); font-size: 13px; }
+button.primary { width: 100%; padding: 12px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 8px; }
+button.primary:disabled { opacity: .5; }
+button.ghost { background: var(--chip); color: var(--ink); border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.empty { color: var(--ink-2); text-align: center; padding: 30px 10px; }
+h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14px 0 8px; font-weight: 600; }
+.error-box { color: var(--warn); font-size: 14px; margin: 6px 0; }
+@keyframes menuIn { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
+.rsubs .secstar, .sec .secstar { width: 14px; height: 14px; color: var(--warn); margin-inline-end: 5px; vertical-align: -2px; }
+button.primary.slim { padding: 9px 12px; font-size: 15px; }
+.center { text-align: center; padding: 6px 16px 0; }
+@keyframes pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+/* numbers with a sign read left to right inside Hebrew text */
+.live, .livebadge { direction: ltr; unicode-bidi: isolate; }
+.chip.btn, .stop .chips .chip { cursor: pointer; }
+.wayli-bus.lbl, .livebadge { direction: ltr; }
+.live.ok, .leg .what .live.ok, .pop .live.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.live.unsure, .leg .what .live.unsure, .pop .live.unsure { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+/* ================= map-first shell (v0.3): one map, a floating search bar, a bottom sheet ================= */
+html, body { height: 100%; overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--font); position: relative; }
+#mainMap { position: fixed; inset: 0; background: var(--map-land, var(--chip)); }
+/* the shell appears once the app booted (icons in place), in one fade, not piece by piece */
+body:not(.booted) #topbar, body:not(.booted) .sheet, body:not(.booted) .floating, body:not(.booted) .livenote, body:not(.booted) .maplibregl-ctrl-bottom-right { opacity: 0; }
+#topbar, .floating, .livenote { transition: opacity .3s ease; }
+:root { --sheet-h: 118px; --sheet-box: 100vh; --top-h: calc(env(safe-area-inset-top, 0px) + 60px); --sab: env(safe-area-inset-bottom, 0px); }
+/* search mode: a slow, soft ease in (rows slide, buttons grow, the pill narrows) and the same way out (.leaving) */
+:root { --ease-out: cubic-bezier(.22,.9,.3,1); --ease-in: cubic-bezier(.6,.05,.8,.4); }
+@keyframes rowIn { from { opacity: 0; transform: translateY(-18px); } }
+@keyframes rowOut { to { opacity: 0; transform: translateY(-14px); } }
+@keyframes rowFold { from { max-height: 60px; } to { max-height: 0; margin-bottom: -6px; padding-block: 0; opacity: 0; overflow: hidden; } }
+/* -6px: the gap after the row */
+@keyframes popIn { from { opacity: 0; scale: .5; } }
+@keyframes popOut { to { opacity: 0; scale: .5; } }
+@keyframes unfold { from { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-8px); } to { clip-path: inset(0 round 18px); } }
+@keyframes fold { from { clip-path: inset(0 round 18px); } to { opacity: .5; clip-path: inset(0 0 100% 0 round 18px); transform: translateY(-6px); } }
+.logo .bg { fill: var(--accent); }
+.logo .mark { fill: var(--accent-ink); stroke: var(--accent-ink); }
+#pair, #sumRow { order: 1; }
+.iconbtn.small { width: 40px; height: 40px; font-size: 18px; }
+.dropbody[data-swapped] { animation: dropSwap .2s var(--ease-out) both; }
+@keyframes dropSwap { from { opacity: .3; } to { opacity: 1; } }
+.clearbtn .i { width: 16px; height: 16px; vertical-align: middle; }
+.iconbtn .i { width: 22px; height: 22px; vertical-align: middle; }
+.iconbtn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--surface); color: var(--ink); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 20px; cursor: pointer; flex: none; }
+.iconbtn.lang { font-size: 13px; font-weight: 700; }
+.iconbtn.flat { box-shadow: none; background: var(--chip); width: 36px; height: 36px; font-size: 15px; }
+.status { font-size: 13px; color: var(--ink-2); display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 12px; padding: 6px 10px; box-shadow: 0 4px 14px rgba(0,0,0,.15); max-width: 100%; }
+.status[hidden] { display: none; }
+.status.error { color: var(--warn); }
+.offline { font-size: 12px; color: var(--warn); background: var(--surface); border-radius: 12px; padding: 3px 8px; }
+body.page #topbar, body.page .floating, body.page .livenote, body.page .handle, body.page .maplibregl-ctrl-bottom-right, body.page .maplibregl-ctrl-bottom-left { display: none; }
+.pagehead { display: none; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top, 0px) + 8px) 10px 8px; border-bottom: 1px solid var(--line); flex: none; }
+.pagehead h2 { margin: 0; font-size: 18px; flex: 1; }
+.pagehead .iconbtn.flat .i { width: 22px; height: 22px; }
+@keyframes ptrspin { to { transform: rotate(360deg); } }
+label.pilltoggle { background: var(--chip); border-radius: 999px; padding: 6px 12px; min-height: 34px; align-self: flex-start; cursor: pointer; }
+label.pilltoggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+label.pilltoggle:has(input:checked) { background: var(--ink); color: var(--bg); }
+label.pilltoggle[hidden] { display: none; }
+@keyframes cardFlash { 0%, 30% { background-color: color-mix(in srgb, var(--accent) 22%, var(--surface)); } 100% { background-color: var(--surface); } }
+#lineLive { flex: 0 1 auto; min-width: 0; margin-inline-start: auto; overflow: hidden; text-overflow: ellipsis; }
+#lineTitle { font-size: 18px; margin: 0 0 4px; }
+#trainsTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a part going away as its layout changes (ui/flip): a still copy that fades where it was; its entrances do not replay */
+.flip-ghost, .flip-ghost * { animation: none !important; transition: none; }
+#compassLine { font-size: 12px; unicode-bidi: plaintext; }
+.muted.small { font-size: 12px; }

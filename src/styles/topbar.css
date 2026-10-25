@@ -1,0 +1,207 @@
+/* topbar.css: the search bar: pills, boxes, the suggestion list, the kind switch and chips, options, the summary. */
+.field { position: relative; margin-bottom: 8px; }
+input[type=search] { -webkit-appearance: none; appearance: none; }
+input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+/* the box has its own x */
+.field input[type=search] { width: 100%; padding-block: 11px; padding-inline: 34px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.field .icon { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-2); pointer-events: none; font-size: 14px; }
+.dropdown { position: absolute; z-index: 20; inset-inline: 0; top: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-top: 4px; max-height: 360px; overflow: auto; overscroll-behavior: contain; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+.dropdown[hidden] { display: none; }
+.dropdown button { display: block; width: 100%; text-align: start; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; color: var(--ink); cursor: pointer; }
+.dropdown button:last-child { border-bottom: 0; }
+.dropdown button small { color: var(--ink-2); display: block; font-size: 12px; }
+.dropdown button.quick { display: flex; align-items: center; gap: 8px; }
+.dropdown button.quick .ic { width: 20px; text-align: center; color: var(--ink-2); flex: none; }
+.dropdown button.quick .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown .mini { background: none; border: 0; color: var(--ink-2); font-size: 18px; padding: 0 4px; cursor: pointer; flex: none; }
+.dropdown .mini.on { color: var(--warn); }
+.dropdown .grp { font-size: 11px; color: var(--ink-2); padding: 6px 12px 2px; text-transform: uppercase; letter-spacing: .04em; }
+.dropdown button.line { display: flex; align-items: center; gap: 8px; }
+.dropdown button.line .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown button.line small { display: inline; }
+#fromRow, #optRow, #sumRow, .pair #barBack, .pair #swap, .topbar .dropdown { will-change: transform, opacity; }
+.topbar { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); inset-inline: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
+.topbar .trow { display: flex; gap: 8px; align-items: center; }
+.topbar .trow[hidden] { display: none; }
+/* The pair of rows: at rest the pill sits a row lower (the installed app's map runs under the status bar above it);
+   entering search mode, the origin row slides in above it, the options row under it, the back arrow and the swap
+   pop in at the sides, and the pill narrows to make room; the user button hides */
+.pair { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.pair[hidden] { display: none; }
+.topbar:not(.two) .pair, .topbar:not(.two) #sumRow { margin-top: 52px; }
+/* Entering search mode, in order: the menu button and the logo pop out; the pill shortens and the "to" tag pops in
+   where the menu was; the origin row slides in above it; the time chip, the bike chip and Go grow in one after another;
+   then the recents list unfolds (the keyboard is held until the pill has shortened). Leaving plays it all back in
+   reverse (.leaving), and once the pill is whole again the two icons pop back in (.settle). */
+.topbar .trow { transition: padding .45s .16s var(--ease-out); }
+.topbar.two .applogo, .topbar.two .userbtn { animation: popOut .18s var(--ease-in) forwards; pointer-events: none; }
+.topbar.settle .applogo, .topbar.settle .userbtn { animation: popIn .32s .06s var(--ease-out) both; }
+/* the pill whole again: the icons */
+.topbar.two #toRow .tag { animation: popIn .3s .16s var(--ease-out) both; }
+.topbar.two #fromRow { animation: rowIn .45s .24s var(--ease-out) both; }
+.topbar.two #optRow { animation: none; }
+.topbar.two #optTime { animation: popIn .36s .4s var(--ease-out) both; }
+.topbar.two #optBike { animation: popIn .36s .48s var(--ease-out) both; }
+.topbar.two #goBtn { animation: popIn .36s .56s var(--ease-out) both; }
+.pair #barBack:not([hidden]) { animation: popIn .4s .36s var(--ease-out) both; }
+.pair #swap:not([hidden]) { animation: popIn .4s .46s var(--ease-out) both; }
+#sumRow:not([hidden]) { animation: rowIn .4s .05s var(--ease-out) both; }
+.topbar .dropdown:not([hidden]) { animation: unfold .42s .24s var(--ease-out) both; }
+.topbar.leaving .trow { transition: padding .4s .12s var(--ease-in); }
+/* the rows that go also give up their height while they play out: the bar shrinks with the sheet's slide, instead of
+   dropping 32 px at once when the rows are removed at the end (the "jitter" on opening a stop or a line from the list) */
+.topbar.leaving #fromRow { animation: rowOut .3s .16s var(--ease-in) both, rowFold .32s .14s var(--ease-in) forwards; }
+.topbar.leaving #optRow, .topbar.leaving #lineRow { animation: rowFold .32s .1s var(--ease-in) forwards; }
+.topbar.leaving #toRow .tag { animation: popOut .2s .2s var(--ease-in) both; }
+.topbar.leaving #fromRow { animation: rowOut .3s .16s var(--ease-in) both; }
+.topbar.leaving #optTime { animation: popOut .22s .1s var(--ease-in) both; }
+.topbar.leaving #optBike { animation: popOut .22s .05s var(--ease-in) both; }
+.topbar.leaving #goBtn { animation: popOut .22s var(--ease-in) both; }
+.topbar.leaving #barBack { animation: popOut .24s .14s var(--ease-in) both; }
+.topbar.leaving #swap { animation: popOut .24s .08s var(--ease-in) both; }
+.topbar.leaving .dropdown, .topbar .dropdown.closing { animation: fold .22s var(--ease-in) both; pointer-events: none; }
+/* "My location" in a box is a value, not typed text */
+.field input.magic { color: var(--accent-text); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .topbar *, .topbar .trow, #sumRow, .pair #barBack, .pair #swap { animation: none !important; transition: none; } }
+/* without motion, the end of the icons' pop-out is set directly (the animation was what hid them: they stayed over the tag) */
+@media (prefers-reduced-motion: reduce) { .topbar.two .applogo, .topbar.two .userbtn { visibility: hidden; } }
+/* the menu at the start of the pill (the side the drawer comes from), the app's logo at its end (a tap starts a search) */
+.applogo { position: absolute; inset-inline-end: 7px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: none; cursor: pointer; overflow: hidden; }
+.applogo .logo { width: 100%; height: 100%; display: block; }
+.kindpill { position: absolute; inset-inline-end: 7px; top: 50%; translate: 0 -50%; height: 32px; display: flex; align-items: center; gap: 4px; padding: 0 8px; border: 0; border-radius: 16px;
+  background: var(--accent); color: var(--accent-ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; animation: popIn .3s var(--ease-out) both; }
+.kindpill .i { width: 16px; height: 16px; }
+.kindpill .x { width: 13px; height: 13px; opacity: .8; margin-inline-start: 2px; }
+.topbar:not(.two) .field.withuser:has(.kindpill) input[type=search] { padding-inline-end: 112px; }
+.topbar.two .kindpill { display: none; }
+.field:has(.fieldx:not([hidden])) .kindpill { display: none; }
+.field:has(.fieldx:not([hidden])) .applogo { display: none; }
+/* the pills keep their width in search mode (nothing re-lays out, so the motion stays smooth): the back arrow sits
+   inside the origin pill at its start, the swap floats over the pills' end between the two rows */
+.pair #barBack { position: absolute; inset-inline-start: 5px; top: 5px; width: 36px; height: 36px; z-index: 2; box-shadow: none; background: color-mix(in srgb, var(--ink) 7%, var(--surface)); }
+.pair #barBack .i { width: 20px; height: 20px; }
+.topbar.two #fromRow .tag { inset-inline-start: 48px; }
+.topbar.two #fromRow input[type=search] { padding-inline-start: 106px; }
+.topbar.two .pair .trow { padding-inline-end: 48px; }
+/* the pills shorten for the swap at their end */
+.topbar.two.leaving .pair .trow { padding-inline-end: 0; }
+/* and grow back while the rows play out */
+.pair #swap { position: absolute; inset-inline-end: 0; top: 50%; translate: 0 -50%; z-index: 3; }
+.pair #barBack[hidden], .pair #swap[hidden] { display: none; }
+#optRow { order: 2; }
+#formBody { order: 3; }
+.topbar .field { flex: 1; margin: 0; }
+.topbar .field input[type=search] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 46px; font-size: 16px; border-radius: 23px; padding-inline-end: 44px; }
+.field.tagged input[type=search] { padding-inline-start: 70px; }
+.topbar:not(.two) .field.withuser .tag { display: none; }
+.topbar:not(.two) .field.withuser input[type=search] { padding-inline-start: 52px; padding-inline-end: 52px; }
+/* the summary box: one pill with to, from, time and bike once a plan is made; a tap reopens the rows */
+.sumbox { position: relative; flex: 1; min-width: 0; background: var(--surface); border-radius: 28px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-height: 56px; display: flex; align-items: center; }
+.sumtxt { flex: 1; min-width: 0; background: none; border: 0; text-align: start; padding: 7px 44px 7px 44px; padding-inline-start: 16px; padding-inline-end: 44px; color: var(--ink); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.sumtxt .l1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sumtxt .l2 { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.sumtxt .l2 .i { width: 14px; height: 14px; }
+.sumtxt .sep { color: var(--line); padding: 0 1px; }
+.sumbox .userbtn { display: none; }
+/* the summary carries no user button: its clear x at the end stays free */
+.sumbox .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
+.sumbox .tag { display: inline-block; background: var(--accent); color: var(--accent-ink); font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 5px; margin-inline-end: 6px; vertical-align: 1px; }
+.sumtxt .l2 .tag { font-size: 9px; padding: 0 4px; margin-inline-end: 2px; }
+/* the suggestions list hangs below all the boxes, never over the other field */
+.dropdown.stale .dropbody { opacity: .45; transition: opacity .12s; }
+.topbar .dropdown { transition: top .34s cubic-bezier(.2, .8, .2, 1); }
+/* the bar changes height with the search kind: the list glides with its rows */
+.topbar .dropdown { position: fixed; top: var(--top-h); inset-inline: 10px; margin-top: 0; border-radius: 18px; max-height: calc(100vh - var(--top-h) - 16px); max-height: calc(100dvh - var(--top-h) - 16px); }
+/* the menu button: a turquoise disc with three lines. Pressed, the disc gives a little and the lines draw together;
+   let go, both spring back past rest and settle while the drawer slides in */
+.userbtn { position: absolute; inset-inline-start: 5px; top: 50%; translate: 0 -50%; width: 36px; height: 36px; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); display: grid; place-items: center; cursor: pointer; z-index: 1; padding: 0;
+  transition: scale .42s var(--spring), background-color .12s ease; }
+.userbtn .i { width: 21px; height: 21px; overflow: visible; }
+.userbtn .i path { transform-box: fill-box; transform-origin: center; transition: transform .42s var(--spring); }
+.field .userbtn:active { transform: none; scale: .88; background: color-mix(in srgb, var(--accent) 30%, var(--surface)); transition: scale .12s ease-out, background-color .12s ease; }
+.field .userbtn:active .i path { transition: transform .12s ease-out; }
+.field .userbtn:active .l1 { transform: translateY(3px); }
+.field .userbtn:active .l2 { transform: scaleX(.55); }
+.field .userbtn:active .l3 { transform: translateY(-3px); }
+.field .tag { position: absolute; inset-inline-start: 12px; top: 50%; transform: translateY(-50%); background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 6px; pointer-events: none; width: 48px; text-align: center; white-space: nowrap; overflow: hidden; }
+.field .clearbtn { position: absolute; inset-inline-end: 6px; top: 50%; translate: 0 -50%; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--chip); color: var(--ink-2); font-size: 14px; cursor: pointer; }
+.field .clearbtn[hidden] { display: none; }
+/* the small x inside a search box: clears the text while typing */
+.field .fieldx { position: absolute; inset-inline-end: 9px; top: 50%; translate: 0 -50%; width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--chip); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; padding: 0; z-index: 1; }
+.field .fieldx[hidden] { display: none; }
+.field .fieldx .i { width: 14px; height: 14px; }
+.field .fieldx:active { background: color-mix(in srgb, var(--accent) 20%, var(--chip)); }
+.topbar .trow.opts .go { width: auto; margin: 0 0 0 auto; margin-inline-start: auto; padding: 7px 18px; font-size: 14px; border-radius: 999px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+/* the bar too: a pull down on it refreshes (the dropdown underneath keeps its own scrolling) */
+.topbar input, .topbar .tag, .topbar .userbtn, .topbar .iconbtn, .topbar .chipbtn, .topbar .sumbox, .topbar .clearbtn, .topbar .fieldx, .topbar button.primary { touch-action: none; }
+.topbar[hidden] { display: none; }
+/* the options in the top bar: two chips under the origin (when; bicycle); their details in a card hanging off the bar */
+.topbar .trow.opts { padding-inline-start: 54px; gap: 6px; }
+.topbar .trow.opts .chipbtn { background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-weight: 600; }
+.topbar .trow.opts .chipbtn.open { background: var(--ink); color: var(--bg); }
+/* only the chip whose popover is open */
+/* the option popovers under the chips: when (now, depart or arrive, on wheels) and bicycle; Done closes them */
+.optpanel { margin-inline-start: 54px; background: var(--surface); border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.25); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.optpanel[hidden], .optpanel > [hidden] { display: none; }
+.optpanel #whenBody, .optpanel #bikeBody { display: flex; flex-direction: column; gap: 10px; }
+.optpanel #whenBody[hidden], .optpanel #bikeBody[hidden] { display: none; }
+.topbar .trow.opts .chipbtn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 56vw; }
+.optpanel .seg.pill { align-self: flex-start; }
+.optpanel #optDone { align-self: flex-end; min-width: 96px; }
+/* what the bar searches for: a trip or a line, a small switch above the rows while editing */
+#kindRow { order: 0; padding-inline-start: 54px; min-height: 46px; }
+/* with the gap, the 52 px the resting pill sits below the top: the pill never moves between the modes */
+#lineRow { order: 2; }
+.kindseg { position: relative; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.kindseg button { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 13px; cursor: pointer; transition: color .25s ease; }
+.kindseg button .i { width: 16px; height: 16px; transition: transform .35s var(--spring); }
+.kindseg button.on { color: var(--accent-ink); }
+.kindseg button.on .i { transform: scale(1.12); }
+/* the highlight under the chosen option slides between them (its place is set from the buttons, TopBar) */
+.kindseg .thumb { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 999px; background: var(--accent); transition: transform .38s var(--spring), width .38s var(--spring); }
+@media (prefers-reduced-motion: reduce) { .kindseg .thumb { transition: none; } }
+.topbar.two #kindRow { animation: popIn .32s .2s var(--ease-out) both; }
+.topbar.two.leaving #kindRow { animation: popOut .18s var(--ease-in) forwards; }
+/* it keeps its space: the resting pill takes it over */
+.topbar.linekind .pair .trow { padding-inline-end: 0; }
+/* no swap in the line search */
+/* the kinds of line under the box: one row that scrolls sideways when it does not fit */
+.topbar .trow.lfilters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-block: 2px 8px; margin-block-end: -6px; touch-action: pan-x; overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(to var(--end-side, right), #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to var(--end-side, right), #000 calc(100% - 28px), transparent); }
+[dir="rtl"] .topbar .trow.lfilters { --end-side: left; }
+/* a swipe that starts on a chip scrolls the row (the bar's other buttons take no gestures) */
+.topbar .trow.lfilters .chipbtn { touch-action: pan-x; }
+.topbar .trow.lfilters::-webkit-scrollbar { display: none; }
+.topbar .trow.lfilters .chipbtn { flex: none; display: inline-flex; align-items: center; gap: 5px; }
+.topbar .trow.lfilters .chipbtn .i { width: 16px; height: 16px; }
+.topbar .trow.lfilters .chipbtn.on { background: var(--ink); color: var(--bg); }
+.topbar.two #lineRow .chipbtn { animation: popIn .3s calc(.06s * var(--n, 0)) var(--ease-out) both; }
+/* the line search's list: a line (its chip, where it runs, who runs it), then a row per direction */
+.dropdown .lgroup { border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.dropdown .lgroup:last-child { border-bottom: 0; }
+.dropdown .lgroup button { display: flex; align-items: center; gap: 10px; border-bottom: 0; }
+.dropdown .lgroup .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown .lgroup .lhead { padding-block: 10px 4px; }
+.dropdown .lgroup .lhead .txt { font-weight: 600; }
+.dropdown .lgroup .lhead small { font-weight: 400; }
+.dropdown .lgroup .ldir { padding-block: 6px; padding-inline-start: 22px; font-size: 14px; }
+.dropdown .lgroup .ldir small { display: inline; margin-inline-start: 8px; }
+.dropdown .lgroup .ldir .arrow { display: grid; place-items: center; width: 34px; flex: none; color: var(--ink-2); }
+.dropdown .lgroup .ldir .arrow .i { width: 14px; height: 14px; }
+.dropdown .lgroup.m-rail .lhead .txt bdi { color: var(--ink); }
+/* in the line search the back arrow sits on the one box: its tag moves aside like the origin's */
+.topbar.two.linekind #toRow .tag { inset-inline-start: 48px; }
+.topbar.two.linekind #toRow input[type=search] { padding-inline-start: 106px; }
+/* the stop search's list: what stops there, the name, where and the sign's number, a bus stop's lines */
+.dropdown button.stoprow { display: flex; align-items: flex-start; gap: 10px; }
+.dropdown .stoprow .sic { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--chip); color: var(--ink-2); margin-top: 1px; }
+.dropdown .stoprow.m-rail .sic { background: #1b3a6b; color: #fff; }
+.dropdown .stoprow.m-lrt .sic { background: #d7263d; color: #fff; }
+.dropdown .stoprow .sic .i { width: 17px; height: 17px; }
+.dropdown .stoprow .txt { flex: 1; min-width: 0; font-weight: 600; }
+.dropdown .stoprow .txt small { font-weight: 400; }
+.dropdown .stoprow .slines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.dropdown .stoprow .slines .chip.lchip { font-size: 12px; min-width: 26px; padding: 0 6px; }
+.dropdown .stoprow .slines .chip.lchip .i { width: 12px; height: 12px; }
+/* the stops with the time chosen: the rider's stop marked, the ones before it quieter */
+.linerow .tag { display: inline-block; margin-inline-start: 6px; background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 0 5px; font-size: 11px; font-weight: 700; }

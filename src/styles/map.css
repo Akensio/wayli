@@ -1,0 +1,83 @@
+/* map.css: the map: its controls, markers, bubbles, notes, the compass cone. */
+.wayli-linechip { background: #8d939c; color: #fff; border: 2px solid #fff; border-radius: 6px; padding: 0 5px; font-size: 11px; font-weight: 800; line-height: 16px; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; font-variant-numeric: tabular-nums; }
+.wayli-linechip.sel { font-size: 12px; line-height: 18px; z-index: 2; }
+.wayli-alt { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.3); cursor: pointer; font-variant-numeric: tabular-nums; }
+.wayli-alt.sel { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.maplibregl-map { font: inherit; }
+.maplibregl-ctrl-attrib { font-size: 10px; }
+.wayli-pin { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.wayli-me { width: 18px; height: 18px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(26,115,232,.25); }
+.wayli-bus { width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 2px solid #1b1f24; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.wayli-bus.stale { opacity: .55; }
+.wayli-bus .i { width: 16px; height: 16px; stroke-width: 2.2; }
+.wayli-bus.lbl .i { width: 14px; height: 14px; }
+.wayli-bus.lbl { width: auto; min-width: 30px; padding: 0 6px; border-radius: 15px; font-size: 12px; font-weight: 700; gap: 3px; }
+/* ---- heading arrow on vehicle markers: a triangle on the rim, rotated to the bearing.
+   (the marker element is positioned by MapLibre itself; never set its position here) */
+.wayli-bus .heading { position: absolute; inset: -9px; pointer-events: none; }
+.wayli-bus .heading::before { content: ""; position: absolute; left: 50%; top: 0; width: 0; height: 0; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid #1b1f24; }
+.wayli-bus.stale .heading::before { opacity: .6; }
+/* the vehicle of the planned ride, among the line's others */
+.wayli-bus.mine { box-shadow: 0 0 0 3px var(--accent), 0 1px 4px rgba(0,0,0,.4); z-index: 2; }
+/* ---- bubbles on the map */
+.wayli-pop { z-index: 3; }
+/* over the map's own buttons (the locate button), which sit at 2 */
+.wayli-pop .maplibregl-popup-content { background: var(--surface); color: var(--ink); border-radius: 12px; padding: 10px 28px 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.25); font: 14px/1.4 var(--font); }
+/* the pointer is a border triangle: colour only the side that faces the spot (two coloured sides draw a square) */
+.wayli-pop.maplibregl-popup-anchor-bottom .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--surface); }
+.wayli-pop.maplibregl-popup-anchor-top .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-top-left .maplibregl-popup-tip, .wayli-pop.maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--surface); }
+.wayli-pop.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface); }
+.wayli-pop.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface); }
+.wayli-pop .maplibregl-popup-close-button { color: var(--ink-2); font-size: 20px; padding: 2px 8px; }
+.pop { display: flex; flex-direction: column; gap: 5px; min-width: 190px; }
+.pop .row { gap: 6px; }
+.pop .row .ghost { padding: 5px 9px; font-size: 13px; }
+.pop .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.pop .chips .chip { cursor: pointer; }
+.pop .live { display: inline-block; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; }
+.livenote { position: fixed; left: 10px; bottom: calc(var(--sheet-h) + 10px); z-index: 15; display: flex; align-items: center; direction: ltr; transition: bottom .25s; }
+/* at the map's left edge in either language: the note unfolds rightwards */
+.livenote[hidden] { display: none; }
+/* folded: a round button like the map's own; open: the note unfolds beside it */
+.livenote .lnbtn { width: 30px; height: 30px; flex: none; border: 0; border-radius: 50%; padding: 0; display: grid; place-items: center; cursor: pointer; background: var(--surface); color: var(--ink-2); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.livenote .lnbtn .i { width: 18px; height: 18px; }
+.livenote .lntext { font-size: 12px; color: var(--ink-2); background: var(--surface); border-radius: 10px; padding: 5px 9px; margin-left: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.15); max-width: calc(100vw - 120px); unicode-bidi: plaintext; text-align: start;
+  transform-origin: left center; transform: scale(.6); opacity: 0; pointer-events: none; transition: transform .22s var(--ease-out), opacity .18s; cursor: pointer; }
+.livenote.open .lntext { transform: none; opacity: 1; pointer-events: auto; }
+.livenote.open .lnbtn { color: var(--accent); }
+.livenote.lag .lnbtn { color: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 45%, transparent), 0 2px 8px rgba(0,0,0,.18); }
+.livenote.lag .lntext { color: var(--warn); }
+.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + 6px) !important; transition: bottom .25s; }
+/* the map's own buttons live in the bottom corner above the sheet, and go with the map under a fully open sheet */
+body.sheet-full .maplibregl-ctrl-bottom-right, body.sheet-full .maplibregl-ctrl-bottom-left, body.sheet-full .livenote { opacity: 0; pointer-events: none; }
+.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left { transition: bottom .25s, opacity .2s; }
+.maplibregl-ctrl-group.wayli-hidden { display: none; }
+/* the map's own buttons in the app's look: round surface buttons with the bar's shadow, light and dark. The locate icon
+   is the app's own, turquoise (on a turquoise disc while the map follows the position, amber when the position fails);
+   the compass needle is turquoise to the north and grey to the south */
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { border-radius: 50%; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,.18); overflow: hidden; margin: 0 12px 10px 0; }
+.maplibregl-ctrl-group button.maplibregl-ctrl-geolocate, .maplibregl-ctrl-group button.maplibregl-ctrl-compass { width: 46px; height: 46px; border-radius: 50%; background: var(--surface); transition: background-color .2s ease; }
+.maplibregl-ctrl-group button.maplibregl-ctrl-compass { perspective: 70px; }
+.maplibregl-ctrl button:not(:disabled):hover { background-color: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon { background-image: none !important; background-color: var(--accent-text); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M12 17.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM12 13.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z'/%3E%3C/svg%3E") center / 23px 23px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M12 17.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM12 13.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z'/%3E%3C/svg%3E") center / 23px 23px no-repeat; }
+.maplibregl-ctrl-group button.maplibregl-ctrl-geolocate.maplibregl-ctrl-geolocate-active { background: var(--accent); }
+.maplibregl-ctrl-geolocate-active .maplibregl-ctrl-icon { background-color: var(--accent-ink); }
+.maplibregl-ctrl-geolocate-active-error .maplibregl-ctrl-icon, .maplibregl-ctrl-geolocate-background-error .maplibregl-ctrl-icon { background-color: var(--warn); }
+/* where you are: the app's turquoise, not MapLibre's blue (its halo and accuracy circle with it) */
+.maplibregl-user-location-dot, .maplibregl-user-location-dot::before { background-color: var(--accent); }
+.maplibregl-user-location-accuracy-circle { background-color: color-mix(in srgb, var(--accent) 18%, transparent); }
+/* the way you face: a cone from the dot, turned by the compass (map/heading.ts), starting outside the dot so it stays
+   crisp and fading out with distance */
+.wayli-cone { display: none; position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; z-index: -1; pointer-events: none;
+  transform: translate(-50%, -50%) rotateX(var(--pitch, 0deg)) rotate(var(--heading, 0deg));   /* turned on the ground, the ground tilted as the map is (like the compass button) */
+  background: conic-gradient(from -32deg, color-mix(in srgb, var(--accent) 55%, transparent) 0deg 64deg, transparent 64deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 9px, #000 10px, rgba(0,0,0,.6) 28px, transparent 48px); mask: radial-gradient(circle, transparent 0 9px, #000 10px, rgba(0,0,0,.6) 28px, transparent 48px); }
+.wayli-cone.on { display: block; }
+.maplibregl-user-location-dot-stale .wayli-cone { display: none; }
+/* an old position points nowhere */
+.maplibregl-ctrl-compass .maplibregl-ctrl-icon { background-image: linear-gradient(to bottom, var(--accent) 50%, var(--ink-2) 50%) !important; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5 16.5 12 12 21.5 7.5 12z'/%3E%3C/svg%3E") center / 26px 26px no-repeat; }
+.wayli-pick { width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg) translate(6px, -6px); background: var(--accent); border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.pickbar { position: fixed; inset-inline: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); z-index: 30; background: var(--surface); border-radius: 16px; padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.25); }
+.pickbar[hidden] { display: none; }
+.pickbar .row .primary { flex: 1; margin: 0; }
+.pop .pop-at { margin: 4px 0 2px; font-weight: 600; color: var(--accent-text, var(--accent)); }

@@ -24,7 +24,6 @@ At the top of `src/` only the entry files:
 | `index.html` | The page: roots only. |
 | `main.ts` | Renders the views, attaches the gestures, then imports `boot.ts`. |
 | `boot.ts` | Starts the controllers after the first paint. |
-| `styles.css` | Every style, light and dark, right to left first. |
 | `sw.template.js` | The service worker; the build writes the list of files it caches into it. |
 
 The folders, each with its own README:
@@ -40,6 +39,7 @@ The folders, each with its own README:
 | `map/` | The one map under everything and what it draws for each panel. | `state/`, `worker/`, `journey/`, `lib/`, `widgets/`, `engine/` |
 | `journey/` | A journey's types, colours, words, sharing, the pay link. | `lib/`, `state/`, `engine/` |
 | `lib/` | Used everywhere: the strings in both languages, time, the on-device store. | `engine/clock.js` (Israel time) |
+| `styles/` | The CSS, one file per part of the screen, in a fixed order. | |
 | `types/` | Global type declarations. | |
 | `public/` | Copied into the build as is: icons, the web manifest. | |
 

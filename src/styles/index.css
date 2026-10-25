@@ -1,0 +1,12 @@
+/* Wayli's styles, one file per part of the screen, in this order (a later file wins a tie between equal selectors):
+   base, then the pieces several views share, then each part of the screen, the map last. */
+@import './base.css';
+@import './widgets.css';
+@import './topbar.css';
+@import './shell.css';
+@import './results.css';
+@import './detail.css';
+@import './follow.css';
+@import './stops.css';
+@import './menu.css';
+@import './map.css';

@@ -1,0 +1,29 @@
+/* detail.css: a journey's detail: its legs, stops, ride options. */
+.legs { padding: 12px 16px 24px; }
+.leg { display: grid; grid-template-columns: 52px 14px 1fr; gap: 8px; align-items: start; padding: 6px 0; }
+.leg .t { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 14px; padding-top: 2px; }
+.leg .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--ink-2); margin-top: 6px; }
+.leg.ride .dot { background: var(--bus); }
+.leg.ride.t2 .dot { background: #1b3a6b; }
+.leg.ride.t0 .dot { background: #d7263d; }
+.leg .what { font-size: 15px; }
+.leg .what small { display: block; color: var(--ink-2); font-size: 13px; }
+.leg .what .live { display: inline-block; margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.leg .toggle { background: none; border: 0; color: var(--accent-text); font-size: 13px; padding: 2px 0; cursor: pointer; display: block; }
+.leg .stoplist { margin: 4px 0 2px; padding-inline-start: 4px; border-inline-start: 2px solid var(--line); }
+.leg .stoplist div { font-size: 13px; color: var(--ink-2); display: flex; gap: 8px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
+.leg .stoplist div span:first-child { min-width: 44px; }
+.leg.done { opacity: .45; }
+.leg.current .what { font-weight: 700; }
+.leg .t s { opacity: .6; }
+/* a ride leg can be tapped to show only its line on the map */
+.legs .leg.ride { cursor: pointer; border-radius: 10px; margin: 0 -6px; padding-left: 6px; padding-right: 6px; }
+.legs.focused .leg:not(.focus) { opacity: .5; }
+.legs .leg.focus { background: color-mix(in srgb, var(--accent) 12%, transparent); opacity: 1; }
+.leg .t b { color: var(--ink); }
+.detail .legs { padding: 4px 0 24px; }
+/* the ride the journey takes, among the others doing it */
+.rideopts { margin-top: 4px; }
+.rideopts .trainrow { padding: 8px 2px; }
+.rideopts .trainrow .time { font-size: 15px; }
+.rideopts .chip { font-size: 12px; padding: 1px 6px; }

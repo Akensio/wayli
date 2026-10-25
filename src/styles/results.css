@@ -1,0 +1,97 @@
+/* results.css: results: the cards, filters, sorting, what left, the history drawer. */
+.journey { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; cursor: pointer; }
+.journey.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.journey .mapbtn { position: absolute; top: 8px; inset-inline-end: 8px; width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--chip); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.journey .mapbtn .i { width: 18px; height: 18px; }
+.journey .mapbtn.on { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--accent-text); }
+.journey.sel .mapbtn.on { background: var(--accent); color: var(--accent-ink); }
+.journey .top { display: flex; align-items: baseline; gap: 10px; padding-inline-end: 36px; }
+.journey .times { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 17px; }
+.journey .dur { color: var(--ink-2); font-size: 13px; margin-inline-start: auto; white-space: nowrap; }
+.journey .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.journey .sub { color: var(--ink-2); font-size: 13px; margin-top: 4px; }
+.journey .opts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.journey .opt { background: var(--chip); border: 0; border-radius: 14px; padding: 3px 10px; font-size: 13px; color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+.journey .opt.past { opacity: .5; text-decoration: line-through; }
+.journey .opt.slower { background: none; border: 1px dashed var(--line); color: var(--ink-2); }
+/* leaves earlier, arrives later: its arrival beside it */
+.journey .opt.slower small { margin-inline-start: 3px; font-size: 11px; }
+/* "leave in n min": green only when the first ride's vehicle is reporting live, plain otherwise */
+.journey .leave { margin-top: 6px; font-size: 13px; color: var(--ink); font-weight: 600; min-height: 0; }
+.journey .leave.live { color: var(--ok); }
+.journey .leave.unsure { color: var(--warn); }
+/* what left in the last ten minutes: a strip above the list, for the rider already on board */
+.gone-strip { margin: 2px 0 10px; }
+.gone-strip > .muted { margin: 0 2px 4px; font-size: 12px; }
+.gone { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 12px; margin-bottom: 6px; background: color-mix(in srgb, var(--chip) 50%, transparent); }
+.gone .txt { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; cursor: pointer; }
+.gone .times { font-weight: 700; font-variant-numeric: tabular-nums; }
+.gone .chips { display: inline-flex; gap: 4px; }
+.gone .muted { font-size: 12px; }
+.gone button.ghost { padding: 6px 10px; font-size: 13px; flex: none; color: var(--accent-text); font-weight: 600; }
+.gone-hint { display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 4px 2px 8px; color: var(--ink-2); font-size: 13px; cursor: pointer; }
+.gone-hint .i { transition: transform .2s; }
+.gone-hint.open .i { transform: rotate(180deg); }
+.gone-rows[hidden] { display: none; }
+.journey .leave:empty { display: none; }
+.journey .leave.past { color: var(--ink-2); font-weight: 400; }
+.journey.past { opacity: .6; }
+.results-foot { display: flex; gap: 8px; justify-content: space-between; margin: 4px 0 16px; }
+.results-head { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
+/* filters and the sort order over the results: small pills, the active ones filled */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.filters .chipbtn { padding: 5px 11px; min-height: 30px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
+.filters .chipbtn.on { background: var(--ink); color: var(--bg); }
+.filters .chipbtn .i { width: 15px; height: 15px; }
+/* the sort menu: a small card under its chip, the current order checked */
+.filters .chipbtn .chev { width: 13px; height: 13px; transition: transform .2s var(--ease-out, ease); }
+.filters .chipbtn.open .chev { transform: rotate(180deg); }
+.sortmenu { position: fixed; z-index: 60; min-width: 210px; padding: 6px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08); animation: menuIn .18s var(--ease-out, ease) both; }
+.sortmenu .head { font-size: 12px; color: var(--ink-2); padding: 6px 12px 4px; }
+.sortmenu button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; font-size: 15px; text-align: start; cursor: pointer; }
+.sortmenu button:active { background: var(--chip); }
+.sortmenu button[aria-checked="true"] { color: var(--accent-text); font-weight: 600; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.sortmenu button .i { width: 18px; height: 18px; }
+@media (prefers-reduced-motion: reduce) { .sortmenu { animation: none; } }
+.results-head .spacer { flex: 1; }
+/* the drawer's history: three tabs, each its saved items then the recent ones */
+.rtabs { display: flex; gap: 6px; margin: 2px 0 4px; }
+.rtabs .chipbtn { display: inline-flex; align-items: center; gap: 5px; }
+.rtabs .chipbtn .i { width: 16px; height: 16px; }
+.rtabs .chipbtn.on { background: var(--ink); color: var(--bg); }
+.rtabs .chipbtn .n { font-size: 11px; font-weight: 700; opacity: .7; margin-inline-start: 2px; }
+.rsubs { display: flex; gap: 18px; margin: 4px 2px 2px; border-bottom: 1px solid var(--line); }
+.rsubs button { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 8px 0 7px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--ink-2); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.rsubs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+.rsubs .n { font-size: 11px; font-weight: 700; opacity: .7; }
+.rsubs .secstar { margin-inline-end: 0; }
+.recent { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.recent .ic { color: var(--ink-2); }
+.recent .txt { flex: 1; min-width: 0; }
+.recent .txt small { display: block; color: var(--ink-2); font-size: 12px; }
+.recent .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent small.legs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+/* live colours mean confidence: green a fresh report, orange a report older than four minutes (marked ?), plain the schedule */
+.live.gone { background: var(--chip); color: var(--ink-2); text-decoration: line-through; }
+.dep .time.gone { text-decoration: line-through; color: var(--ink-2); }
+/* ---- live map */
+.journey .leave .live { margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; }
+.results-head .live { font-size: 12px; border-radius: 10px; padding: 0 7px; }
+/* collapsed, every touch on the sheet is the app's: a pull up opens it, a pull down is the app's own pull-to-refresh,
+   a sideways move on the chip strip scrolls the strip (by script); the browser never claims a gesture here */
+.sheet[data-state="peek"], .sheet[data-state="peek"] .handle, .sheet[data-state="peek"] .sheet-body { touch-action: none; }
+.sheet[data-state="peek"] .sheet-body { overflow: hidden; }
+/* collapsed with results: one line about the journey highlighted on the map; a tap opens the list */
+.peekline { display: flex; align-items: center; gap: 8px; width: 100%; margin: -4px 0 10px; padding: 4px 2px; border: 0; background: none; color: var(--ink); font-size: 14px; text-align: start; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.peekline[hidden] { display: none; }
+/* only collapsed: the open sheet's list says the same, so the line folds away as the sheet opens */
+.peekline { max-height: 48px; transition: max-height .25s var(--ease-out), opacity .18s, margin .25s, padding .25s; }
+.sheet:not([data-state="peek"]) .peekline { max-height: 0; opacity: 0; margin: 0; padding-block: 0; pointer-events: none; }
+.journey.flash { animation: cardFlash .9s ease-out; }
+.peekline .times { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
+.peekline .leave { margin-inline-start: auto; font-weight: 600; }
+.peekline .leave.past { color: var(--ink-2); font-weight: 400; }
+.peekline > span { overflow: hidden; text-overflow: ellipsis; }
+.sheet[data-state="peek"] #screen-plan > :not(.peekline) { display: none; }
+.trainrow.gone { opacity: .45; }
+.journey .top .est { font-weight: 700; margin-inline-end: 2px; }

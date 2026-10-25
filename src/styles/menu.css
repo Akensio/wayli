@@ -1,0 +1,79 @@
+/* menu.css: the menu, settings, saved places, the place chooser. */
+/* the settings page: its own layer over everything, the drawer included; it slides in from the side the
+   reading goes towards (the right in English, the left in Hebrew) and back out, the drawer staying under it */
+.pagelayer { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: var(--bg); transform: translateX(-100%); visibility: hidden;
+  transition: transform .3s var(--ease-in, ease), visibility 0s .3s; will-change: transform; }
+[dir="ltr"] .pagelayer { transform: translateX(100%); }
+.pagelayer.open { transform: none; visibility: visible; transition: transform .32s var(--ease-out, ease), visibility 0s; box-shadow: 0 0 40px rgba(0,0,0,.25); }
+body:not(.booted) .pagelayer { transition: none; }
+.pagelayer .pagehead { display: flex; background: var(--surface); }
+.pagelayer .pagebody { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 14px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+.pagelayer .pagebody > h2.sec { display: none; }
+/* the page head carries the title */
+.group { margin-bottom: 18px; }
+.grouphead { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: .03em; padding: 0 14px 6px; }
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font-size: 15px; text-align: start; margin: 0; }
+.item[hidden], .item.text[hidden] { display: none; }
+/* the rows' own display would otherwise draw a hidden row (the empty install hint) */
+.item:last-child { border-bottom: 0; }
+.item.act { cursor: pointer; }
+.item.act:active { background: var(--chip); }
+.item .ii { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); }
+.item .ii .i { width: 20px; height: 20px; }
+.item .lbl { flex: 1; min-width: 0; }
+.item.wide { flex-wrap: wrap; }
+/* a control of many choices: on its own line under the label */
+.item.wide > .seg { flex-basis: calc(100% - 46px); margin-inline-start: 46px; }
+.item .lbl small { display: block; color: var(--ink-2); font-size: 12px; line-height: 1.35; margin-top: 2px; font-weight: 400; }
+.item .chev { color: var(--ink-2); width: 20px; height: 20px; }
+.item.text { display: block; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.item.text p { margin: 0 0 8px; }
+.item.text p:last-child { margin: 0; }
+.item.text b { color: var(--ink); }
+.switch { position: relative; width: 48px; height: 28px; flex: none; }
+.switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.switch i { position: absolute; inset: 0; border-radius: 14px; background: var(--line); transition: background .2s; pointer-events: none; }
+.switch i::after { content: ""; position: absolute; top: 3px; inset-inline-start: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+.switch input:checked + i { background: var(--accent); }
+.switch input:checked + i::after { transform: translateX(-20px); }
+[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); }
+.stepper { display: flex; align-items: center; gap: 4px; flex: none; }
+.stepper button { width: 34px; height: 34px; border: 0; border-radius: 10px; background: var(--chip); color: var(--ink); font-size: 20px; cursor: pointer; }
+.stepper input[type=number] { width: 46px; text-align: center; padding: 6px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font-size: 16px; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.saved-row { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.saved-row .ic { font-size: 20px; }
+.saved-row .txt { flex: 1; min-width: 0; cursor: pointer; }
+.saved-row .txt small { display: block; color: var(--ink-2); font-size: 12px; }
+.saved-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.saved-row .name.unset { color: var(--ink-2); font-weight: 400; }
+/* the menu: a drawer sliding in from the start edge over a dimmed map */
+.backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.backdrop.open { opacity: 1; pointer-events: auto; }
+.drawer { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; width: min(78vw, 320px); background: var(--surface); z-index: 60; display: flex; flex-direction: column; gap: 2px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 14px); box-shadow: 0 0 40px rgba(0,0,0,.3); transition: transform .2s ease; transform: translateX(100%); will-change: transform; }
+[dir="ltr"] .drawer { transform: translateX(-100%); }
+.drawer.open { transform: none; }
+.drawer, .pagelayer, .pagelayer .pagebody { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+/* vertical scrolling stays the browser's; the sideways swipe closes (ui/swipeClose). The scrolling body says so too: a scroller starts touch-action afresh */
+.backdrop { touch-action: none; }
+body:not(.booted) .drawer { transition: none; }
+/* no slide across the screen when the direction is set at start */
+.drawer .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 4px 14px 6px; }
+.drawer .who { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.drawer .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: var(--accent-text); flex: none; }
+.drawer .avatar { background: none; }
+.drawer .avatar .logo { width: 44px; height: 44px; }
+.drawer .brand { font-weight: 700; font-size: 20px; color: var(--accent-text); letter-spacing: .01em; line-height: 1.1; }
+.drawer .sub { color: var(--ink-2); font-size: 12px; margin-top: 2px; }
+.drawer > button { display: flex; align-items: center; gap: 14px; width: 100%; background: none; border: 0; color: var(--ink); padding: 14px 12px; border-radius: 12px; cursor: pointer; font-size: 17px; text-align: start; }
+.drawer > button:active { background: var(--chip); }
+.drawer .msep { border: 0; border-top: 1px solid var(--line); margin: 8px 12px; }
+.drawer > button .ic { width: 28px; text-align: center; font-size: 20px; display: grid; place-items: center; color: var(--accent-text); }
+.drawer > button .ic .i { width: 22px; height: 22px; }
+.drawer .foot { margin-top: auto; padding: 0 12px; font-size: 12px; }
+body.page #chooser .bar { display: none; }
+#ver { font-size: 12px; margin: 8px 0 20px; }
+/* the compass line in settings is small print too (.muted.small, which a list item's text would otherwise outweigh) */
+.item.text.small { font-size: 12px; }

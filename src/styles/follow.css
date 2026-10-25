@@ -1,0 +1,43 @@
+/* follow.css: following a trip. */
+#followPay { margin-top: 8px; padding: 6px 12px; font-size: 14px; }
+.nowcard { background: var(--surface); border-bottom: 1px solid var(--line); padding: 12px 16px; }
+.nowcard .big { font-size: 20px; font-weight: 700; line-height: 1.3; }
+.nowcard .small { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
+.nowcard.alert { background: var(--accent); color: var(--accent-ink); animation: pulse 1s ease-in-out 3; }
+.nowcard.alert .small, .nowcard.alert .muted { color: var(--accent-ink); opacity: .9; }
+.nowcard.alert .ghost { background: rgba(255,255,255,.25); color: var(--accent-ink); }
+/* following: a round hide button, the title on one line, "End trip" as a soft red pill; the instruction in a card
+   with its live badge, back and next as a pair of pills, the position's state under them */
+.follow .fhead { display: flex; align-items: center; gap: 10px; padding: 2px 0 12px; }
+.follow .fhead h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.follow .endbtn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  background: color-mix(in srgb, #d23b32 12%, var(--surface)); color: #c0322a; }
+.follow .endbtn .i { width: 16px; height: 16px; }
+:root[data-theme="dark"] .follow .endbtn { color: #ff8a80; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .follow .endbtn { color: #ff8a80; } }
+.follow .nowcard { position: relative; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px 12px; margin-bottom: 4px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.follow .nowcard #followLive { float: inline-end; margin-inline-start: 8px; }
+.follow .stepper { display: flex; gap: 8px; margin-top: 14px; }
+.follow .stepper button { flex: 1; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 999px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: var(--chip); color: var(--ink); }
+.follow .stepper button .i { width: 18px; height: 18px; }
+.follow .stepper button.next { background: var(--accent); color: var(--accent-ink); }
+.follow .stepper button:disabled { opacity: .4; cursor: default; }
+.follow .stepper button[hidden] { display: none; }
+.nowcard.alert .stepper button { background: rgba(255,255,255,.22); color: var(--accent-ink); }
+.nowcard.alert .stepper button.next { background: var(--accent-ink); color: var(--accent); }
+.follow .gps { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--ink-2); }
+.follow .gps .i { width: 14px; height: 14px; }
+.nowcard.alert .gps { color: var(--accent-ink); opacity: .9; }
+.follow .leg { padding: 4px 0; }
+.follow .leg .what { font-size: 14px; }
+.altcard { margin: 10px 0 2px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.altcard[hidden] { display: none; }
+.altcard .title { font-weight: 700; color: var(--accent-text); }
+.altcard .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; align-items: center; }
+.altcard .row { margin-top: 8px; }
+.altcard .row .primary { flex: 1; margin: 0; }
+.resume { display: flex; align-items: center; gap: 10px; text-align: start; background: var(--ink); color: var(--bg); border: 0; border-radius: 12px; padding: 8px 12px; cursor: pointer; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.2); max-width: 100%; }
+.resume[hidden] { display: none; }
+.resume .ic { font-size: 18px; }
+.resume .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resume .go { font-weight: 700; color: var(--accent); }

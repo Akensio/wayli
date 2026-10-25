@@ -1,0 +1,54 @@
+/* widgets.css: pieces several views share: chips, live badges, the timetable, the time wheel, the toast, stars. */
+.ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: .14; transform: scale(0); animation: ripple .45s ease-out forwards; pointer-events: none; }
+.chip .i { width: 1em; height: 1em; vertical-align: -.15em; }
+/* Israel Railways' mark before a train's number (widgets/RailLogo): as tall as a capital, as wide as it runs */
+.rlogo { height: .78em; width: 1.46em; vertical-align: -.02em; margin-inline-end: .3em; flex: none; }
+.chip.lchip .rlogo { margin-inline-end: 0; }
+.chips-row { display: flex; gap: 6px; margin: -2px 0 10px; }
+.chipbtn { background: var(--chip); border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; color: var(--ink); font-size: 13px; min-height: 34px; }
+.chipbtn:active { background: var(--line); }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { flex: 1 1 auto; background: var(--chip); color: var(--ink); border: 0; border-radius: 8px; padding: 7px 10px; font-size: 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.chip { display: inline-block; border-radius: 6px; padding: 1px 8px; font-weight: 700; font-size: 13px; color: #fff; background: var(--bus); }
+.chip.walk { background: var(--chip); color: var(--ink-2); font-weight: 500; }
+.chip.bike { background: var(--bike); }
+.star { background: none; border: 0; font-size: 22px; cursor: pointer; color: var(--ink-2); padding: 0 6px; display: inline-flex; align-items: center; }
+.star.on { color: var(--warn); }
+/* ---- v0.2: offline tag, resume bar, grouped journeys, settings, follow mode, live badges */
+.seg.small button { padding: 5px 9px; font-size: 13px; flex: 0 1 auto; }
+.chip.alt { background: var(--chip); color: var(--ink); font-weight: 600; }
+.linkbtn { background: none; border: 0; color: var(--accent-text); font-weight: 600; cursor: pointer; padding: 4px 6px; font-size: 13px; }
+.fromto .arrow { color: var(--ink-2); margin: 0 .35em; }
+a.btnlink { display: inline-flex; align-items: center; gap: 4px; text-decoration: none; font: inherit; }
+a.btnlink.ghost { background: var(--chip); color: var(--ink); border-radius: 8px; padding: 8px 12px; }
+.seg.pill { background: var(--chip); border-radius: 999px; padding: 3px; gap: 2px; flex: none; }
+.seg.pill button { background: none; border-radius: 999px; padding: 6px 10px; font-size: 13px; flex: 0 1 auto; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+.seg.pill button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.livebadge { font-size: 12px; border-radius: 10px; padding: 2px 8px; background: var(--chip); color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+.livebadge.ok { color: var(--ok); }
+.livebadge.unsure { color: var(--warn); }
+.chipbtn .i { vertical-align: -.2em; }
+/* the time wheels: day, hour and minute turning like an alarm clock's, the chosen values on a band across the middle */
+.wheels { position: relative; display: flex; justify-content: center; align-items: stretch; gap: 2px; padding: 0 4px; }
+.wheels .band { position: absolute; inset-inline: 4px; top: 72px; height: 36px; border-radius: 12px; background: var(--chip); pointer-events: none; }
+.wheel { position: relative; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; outline: none;
+  -webkit-mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent); mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent); }
+.wheel::-webkit-scrollbar { display: none; }
+.wheel.num { width: 58px; }
+.wheel.day { width: 124px; }
+.wheel-item { scroll-snap-align: center; text-align: center; font-size: 19px; color: var(--ink-2); font-variant-numeric: tabular-nums; cursor: pointer; white-space: nowrap; transition: color .12s; }
+.wheel-item.on { color: var(--ink); font-weight: 700; }
+.wheels .colon { align-self: center; font-size: 19px; font-weight: 700; color: var(--ink); position: relative; }
+.wheel:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 12px; }
+.toast { position: fixed; left: 50%; bottom: calc(var(--sheet-h) + 12px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 100; max-width: 90vw; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.toast[hidden] { display: none; }
+/* a line's chip by what runs on it: buses as a tag in the operator's colour, rails and cables as a rounded pill
+   with their icon, shared taxis yellow, on-demand lines outlined */
+.chip.lchip { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 34px; padding: 2px 8px; font-size: 14px; line-height: 1.3; flex: none; }
+.chip.lchip .i { width: 15px; height: 15px; vertical-align: 0; }
+.chip.lchip.m-rail, .chip.lchip.m-lrt, .chip.lchip.m-cable { border-radius: 999px; padding-inline: 9px 10px; }
+.chip.lchip.m-flex { background: var(--surface) !important; border: 1.5px dashed; padding-block: 1px; }
+.chip.lchip.big { font-size: 16px; padding-block: 3px; min-width: 40px; }
+.chip.lchip.big .i { width: 17px; height: 17px; }
+.est { color: var(--warn); }
