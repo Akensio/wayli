@@ -4,7 +4,7 @@
 // now. Every section it covered gets that ratio. delays.js applies them to the sections ahead of other buses
 // (roadFactor), and the map colours the sections by them (trafficIn).
 import { secondsOn } from '../engine/clock.js';
-import { hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops } from '../engine/delays.js';
+import { hasBusTimes, setRoadsNow, usualRun, freeRun, projectOnStops, median } from '../engine/delays.js';
 import { metres } from '../engine/geo.js';
 import { ridePath } from './courses.js';
 import { tt, onNewDay } from './data.js';
@@ -132,7 +132,7 @@ function trafficIn(box) {
     if (!inBox(s1) && !inBox(s2)) continue;
     const [c1, c2] = key.split('>'), free = freeRun(c1, c2, day);
     if (!free) continue;
-    const rs = recent.map((x) => x.ratio).sort((a, b) => a - b), m = rs[Math.floor(rs.length / 2)];
+    const rs = recent.map((x) => x.ratio), m = median(rs);
     const stops = [{ code: c1, arr: 0, dep: 0 }, { code: c2, arr: 0, dep: 0 }];
     const now = m * usualRun(stops, 0, nowSec, day), x = now / free;
     if (!now) continue;

@@ -1,12 +1,12 @@
 // Lines as riders know them: routes indexed by their live id and by pattern; lines grouped from routes (a number and
 // operator in an area, both directions and variants together; a train line is every train between two stations);
 // and what the line search and a line's page ask: the lines matching, a line's course and stops, its times at a stop.
-import { routeLabel, parseHeadsign } from '../engine/raptor.js';
+import { routeLabel, parseHeadsign, stationStopsOf } from '../engine/raptor.js';
 import { haversine } from '../engine/geo.js';
 import { modeOfType } from '../engine/modes.js';
 import { hasCourse, ridePath } from './courses.js';
 import { tt, onNewDay, onNewLang } from './data.js';
-import { cName, headsign, lineLabel, liveId, sName, stName, stopOut } from './names.js';
+import { cName, headsign, lineLabel, liveId, ssName, stopOut } from './names.js';
 
 export let routeById = null, routePats = null;
 onNewDay(() => { routeById = routePats = lineIdx = null; });
@@ -40,8 +40,7 @@ const tripsOf = (ri) => { let n = 0; for (const p of routePats.get(ri) || []) n 
 /** A pattern's first and last stop by name (a train's stations). */
 function endNames(p) {
   if (p < 0) return null;
-  const nm = (s) => (tt.stopParent[s] >= 0 && stName(tt.stopParent[s])) || sName(s);
-  return [nm(tt.patStops[tt.patStopsOff[p]]), nm(tt.patStops[tt.patStopsOff[p + 1] - 1])];
+  return [ssName(tt.patStops[tt.patStopsOff[p]]), ssName(tt.patStops[tt.patStopsOff[p + 1] - 1])];
 }
 function indexLines() {
   if (!routePats) indexRoutes();
@@ -169,7 +168,7 @@ export const linesOps = {
    */
   lineTimes({ route, from }) {
     if (!routePats) indexRoutes();
-    const fromSet = new Set(from.flatMap((s) => (tt.stopParent[s] >= 0 ? tt.stationStops.get(tt.stopParent[s]) || [s] : [s]))), out = [];
+    const fromSet = new Set(from.flatMap((s) => stationStopsOf(tt, s))), out = [];
     for (const ri of lineSiblings(route)) {
       const r = tt.routes[ri];
       for (const p of routePats.get(ri) || []) {

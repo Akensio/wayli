@@ -5,7 +5,7 @@ import * as nav from '../state/nav';
 import * as search from '../state/search';
 import * as sheet from '../state/sheet';
 import * as results from '../state/results';
-import { lastPos, notePos } from '../state/position';
+import { lastPos, notePos, knownGeo } from '../state/position';
 import { state, popupState, EMPTY, settleWaiters } from './shared';
 import { styleReady, mapStyle, makeMap, setBasemapLang, applySky, applyTerrain, TERRAIN_PITCH, wantDarkMap } from './basemap';
 import { BADGE_KINDS, stationImage } from './images';
@@ -108,8 +108,7 @@ export async function initMap(): Promise<void> {
     placeBubble(m, e);
   });
   setInterval(refreshLiveMap, 20000);
-  let known = false; try { known = !!localStorage.getItem('wayli-geo'); } catch { /* private mode */ }
-  if (known) m.once('load', () => { try { geoCtl!.trigger(); } catch { /* no geolocation */ } });
+  if (knownGeo()) m.once('load', () => { try { geoCtl!.trigger(); } catch { /* no geolocation */ } });
   try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMap: m }; } catch { /* debugging only */ }
 }
 const STOP_LAYERS = ['lm-stops', 'lm-stops-icon', 'lm-stations', 'journey-stops', 'context-stops', 'journey-stations', 'context-stations'];

@@ -1,7 +1,7 @@
 // Stops and stations: which stops trains and light rail call at, light rail stops grouped into stations (the feed
 // gives most a stop per direction and no parent), the station a stop belongs to, stops by the number on their sign,
 // the lines at a stop; and what the stop search, a stop's page and the train timetable ask about them.
-import { searchStops, routeLabel } from '../engine/raptor.js';
+import { searchStops, routeLabel, centreOf, stationStopsOf } from '../engine/raptor.js';
 import { haversine } from '../engine/geo.js';
 import { lang, tt, onNewDay, onNewLang } from './data.js';
 import { cName, headsign, lineLabel, liveId, sName, stName, stopOut } from './names.js';
@@ -55,7 +55,7 @@ function lrtGroups() {
 /** The station a stop belongs to: its parent station, its light rail pair, or the stop alone. */
 export function stationOf(s) {
   const p = tt.stopParent[s];
-  if (p >= 0) return { key: 'p' + p, stops: (tt.stationStops.get(p) || [s]).slice(), name: stName(p) || sName(s) };
+  if (p >= 0) return { key: 'p' + p, stops: stationStopsOf(tt, s), name: stName(p) || sName(s) };
   const g = lrtGroups().get(s);
   return g ? { key: g.key, stops: g.stops.slice(), name: g.name } : { key: 's' + s, stops: [s], name: sName(s) };
 }
@@ -86,9 +86,7 @@ export const stopsOps = {
       if (reach && !reach.has(g.key)) return;
       const o = out.get(g.key);
       if (o) { if (score > o.score) o.score = score; return; }
-      let la = 0, lo = 0;
-      for (const x of g.stops) { la += tt.stopLat[x]; lo += tt.stopLon[x]; }
-      la /= g.stops.length; lo /= g.stops.length;
+      const { lat: la, lon: lo } = centreOf(tt, g.stops);
       const gm = gmode(g.stops);
       out.set(g.key, { key: g.key, name: g.name, city: cName(tt.stops[s][3]), code: g.stops.length === 1 && gmode(g.stops) !== 'rail' ? tt.stops[s][2] : '', stops: g.stops, lat: la, lon: lo, mode: gm, score,
         dist: near ? Math.round(haversine(near.lat, near.lon, la, lo)) : null });
@@ -170,11 +168,12 @@ export const stopsOps = {
     const features = [];
     const stKind = new Map();
     for (const [p, members] of tt.stationStops) {
-      let la = 0, lo = 0, k = 'station';
-      for (const s of members) { la += tt.stopLat[s]; lo += tt.stopLon[s]; const ks = kindOf(s); if (ks === 'rail' || (ks === 'lrt' && k === 'station')) k = ks; }
+      let k = 'station';
+      for (const s of members) { const ks = kindOf(s); if (ks === 'rail' || (ks === 'lrt' && k === 'station')) k = ks; }
       if (k === 'station' && members.length < 3) continue;   // a pair of opposite bus stops the feed groups is not a bus station
       stKind.set(p, k);
-      features.push({ type: 'Feature', properties: { stop: members[0], station: p, name: stName(p) || sName(members[0]), kind: k }, geometry: { type: 'Point', coordinates: [lo / members.length, la / members.length] } });
+      const c = centreOf(tt, members);
+      features.push({ type: 'Feature', properties: { stop: members[0], station: p, name: stName(p) || sName(members[0]), kind: k }, geometry: { type: 'Point', coordinates: [c.lon, c.lat] } });
     }
     for (let s = 0; s < tt.stops.length; s++) {
       const p = tt.stopParent[s];
@@ -194,8 +193,7 @@ export const stopsOps = {
     if (station < 0 && members.length === 1) return { ...stopOut(stop), ...(hasRail ? { code: '' } : {}), stops: members, rail: hasRail, reach, lines: linesAt(stop, 30) };
     const seen = new Map();
     for (const s of members) for (const l of linesAt(s, 40)) if (!seen.has(l.label)) seen.set(l.label, l);
-    let la = 0, lo = 0; for (const s of members) { la += tt.stopLat[s]; lo += tt.stopLon[s]; }
-    return { ...stopOut(members[0]), lat: la / members.length, lon: lo / members.length, name: (station >= 0 && stName(station)) || sName(members[0]), code: '', station, stops: members, rail: hasRail, reach, lines: Array.from(seen.values()).slice(0, 30) };
+    return { ...stopOut(members[0]), ...centreOf(tt, members), name: (station >= 0 && stName(station)) || sName(members[0]), code: '', station, stops: members, rail: hasRail, reach, lines: Array.from(seen.values()).slice(0, 30) };
   },
   /** The GTFS route ids of the lines serving stops within `radius` m of a point: what can be taken from there. */
   nearbyRoutes({ lat, lon, radius = 500 }) {

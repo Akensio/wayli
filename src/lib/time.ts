@@ -14,6 +14,8 @@ export const fmt: (sec: number) => string = clock.hhmm;
 export const dateOf = (s: string): Date => new Date(Number(s.slice(0, 4)), Number(s.slice(4, 6)) - 1, Number(s.slice(6, 8)));
 /** Today's calendar date in Israel, YYYYMMDD. */
 export const calToday = (): string => { const p = clock.ilParts(); return clock.dayStr(p.y, p.m, p.d); };
+/** Whether a day of the bar is now's: the service day running, or the calendar day (in the small hours they differ). */
+export const isNowDay = (day: string): boolean => day === clock.serviceDay().day || day === calToday();
 /** "Today · Mon 20.10", "Tomorrow · ...", or the bare date, for a calendar day. */
 export function dayLabel(s: string): string {
   const d = dateOf(s), today = calToday();

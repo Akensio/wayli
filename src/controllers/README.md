@@ -11,6 +11,7 @@ timers. `boot.ts` imports them after the first paint.
 | `detail` | A journey's detail: live badges on its rides, the ride options of each ride. |
 | `stop`, `line`, `station` | A stop's page, a line's page, the trains between two stations: their worker calls and live polls. |
 | `liverides` | Live times for rides between two stops (shared by `station` and `detail`). |
+| `livepoll` | A panel's live times every 45 s while it is open, and its note (the stop page, the trains between two stations). |
 | `follow`, `alerts` | Following a trip: position, timers, the live vehicle, a faster way; get-off alerts and notifications. |
 | `shell` | Around the screens: Back on Android, install, online/offline, the menu's actions, what closing each panel stops. |
 | `lang`, `status` | Switching language; the status pill. |

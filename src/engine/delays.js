@@ -130,13 +130,18 @@ export function freeRun(code1, code2, day) {
 let roadsNow = new Map();
 export function setRoadsNow(m) { roadsNow = m; }
 const ROADS_MS = 900e3, FADE_S = 1800;
+/** The middle of the buses' ratios on a section (of two in the middle, their mean); the traffic on the map uses it too. */
+export function median(xs) {
+  const s = [...xs].sort((a, b) => a - b), n = s.length;
+  return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
+}
 /** The live factor of a section for a vehicle seen at `seenMs` (its own runs left out). */
 function roadFactor(code1, code2, seenMs, ride) {
   const v = roadsNow.get(`${code1}>${code2}`);
   if (!v) return 1;
-  const rs = v.filter((x) => x.ride !== ride && x.t <= seenMs + 120e3 && x.t > seenMs - ROADS_MS).map((x) => x.ratio).sort((a, b) => a - b);
+  const rs = v.filter((x) => x.ride !== ride && x.t <= seenMs + 120e3 && x.t > seenMs - ROADS_MS).map((x) => x.ratio);
   if (!rs.length) return 1;
-  const m = rs.length % 2 ? rs[(rs.length - 1) / 2] : (rs[rs.length / 2 - 1] + rs[rs.length / 2]) / 2;
+  const m = median(rs);
   return 1 + (m - 1) * rs.length / (rs.length + 2);
 }
 /** A bus's arrival at each later stop, from where it is and the learned sections; null when none is known ahead. */

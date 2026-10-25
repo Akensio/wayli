@@ -2,9 +2,9 @@
 // view (its departures, where its trains go), and once To is set the direct trains between the two with their live
 // times (every 45 s while open). A rider of trains thinks from station to station, not by line.
 import * as clock from '../engine/clock.js';
-import { t } from '../lib/i18n';
-import { calToday, timeOf } from '../lib/time';
+import { isNowDay } from '../lib/time';
 import { call } from '../worker/client';
+import { livePoll } from './livepoll';
 import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as st from '../state/station';
@@ -17,7 +17,7 @@ import { recentViews } from '../lib/store.js';
 
 let seq = 0, timer = 0;
 const when = () => {
-  const day = search.day.value, isNow = day === clock.serviceDay().day || day === calToday();
+  const day = search.day.value, isNow = isNowDay(day);
   return { day, isNow, from: isNow ? clock.nowOn(day) - 60 : search.atSeconds() };
 };
 
@@ -37,22 +37,16 @@ export async function openTrains(from: Station, to: Station, mode: 'rail' | 'lrt
   st.trains.value = rows;
   map.redrawMap(true);   // their courses and vehicles
   clearInterval(timer);
-  if (w.isNow) {
-    liveTrains(rows, w.day, my);
-    timer = window.setInterval(() => { if (!nav.isOpen('trainTimes')) clearInterval(timer); else liveTrains(rows, w.day, my); }, 45000);
-  }
+  if (w.isNow) timer = livePoll('trainTimes', st.liveNote, () => liveTrains(rows, w.day, my));
 }
 export function closeTrains(): void { clearInterval(timer); seq++; }
 
-/** Live times of the trains between the two stations (controllers/liverides). */
-async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<void> {
-  if (!map.liveOn()) { st.liveNote.value = t('liveOff'); return; }
-  try {
-    const r = await liveRides(rows, day);
-    if (my !== seq) return;
-    st.live.value = { ...st.live.value, ...r.live };
-    st.liveNote.value = r.newest ? t('liveUpdated', { time: timeOf(r.newest) }) : t('liveNoVehicle');
-  } catch { st.liveNote.value = t('liveFail'); }
+/** Live times of the trains between the two stations (controllers/liverides); the newest report, for the note. */
+async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<Date | null | undefined> {
+  const r = await liveRides(rows, day);
+  if (my !== seq) return undefined;
+  st.live.value = { ...st.live.value, ...r.live };
+  return r.newest;
 }
 
 /** A station chosen in one of the two boxes at the top: the trains between the two once both are set, else where

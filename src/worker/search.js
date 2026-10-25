@@ -1,6 +1,6 @@
 // Finding places: the search over stops and the address book on one scale, what is at a point on the map, and stored
 // places named again in another language.
-import { searchStops, stopName, stationName } from '../engine/raptor.js';
+import { searchStops, stopName, stopOrStationName } from '../engine/raptor.js';
 import { searchPlaces, kindLabel, reverseGeocode, placeAt } from '../engine/places.js';
 import { haversine } from '../engine/geo.js';
 import { lang, pl, tt } from './data.js';
@@ -42,8 +42,7 @@ export const searchOps = {
         if (!tt) return false;
         const s = codeIndex().get(String(p.code));
         if (s === undefined) return null;
-        const par = tt.stopParent[s];
-        return (par >= 0 && stationName(tt, par, L)) || stopName(tt, s, L);
+        return stopOrStationName(tt, s, L);
       }
       if (p.lat == null || p.lon == null) return null;
       if (!pl || !tt) return false;

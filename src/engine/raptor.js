@@ -111,6 +111,16 @@ const other = (tt, lang) => (lang && lang !== 'he' && tt.names[lang]) || null;
 /** A stop's name in `lang` when the timetable carries it, else as the feed names it (Hebrew). */
 export function stopName(tt, s, lang) { const n = other(tt, lang); return (n && n.stops[s]) || tt.stops[s][1]; }
 export function stationName(tt, p, lang) { const n = other(tt, lang); return (n && n.stations[p]) || (tt.stations[p] && tt.stations[p][1]) || ''; }
+/** A stop's name where it is part of a station: the station's, else its own. */
+export function stopOrStationName(tt, s, lang) { const p = tt.stopParent[s]; return (p >= 0 && stationName(tt, p, lang)) || stopName(tt, s, lang); }
+/** The stops of the station a stop is part of (every platform), or the stop alone; a new array. */
+export function stationStopsOf(tt, s) { const p = tt.stopParent[s]; return p >= 0 ? (tt.stationStops.get(p) || [s]).slice() : [s]; }
+/** Where some stops are together: their mean position. */
+export function centreOf(tt, stops) {
+  let lat = 0, lon = 0;
+  for (const s of stops) { lat += tt.stopLat[s]; lon += tt.stopLon[s]; }
+  return { lat: lat / stops.length, lon: lon / stops.length };
+}
 export function cityName(tt, city, lang) { const n = other(tt, lang); return (n && n.cities && n.cities[city]) || city || ''; }
 /** Where a route is headed: the destination half of the MOT route_long_name "origin-city<->destination-city-1#". */
 export function parseHeadsign(longName) {
@@ -158,7 +168,7 @@ export function searchStops(tt, query, limit = 12, lang = 'he') {
     const key = p >= 0 ? 'p' + p : 's' + i;
     let g = groups.get(key);
     if (!g) {
-      g = { key, name: (p >= 0 && stationName(tt, p, lang)) || stopName(tt, i, lang),
+      g = { key, name: stopOrStationName(tt, i, lang),
             city: cityName(tt, tt.stops[i][3], lang), stops: [], score: -Infinity, lat: 0, lon: 0, code: tt.stops[i][2] };
       groups.set(key, g);
     }
@@ -168,11 +178,8 @@ export function searchStops(tt, query, limit = 12, lang = 'he') {
   const out = Array.from(groups.values());
   for (const g of out) {
     // a station with a partial name match: include all its platforms, not only the matching ones
-    const p = tt.stopParent[g.stops[0]];
-    if (p >= 0) g.stops = tt.stationStops.get(p).slice();
-    let la = 0, lo = 0;
-    for (const s of g.stops) { la += tt.stopLat[s]; lo += tt.stopLon[s]; }
-    g.lat = la / g.stops.length; g.lon = lo / g.stops.length;
+    if (tt.stopParent[g.stops[0]] >= 0) g.stops = stationStopsOf(tt, g.stops[0]);
+    Object.assign(g, centreOf(tt, g.stops));
   }
   out.sort(byScore);
   return out.slice(0, limit);

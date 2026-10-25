@@ -33,6 +33,10 @@ export function openPopup(m: MLMap, lngLat: LngLatLike, html: string, wire?: (el
   if (el) requestAnimationFrame(() => { if (popupState.current === p) keepInView(m, el); });
   p.on('close', () => { if (popupState.current === p) popupState.current = null; });
 }
+/** A bubble's button (data-act): it closes the bubble, then does its part. */
+const onAct = (el: Element, act: string, f: () => void): void => {
+  el.querySelector(`[data-act="${act}"]`)?.addEventListener('click', () => { closePopup(); f(); });
+};
 /** A bubble wholly in the part of the map the screen shows (between the bar and the sheet): the map slides by what
  *  sticks out, its top edge first when it is taller than that. */
 function keepInView(m: MLMap, el: HTMLElement): void {
@@ -59,7 +63,7 @@ export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void
       // its line, this vehicle's trip chosen: every stop with when it gets there
       : `<div class="row"><button type="button" class="ghost" data-act="line" ${v.trip >= 0 || v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`);
   openPopup(m, lngLat, html, (el) => {
-    el.querySelector('[data-act="line"]')?.addEventListener('click', () => { closePopup(); if (v.trip >= 0) hooks.openTrip(v.trip, -1); else hooks.openLine(v.route!); });
+    onAct(el, 'line', () => { if (v.trip >= 0) hooks.openTrip(v.trip, -1); else hooks.openLine(v.route!); });
   });
 }
 /** A stop tapped on the map. With nothing else in the sheet, the stop itself opens there (its lines, departures, from
@@ -79,10 +83,10 @@ export async function stopPopup(m: MLMap, lngLat: LngLatLike, stop: number, stat
     `<div class="chips">${info.lines.slice(0, 8).map((l: any) => lineChipHtml({ line: l.label, routeType: l.type, agency: l.agency }, ` data-route="${l.route ?? ''}"`)).join('')}</div>` +
     `<div class="row">${onLine ? `<button type="button" class="primary slim" data-act="times">${t('timesHere')}</button>` : ''}<button type="button" class="ghost" data-act="stop">${t('stopDetails')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
   openPopup(m, lngLat, html, (el) => {
-    el.querySelector('[data-act="times"]')?.addEventListener('click', () => { closePopup(); hooks.lineAt(stop); });
-    el.querySelector('[data-act="stop"]')?.addEventListener('click', () => { closePopup(); hooks.openStop(stop, st); });
-    el.querySelector('[data-act="from"]')?.addEventListener('click', () => { closePopup(); hooks.planFrom(stopPlace(info)); });
-    el.querySelector('[data-act="to"]')?.addEventListener('click', () => { closePopup(); hooks.planTo(stopPlace(info)); });
+    onAct(el, 'times', () => hooks.lineAt(stop));
+    onAct(el, 'stop', () => hooks.openStop(stop, st));
+    onAct(el, 'from', () => hooks.planFrom(stopPlace(info)));
+    onAct(el, 'to', () => hooks.planTo(stopPlace(info)));
     for (const c of el.querySelectorAll<HTMLElement>('.chip[data-route]')) if (c.dataset.route !== '') c.addEventListener('click', () => { closePopup(); hooks.openLine(+c.dataset.route!); });
   });
 }
@@ -96,8 +100,8 @@ export async function placeBubble(m: MLMap, e: { point: { x: number; y: number }
   const lngLat: [number, number] = poi ? ((poi.geometry as any).coordinates.slice() as [number, number]) : [e.lngLat.lng, e.lngLat.lat];
   let p = { name: poi ? (lang.value === 'he' ? poi.properties['name:he'] || poi.properties.name : poi.properties['name:en'] || poi.properties['name:latin'] || poi.properties.name) : '…', lat: lngLat[1], lon: lngLat[0] };
   openPopup(m, lngLat, `<div class="pop"><b>${esc(p.name)}</b><div class="row"><button type="button" class="primary slim" data-act="to">${t('toHere')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button></div></div>`, (el2) => {
-    el2.querySelector('[data-act="to"]')?.addEventListener('click', () => { closePopup(); hooks.planTo(p); });
-    el2.querySelector('[data-act="from"]')?.addEventListener('click', () => { closePopup(); hooks.planFrom(p); });
+    onAct(el2, 'to', () => hooks.planTo(p));
+    onAct(el2, 'from', () => hooks.planFrom(p));
   });
   if (poi) return;
   const mine = popupState.current;
