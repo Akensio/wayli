@@ -44,7 +44,7 @@ function keepInView(m: MLMap, el: HTMLElement): void {
 /** The open bubble's title, changed in place (a name that arrives later): reopening it would flicker. */
 export function setPopupTitle(text: string): void { const b = popupState.current?.getElement()?.querySelector('.pop b'); if (b) b.textContent = text; }
 export type VehicleInfo = { line: string; routeType: number; headsign: string; agency: string; delay?: number | null; stale: boolean; seen: Date; velocity?: number | null; trip: number; route: number | null; offDay?: boolean };
-/** A vehicle's bubble: line, direction, delay, when it reported, speed; its trip's stops and its line page. */
+/** A vehicle's bubble: line, direction, delay, when it reported, speed; its line, with its trip chosen. */
 export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void {
   const d = v.delay != null ? live.delayMinutes(v.delay) : null;
   const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
@@ -54,10 +54,10 @@ export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void
     (d == null ? '' : `<div><span class="live ${v.stale ? 'unsure' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
     // a line the feed has no trips of today (it reports anyway): named, nothing to open
     (v.offDay ? `<div class="muted">${t('offDayLine')}</div></div>`
-      : `<div class="row"><button type="button" class="ghost" data-act="trip" ${v.trip >= 0 ? '' : 'disabled'}>${t('popStops')}</button><button type="button" class="ghost" data-act="line" ${v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`);
+      // its line, this vehicle's trip chosen: every stop with when it gets there
+      : `<div class="row"><button type="button" class="ghost" data-act="line" ${v.trip >= 0 || v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`);
   openPopup(m, lngLat, html, (el) => {
-    el.querySelector('[data-act="trip"]')?.addEventListener('click', () => { closePopup(); hooks.openTrip(v.trip, -1); });
-    el.querySelector('[data-act="line"]')?.addEventListener('click', () => { closePopup(); hooks.openLine(v.route!); });
+    el.querySelector('[data-act="line"]')?.addEventListener('click', () => { closePopup(); if (v.trip >= 0) hooks.openTrip(v.trip, -1); else hooks.openLine(v.route!); });
   });
 }
 const stopPlace = (s: any) => ({ name: s.name, stops: s.stops && s.stops.length ? s.stops : [s.stop], lat: s.lat, lon: s.lon });

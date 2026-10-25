@@ -42,9 +42,20 @@ export function TopBar() {
   const toKind = (k: search.Kind) => {
     const had = document.activeElement as HTMLElement | null, typing = had?.id === 'toQ' || had?.id === 'fromQ';
     search.setKind(k);
-    if (typing) setTimeout(() => { if (!had!.getClientRects().length || document.activeElement !== had) (document.getElementById('toQ') as HTMLInputElement | null)?.focus(); }, 60);
+    // a station timetable (the stop search opening on trains or the light rail) starts at its From box
+    const box = search.railPair.value && !search.stFrom.value ? 'fromQ' : 'toQ';
+    if (typing) setTimeout(() => { if (box === 'fromQ' || !had!.getClientRects().length || document.activeElement !== had) (document.getElementById(box) as HTMLInputElement | null)?.focus(); }, 60);
   };
   const filters = kind === 'stop' ? STOP_FILTERS : LINE_FILTERS, filter = kind === 'stop' ? search.stopFilter : search.lineFilter;
+  // a filter chip; trains and the light rail are a timetable of two stations each, From first: their stations are not
+  // carried from one to the other, and the keyboard moves up to the From box
+  const pickFilter = (f: string) => {
+    const was = search.railPair.value ? search.pairMode.value : null;
+    (filter as { value: string }).value = f;
+    const now = search.railPair.value ? search.pairMode.value : null;
+    if (was !== now) search.clearStations();
+    if (now && !search.stFrom.value && document.activeElement?.id === 'toQ') setTimeout(() => (document.getElementById('fromQ') as HTMLInputElement | null)?.focus(), 60);
+  };
   const opt = search.optOpen.value;
   const barRef = useRef<HTMLDivElement>(null), segRef = useRef<HTMLDivElement>(null);
   // switching what the bar searches for animates the rows that move, come and go (ui/flip), whichever the switch
@@ -132,7 +143,7 @@ export function TopBar() {
       <div class="trow opts lfilters keepdrop" onPointerDown={(e) => { if ((e.target as HTMLElement).closest('button')) e.preventDefault(); }} id="lineRow" data-flip={`chips-${kind}`} key={kind} hidden={!edit || !line} role="tablist" aria-label={t('lineModes')}>
         {filters.map(({ f, label, icon }, i) => (
           <button type="button" role="tab" aria-selected={filter.value === f} class={`chipbtn${filter.value === f ? ' on' : ''}`} data-f={f} style={{ '--n': i }}
-            onClick={() => { (filter as { value: string }).value = f; }}>{icon && <Icon name={icon} />}{t(label)}</button>
+            onClick={() => pickFilter(f)}>{icon && <Icon name={icon} />}{t(label)}</button>
         ))}
       </div>
       <div class="trow opts" id="optRow" data-flip="opts" hidden={!edit || line}>

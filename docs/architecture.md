@@ -57,7 +57,22 @@ are a required mode. Built the same day:
   memory), built in under 3 minutes. Edges carry length, walk/bike
   permission per direction (one-way streets apply to bikes, not to walkers)
   and a kind that sets the speed (road, cycleway, footway, path, steps,
-  service). No elevation yet, so Haifa and Jerusalem hills are flat for now.
+  service). Since 2026-10-25 edges also carry the metres climbed and
+  descended in their direction (`--dem`, `pipeline/elevation.py`): the
+  ground's height from AWS's open Terrain Tiles (zoom 12, about 32 m
+  pixels, SRTM underneath), smoothed over about 150 m, read every 25 m
+  along each way and counted with a 2 m hysteresis (bridges and tunnels
+  by their ends only), since the radar's noise and the buildings it saw
+  made flat streets climb. The cost (`CLIMB` in the header, applied by
+  `streets.js` `secondsOn` and by the compiler's walking transfers): on
+  foot 3 s more per metre up and 1 s per metre down on descents over
+  10 %; by bike a climb no faster than about 500 m an hour and a descent
+  saving 1.5 s per metre down up to 7 m/s; steps and pushed bikes as
+  before. Measured (`route`, before → after): Bat Galim to the Technion
+  126 → 136 min on foot, 42 → 53 by bike, back 41 → 38 by bike; Hadar up
+  to Carmel Center by bike 17 → 28, down 15 → 12; flat Tel Aviv rides
+  within half a minute. 12.1 MB gzipped (was 10.7). Estimates, to check
+  against real rides.
 - **Real walking transfers** (`compile.py --streets`): every stop snaps to
   the nearest walkable node within 250 m (30,569 of 30,654 do), and a
   bounded search from each stop gives the walking time to every stop within
@@ -111,8 +126,6 @@ Known gaps, in rough order of importance:
   2019-10, Walla Finance 1629067, Kol Zchut "העלאת אופניים לאוטובוס".
   Peak rules are checked at boarding time; holidays and Fridays are not
   modelled yet. Bike-share is not modelled.
-- No elevation: cycling times in Haifa and Jerusalem are optimistic (Bat
-  Galim up to the Technion shows as 12 minutes).
 - The window query should run in a Web Worker with the first answer shown
   at once; a phone will take about 1 s for a full hour.
 - The street graph could be about half its size with varint-coded edges.
@@ -237,7 +250,7 @@ strip, about half the screen, nearly full; it is always its full height
 and slides by a composited transform, so the slide and the snap run on the
 GPU while only the body's height is set per state) carries every panel: the plan
 screen (results and recent searches only), nearby, saved, settings,
-and the panels for a journey, a stop, a trip's stops, a line, the place
+and the panels for a journey, a stop, a line, the place
 chooser and the trip being followed. Settings, saved and the place chooser
 need no map, so they are pages: the sheet grows over the whole screen with
 a header of its own (back, title) and the bar, the handle and the map's
@@ -524,7 +537,7 @@ light rail (red) and cable (teal) as rounded pills with their icon, shared
 taxis yellow, on-demand lines outlined. In the trip search, line numbers
 still match in the To box (three lines above the places). A line page shows the
 direction's course on the map with every stop as a dot and the line's
-vehicles reporting now, each with its delay (tap one for its trip's stops), the other
+vehicles reporting now, each with its delay (tap one for its bubble), the other
 directions as buttons, today's trip count and first and last departure,
 and the line as a timetable at the rider's stop: the stop the line was
 opened from (a stop's view, a ride's boarding stop, the stop of the other
@@ -541,14 +554,20 @@ the rider gets off and the ride's length.
 Stops: the stop search is one box with chips for all, bus, train and light
 rail (worker `stopGroups`): stops by name or by the number on their sign
 (an exact number first), and with nothing typed those within 600 m; a
-station is one entry with its platforms. A bus or light rail stop opens
-its page (departures by line, below). Trains work the way their riders
-think, from station to station, not by line, and many plan their own trips
-from the schedule: the train chip turns the bar into a timetable with two
-boxes, From station and To station, and a swap between them (a station
-picked among all stops opens it with that station as From). The From box
-lists every station, nearest first; the To box only those a train from the
-From station reaches without a change. The sheet answers: with only From,
+station is one entry with its platforms, and a light rail stop one entry
+for both its directions (the feed gives most of them a stop per direction
+and no parent: one name in one city within 400 m is one station, worker
+`stationOf`). A bus stop opens its page (departures by line, below).
+Trains and the light rail work the way their riders think, from station
+to station, not by line, and many plan their own trips from the
+schedule: the train and light rail chips turn the bar into a timetable
+with two boxes, From station and To station, and a swap between them.
+From comes first: the keyboard moves to it, and a station picked in the
+To box while From is empty becomes From. The From box lists every
+station of that kind, nearest first; the To box only those reached from
+the From station without a change. The stop search opens on the chip
+chosen in the settings (all by default; many riders look only for
+trains). The sheet answers: with only From,
 where its trains go (`stationReach`: the next train there and how long it
 takes, today's count; a tap sets To); with both, the direct trains between
 them (`trainsBetween`): leave, arrive, how long, stops, where the train
@@ -578,9 +597,10 @@ search; a line, a trip, a saved stop): its lines (a tap opens one), from
 here and to here, its next departures with live times (below), refreshed
 every 45 seconds while open; a station is all its platforms, and below its
 departures where its trains go without a change (`stationReach`; a tap
-shows the trains between the two). The train chip's timetable opens its
-From station as the same view; a departure opens the
-trip's full stop list with where the vehicle is now; the map eases to the
+shows the trains between the two; a light rail stop likewise). The train
+chip's timetable opens its From station as the same view; a departure
+opens its line at this stop with that trip chosen (there is no trip page:
+the line shows that trip's time at every stop); the map eases to the
 stop with a pin; "to here" plans from the rider's location at once and
 "from here" opens the form; stars save stops. Saved: home and work (one
 tap plans a trip there from the device's location), other saved places,
@@ -589,7 +609,8 @@ live times and alerts, the app, about) with an icon per row: language and
 map look as pill segments, longest walk as a stepper, live times (with a
 plain statement of what is sent), alerts and sound as switches, then a test
 alert, add to home screen and clear history as rows, and the about text.
-Map look and menus look are each light, dark or the device's: the map
+One look for the whole app, light, dark or the device's; a switch sets the
+map and the menus apart, each with the same three choices: the map
 through the light or the recoloured dark Liberty, the interface through a
 data-theme attribute the stylesheet reads (absent means the device decides).
 
@@ -659,9 +680,8 @@ home, work, recents, nearby) is gone: the search pill and its list cover it,
 and the drawer keeps "stops near me". The top bar is pills: the search
 field, the summary box, the chips and the Go button.
 
-Not yet: crowd reports, elevation, Arabic (the data format carries it, the
-interface does not), line pages beyond a trip's stop list, the bike-on-board
-rules for light rail, fares.
+Not yet: crowd reports, Arabic (the data format carries it, the interface
+does not), the bike-on-board rules for light rail, fares.
 
 ## Compact timetable (format 2, built by `pipeline/compile.py`)
 
@@ -910,7 +930,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   name, anything else by reverse geocoding) and "to here" and "from here";
   with the sheet open, a map tap only collapses it. A tap on any vehicle, on any map, opens a bubble
   on the map (line, direction, agency, when it reported, speed, delay) with
-  buttons to its trip's stops and its line page. A tap on a stop opens its
+  one button to its line, that vehicle's trip chosen. A tap on a stop opens its
   view in the sheet when the sheet holds nothing of its own (the map at
   rest, nearby, another stop); while it holds results, a journey, a trip
   being followed, a line or the trains between two stations, a stop tap

@@ -30,7 +30,7 @@ export const hooks = {
   closed: (_id: string) => {},       // a panel closed: its timers, markers, promises
   clearPlan: () => {},               // the plan entry was undone
   leaveSearch: () => {},             // the line or stop search entry was undone
-  changed: () => {},                 // something shows differently: the map redraws
+  changed: (_again = false) => {},   // something shows differently: the map redraws (again: the same panel, new content)
   screenShown: (_name: string) => {},
 };
 
@@ -158,7 +158,7 @@ export function closeAll(): void {
   if (WATCH) for (const e of old) unwatch(e); else stepBack(old.length);
 }
 export function showOverlay(id: string): void {
-  if (isOpen(id)) { hooks.changed(); return; }
+  if (isOpen(id)) { hooks.changed(true); return; }   // another stop or line in the same panel: drawn anew
   push({ kind: 'overlay', id });
   renderPanels();
 }

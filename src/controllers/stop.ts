@@ -14,10 +14,9 @@ import { clock } from '../map/popups';
 import type { StopInfo, Departure } from '../state/stop';
 import type { Place } from '../state/search';
 import { planTo, planFrom } from './planner';
-import { openTrip } from './trip';
 import { recentViews } from '../store.js';
 import { openTrains, chooseStation } from './station';
-import { openLine } from './line';
+import { openLine, openTrip } from './line';
 import type { Dest } from '../state/station';
 
 let current: StopInfo | null = null, seq = 0, timer = 0;
@@ -38,7 +37,7 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
   stopPage.open(info, day, isNow);
   const from = isNow ? live.nowOn(day) - 120 : search.atSeconds();
   // a station's trains: where they go without a change, the next one there and how long it takes
-  if (info.rail) call<Dest[]>('stationReach', { stops: members, fromTime: from + 120 }).then((d) => { if (my === seq) stopPage.dests.value = d; }).catch(() => { if (my === seq) stopPage.dests.value = []; });
+  if (info.reach) call<Dest[]>('stationReach', { stops: members, fromTime: from + 120, mode: info.reach }).then((d) => { if (my === seq) stopPage.dests.value = d; }).catch(() => { if (my === seq) stopPage.dests.value = []; });
   const deps = await call<Departure[]>('departures', { stop, stops: members, fromTime: from, limit: 40 });
   if (my !== seq) return;
   stopPage.deps.value = deps;

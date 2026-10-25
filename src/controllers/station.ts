@@ -11,8 +11,8 @@ import * as st from '../state/station';
 import * as map from '../map/index';
 import { clock } from '../map/popups';
 import type { Station, TrainRow } from '../state/station';
-import { openTrip } from './trip';
 import { openStop } from './stop';
+import { openTrip } from './line';
 import { recentViews } from '../store.js';
 
 let seq = 0, timer = 0;
@@ -25,11 +25,11 @@ const when = () => {
 export function openStation(s: Station): void { if (s.stops.length) openStop(s.stops[0], { stops: s.stops }); }
 
 /** The direct trains between two stations, from now (or the bar's time on another day). */
-export async function openTrains(from: Station, to: Station): Promise<void> {
+export async function openTrains(from: Station, to: Station, mode: 'rail' | 'lrt' = search.railPair.value ? search.pairMode.value : 'rail'): Promise<void> {
   const my = ++seq;
   const w = when();
-  recentViews.add({ type: 'trains', from: { name: from.name, lat: from.lat, lon: from.lon }, to: { name: to.name, lat: to.lat, lon: to.lon } });
-  st.pair.value = { from, to }; st.trains.value = null; st.live.value = {}; st.liveNote.value = ''; st.day.value = w.day; st.isNow.value = w.isNow;
+  recentViews.add({ type: 'trains', mode, from: { name: from.name, lat: from.lat, lon: from.lon }, to: { name: to.name, lat: to.lat, lon: to.lon } });
+  st.pair.value = { from, to }; st.trains.value = null; st.live.value = {}; st.liveNote.value = ''; st.day.value = w.day; st.isNow.value = w.isNow; st.mode.value = mode;
   // the map draws both stations (map/render.ts)
   if (!nav.isOpen('trainTimes')) nav.showOverlay('trainTimes'); else map.redrawMap(true);
   const rows = await call<TrainRow[]>('trainsBetween', { from: from.stops, to: to.stops, fromTime: w.from });
@@ -37,20 +37,21 @@ export async function openTrains(from: Station, to: Station): Promise<void> {
   st.trains.value = rows;
   clearInterval(timer);
   if (w.isNow) {
-    liveTrains(rows, w.day, my);
-    timer = window.setInterval(() => { if (!nav.isOpen('trainTimes')) clearInterval(timer); else liveTrains(rows, w.day, my); }, 45000);
+    liveTrains(rows, w.day, my, from);
+    timer = window.setInterval(() => { if (!nav.isOpen('trainTimes')) clearInterval(timer); else liveTrains(rows, w.day, my, from); }, 45000);
   }
 }
 export function closeTrains(): void { clearInterval(timer); seq++; }
 
-/** Live times of the next trains between the two stations: every train in the country is one request. */
-async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<void> {
+/** Live times of the next trains between the two stations: every train in the country is one request; the light rail's
+ *  are among the vehicles around the station. */
+async function liveTrains(rows: TrainRow[], day: string, my: number, from: Station): Promise<void> {
   if (!map.liveOn()) { st.liveNote.value = t('liveOff'); return; }
   const now = live.nowOn(day);
   const soon = rows.filter((r) => r.routeId != null && r.dep - now < 7200).slice(0, 10);
   if (!soon.length) return;
   try {
-    const vs: any[] = await live.trains();
+    const vs: any[] = st.mode.value === 'lrt' ? await live.vehiclesNear(from.lat, from.lon, 20, { sinceSec: 1800, limit: 1500 }) : await live.trains();
     if (my !== seq) return;
     for (const r of soon) {
       const v = live.matchTrip(vs, r.routeId, r.firstDep, day);
@@ -70,6 +71,7 @@ async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<vo
 /** A station chosen in one of the two boxes at the top: the trains between the two once both are set, else where
  *  trains from the first go (the To box waits for its station then). */
 export function chooseStation(side: search.Side, g: Station): void {
+  if (side === 'to' && !search.stFrom.value) { search.stToText.value = ''; side = 'from'; }   // the first station is where the ride starts
   const box = side === 'from' ? search.stFrom : search.stTo, text = side === 'from' ? search.stFromText : search.stToText;
   box.value = { name: g.name, stops: g.stops, lat: g.lat, lon: g.lon }; text.value = g.name;
   const f = search.stFrom.value, to = search.stTo.value;

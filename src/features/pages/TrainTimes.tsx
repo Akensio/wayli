@@ -19,9 +19,9 @@ export function TrainTimes() {
         <h2 id="trainsTitle"><bdi>{t('lineEnds', { a: p.from.name, b: p.to.name })}</bdi></h2>
       </div>
       <div class="legs">
-        <div class="row"><h2 class="sec" style="margin:8px 0">{t('directTrains')}</h2><span class="muted" id="trainsLive">{st.liveNote.value}</span></div>
+        <div class="row"><h2 class="sec" style="margin:8px 0">{t(st.mode.value === 'lrt' ? 'directLrt' : 'directTrains')}</h2><span class="muted" id="trainsLive">{st.liveNote.value}</span></div>
         {rows === null && <div class="empty">{t('loading')}</div>}
-        {rows && !rows.length && <div class="empty">{t('noDirectTrains')}</div>}
+        {rows && !rows.length && <div class="empty">{t(st.mode.value === 'lrt' ? 'noDirectLrt' : 'noDirectTrains')}</div>}
         <div id="trainRows">
           {(rows || []).map((r) => {
             const lv = st.live.value[String(r.trip)];

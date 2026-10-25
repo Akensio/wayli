@@ -22,9 +22,8 @@ import type { Place } from '../state/search';
 import { clearPlan, planTo, planFrom, revealCard } from './planner';
 import { closeDetail } from './detail';
 import { openStop, closeStop } from './stop';
-import { openLine, closeLine } from './line';
+import { openLine, closeLine, openTrip } from './line';
 import { closeTrains } from './station';
-import { openTrip } from './trip';
 import { loadNearby } from './nearby';
 import { isFollowing, closeFollow } from './follow';
 import { setLang } from './lang';
@@ -160,7 +159,7 @@ Object.assign(nav.hooks, {
   closed: (id: string) => { map.closePopup(); ON_CLOSE[id]?.(); },
   clearPlan: () => clearPlan(),
   leaveSearch: () => { search.leaveLineMode(); search.foldBar(); },
-  changed: () => map.redrawMap(),
+  changed: (again = false) => map.redrawMap(again),
   screenShown: (name: string) => { if (name === 'nearby' && data.ttReady.value && nearby.status.value !== 'ready') loadNearby(); },
 });
 sheet.hooks.changed = (prev, st) => {

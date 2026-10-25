@@ -124,6 +124,31 @@ function lrtStops() {
   for (let p = 0; p < tt.patRoute.length; p++) if (tt.routes[tt.patRoute[p]][3] === 0) for (let i = tt.patStopsOff[p]; i < tt.patStopsOff[p + 1]; i++) stopLrt[tt.patStops[i]] = 1;
   return stopLrt;
 }
+/** Light rail stops as stations: the feed gives most of them one stop per direction and no parent station, so the stops
+ *  of one name in one city (within 400 m of each other) are one station here, as a parent station would make them. */
+let lrtGroup = null;
+function lrtGroups() {
+  if (lrtGroup) return lrtGroup;
+  lrtGroup = new Map();
+  const lrt = lrtStops(), byName = new Map();
+  for (let s = 0; s < tt.stops.length; s++) {
+    if (!lrt[s] || tt.stopParent[s] >= 0) continue;
+    const k = sName(s) + '|' + tt.stops[s][3];
+    let gs = byName.get(k);
+    if (!gs) byName.set(k, (gs = []));
+    let g = gs.find((x) => haversine(tt.stopLat[x.stops[0]], tt.stopLon[x.stops[0]], tt.stopLat[s], tt.stopLon[s]) < 400);
+    if (!g) gs.push((g = { key: 'l' + s, stops: [], name: sName(s) }));
+    g.stops.push(s); lrtGroup.set(s, g);
+  }
+  return lrtGroup;
+}
+/** The station a stop belongs to: its parent station, its light rail pair, or the stop alone. */
+function stationOf(s) {
+  const p = tt.stopParent[s];
+  if (p >= 0) return { key: 'p' + p, stops: (tt.stationStops.get(p) || [s]).slice(), name: stName(p) || sName(s) };
+  const g = lrtGroups().get(s);
+  return g ? { key: g.key, stops: g.stops.slice(), name: g.name } : { key: 's' + s, stops: [s], name: sName(s) };
+}
 /** A trip's scheduled times, untouched by any live shift: from the stored start and deltas. */
 function rawTimes(p, t) {
   const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p], base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns;
@@ -994,10 +1019,10 @@ const ops = {
   stopGroups({ q = '', mode = 'all', near = null, limit = 30, from = null }) {
     const rail = railStops(), lrt = lrtStops();
     // the To box of the train timetable: only the stations a train from the chosen one reaches without a change
-    const reach = from && from.length ? new Set(ops.stationReach({ stops: from, fromTime: 0 }).map((d) => d.key)) : null;
+    const reach = from && from.length ? new Set(ops.stationReach({ stops: from, fromTime: 0, mode: mode === 'lrt' ? 'lrt' : 'rail' }).map((d) => d.key)) : null;
     const modeOf = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
     const gmode = (ss) => (ss.some((x) => rail[x]) ? 'rail' : ss.some((x) => lrt[x]) ? 'lrt' : 'bus');   // the number on a station's sign is no rider's
-    const groupOf = (s) => { const p = tt.stopParent[s]; return p >= 0 ? { key: 'p' + p, stops: tt.stationStops.get(p).slice(), name: stName(p) || sName(s) } : { key: 's' + s, stops: [s], name: sName(s) }; };
+    const groupOf = stationOf;
     const out = new Map();
     const add = (s, score) => {
       const g = groupOf(s), m = modeOf(s);
@@ -1015,7 +1040,8 @@ const ops = {
     const n = String(q || '').trim();
     if (!n) {
       for (let s = 0; s < tt.stops.length; s++) {
-        if (mode === 'rail' ? !rail[s] : !near || haversine(near.lat, near.lon, tt.stopLat[s], tt.stopLon[s]) > 600) continue;
+        // trains and light rail: every station (nearest first); else the stops within 600 m
+        if (mode === 'rail' ? !rail[s] : mode === 'lrt' ? !lrt[s] : !near || haversine(near.lat, near.lon, tt.stopLat[s], tt.stopLon[s]) > 600) continue;
         add(s, 0);
       }
     } else {
@@ -1031,19 +1057,19 @@ const ops = {
    * A train station's direct destinations: every station a train from here reaches without a change, with today's
    * trains there, the next one from `fromTime` and how long it takes. `stops` are the station's platforms.
    */
-  stationReach({ stops, fromTime }) {
-    const from = new Set(stops), dests = new Map();
+  stationReach({ stops, fromTime, mode = 'rail' }) {
+    const from = new Set(stops), dests = new Map(), type = mode === 'lrt' ? 0 : 2;
     for (const s of stops) {
       for (let i = tt.stopPatsOff[s]; i < tt.stopPatsOff[s + 1]; i++) {
         const p = tt.stopPats[2 * i], pos = tt.stopPats[2 * i + 1];
-        if (tt.routes[tt.patRoute[p]][3] !== 2) continue;
+        if (tt.routes[tt.patRoute[p]][3] !== type) continue;
         const o = tt.patStopsOff[p], ns = tt.patStopsOff[p + 1] - o;
         for (let j = pos + 1; j < ns; j++) {
           const b = tt.patStops[o + j];
           if (from.has(b)) continue;
-          const key = tt.stopParent[b] >= 0 ? 'p' + tt.stopParent[b] : 's' + b;
+          const st = stationOf(b), key = st.key;
           let d = dests.get(key);
-          if (!d) dests.set(key, (d = { key, name: (tt.stopParent[b] >= 0 && stName(tt.stopParent[b])) || sName(b), stops: tt.stopParent[b] >= 0 ? tt.stationStops.get(tt.stopParent[b]).slice() : [b], lat: tt.stopLat[b], lon: tt.stopLon[b], trips: 0, next: null, ride: null }));
+          if (!d) dests.set(key, (d = { key, name: st.name, stops: st.stops, lat: tt.stopLat[b], lon: tt.stopLon[b], trips: 0, next: null, ride: null }));
           for (let t = tt.patTripsOff[p]; t < tt.patTripsOff[p + 1]; t++) {
             const base = tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * ns, dep = tt.dep[base + pos], arr = tt.arr[base + j];
             d.trips++;
@@ -1145,10 +1171,10 @@ const ops = {
   },
   /** Something opened on another day, found in the day loaded now (indices are the day's own): a line by its route
    *  id in the feed, a stop by the number on its sign (else the nearest within 60 m), a train station by position. */
-  findRecent({ kind, ref = null, code = '', lat = 0, lon = 0 }) {
+  findRecent({ kind, ref = null, code = '', lat = 0, lon = 0, mode = 'rail' }) {
     if (kind === 'line') { for (let i = 0; i < tt.routes.length; i++) if (tt.routes[i][4] != null && String(tt.routes[i][4]) === ref) return i; return -1; }
     if (kind === 'station') {
-      const g = ops.stopGroups({ mode: 'rail', near: { lat, lon }, limit: 1 })[0];
+      const g = ops.stopGroups({ mode, near: { lat, lon }, limit: 1 })[0];
       return g && g.dist != null && g.dist < 400 ? { name: g.name, stops: g.stops, lat: g.lat, lon: g.lon } : null;
     }
     if (code) { const s = codeIndex().get(String(code)); if (s !== undefined) return s; }
@@ -1204,7 +1230,7 @@ const ops = {
       const s = tt.patStops[tt.patStopsOff[p] + i];
       stops.push({ ...stopOut(s), arr: tt.arr[base + i], dep: tt.dep[base + i] });
     }
-    return { trip, routeId: liveId(r), estimated: !!r[6], line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
+    return { trip, route: tt.patRoute[p], routeId: liveId(r), estimated: !!r[6], line: routeLabel(r), headsign: headsign(tt.patRoute[p]), routeType: r[3], agency: r[2], firstDep: tt.dep[base], stops };
   },
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
   reverse({ lat, lon }) { return reverseIn(lat, lon, lang); },
@@ -1222,14 +1248,16 @@ const ops = {
    *  about it, with the stops it stands for and whether trains call there. */
   stopInfo({ stop, station = -1, stops = null }) {
     if (station < 0 && stops && stops.length > 1) { const p = tt.stopParent[stops[0]]; if (p >= 0 && stops.every((s) => tt.stopParent[s] === p)) station = p; }
-    const members = station >= 0 ? (tt.stationStops.get(station) || [stop]).slice() : stops && stops.length ? stops.slice() : [stop];
-    const rail = railStops(), hasRail = members.some((s) => rail[s]);
+    // a light rail stop is both its directions
+    const members = station >= 0 ? (tt.stationStops.get(station) || [stop]).slice() : stops && stops.length ? stops.slice() : lrtGroups().has(stop) ? lrtGroups().get(stop).stops.slice() : [stop];
+    const rail = railStops(), hasRail = members.some((s) => rail[s]), hasLrt = !hasRail && members.some((s) => lrtStops()[s]);
+    const reach = hasRail ? 'rail' : hasLrt ? 'lrt' : null;   // where its trains go without a change (stationReach)
     // the number on a stop's sign is for buses: a railway station's is no rider's
-    if (station < 0 && members.length === 1) return { ...stopOut(stop), ...(hasRail ? { code: '' } : {}), stops: members, rail: hasRail, lines: linesAt(stop, 30) };
+    if (station < 0 && members.length === 1) return { ...stopOut(stop), ...(hasRail ? { code: '' } : {}), stops: members, rail: hasRail, reach, lines: linesAt(stop, 30) };
     const seen = new Map();
     for (const s of members) for (const l of linesAt(s, 40)) if (!seen.has(l.label)) seen.set(l.label, l);
     let la = 0, lo = 0; for (const s of members) { la += tt.stopLat[s]; lo += tt.stopLon[s]; }
-    return { ...stopOut(members[0]), lat: la / members.length, lon: lo / members.length, name: (station >= 0 && stName(station)) || sName(members[0]), code: '', station, stops: members, rail: hasRail, lines: Array.from(seen.values()).slice(0, 30) };
+    return { ...stopOut(members[0]), lat: la / members.length, lon: lo / members.length, name: (station >= 0 && stName(station)) || sName(members[0]), code: '', station, stops: members, rail: hasRail, reach, lines: Array.from(seen.values()).slice(0, 30) };
   },
   /** The GTFS route ids of the lines serving stops within `radius` m of a point: what can be taken from there. */
   nearbyRoutes({ lat, lon, radius = 500 }) {

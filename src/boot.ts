@@ -15,7 +15,6 @@ import { plan, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
 import { layoutTop, updateOnline, registerServiceWorker } from './controllers/shell';
 import './controllers/nearby';   // its hooks
-import './controllers/trip';
 
 // the last search opens again at start for six hours: its places and options, planned afresh (never its old results:
 // live times change in between; 2026-10-22, Gadi)

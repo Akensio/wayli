@@ -145,13 +145,14 @@ async function openView(v: results.View): Promise<void> {
   if (v.type === 'line') { const r = await call<number>('findRecent', { kind: 'line', ref: v.ref }); if (r >= 0) openLine(r); else gone(); return; }
   if (v.type === 'stop') { const s = await call<number>('findRecent', { kind: 'stop', code: v.code, lat: v.lat, lon: v.lon }); if (s >= 0) openStop(s); else gone(); return; }
   type Found = { name: string; stops: number[]; lat: number; lon: number } | null;
+  const mode = v.type === 'trains' && v.mode === 'lrt' ? 'lrt' : 'rail';
   const station = async (a: { name: string; lat: number; lon: number }) => {
-    const f = await call<Found>('findRecent', { kind: 'station', lat: a.lat, lon: a.lon });
+    const f = await call<Found>('findRecent', { kind: 'station', lat: a.lat, lon: a.lon, mode });
     return f ? { ...f, key: f.name, name: a.name } : null;
   };
   if (v.type === 'station') { const s = await station(v); if (s) openStation(s); else gone(); return; }
   const [a, b] = await Promise.all([station(v.from), station(v.to)]);
-  if (a && b) openTrains(a, b); else gone();
+  if (a && b) openTrains(a, b, mode); else gone();
 }
 /** Bring a way's card into view in the sheet's list, with a flash so the eye finds it; a collapsed sheet opens first
  *  when asked (otherwise the peek line already says which way it is). */

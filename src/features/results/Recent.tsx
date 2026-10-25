@@ -49,8 +49,8 @@ function ViewRow({ v }: { v: View }) {
   );
   if (v.type === 'trains') return (
     <div class="recent" onClick={open}>
-      <span class="ic"><Icon name="train" /></span>
-      <span class="txt"><span class="name"><FromTo from={v.from.name} to={v.to.name} /></span><small>{t('directTrains')}</small></span>
+      <span class="ic"><Icon name={v.mode === 'lrt' ? 'tram' : 'train'} /></span>
+      <span class="txt"><span class="name"><FromTo from={v.from.name} to={v.to.name} /></span><small>{t(v.mode === 'lrt' ? 'directLrt' : 'directTrains')}</small></span>
     </div>
   );
   return (

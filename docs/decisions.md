@@ -1114,3 +1114,26 @@ so they are not re-litigated.
   the map is tilted past 10°. Rejected: MapTiler's terrain (needs a key and
   an account), a hillshade on the flat map (changes the 2D look nobody
   asked to change), and contour lines.
+- 2026-10-25: Gadi: time to count elevation in walking and cycling times.
+  Street edges carry metres up and down from AWS's open Terrain Tiles
+  (pipeline/elevation.py, Pillow to read the PNGs, HPND licence), smoothed
+  and counted with a hysteresis; cost on foot from Tobler (3 s per metre
+  up), by bike a climb rate of about 500 m an hour and faster descents.
+  Measured on four builds (raw heights; 3 m hysteresis; smoothing 1 and 2
+  pixels): raw heights added up to a quarter to flat Tel Aviv bike rides
+  (radar noise and buildings), smoothing over about 150 m removed most of
+  it and kept the hills. Rejected: a flat 5 s per metre for bikes (counted
+  the climb's distance twice on gentle grades), heights per intersection
+  only (missed hills between them), a paid elevation API.
+- 2026-10-25: Gadi: the train search starts at From (a station picked in
+  To while From is empty becomes From); the light rail gets the same
+  station-to-station search (its two direction stops are one station);
+  a setting picks the stop search's opening chip (friends who use it for
+  trains); one look control for the whole app with a switch to set the map
+  and menus apart.
+- 2026-10-25: Gadi: a tap on another stop in the stop view acted oddly
+  (the sheet changed, the map kept the old stop: a panel opened again was
+  not redrawn), and a departure opened an old, redundant view (the trip's
+  stop list, no map). Re-opening a panel now redraws the map; the trip
+  page is gone: a departure, a train row and a vehicle open the line at
+  that stop with that trip chosen.

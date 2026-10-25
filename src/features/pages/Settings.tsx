@@ -15,8 +15,8 @@ import type { IconName } from '../../ui/icons';
 const Seg = ({ id, value, options, onPick }: { id: string; value: string; options: { v: string; label: string }[]; onPick: (v: string) => void }) => (
   <div class="seg pill" id={id}>{options.map((o) => <button type="button" data-v={o.v} aria-pressed={o.v === value} onClick={() => onPick(o.v)}>{o.label}</button>)}</div>
 );
-const Item = ({ icon, label, children }: { icon: IconName; label: any; children?: any }) => (
-  <div class="item"><span class="ii"><Icon name={icon} /></span><span class="lbl">{label}</span>{children}</div>
+const Item = ({ icon, label, children, wide = false }: { icon: IconName; label: any; children?: any; wide?: boolean }) => (
+  <div class={`item${wide ? ' wide' : ''}`}><span class="ii"><Icon name={icon} /></span><span class="lbl">{label}</span>{children}</div>
 );
 const Toggle = ({ icon, label, id, on, onChange }: { icon: IconName; label: any; id: string; on: boolean; onChange: (on: boolean) => void }) => (
   <label class="item"><span class="ii"><Icon name={icon} /></span><span class="lbl">{label}</span><span class="switch"><input type="checkbox" id={id} checked={on} onChange={(e) => onChange((e.currentTarget as HTMLInputElement).checked)} /><i /></span></label>
@@ -32,6 +32,8 @@ export function Settings() {
   const setWalk = (v: number) => settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(v) || 15)) });
   const look = (patch: Partial<settings.Settings>) => { settings.set(patch); app.hooks.appearanceChanged(); };
   const feed = app.feedInfo.value;
+  const theme = s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system';
+  const split = s.lookSplit != null ? !!s.lookSplit : settings.mapChoice() !== theme;   // set apart before this switch existed
   return (
     <>
       <h2 class="sec">{t('settings')}</h2>
@@ -39,8 +41,13 @@ export function Settings() {
         <div class="grouphead">{t('grpGeneral')}</div>
         <div class="list">
           <Item icon="globe" label={t('setLang')}><Seg id="setLang" value={lang.value} options={[{ v: 'he', label: 'עברית' }, { v: 'en', label: 'English' }]} onPick={(v) => app.hooks.setLang(v as 'he' | 'en')} /></Item>
-          <Item icon="moon" label={t('setMap')}><Seg id="setMap" value={settings.mapChoice()} options={looks} onPick={(v) => look({ map: v })} /></Item>
-          <Item icon="sun" label={t('setTheme')}><Seg id="setTheme" value={s.theme || 'system'} options={looks} onPick={(v) => look({ theme: v })} /></Item>
+          {/* one look for the whole app; the map and the menus apart only when asked */}
+          <Item icon="sun" label={t('setLook')}><Seg id="setLook" value={split ? '' : theme} options={looks} onPick={(v) => look({ theme: v, map: v, lookSplit: false })} /></Item>
+          <Toggle icon="sliders" id="setSplit" label={t('setSplit')} on={split} onChange={(on) => look(on ? { lookSplit: true } : { lookSplit: false, map: theme })} />
+          {split && <>
+            <Item icon="map" label={t('setMap')}><Seg id="setMap" value={settings.mapChoice()} options={looks} onPick={(v) => look({ map: v })} /></Item>
+            <Item icon="menu" label={t('setTheme')}><Seg id="setTheme" value={theme} options={looks} onPick={(v) => look({ theme: v })} /></Item>
+          </>}
           <Item icon="map" label={t('setTint')}><Seg id="setTint" value={s.mapTint === 'neutral' ? 'neutral' : 'teal'} options={[{ v: 'teal', label: t('tintTeal') }, { v: 'neutral', label: t('tintNeutral') }]} onPick={(v) => look({ mapTint: v })} /></Item>
           <Toggle icon="mountain" id="setTerrain" label={<><span>{t('setTerrain')}</span><small>{t('terrainHint')}</small></>} on={!!s.terrain} onChange={(on) => look({ terrain: on })} />
         </div>
@@ -50,6 +57,9 @@ export function Settings() {
         <div class="list">
           <Item icon="walk" label={<><span>{t('setWalk')}</span><small>{t('setWalkHint')}</small></>}>
             <div class="stepper"><button type="button" id="walkMinus" aria-label="-" onClick={() => setWalk(s.maxWalk - 1)}>−</button><input type="number" id="setWalk" min={3} max={45} inputMode="numeric" value={s.maxWalk} onChange={(e) => setWalk(+(e.currentTarget as HTMLInputElement).value)} /><button type="button" id="walkPlus" aria-label="+" onClick={() => setWalk(s.maxWalk + 1)}>+</button></div>
+          </Item>
+          <Item icon="pin" wide label={<><span>{t('setStopFilter')}</span><small>{t('setStopFilterHint')}</small></>}>
+            <Seg id="setStopFilter" value={['bus', 'rail', 'lrt'].includes(s.stopFilter as string) ? s.stopFilter as string : 'all'} options={[{ v: 'all', label: t('fAll') }, { v: 'bus', label: t('fBus') }, { v: 'rail', label: t('fRail') }, { v: 'lrt', label: t('fLrt') }]} onPick={(v) => settings.set({ stopFilter: v })} />
           </Item>
         </div>
       </div>

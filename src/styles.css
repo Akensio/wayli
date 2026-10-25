@@ -182,9 +182,6 @@ button.primary.slim { padding: 9px 12px; font-size: 15px; }
 .dep { cursor: pointer; }
 .dep .time.live { color: var(--ok); } .dep .time.unsure { color: var(--warn); } .dep .time.gone { text-decoration: line-through; color: var(--ink-2); }
 .dep .in .live { font-size: 11px; }
-.stopsrow { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-.stopsrow .time { min-width: 48px; color: var(--ink-2); } .stopsrow.here { color: var(--ok); font-weight: 700; }
-.stopsrow .veh { color: var(--ok); font-size: 12px; }
 /* the settings page: its own layer over everything, the drawer included; it slides in from the side the
    reading goes towards (the right in English, the left in Hebrew) and back out, the drawer staying under it */
 .pagelayer { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: var(--bg); transform: translateX(-100%); visibility: hidden;
@@ -206,6 +203,8 @@ body:not(.booted) .pagelayer { transition: none; }
 .item .ii { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); }
 .item .ii .i { width: 20px; height: 20px; }
 .item .lbl { flex: 1; min-width: 0; }
+.item.wide { flex-wrap: wrap; }   /* a control of many choices: on its own line under the label */
+.item.wide > .seg { flex-basis: calc(100% - 46px); margin-inline-start: 46px; }
 .item .lbl small { display: block; color: var(--ink-2); font-size: 12px; line-height: 1.35; margin-top: 2px; font-weight: 400; }
 .item .chev { color: var(--ink-2); width: 20px; height: 20px; }
 .item.text { display: block; font-size: 14px; line-height: 1.5; color: var(--ink-2); }

@@ -121,7 +121,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
   const stopList = async (q: string) => {
     const my = ++seq.current;
     const from = stationSide === 'to' ? search.stFrom.value?.stops : undefined;
-    const found = search.hooks.ttReady() ? await search.hooks.stopGroups(q, stationSide ? 'rail' : search.stopFilter.value, from).catch(() => []) : [];
+    const found = search.hooks.ttReady() ? await search.hooks.stopGroups(q, stationSide ? search.pairMode.value : search.stopFilter.value, from).catch(() => []) : [];
     if (my !== seq.current) return;
     setRows({ quick: false, lines: [], results: [], placesLoaded: true, near: !q, stops: found });
     show();
@@ -265,7 +265,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
         {rows && !rows.quick && <>
           {rows.lines.length > 0 && <div class="grp">{rows.near && search.lineFilter.value === 'all' ? t('linesNear') : t('grpLines')}</div>}
           {rows.lines.map((g) => <LineRow key={g.key} g={g} onLine={(r) => { open.value = false; onLine?.(r); }} />)}
-          {rows.stops && rows.stops.length > 0 && <div class="grp">{rows.near ? (search.stopFilter.value === 'rail' ? t('stationsAll') : t('stopsNear')) : t('grpStops')}</div>}
+          {rows.stops && rows.stops.length > 0 && <div class="grp">{rows.near ? (search.stopFilter.value === 'rail' ? t('stationsAll') : search.stopFilter.value === 'lrt' ? t('stationsLrt') : t('stopsNear')) : t('grpStops')}</div>}
           {(rows.stops || []).map((g) => <StopRow key={g.key} g={g} onStop={(x) => { open.value = false; onStop?.(x); }} />)}
           {rows.lines.length > 0 && rows.results.length > 0 && <div class="grp">{t('grpPlaces')}</div>}
           {rows.results.map((g) => {

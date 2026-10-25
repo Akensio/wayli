@@ -14,6 +14,7 @@ export const live = signal<Record<string, LiveTrain>>({});
 export const liveNote = signal('');
 export const day = signal('');
 export const isNow = signal(false);
+export const mode = signal<'rail' | 'lrt'>('rail');   // trains, or the light rail
 
 export const hooks = {
   closeTrains: () => {},

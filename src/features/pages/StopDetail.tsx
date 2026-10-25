@@ -57,16 +57,16 @@ export function StopDetail() {
             );
           })}
         </div>
-        {info.rail && (
+        {info.reach && (
           <>
-            <h2 class="sec" style="margin:14px 0 6px">{t('directTrains')}</h2>
+            <h2 class="sec" style="margin:14px 0 6px">{t(info.reach === 'lrt' ? 'directLrt' : 'directTrains')}</h2>
             {stop.dests.value === null && <div class="empty">{t('loading')}</div>}
-            {stop.dests.value && !stop.dests.value.length && <div class="empty">{t('noTrains')}</div>}
+            {stop.dests.value && !stop.dests.value.length && <div class="empty">{t(info.reach === 'lrt' ? 'noLrt' : 'noTrains')}</div>}
             <div id="stationDests">
               {(stop.dests.value || []).map((d) => (
                 <button type="button" class="destrow" key={d.key} onClick={() => stop.hooks.openTo(d)}>
                   <span class="name">{d.name}</span>
-                  <small>{d.next != null ? t('nextTrain', { time: fmt(d.next), ride: dur(d.ride || 0) }) : t('noMoreTrains')} · {t('tripsToday', { n: d.trips })}</small>
+                  <small>{d.next != null ? t('nextTrain', { time: fmt(d.next), ride: dur(d.ride || 0) }) : t(info.reach === 'lrt' ? 'noMoreLrt' : 'noMoreTrains')} · {t('tripsToday', { n: d.trips })}</small>
                 </button>
               ))}
             </div>

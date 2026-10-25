@@ -6,6 +6,7 @@ import { signal, computed, effect } from '@preact/signals';
 import * as live from '../live.js';
 import { t } from '../i18n';
 import { calToday, hm, secOf, calendarOf } from '../time';
+import * as settings from './settings';
 
 export type Place = { name: string; lat?: number | null; lon?: number | null; stops?: number[]; platforms?: number; code?: string; kind?: string; transient?: boolean; auto?: boolean };
 export type Side = 'from' | 'to';
@@ -38,12 +39,13 @@ export const kind = signal<Kind>('trip');
 export const lineFilter = signal<LineFilter>('all');
 export const stopFilter = signal<StopFilter>('all');
 export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ' | 'stopQ'>(() =>
-  (kind.value === 'line' ? (lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber') : kind.value === 'stop' ? (stopFilter.value === 'rail' ? 'stationQ' : 'stopQ') : 'goQ'));
+  (kind.value === 'line' ? (lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber') : kind.value === 'stop' ? (stopFilter.value === 'rail' || stopFilter.value === 'lrt' ? 'stationQ' : 'stopQ') : 'goQ'));
 // the full keyboard everywhere: line numbers carry letters ("4א"), and words narrow them ("274 תל אביב")
 export const toInputMode = computed<'' | 'numeric'>(() => '');
-// The train timetable (the stop search for trains): two stations at the top, as riders who plan their own trips from
-// the schedule use it; the sheet answers with where trains from the first go, or the trains between the two.
-export const railPair = computed(() => kind.value === 'stop' && stopFilter.value === 'rail');
+// The train timetable (the stop search for trains, and for the light rail): two stations at the top, as riders who plan
+// their own trips from the schedule use it; the sheet answers with where trains from the first go, or those between the two.
+export const railPair = computed(() => kind.value === 'stop' && (stopFilter.value === 'rail' || stopFilter.value === 'lrt'));
+export const pairMode = computed<'rail' | 'lrt'>(() => (stopFilter.value === 'lrt' ? 'lrt' : 'rail'));
 export const stFrom = signal<Place | null>(null);
 export const stFromText = signal('');
 export const stTo = signal<Place | null>(null);
@@ -180,6 +182,8 @@ export function setKind(k: Kind): void {
   if (kind.value === k) return;
   if (kind.value === 'trip') { tripTo = { to: to.value, text: toText.value }; to.value = null; optOpen.value = ''; }
   toText.value = '';
+  // the stop search opens on the rider's usual kind of stop (settings: many look only for trains)
+  if (k === 'stop') { const f = settings.get().stopFilter; stopFilter.value = f === 'bus' || f === 'rail' || f === 'lrt' ? f : 'all'; clearStations(); }
   if (k === 'trip') {
     if (tripTo) { to.value = tripTo.to; toText.value = tripTo.text; tripTo = null; }
     else toText.value = to.value ? to.value.name : '';

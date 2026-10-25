@@ -9,7 +9,6 @@ import { Nearby } from '../pages/Nearby';
 import { Saved } from '../pages/Saved';
 import { Detail } from '../detail/Detail';
 import { StopDetail } from '../pages/StopDetail';
-import { TripDetail } from '../pages/TripDetail';
 import { LineDetail } from '../pages/LineDetail';
 import { TrainTimes } from '../pages/TrainTimes';
 import { Chooser } from '../pages/Chooser';
@@ -29,7 +28,6 @@ export function Sheet() {
         <section class="screen" id="screen-saved" hidden={!show('screen-saved')}><Saved /></section>
         <div class="detail" id="detail" hidden={!show('detail')}><Detail /></div>
         <div class="detail" id="stopDetail" hidden={!show('stopDetail')}><StopDetail /></div>
-        <div class="detail" id="tripDetail" hidden={!show('tripDetail')}><TripDetail /></div>
         <div class="detail" id="lineDetail" hidden={!show('lineDetail')}><LineDetail /></div>
         <div class="detail" id="trainTimes" hidden={!show('trainTimes')}><TrainTimes /></div>
         <div class="detail" id="chooser" hidden={!show('chooser')}><Chooser /></div>
