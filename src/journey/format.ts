@@ -24,7 +24,7 @@ export function leaveText(sec: number, day: string): string {
   return t('leaveIn', { n });
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
-export const inShort = (n: number): string => (n > 120 || n < 0 ? '' : ` (${t('departsIn', { n })})`);
+export const inShort = (n: number): string => (n > 120 || n < 0 ? '' : ` (${t('inMin', { n })})`);
 /** A saved trip's key: the places and the bicycle choice. */
 export const tripKey = (q: { from: { name: string }; to: { name: string }; bike?: string; folding?: boolean }): string => `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`;
 type LiveAt = { time: number; delay: number; passed?: boolean; stale?: boolean } | null;

@@ -43,7 +43,7 @@ export function topPanel(): string | null { const st = stack.value; for (let i =
 export const key = computed(() => topPanel() || 'screen-' + screen.value);
 export const picking = computed(() => key.value === 'picker');   // picking a point: the sheet and the bar go, the crosshair bar shows
 // pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
-const PAGE_TITLE: Record<string, string | null> = { 'screen-saved': 'tabSaved', chooser: null };
+const PAGE_TITLE: Record<string, string | null> = { 'screen-saved': 'savedTitle', chooser: null };
 export const page = computed(() => !picking.value && key.value in PAGE_TITLE);
 export const pageTitle = (): string => { const k = key.value; return PAGE_TITLE[k] ? t(PAGE_TITLE[k]!) : chooser.title.value; };
 /** How open the sheet is when a panel or screen comes up. */

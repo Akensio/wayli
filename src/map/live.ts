@@ -20,6 +20,7 @@ import { heading, vehiclePopup } from './popups';
 import { viewFor } from './view';
 import { currentSheet } from './render';
 import { metres } from '../engine/geo.js';
+import { timeOf } from '../lib/time';
 
 export const liveOn = (): boolean => !!settings.get().live && navigator.onLine !== false;
 const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label', 'lm-traffic'];
@@ -148,7 +149,7 @@ export async function refreshLiveMap(): Promise<void> {
     const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
     // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
     const via = feed.source.relay ? '' : t('liveViaDb', { why: feed.source.why });
-    app.liveNote.value = (shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: nw!.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' }), age }) : t('liveMapNone', { scope })) + via;
+    app.liveNote.value = (shown ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: timeOf(nw!), age }) : t('liveMapNone', { scope })) + via;
     app.liveLag.value = !!shown && ageMin >= 4;
     try { window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length }; } catch { /* debugging only */ }
   } catch { if (my === lm.seq && my > lm.applied) app.liveNote.value = t('liveFail'); }

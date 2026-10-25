@@ -59,7 +59,7 @@ export function Settings() {
             <div class="stepper"><button type="button" id="walkMinus" aria-label="-" onClick={() => setWalk(s.maxWalk - 1)}>−</button><input type="number" id="setWalk" min={3} max={45} inputMode="numeric" value={s.maxWalk} onChange={(e) => setWalk(+(e.currentTarget as HTMLInputElement).value)} /><button type="button" id="walkPlus" aria-label="+" onClick={() => setWalk(s.maxWalk + 1)}>+</button></div>
           </Item>
           <Item icon="pin" wide label={<><span>{t('setStopFilter')}</span><small>{t('setStopFilterHint')}</small></>}>
-            <Seg id="setStopFilter" value={['bus', 'rail', 'lrt'].includes(s.stopFilter as string) ? s.stopFilter as string : 'all'} options={[{ v: 'all', label: t('fAll') }, { v: 'bus', label: t('fBus') }, { v: 'rail', label: t('fRail') }, { v: 'lrt', label: t('fLrt') }]} onPick={(v) => settings.set({ stopFilter: v })} />
+            <Seg id="setStopFilter" value={['bus', 'rail', 'lrt'].includes(s.stopFilter as string) ? s.stopFilter as string : 'all'} options={[{ v: 'all', label: t('fAll') }, { v: 'bus', label: t('fBus') }, { v: 'rail', label: t('train') }, { v: 'lrt', label: t('lrt') }]} onPick={(v) => settings.set({ stopFilter: v })} />
           </Item>
         </div>
       </div>

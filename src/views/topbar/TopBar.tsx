@@ -18,11 +18,11 @@ import type { IconName } from '../../widgets/icons';
 import { useFlip } from '../../widgets/flip';
 
 const LINE_FILTERS: { f: search.LineFilter; label: string; icon?: IconName }[] = [
-  { f: 'all', label: 'fAll' }, { f: 'bus', label: 'fBus', icon: 'bus' }, { f: 'rail', label: 'fRail', icon: 'train' },
-  { f: 'lrt', label: 'fLrt', icon: 'tram' }, { f: 'cable', label: 'fCable', icon: 'cable' },
+  { f: 'all', label: 'fAll' }, { f: 'bus', label: 'fBus', icon: 'bus' }, { f: 'rail', label: 'train', icon: 'train' },
+  { f: 'lrt', label: 'lrt', icon: 'tram' }, { f: 'cable', label: 'fCable', icon: 'cable' },
 ];
 const STOP_FILTERS: { f: search.StopFilter; label: string; icon?: IconName }[] = [
-  { f: 'all', label: 'fAll' }, { f: 'bus', label: 'fBus', icon: 'bus' }, { f: 'rail', label: 'fRail', icon: 'train' }, { f: 'lrt', label: 'fLrt', icon: 'tram' },
+  { f: 'all', label: 'fAll' }, { f: 'bus', label: 'fBus', icon: 'bus' }, { f: 'rail', label: 'train', icon: 'train' }, { f: 'lrt', label: 'lrt', icon: 'tram' },
 ];
 
 /** The menu's three lines, drawn inline (not from the sprite) so each can move on its own when pressed. */
@@ -121,7 +121,7 @@ export function TopBar() {
             onPick={(p) => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.chooseTo(p); }}
             onLine={(r) => { if (!line) search.toText.value = ''; (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openLine(r); search.foldBar(); }}>
             <button type="button" class="userbtn" id="menuBtn" title={t('menu')} aria-label={t('menu')} onClick={() => { (document.getElementById('toQ') as HTMLInputElement | null)?.blur(); search.hooks.openMenu(); }}><MenuGlyph /></button>
-            <span class="tag" key={`${kind}${pair}`}>{kind === 'line' ? t('tagLine') : kind === 'stop' && !pair ? t('tagStop') : t('tagTo')}</span>
+            <span class="tag" key={`${kind}${pair}`}>{kind === 'line' ? t('kindLine') : kind === 'stop' && !pair ? t('kindStopSearch') : t('tagTo')}</span>
             {line && !edit
               // folded, the line and stop searches say which they are where the logo sits; its x is the trip search again
               ? <button type="button" class="kindpill" id="kindPill" aria-label={t('backToTrip')} onClick={() => search.setKind('trip')}>
@@ -137,7 +137,7 @@ export function TopBar() {
             {pair ? <>
               {/* the trains between two stations, as a trip's summary: To above, From and the kind of train below */}
               <span class="l1" id="sumTo"><span class="tag">{t('tagTo')}</span>{search.stToText.value}</span>
-              <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.stFromText.value}<span class="sep">·</span><Icon name={search.pairMode.value === 'lrt' ? 'tram' : 'train'} />{t(search.pairMode.value === 'lrt' ? 'fLrt' : 'fRail')}</span>
+              <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.stFromText.value}<span class="sep">·</span><Icon name={search.pairMode.value === 'lrt' ? 'tram' : 'train'} />{t(search.pairMode.value === 'lrt' ? 'lrt' : 'train')}</span>
             </> : <>
               <span class="l1" id="sumTo"><span class="tag">{t('tagTo')}</span>{search.to.value ? placeName(search.to.value) : search.toText.value}</span>
               <span class="l2" id="sumMeta"><span class="tag">{t('tagFrom')}</span>{search.from.value ? placeName(search.from.value) : (search.fromText.value || t('myLoc'))}<span class="sep">·</span><TimeChipInner /><span class="sep">·</span><BikeChipInner /></span>

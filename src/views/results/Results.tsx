@@ -40,7 +40,7 @@ function Filters() {
   return (
     <div class="filters">
       <Chip label={t('fDirect')} on={f.fDirect} onClick={() => results.setFilter({ fDirect: !f.fDirect })} />
-      <Chip label={t('fTrain')} on={f.fTrain} icon="train" onClick={() => results.setFilter({ fTrain: !f.fTrain })} />
+      <Chip label={t('train')} on={f.fTrain} icon="train" onClick={() => results.setFilter({ fTrain: !f.fTrain })} />
       <SortChip />
     </div>
   );

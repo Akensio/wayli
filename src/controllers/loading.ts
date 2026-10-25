@@ -17,7 +17,7 @@ const manifest = (): Manifest => data.manifest.value!;
 // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
 feed.snapshot.query = (filter: object) => call('liveQuery', { urls: feed.RELAY_URLS, filter });
 // stored places shown in the other language are named again by the worker (state/names.ts)
-const WORDS = { he: { near: String(STR.he.nearName), point: String(STR.he.pointName) }, en: { near: String(STR.en.nearName), point: String(STR.en.pointName) } };
+const WORDS = { he: { near: String(STR.nearName[0]), point: String(STR.pointName[0]) }, en: { near: String(STR.nearName[1]), point: String(STR.pointName[1]) } };
 names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });
 /** A data file's address, with the build in the query so a new build is fetched once and then cached. */
 const fileUrl = (f: { file: string; built?: string }): string => `${DATA_URL}${f.file}?v=${encodeURIComponent(f.built || manifest().built || '')}`;

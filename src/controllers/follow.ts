@@ -93,7 +93,7 @@ function stepFollow(): void {
 }
 function onFollowEvent(e: string, a: ActiveTrip): void {
   const v: any = followView(a.journey, a.state, clock.nowOn(a.day));
-  if (e === 'getOffNext') { const leg = a.journey.legs[a.state.step]; alertUser(t('alertSoon'), t('alertSoonBody', { name: leg.to ? leg.to.name : '' })); }
+  if (e === 'getOffNext') { const leg = a.journey.legs[a.state.step]; alertUser(t('alertSoon'), t('getOffAt', { name: leg.to ? leg.to.name : '' })); }
   else if (e === 'getOff') alertUser(t('alertOff'), '');
   else if (e === 'arrived') alertUser(t('alertArrived'), t('arrived'));
   else if (e === 'boarded') toast(t('boarded', { line: lineText(v.leg ? v.leg.line : '') }));

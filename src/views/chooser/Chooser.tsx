@@ -19,7 +19,7 @@ export function Chooser() {
         <SearchField id="chQ" dropId="chDrop" text={chooser.text} place={chooser.place} placeholder={t('toQ')} onPick={(p) => chooser.finish(p)} onLocate={locate} onMap={map}>
           <span class="icon"><Icon name="search" /></span>
         </SearchField>
-        <div class="chips-row"><button type="button" class="chipbtn" id="chLoc" onClick={locate}><Icon name="locate" /> {t('btnLoc')}</button><button type="button" class="chipbtn" id="chMap" onClick={map}><Icon name="map" /> {t('btnMap')}</button></div>
+        <div class="chips-row"><button type="button" class="chipbtn" id="chLoc" onClick={locate}><Icon name="locate" /> {t('myLoc')}</button><button type="button" class="chipbtn" id="chMap" onClick={map}><Icon name="map" /> {t('pickTitle')}</button></div>
       </div>
     </>
   );

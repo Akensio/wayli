@@ -31,7 +31,7 @@ export function Drawer() {
         <button type="button" id="menuStops" onClick={app.hooks.stopSearch}><span class="ic"><Icon name="pin" /></span><span>{t('stopSearch')}</span></button>
         {/* the three searches above, the pages below */}
         <hr class="msep" />
-        <Row icon="star" label={t('tabSaved')} screen="saved" onClick={() => app.hooks.go('saved')} />
+        <Row icon="star" label={t('savedTitle')} screen="saved" onClick={() => app.hooks.go('saved')} />
         <Row icon="sliders" label={t('tabMore')} screen="more" onClick={app.hooks.openSettings} />
         <button type="button" id="menuReload" onClick={() => location.reload()}><span class="ic"><Icon name="refresh" /></span><span>{t('reload')}</span></button>
         <div class="foot muted" id="drawerVer">{app.version.value}</div>

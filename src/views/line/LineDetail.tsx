@@ -35,10 +35,10 @@ export function LineDetail() {
       </div>
       <div class="legs">
         <h2 id="lineTitle"><bdi>{info.mode === 'rail' && info.ends ? t('lineEnds', { a: info.ends[0], b: info.ends[1] }) : t('toward', { headsign: info.headsign })}</bdi></h2>
-        <div class="muted" id="lineMeta"><bdi>{agencyName(info.agency || '')}</bdi> · {t('tripsToday', { n: info.trips })} · <span dir="ltr">{fmtPlus(info.first)}–{fmtPlus(info.last)}</span> · {t('stopsCount', { n: info.stops.length })}</div>
+        <div class="muted" id="lineMeta"><bdi>{agencyName(info.agency || '')}</bdi> · {t('tripsToday', { n: info.trips })} · <span dir="ltr">{fmtPlus(info.first)}–{fmtPlus(info.last)}</span> · {t('stopsN', { n: info.stops.length })}</div>
         {info.estimated && <div class="muted est">{t('estNote')}</div>}
         <div class="chips" id="lineDirs" style="margin:8px 0">
-          {info.others.map((o) => <button type="button" class="chipbtn" onClick={() => line.hooks.openLine(o.route)}><Icon name="arrowsLR" /> {t('otherDir', { headsign: o.headsign })}</button>)}
+          {info.others.map((o) => <button type="button" class="chipbtn" onClick={() => line.hooks.openLine(o.route)}><Icon name="arrowsLR" /> {t('toward', { headsign: o.headsign })}</button>)}
         </div>
         {a && <>
           <h2 class="sec" style="margin:12px 0 2px">{t('timesAtStop', { name: a.name })}</h2>
