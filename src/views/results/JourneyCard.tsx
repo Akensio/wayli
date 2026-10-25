@@ -8,7 +8,7 @@ import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { now } from '../../state/clock';
 import * as results from '../../state/results';
-import { dur, transfersText, lineText, leaveText } from '../../journey/format';
+import { dur, transfersText, lineText, leaveText, delayText } from '../../journey/format';
 import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
 import type { Leg } from '../../journey/types';
@@ -24,7 +24,7 @@ export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveIn
 const LiveLine = ({ l }: { l?: Leg }) => {
   if (!l || !l.live) return null;
   const d = delays.delayMinutes(l.live.delay);
-  return <div class="muted"><span class={`live ${l.live.stale ? 'unsure' : 'ok'}`}>{d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d })}{l.live.stale ? ' ?' : ''}</span></div>;
+  return <div class="muted"><span class={`live ${l.live.stale ? 'unsure' : 'ok'}`}>{delayText(d)}{l.live.stale ? ' ?' : ''}</span></div>;
 };
 
 export function JourneyCard({ card }: { card: Card }) {

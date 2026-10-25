@@ -17,6 +17,7 @@ import { viewFor } from './view';
 import { currentSheet, cameraPadding } from './render';
 import { fmt, timeOf } from '../lib/time';
 import { lineChipHtml } from '../widgets/LineChip';
+import { signed, delayText } from '../journey/format';
 
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 export const heading = (v: { bearing?: number | null; velocity?: number | null }): number => (v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1);
@@ -48,7 +49,7 @@ type VehicleInfo = { line: string; routeType: number; headsign: string; agency: 
 /** A vehicle's bubble: line, direction, delay, when it reported, speed; its line, with its trip chosen. */
 export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void {
   const d = v.delay != null ? delays.delayMinutes(v.delay) : null;
-  const delayTxt = d == null ? '' : d === 0 ? t('onTime') : t('liveDelay', { d: (d > 0 ? '+' : '') + d });
+  const delayTxt = d == null ? '' : delayText(d);
   const ago = Date.now() - new Date(v.seen).getTime();
   const html = `<div class="pop"><div class="row">${lineChipHtml({ line: v.line, routeType: v.routeType, agency: v.agency })}<b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
     `<div class="muted">${v.agency ? `<bdi>${esc(agencyName(v.agency))}</bdi> · ` : ''}${t('seenAgo', { time: timeOf(v.seen) })}${ago >= 180e3 ? ` (${t('agoMin', { n: Math.round(ago / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
@@ -131,7 +132,7 @@ export function lineVehicleMarkers(m: MLMap, markers: Marker[], vs: any[], statu
     const isMine = mine != null && st.trip === mine;
     el.className = 'wayli-bus lbl' + (st.stale || st.trip < 0 ? ' stale' : '') + (isMine ? ' mine' : '');
     const d = st.delay != null ? delays.delayMinutes(st.delay) : null;
-    el.innerHTML = `${icon}${isMine && d != null ? ` ${d > 0 ? '+' : ''}${d}` : ''}`;   // the number (minutes late) only on the rider's own vehicle; the bubble has it for the rest
+    el.innerHTML = `${icon}${isMine && d != null ? ` ${signed(d)}` : ''}`;   // the number (minutes late) only on the rider's own vehicle; the bubble has it for the rest
     el.style.borderColor = routeColor(st.routeType ?? routeType, st.agency || fallback.agency);
     addHeading(el, heading(v));
     el.title = `${timeOf(v.recordedAt)}${st.headsign ? ' · ' + st.headsign : ''}`;

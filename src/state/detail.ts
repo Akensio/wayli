@@ -10,7 +10,6 @@ export const query = signal<Query | null>(null);
 export const bikeOnly = signal(false);
 export const focus = signal(-1);                            // the leg focused on the map
 export const badges = signal<Record<string, Badge>>({});   // by trip: what the live data says about each ride
-export const favTick = signal(0);                           // bumped when a trip is saved or unsaved
 
 /** What the detail needs from the rest of the app. Filled in by the app at start. */
 export const hooks = {
@@ -22,7 +21,6 @@ export const hooks = {
   rideLive: async (_rows: TrainRow[], _day: string): Promise<Record<string, LiveTrain>> => ({}),
   openTrip: (_trip: number, _stop: number) => {},                   // a row: its line at the stop, that trip chosen
   startTrip: (_j: Journey, _q: Query) => {},
-  favChanged: () => {},            // the saved screen lists the trips again
 };
 
 export function open(j: Journey, q: Query, bike = false): void {

@@ -27,7 +27,6 @@ export const error = signal('');
 export const filters = signal<Filters>(readFilters());
 export const altShown = signal<ReadonlySet<number>>(new Set());   // the cards drawn on the map
 export const altSel = signal(-1);                                 // the one highlighted
-export const recentTick = signal(0);                              // bumped when the recent trips change
 /** Which history the drawer shows at rest: trips, lines or stops. It follows the bar's kind and can be switched on its
  *  own (without opening a search). */
 export const recentTab = signal<'trip' | 'line' | 'stop'>('trip');
@@ -132,4 +131,3 @@ export function setFilter(patch: Partial<Filters>): void {
   if (Object.keys(kept).length) settings.set(kept);
   filters.value = readFilters(resultSort || filters.value.resultSort); resetAlts(); hooks.afterResults();
 }
-export const refreshRecent = (): void => { recentTick.value++; };

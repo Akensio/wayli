@@ -11,5 +11,7 @@ on the screen.
 | `Timetable.tsx` | A line's times at a stop, by hour, as printed at the stop. |
 | `FromTo.tsx`, `TimeRange.tsx` | "From → to" and "08:10 → 08:45", right in both directions. |
 | `CloseAll.tsx` | The X on a panel's bar: closes every panel. |
+| `StarButton.tsx` | The star on a panel's bar that saves its trip, stop or line. |
+| `LiveMark.tsx` | ⦿ beside a departure whose vehicle is seen, with how late it runs. |
 | `Wheel.tsx`, `Logo.tsx` | The time wheel; the app's mark. |
 | `toast.ts`, `ripple.ts`, `flip.ts`, `swipeClose.ts`, `html.ts` | A short message; touch feedback; layout changes that animate; swipe to close; HTML escaping for map bubbles. |

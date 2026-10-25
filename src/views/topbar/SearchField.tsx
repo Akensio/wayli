@@ -12,7 +12,6 @@ import { ic } from '../../widgets/icons';
 import { Icon } from '../../widgets/Icon';
 import { savedPlaces, recentPlaces, recentViews } from '../../lib/store.js';
 import * as search from '../../state/search';
-import * as saved from '../../state/saved';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
 import { LineChip } from '../../widgets/LineChip';
 import { agencyName } from '../../journey/agencies';
@@ -290,7 +289,7 @@ export function SearchField({ id, dropId, text, place, placeholder, onFocus: onF
           {recent.slice(0, 6).map((p) => (
             <button type="button" class="quick" onClick={() => pick(p)}>
               <span class="ic"><Icon name="history" /></span><span class="txt">{placeName(p)}</span>
-              <span class="mini" title={t('savePlace')} onClick={(e) => { e.stopPropagation(); savedPlaces.add(p); saved.refresh(); search.hooks.toast(t('saved')); quickMenu(); }}><Icon name="star" /></span>
+              <span class="mini" title={t('savePlace')} onClick={(e) => { e.stopPropagation(); savedPlaces.add(p); search.hooks.toast(t('saved')); quickMenu(); }}><Icon name="star" /></span>
             </button>
           ))}
         </>}

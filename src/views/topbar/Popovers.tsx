@@ -4,6 +4,7 @@
 import { Icon } from '../../widgets/Icon';
 import { Wheel } from '../../widgets/Wheel';
 import { t, lang } from '../../lib/i18n';
+import { bikeText } from '../../journey/format';
 import { dayShort, calendarOf, calToday, two } from '../../lib/time';
 import * as search from '../../state/search';
 
@@ -63,7 +64,7 @@ function timeChipText(): string {
 }
 function bikeChipText(): string {
   const b = search.bike.value;
-  return t(b === 'along' ? 'bikeAlong' : b === 'park' ? 'bikePark' : 'bikeNone') + (b !== 'none' && search.folding.value ? ' · ' + t('folding') : '');
+  return bikeText(b) + (b !== 'none' && search.folding.value ? ' · ' + t('folding') : '');
 }
 export const TimeChipInner = () => <><Icon name="clock" /> {timeChipText()}</>;
 export const BikeChipInner = () => <><Icon name="bike" /> {bikeChipText()}</>;

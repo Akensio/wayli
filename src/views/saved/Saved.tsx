@@ -3,25 +3,26 @@ import { Icon } from '../../widgets/Icon';
 import { placeName, named } from '../../state/names';
 import { FromTo } from '../../widgets/FromTo';
 import { t, lang } from '../../lib/i18n';
+import { bikeText } from '../../journey/format';
 import { toast } from '../../widgets/toast';
-import { savedPlaces, favs } from '../../lib/store.js';
+import { savedPlaces, favs, stored } from '../../lib/store.js';
 import * as saved from '../../state/saved';
 import * as results from '../../state/results';
 import { StopList } from './StopList';
 import type { Place } from '../../state/search';
+import type { SavedTrip } from '../../journey/types';
 import type { Stop } from '../../state/stop';
 import type { View } from '../../state/results';
 import { LineChip } from '../../widgets/LineChip';
 import type { LineMode } from '../../widgets/LineChip';
 import { agencyName } from '../../journey/agencies';
 
-type SavedTrip = { from: Place; to: Place; bike: string; folding?: boolean };
 
 export function Saved() {
-  void lang.value; void saved.tick.value;
+  void lang.value; void stored.value;
   const sp = savedPlaces.get() as { home: Place | null; work: Place | null; more: Place[] };
   const trips = favs.get('trips') as Record<string, SavedTrip>, stops = favs.get('stops') as Record<string, Stop>, lines = favs.get('lines') as Record<string, View>;
-  const choose = async (slot: 'home' | 'work') => { const c = await saved.hooks.choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork')); if (c) { savedPlaces.set(slot, c); saved.refresh(); } };
+  const choose = async (slot: 'home' | 'work') => { const c = await saved.hooks.choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork')); if (c) { savedPlaces.set(slot, c); } };
   return (
     <>
       <h2 class="sec">{t('savedPlaces')}</h2>
@@ -37,10 +38,10 @@ export function Saved() {
           <div class="saved-row">
             <span class="ic"><Icon name="star" /></span>
             <span class="txt" onClick={() => saved.hooks.planTo(named(p))}><span class="name">{placeName(p)}</span></span>
-            <button type="button" class="ghost" onClick={() => { savedPlaces.remove(p); saved.refresh(); toast(t('removed')); }}><Icon name="close" /></button>
+            <button type="button" class="ghost" onClick={() => { savedPlaces.remove(p); toast(t('removed')); }}><Icon name="close" /></button>
           </div>
         ))}
-        <button type="button" class="ghost" style="margin-bottom:8px" onClick={async () => { const c = await saved.hooks.choosePlace(t('choosePlace')); if (c) { savedPlaces.add(c); saved.refresh(); toast(t('saved')); } }}>{t('addPlace')}</button>
+        <button type="button" class="ghost" style="margin-bottom:8px" onClick={async () => { const c = await saved.hooks.choosePlace(t('choosePlace')); if (c) { savedPlaces.add(c); toast(t('saved')); } }}>{t('addPlace')}</button>
       </div>
       <h2 class="sec">{t('favTrips')}</h2>
       <div id="favTrips">
@@ -48,7 +49,7 @@ export function Saved() {
         {Object.values(trips).map((v) => (
           <div class="journey" onClick={() => results.hooks.replan({ from: named(v.from), to: named(v.to), bike: v.bike, folding: !!v.folding, day: '', at: '', arriveBy: false })}>
             <div class="top"><span class="times"><FromTo from={placeName(v.from)} to={placeName(v.to)} /></span></div>
-            <div class="sub">{v.bike !== 'none' && <><Icon name="bike" /> </>}{t(v.bike === 'along' ? 'bikeAlong' : v.bike === 'park' ? 'bikePark' : 'bikeNone')}</div>
+            <div class="sub">{v.bike !== 'none' && <><Icon name="bike" /> </>}{bikeText(v.bike)}</div>
           </div>
         ))}
       </div>

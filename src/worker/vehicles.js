@@ -140,8 +140,7 @@ function snapVehicles(j, t) {
   }
   return gone.size ? out.filter((v) => !gone.has(v)) : out;
 }
-let relayAt = 0;
-   // which of the relay's addresses answered last: tried first next time
+let relayAt = 0;   // which of the relay's addresses answered last: tried first next time
 async function snapshot(urls) {
   if (snap && Date.now() - snap.at < SNAP_MS) return snap;
   if (!snapLoading) snapLoading = (async () => {

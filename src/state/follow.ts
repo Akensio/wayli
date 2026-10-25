@@ -1,6 +1,6 @@
 // Following a trip, as the screen sees it: the trip in progress (its journey, its state machine's state, the
 // day), the rider's position, what the live data says about the next ride, and a faster way when one was
-// found. The controller (timers, the position watch, the live polls, the re-planning) still runs in app.js
+// found. The controller (timers, the position watch, the live polls, the re-planning) is controllers/follow.ts
 // and publishes here; the screen renders from these and asks through `hooks`.
 import { signal } from '@preact/signals';
 import type { Journey, Query } from '../journey/types';

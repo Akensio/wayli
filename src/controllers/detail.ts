@@ -9,7 +9,6 @@ import { call, tripStopsCached, estimate } from '../worker/client';
 import * as data from '../state/data';
 import * as detail from '../state/detail';
 import * as nav from '../state/nav';
-import * as saved from '../state/saved';
 import * as map from '../map/index';
 import { liveBadge } from '../journey/format';
 import type { Journey, Query } from '../journey/types';
@@ -76,5 +75,4 @@ Object.assign(detail.hooks, {
   rideLive: async (rows: TrainRow[], day: string) => (map.liveOn() ? (await liveRides(rows, day)).live : {}),
   openTrip: (trip: number, stop: number) => openTrip(trip, stop),
   startTrip: (j: Journey, q: Query) => startTrip(j, q),
-  favChanged: () => saved.refresh(),
 });

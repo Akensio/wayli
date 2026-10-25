@@ -3,6 +3,7 @@ import * as clock from '../engine/clock.js';
 import * as delays from '../engine/delays.js';
 import { t, lang } from '../lib/i18n';
 import { fmt } from '../lib/time';
+import { tripKey as storeTripKey } from '../lib/store.js';
 import type { Place } from '../state/search';
 
 /** A distance as the rider reads it: to the metre close by, by 50 m within a kilometre, then in km (one decimal under 10). */
@@ -11,6 +12,12 @@ export const distText = (m: number): string => (m < 100 ? t('distM', { m: Math.r
 /** A walk's or a ride's length in whole minutes, never 0. */
 export const legMinutes: (sec: number) => number = clock.legMinutes;
 export const dur = (sec: number): string => { const mn = Math.round(sec / 60); return mn >= 60 ? `${Math.floor(mn / 60)} ${t('hour')} ${mn % 60} ${t('min')}` : `${mn} ${t('min')}`; };
+/** Minutes late as the rider reads them: +3, -2, 0. */
+export const signed = (n: number): string => (n > 0 ? '+' : '') + n;
+/** How late a vehicle runs: "on time" or "+3 min late". */
+export const delayText = (d: number): string => (d === 0 ? t('onTime') : t('liveDelay', { d: signed(d) }));
+/** The bicycle choice: none, to the stop, or taken along. */
+export const bikeText = (b?: string | null): string => t(b === 'along' ? 'bikeAlong' : b === 'park' ? 'bikePark' : 'bikeNone');
 export const transfersText = (n: number): string => (n === 0 ? t('direct') : n === 1 ? t('transfer1') : t('transfers', { n }));
 export const lineText = (line?: string | null): string => (line === 'train' ? t('train') : line || '');
 export const stopsText = (n: number): string => (n === 1 ? t('stops1') : t('stopsN', { n }));
@@ -27,8 +34,8 @@ export function leaveText(sec: number, day: string): string {
 }
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
 export const inShort = (n: number): string => (n > 120 || n < 0 ? '' : ` (${t('inMin', { n })})`);
-/** A saved trip's key: the places and the bicycle choice. */
-export const tripKey = (q: { from: { name: string }; to: { name: string }; bike?: string; folding?: boolean }): string => `trip:${q.from.name}|${q.to.name}|${q.bike}|${q.folding ? 'f' : ''}`;
+/** A saved trip's key among the favourites: the store's key of the trip (its places and the bicycle choice). */
+export const tripKey = (q: { from: { name: string }; to: { name: string }; bike?: string; folding?: boolean }): string => 'trip:' + storeTripKey(q);
 type LiveAt = { time: number; delay: number; passed?: boolean; stale?: boolean } | null;
 export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: number; delayText?: string };   // time: the live departure
 /** A live vehicle's standing as a badge: its time at the stop and how late, passed, or no vehicle found. */
@@ -36,9 +43,9 @@ export function liveBadge(at: LiveAt): Badge {
   if (!at) return { text: t('liveNoVehicle'), cls: '' };
   if (at.passed) return { text: t('livePassed'), cls: 'gone' };
   const d = delays.delayMinutes(at.delay);
-  const delayText = `⦿ ${d === 0 ? t('onTime') : `${d > 0 ? '+' : ''}${d}`}${at.stale ? ' ?' : ''}`;
-  const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${d > 0 ? '+' : ''}${d})`}${at.stale ? ' ?' : ''}`;
-  return { text, cls: at.stale ? 'unsure' : 'ok', time: at.time, delayText };
+  const badgeDelay = `⦿ ${d === 0 ? t('onTime') : signed(d)}${at.stale ? ' ?' : ''}`;
+  const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${signed(d)})`}${at.stale ? ' ?' : ''}`;
+  return { text, cls: at.stale ? 'unsure' : 'ok', time: at.time, delayText: badgeDelay };
 }
 /** "now", "in n min" (up to two hours), or nothing. */
 export function inText(sec: number, day: string): string { const n = minutesUntil(sec, day); return n <= 0 ? t('nowDep') : n > 120 ? '' : t('inMin', { n }); }

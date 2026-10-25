@@ -4,7 +4,6 @@ import { lang, storeLang } from '../lib/i18n';
 import { call } from '../worker/client';
 import * as search from '../state/search';
 import * as results from '../state/results';
-import * as saved from '../state/saved';
 import * as map from '../map/index';
 import type { Place } from '../state/search';
 import { plan } from './planner';
@@ -15,7 +14,7 @@ export function applyLang(): void {
 }
 export function setLang(l: 'he' | 'en'): void {
   storeLang(l);
-  applyLang(); saved.refresh(); results.refreshRecent();
+  applyLang();
   if (map.mapState.main) map.setBasemapLang(map.mapState.main);
   // stop names, headsigns and map labels come from the worker: ask again in the new language
   call('setLang', { lang: l }).then(() => {

@@ -131,7 +131,7 @@ let roadsNow = new Map();
 export function setRoadsNow(m) { roadsNow = m; }
 const ROADS_MS = 900e3, FADE_S = 1800;
 /** The live factor of a section for a vehicle seen at `seenMs` (its own runs left out). */
-export function roadFactor(code1, code2, seenMs, ride) {
+function roadFactor(code1, code2, seenMs, ride) {
   const v = roadsNow.get(`${code1}>${code2}`);
   if (!v) return 1;
   const rs = v.filter((x) => x.ride !== ride && x.t <= seenMs + 120e3 && x.t > seenMs - ROADS_MS).map((x) => x.ratio).sort((a, b) => a - b);

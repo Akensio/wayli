@@ -15,7 +15,7 @@ const VIEWBOX = '0 0 24 12.86';
 const isTrain = (routeType?: number | null) => routeType === 2;
 
 /** The mark, in the colour of the text around it. */
-export const RailLogo = () => (
+const RailLogo = () => (
   <svg class="rlogo" viewBox={VIEWBOX} aria-hidden="true"><path fill="currentColor" d={PATH} /></svg>
 );
 /** A line's name in a chip: the mark first for a train. `text` replaces the name (several lines: "285 / 287"). */

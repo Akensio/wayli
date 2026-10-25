@@ -431,7 +431,7 @@ export function plan(tt, origins, dests, depTime, maxTransfersOrOpts = 3) {
 const TRANSFER_PENALTY = 300;  // s: an extra transfer has to save at least this much
 const WALK_WEIGHT = 0.5;       // a minute walking costs this many minutes of riding, on top of its time
 
-export function cost(j) { return (j.arrive - j.depart) + TRANSFER_PENALTY * j.transfers + WALK_WEIGHT * j.walkSeconds; }
+function cost(j) { return (j.arrive - j.depart) + TRANSFER_PENALTY * j.transfers + WALK_WEIGHT * j.walkSeconds; }
 
 /** A journey that rides a train, as a rider sees the choice: a train is never hidden behind a bus, nor a bus behind a train. */
 const byTrain = (j) => j.legs.some((l) => l.type === 'ride' && l.route && l.route[3] === 2);

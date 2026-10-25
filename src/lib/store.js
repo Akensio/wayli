@@ -1,8 +1,13 @@
 // Wayli on-device store: settings, recent and saved places, recent searches, favorites, the trip in
-// progress. localStorage only: nothing here ever leaves the phone.
+// progress. localStorage only: nothing here ever leaves the phone. Every write bumps `stored`: a view that shows
+// what is kept here reads it, and draws again whatever wrote (no page has to be told).
+import { signal } from '@preact/signals';
+
+/** Bumped on every write to the store. */
+export const stored = signal(0);
 
 const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
-const set = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const set = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} stored.value++; };
 
 const DEFAULTS = { map: 'system', theme: 'system', live: true, traffic: true, notify: true, sound: true, maxWalk: 15, recentN: 10, lang: null, fDirect: false, fTrain: false, mapTint: 'teal', terrain: false, stopFilter: 'all' };   // mapTint: 'teal' | 'neutral'   // map and theme: 'light' | 'dark' | 'system' (the old map value 'auto' reads as 'system')
 export const settings = {
@@ -29,14 +34,15 @@ export const recentPlaces = {
   clear() { set('wayli-recent-places', null); },
 };
 
+/** A trip as the rider would ask it again: the two places and the bicycle choice (recent and saved trips are kept by it). */
+export const tripKey = (x) => `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
 // a trip from a place to the same place (my location to my location) is no trip to keep
 const sameEnds = (x) => !!(x.from && x.to && x.from.name === x.to.name);
 export const recentTrips = {
   list() { return get('wayli-recent-trips', []).filter((x) => !sameEnds(x)); },
   add(q) {
     if (sameEnds(q)) return;
-    const key = (x) => `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
-    const l = this.list().filter((x) => key(x) !== key(q));
+    const l = this.list().filter((x) => tripKey(x) !== tripKey(q));
     l.unshift({ from: slim(q.from), to: slim(q.to), bike: q.bike, folding: !!q.folding, at: Date.now(), day: q.day, time: q.at, arriveBy: !!q.arriveBy });
     set('wayli-recent-trips', l.slice(0, recentKeep()));
   },

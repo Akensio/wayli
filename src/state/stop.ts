@@ -17,7 +17,6 @@ export const isNow = signal(false);                       // departures from now
 export const deps = signal<Departure[] | null>(null);     // null while loading
 export const liveDeps = signal<Record<string, LiveDep>>({});
 export const liveNote = signal('');
-export const favTick = signal(0);
 export const dests = signal<Dest[] | null>(null);   // a station's: where its trains go without a change (null while loading)
 
 export const hooks = {
@@ -27,7 +26,6 @@ export const hooks = {
   openTrip: (_trip: number, _stop: number) => {},
   fromHere: () => {},
   toHere: () => {},
-  favChanged: () => {},
   openTo: (_d: Dest) => {},      // the trains between this station and that one
   openLine: (_route: number) => {},
 };

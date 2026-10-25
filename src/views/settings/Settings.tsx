@@ -5,10 +5,9 @@ import { Icon } from '../../widgets/Icon';
 import { compassReport } from '../../map/heading';
 import { t, lang } from '../../lib/i18n';
 import { toast } from '../../widgets/toast';
-import { recentPlaces, recentTrips, recentViews, lastSearch, recentKeep, trimRecents, RECENT_CHOICES } from '../../lib/store.js';
+import { recentPlaces, recentTrips, recentViews, lastSearch, recentKeep, trimRecents, RECENT_CHOICES, stored } from '../../lib/store.js';
 import * as settings from '../../state/settings';
 import * as app from '../../state/app';
-import * as results from '../../state/results';
 import * as data from '../../state/data';
 import type { IconName } from '../../widgets/icons';
 
@@ -26,7 +25,7 @@ const Act = ({ icon, label, id, onClick, hidden = false }: { icon: IconName; lab
 );
 
 export function Settings() {
-  void lang.value; void settings.tick.value;
+  void lang.value; void stored.value;
   const s = settings.get();
   const looks = [{ v: 'light', label: t('mapLight') }, { v: 'dark', label: t('mapDark') }, { v: 'system', label: t('mapSystem') }];
   const setWalk = (v: number) => settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(v) || 15)) });
@@ -79,9 +78,9 @@ export function Settings() {
           <Act icon="download" id="installBtn" label={t('install')} hidden={!app.installable.value} onClick={() => app.hooks.install()} />
           <div class="item text" id="installHint" hidden={!app.installHint.value}>{app.installHint.value}</div>
           <Item icon="history" wide label={<><span>{t('setRecentN')}</span><small>{t('setRecentNHint')}</small></>}>
-            <Seg id="setRecentN" value={String(recentKeep())} options={RECENT_CHOICES.map((n) => ({ v: String(n), label: String(n) }))} onPick={(v) => { settings.set({ recentN: +v }); trimRecents(); results.refreshRecent(); }} />
+            <Seg id="setRecentN" value={String(recentKeep())} options={RECENT_CHOICES.map((n) => ({ v: String(n), label: String(n) }))} onPick={(v) => { settings.set({ recentN: +v }); trimRecents(); }} />
           </Item>
-          <Act icon="trash" id="clearHistory" label={t('clearHistory')} onClick={() => { recentPlaces.clear(); recentTrips.clear(); recentViews.clear(); lastSearch.clear(); results.refreshRecent(); toast(t('historyCleared')); }} />
+          <Act icon="trash" id="clearHistory" label={t('clearHistory')} onClick={() => { recentPlaces.clear(); recentTrips.clear(); recentViews.clear(); lastSearch.clear(); toast(t('historyCleared')); }} />
         </div>
       </div>
       <div class="group">

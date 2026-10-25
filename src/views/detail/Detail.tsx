@@ -1,10 +1,11 @@
 // The journey detail panel: back, the times and duration, a star to save the trip, start and share, then the
 // legs; a tap on a ride focuses it on the map, a tap on its chip opens the line.
 import { Icon } from '../../widgets/Icon';
+import { StarButton } from '../../widgets/StarButton';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t, lang } from '../../lib/i18n';
 import * as clock from '../../engine/clock.js';
-import { favs } from '../../lib/store.js';
+import { favs, stored } from '../../lib/store.js';
 import * as detail from '../../state/detail';
 import { now } from '../../state/clock';
 import { dur, tripKey, liveBadge } from '../../journey/format';
@@ -14,20 +15,20 @@ import { CloseAll } from '../../widgets/CloseAll';
 import { payLink } from '../../journey/pay';
 
 export function Detail() {
-  void lang.value; void now.value; void detail.favTick.value;
+  void lang.value; void now.value; void stored.value;
   const j = detail.journey.value, q = detail.query.value, bikeOnly = detail.bikeOnly.value, focus = detail.focus.value;
   if (!j || !q) return null;
   const key = tripKey(q), saved = !bikeOnly && favs.has('trips', key);
   const over = clock.nowOn(q.day) > j.arrive + 1800;
-  const title = bikeOnly ? t('bikeOnly', { min: Math.round(j.arrive / 60), km: '' }).replace(', ', '').replace(' ק"מ', '').replace(' km', '')
+  const title = bikeOnly ? t('bikeAllWay', { min: Math.round(j.arrive / 60) })
     : <><TimeRange from={j.depart} to={j.arrive} class="" /> · {dur(j.arrive - j.depart)}</>;
-  const toggleFav = () => { if (bikeOnly) return; favs.toggle('trips', key, { from: q.from, to: q.to, bike: q.bike, folding: q.folding }); detail.favTick.value++; detail.hooks.favChanged(); };
+  const toggleFav = () => { if (bikeOnly) return; favs.toggle('trips', key, { from: q.from, to: q.to, bike: q.bike, folding: q.folding }); };
   return (
     <>
       <div class="bar">
         <button type="button" class="ghost" id="detailBack" onClick={detail.hooks.close}>{t('back')}</button>
         <h2 id="detailTitle">{title}</h2>
-        <button type="button" class={`star${saved ? ' on' : ''}`} id="detailStar" title={t('savePlace')} onClick={toggleFav}><Icon name="star" /></button>
+        <StarButton id="detailStar" on={saved} onClick={toggleFav} />
         <CloseAll />
       </div>
       <div class="actions">

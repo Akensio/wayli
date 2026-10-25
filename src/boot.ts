@@ -3,8 +3,6 @@
 // address book, the street graph and the courses in the background).
 import { lastSearch } from './lib/store.js';
 import * as search from './state/search';
-import * as results from './state/results';
-import * as saved from './state/saved';
 import { warmPosition } from './state/position';
 import * as map from './map/index';
 import { loadFailed } from './controllers/status';
@@ -27,7 +25,6 @@ async function boot(): Promise<void> {
   layoutTop();
   warmPosition();
   map.initMap();
-  saved.refresh(); results.refreshRecent();
   resumeAtStart();
   try { await loadManifest(); } catch (e) { loadFailed(e); return; }
   const shared = parseShared(new URLSearchParams(location.search));

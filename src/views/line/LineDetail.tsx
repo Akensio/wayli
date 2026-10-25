@@ -3,6 +3,7 @@
 // long before or after the rider's stop (a tap on a stop makes it the rider's); the vehicles on it now are drawn on
 // the map and counted here.
 import { Icon } from '../../widgets/Icon';
+import { StarButton } from '../../widgets/StarButton';
 import { agencyName } from '../../journey/agencies';
 import { t, lang } from '../../lib/i18n';
 import * as line from '../../state/line';
@@ -10,8 +11,7 @@ import { fmtPlus } from '../../journey/format';
 import { fmt } from '../../lib/time';
 import { Timetable } from '../../widgets/Timetable';
 import { LineChip } from '../../widgets/LineChip';
-import { favs } from '../../lib/store.js';
-import * as results from '../../state/results';
+import { favs, stored } from '../../lib/store.js';
 import { CloseAll } from '../../widgets/CloseAll';
 
 export function LineDetail() {
@@ -19,10 +19,10 @@ export function LineDetail() {
   const info = line.info.value;
   if (!info) return null;
   const lv = line.liveText.value;
-  void results.recentTick.value;
+  void stored.value;
   // saved by the line's number in the feed (its route id), as the history keeps it: a timetable's route index changes daily
   const key = info.ref ? 'line:' + info.ref : '', on = !!key && favs.has('lines', key);
-  const toggleFav = () => { if (!key) return; favs.toggle('lines', key, { type: 'line', ref: info.ref, line: info.line, routeType: info.routeType, agency: info.agency, headsign: info.headsign, mode: info.mode }); results.refreshRecent(); };
+  const toggleFav = () => { if (!key) return; favs.toggle('lines', key, { type: 'line', ref: info.ref, line: info.line, routeType: info.routeType, agency: info.agency, headsign: info.headsign, mode: info.mode }); };
   const ai = line.anchor.value, a = info.stops[ai], times = line.times.value, sel = line.selTimes.value, base = sel[ai] ?? null;
   return (
     <>
@@ -30,7 +30,7 @@ export function LineDetail() {
         <button type="button" class="ghost" id="lineBack" onClick={line.hooks.close}>{t('back')}</button>
         <LineChip line={info.line} routeType={info.routeType} agency={info.agency} mode={info.mode} big />
         <span class={`livebadge ${line.liveOk.value ? 'ok' : ''}`} id="lineLive" hidden={!lv}>{lv}</span>
-        {key && <button type="button" class={`star${on ? ' on' : ''}`} id="lineStar" title={t('savePlace')} aria-pressed={on} onClick={toggleFav}><Icon name="star" /></button>}
+        {key && <StarButton id="lineStar" on={on} onClick={toggleFav} />}
         <CloseAll />
       </div>
       <div class="legs">

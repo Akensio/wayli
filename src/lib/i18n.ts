@@ -132,6 +132,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   walk: ['הליכה', 'walk'],
   ride: ['{line} · {agency} · {stops} תחנות', '{line} · {agency} · {stops} stops'],
   bikeOnly: ['רכיבה כל הדרך: {min} דק\', {km} ק"מ', 'Bike all the way: {min} min, {km} km'],
+  bikeAllWay: ['רכיבה כל הדרך: {min} דק\'', 'Bike all the way: {min} min'],
   noBikeOnly: ['רכיבה כל הדרך: אין מסלול עד 3 שעות.', 'Bike all the way: no route within 3 hours.'],
   found: ['{n} דרכים להגיע', '{n} ways to get there'],
   onMap: ['הצגה במפה', 'Show on the map'],

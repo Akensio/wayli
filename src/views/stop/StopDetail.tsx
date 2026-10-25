@@ -3,28 +3,29 @@
 // out); a station is all its platforms, and below its departures where its trains go without a change (a tap: the
 // trains between the two).
 import { Icon } from '../../widgets/Icon';
+import { StarButton } from '../../widgets/StarButton';
 import { t, lang } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
-import { favs } from '../../lib/store.js';
+import { favs, stored } from '../../lib/store.js';
 import * as stop from '../../state/stop';
-import * as saved from '../../state/saved';
 import { now } from '../../state/clock';
 import { inText, dur } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
+import { LiveMark } from '../../widgets/LiveMark';
 import { CloseAll } from '../../widgets/CloseAll';
 
 export function StopDetail() {
-  void lang.value; void now.value; void stop.favTick.value;
+  void lang.value; void now.value; void stored.value;
   const info = stop.info.value;
   if (!info) return null;
   const key = 'stop:' + info.stop, on = favs.has('stops', key), deps = stop.deps.value, day = stop.day.value, isNow = stop.isNow.value;
-  const toggleFav = () => { favs.toggle('stops', key, { stop: info.stop, name: info.name, city: info.city, code: info.code, lat: info.lat, lon: info.lon, lines: info.lines.slice(0, 8) }); stop.favTick.value++; saved.refresh(); };
+  const toggleFav = () => { favs.toggle('stops', key, { stop: info.stop, name: info.name, city: info.city, code: info.code, lat: info.lat, lon: info.lon, lines: info.lines.slice(0, 8) }); };
   return (
     <>
       <div class="bar">
         <button type="button" class="ghost" id="stopBack" onClick={stop.hooks.close}>{t('back')}</button>
         <h2 id="stopTitle">{info.name}</h2>
-        <button type="button" class={`star${on ? ' on' : ''}`} id="stopStar" title={t('savePlace')} onClick={toggleFav}><Icon name="star" /></button>
+        <StarButton id="stopStar" on={on} onClick={toggleFav} />
         <CloseAll />
       </div>
       <div class="legs">
@@ -52,7 +53,7 @@ export function StopDetail() {
                 <LineChip line={d.line} routeType={d.routeType} agency={d.agency} />
                 <span class="head">{d.headsign}{d.estimated && <small class="est">{t('estShort')}</small>}</span>
                 <span class="in">
-                  {lv ? (lv.passed ? t('livePassed') : <>{inText(lv.time, day)} <span class={`live ${lv.stale ? 'unsure' : 'ok'}`}>⦿{lv.delayMin ? ` ${lv.delayMin > 0 ? '+' : ''}${lv.delayMin}` : ''}{lv.stale ? '?' : ''}</span></>) : isNow ? inText(d.time, day) : ''}
+                  {lv ? (lv.passed ? t('livePassed') : <>{inText(lv.time, day)} <LiveMark delayMin={lv.delayMin} stale={lv.stale} /></>) : isNow ? inText(d.time, day) : ''}
                 </span>
               </div>
             );

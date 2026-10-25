@@ -35,3 +35,5 @@ export type Query = {
   bike: 'none' | 'park' | 'along' | string; folding: boolean; arriveBy: boolean; isNow?: boolean; maxWalk?: number;
   liveAsOf?: number | null; liveTried?: boolean;
 };
+/** A trip saved with its star: the places and the bicycle choice, planned again from now when chosen. */
+export type SavedTrip = { from: Place; to: Place; bike: string; folding?: boolean };

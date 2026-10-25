@@ -8,6 +8,7 @@ import { dur, inText } from '../../journey/format';
 import { now } from '../../state/clock';
 import { CloseAll } from '../../widgets/CloseAll';
 import { LineChip } from '../../widgets/LineChip';
+import { LiveMark } from '../../widgets/LiveMark';
 
 export function TrainTimes() {
   void lang.value; void now.value;
@@ -35,7 +36,7 @@ export function TrainTimes() {
                 <span class="arrow"><Icon name="chevronEnd" class="chev" /></span>
                 <span class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}>{fmt(arr)}</span>
                 <span class="what"><span><LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)} · {r.stops === 1 ? t('stops1') : t('stopsN', { n: r.stops })}</span><small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
-                <span class="in">{lv && !lv.passed ? <><span class={`live ${lv.stale ? 'unsure' : 'ok'}`}>⦿{lv.delayMin ? ` ${lv.delayMin > 0 ? '+' : ''}${lv.delayMin}` : ''}{lv.stale ? '?' : ''}</span> </> : null}{lv && lv.passed ? t('livePassed') : st.isNow.value ? inText(dep, day) : ''}</span>
+                <span class="in">{lv && !lv.passed ? <><LiveMark delayMin={lv.delayMin} stale={lv.stale} /> </> : null}{lv && lv.passed ? t('livePassed') : st.isNow.value ? inText(dep, day) : ''}</span>
               </div>
             );
           })}

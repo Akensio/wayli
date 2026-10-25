@@ -10,23 +10,21 @@ import { FromTo } from '../../widgets/FromTo';
 import { LineChip } from '../../widgets/LineChip';
 import type { LineMode } from '../../widgets/LineChip';
 import { t, lang } from '../../lib/i18n';
+import { bikeText } from '../../journey/format';
 import { dayLabel, calToday, calendarOf, secOf } from '../../lib/time';
-import { recentTrips, recentViews, favs, recentKeep } from '../../lib/store.js';
+import { recentTrips, recentViews, favs, recentKeep, stored } from '../../lib/store.js';
 import * as results from '../../state/results';
 import * as search from '../../state/search';
 import * as nav from '../../state/nav';
 import type { View } from '../../state/results';
-import type { Query } from '../../journey/types';
+import type { Query, SavedTrip } from '../../journey/types';
 import { LegChips } from './LegChips';
 import { agencyName } from '../../journey/agencies';
 
 /** A day and time as the rider reads them: the calendar day (a service day's night is the next day). */
-const whenText = (day?: string, time?: string): string => {
-  if (!time) return dayLabel(day || calToday());
-  const c = calendarOf(day || calToday(), secOf(time));
-  return `${dayLabel(c.cal)} ${c.time}`;
-};
 const clock = (day: string, sec: number): string => { const c = calendarOf(day, sec); return `${dayLabel(c.cal)} ${c.time}`; };
+/** A search's day and time, or its day alone when it was for now. */
+const whenText = (day?: string, time?: string): string => (time ? clock(day || calToday(), secOf(time)) : dayLabel(day || calToday()));
 
 type Recent = Query & { time?: string };
 
@@ -65,7 +63,6 @@ function ViewRow({ v }: { v: View }) {
   );
 }
 
-type SavedTrip = { from: Recent['from']; to: Recent['to']; bike: string; folding?: boolean };
 type SavedStop = { name: string; city?: string; code?: string; lat: number; lon: number };
 type Tab = 'trip' | 'line' | 'stop';
 const TABS = [{ k: 'trip', icon: 'route', label: 'kindTrip' }, { k: 'line', icon: 'bus', label: 'kindLine' }, { k: 'stop', icon: 'pin', label: 'kindStopSearch' }] as const;
@@ -78,7 +75,7 @@ const SUBS: Record<Tab, { k: string; label: string; empty: string }[]> = {
 const sub = signal<Partial<Record<Tab, string>>>({});   // the rider's choice per tab, for the session
 
 export function Recent() {
-  void lang.value; void results.recentTick.value; void nav.key.value;   // the history grows while a panel is open
+  void lang.value; void stored.value; void nav.key.value;   // the history grows while a panel is open
   const tab = results.recentTab.value, pair = search.kind.value === 'stop' && search.railPair.value;
   const views = recentViews.list() as View[];
   const savedTrips = Object.values(favs.get('trips') as Record<string, SavedTrip>);
@@ -122,7 +119,7 @@ export function Recent() {
         <div class="recent" onClick={() => replan(v)}>
           <span class="ic"><Icon name="star" /></span>
           <span class="txt"><span class="name"><FromTo from={placeName(v.from)} to={placeName(v.to)} /></span>
-            <small>{v.bike && v.bike !== 'none' ? <><Icon name="bike" /> {t(v.bike === 'along' ? 'bikeAlong' : 'bikePark')}</> : t('bikeNone')}</small></span>
+            <small>{v.bike && v.bike !== 'none' && <><Icon name="bike" /> </>}{bikeText(v.bike)}</small></span>
         </div>
       ))}
       {list === 'trip:searched' && searches.map((r) => (

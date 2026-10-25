@@ -78,7 +78,6 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
     recentTrips.add(q); recentPlaces.add(from); recentPlaces.add(to);
     lastSearch.set({ q, result: r, at: Date.now() });
     results.setResults(r, q);
-    results.refreshRecent();
   } catch (e) { showPlanError(e instanceof Error ? e.message : String(e)); results.result.value = null; results.status.value = 'idle'; }
   search.busy.value = false;
 }
@@ -106,7 +105,6 @@ export function clearPlan(): void {
   const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true });
   showPlanError('');
   search.optOpen.value = ''; search.resetNow();
-  results.refreshRecent();
   map.applyLiveShow(); nav.renderPanels(); map.redrawMap(true);
 }
 

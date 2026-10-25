@@ -26,7 +26,6 @@ function norm(v) {
     recordedAt: new Date(v.recorded_at_time), scheduledStart: new Date(v.siri_ride__scheduled_start_time),
     rideId: v.siri_ride__id, vehicleRef: v.siri_ride__vehicle_ref, fromStart: v.distance_from_journey_start };
 }
-/** Latest position per ride (a few rows carry impossible future times; they are dropped). */
 let newestSeen = 0;   // ms: the newest report any query returned; "fresh" is measured against it, not the clock
 /** A vehicle whose last report is within five minutes of the newest report of its own set (`ref`, a Date or ms;
  *  by default the newest seen anywhere). The feed lags unevenly, area by area and operator by operator (measured
@@ -36,6 +35,7 @@ export function isFresh(v, windowSec = 300, ref = null) {
   const r = ref ? (ref instanceof Date ? ref.getTime() : ref) : newestSeen || Date.now();
   return r - v.recordedAt.getTime() <= windowSec * 1000;
 }
+/** Latest position per ride (a few rows carry impossible future times; they are dropped). */
 function latest(rows) {
   const by = new Map();
   const horizon = Date.now() + 600e3;

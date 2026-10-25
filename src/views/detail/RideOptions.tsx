@@ -9,6 +9,7 @@ import { fmt } from '../../lib/time';
 import { dur, inText } from '../../journey/format';
 import type { TrainRow, LiveTrain } from '../../state/station';
 import { LineChip } from '../../widgets/LineChip';
+import { LiveMark } from '../../widgets/LiveMark';
 
 type Props = {
   mine: number | null;                         // the trip the journey rides
@@ -49,7 +50,7 @@ export function RideOptions({ mine, load, liveFor, day, now, onOpen }: Props) {
             <span class={`time${cls}`}>{fmt(arr)}</span>
             <span class="what"><span><LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)}</span>
               <small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
-            <span class="in">{l && !l.passed ? <><span class={`live ${l.stale ? 'unsure' : 'ok'}`}>⦿{l.delayMin ? ` ${l.delayMin > 0 ? '+' : ''}${l.delayMin}` : ''}{l.stale ? '?' : ''}</span> </> : null}{l && l.passed ? t('livePassed') : now != null ? inText(dep, day) : ''}</span>
+            <span class="in">{l && !l.passed ? <><LiveMark delayMin={l.delayMin} stale={l.stale} /> </> : null}{l && l.passed ? t('livePassed') : now != null ? inText(dep, day) : ''}</span>
           </div>
         );
       })}
