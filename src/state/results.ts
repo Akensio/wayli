@@ -5,6 +5,7 @@ import { signal, computed } from '@preact/signals';
 import * as live from '../live.js';
 import { settings } from '../store.js';
 import { lang } from '../i18n';
+import * as search from './search';
 import type { Journey, PlanResult, Query } from '../journey/types';
 
 type Status = 'idle' | 'planning' | 'locating';
@@ -27,6 +28,10 @@ export const filters = signal<Filters>(readFilters());
 export const altShown = signal<ReadonlySet<number>>(new Set());   // the cards drawn on the map
 export const altSel = signal(-1);                                 // the one highlighted
 export const recentTick = signal(0);                              // bumped when the recent trips change
+/** Which history the drawer shows at rest: trips, lines or stops. It follows the bar's kind and can be switched on its
+ *  own (without opening a search). */
+export const recentTab = signal<'trip' | 'line' | 'stop'>('trip');
+search.onKind((k) => { recentTab.value = k; });
 
 /** The first ride's departure, or the journey's start. */
 export const rideDep = (j: Journey): number => { const fr = j.legs.find((l) => l.type === 'ride'); return fr ? fr.depart! : j.depart; };

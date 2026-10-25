@@ -178,6 +178,9 @@ export type StopGroup = { key: string; name: string; city?: string; code?: strin
 // The destination set before switching to the line or stop search, given back when switching to a trip again.
 let tripTo: { to: Place | null; text: string } | null = null;
 /** Switch what the bar searches for. The line and stop searches keep the To box for what they search. */
+/** The drawer's history follows the bar's kind (state/results recentTab; set from there, to keep this module free of it). */
+export let tabHook = (_k: Kind): void => {};
+export const onKind = (f: (k: Kind) => void): void => { tabHook = f; };
 export function setKind(k: Kind): void {
   if (kind.value === k) return;
   if (kind.value === 'trip') { tripTo = { to: to.value, text: toText.value }; to.value = null; optOpen.value = ''; }
@@ -189,6 +192,7 @@ export function setKind(k: Kind): void {
     else toText.value = to.value ? to.value.name : '';
   }
   kind.value = k;
+  tabHook(k);
   hooks.kindChanged(k);
 }
 /** Search a line by number: the bar opens on the line search. */

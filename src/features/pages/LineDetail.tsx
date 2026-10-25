@@ -10,12 +10,18 @@ import { fmtPlus } from '../../journey/format';
 import { fmt } from '../../time';
 import { Timetable } from '../../ui/Timetable';
 import { LineChip } from '../../ui/LineChip';
+import { favs } from '../../store.js';
+import * as results from '../../state/results';
 
 export function LineDetail() {
   void lang.value;
   const info = line.info.value;
   if (!info) return null;
   const lv = line.liveText.value;
+  void results.recentTick.value;
+  // saved by the line's number in the feed (its route id), as the history keeps it: a timetable's route index changes daily
+  const key = info.ref ? 'line:' + info.ref : '', on = !!key && favs.has('lines', key);
+  const toggleFav = () => { if (!key) return; favs.toggle('lines', key, { type: 'line', ref: info.ref, line: info.line, routeType: info.routeType, agency: info.agency, headsign: info.headsign, mode: info.mode }); results.refreshRecent(); };
   const ai = line.anchor.value, a = info.stops[ai], times = line.times.value, sel = line.selTimes.value, base = sel[ai] ?? null;
   return (
     <>
@@ -23,6 +29,7 @@ export function LineDetail() {
         <button type="button" class="ghost" id="lineBack" onClick={line.hooks.close}>{t('back')}</button>
         <LineChip line={info.line} routeType={info.routeType} agency={info.agency} mode={info.mode} big />
         <span class={`livebadge ${line.liveOk.value ? 'ok' : ''}`} id="lineLive" hidden={!lv}>{lv}</span>
+        {key && <button type="button" class={`star${on ? ' on' : ''}`} id="lineStar" title={t('savePlace')} aria-pressed={on} onClick={toggleFav}><Icon name="star" /></button>}
       </div>
       <div class="legs">
         <h2 id="lineTitle"><bdi>{info.mode === 'rail' && info.ends ? t('lineEnds', { a: info.ends[0], b: info.ends[1] }) : t('toward', { headsign: info.headsign })}</bdi></h2>

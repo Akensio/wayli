@@ -422,11 +422,14 @@ plain with the schedule alone) and departed options grey out;
 earlier/later buttons shift the window; no results offers an hour later or
 a longer walk. The last search opens again, planned afresh, when the app is
 reopened within six hours; the
-recent searches sit under the form and re-plan from now. Under them, what
-was opened lately (`recentViews` in `store.js`, on the phone only): trips,
-lines, stops, stations and pairs of stations. The sheet's history follows
-the search kind: a trip search shows both, a line search the lines opened,
-a stop search the stops, stations and station pairs. Entries keep what
+recent searches sit under the form and re-plan from now. The sheet's
+history (`results/Recent.tsx`) has three tabs, trips, lines and stops, which
+follow the bar's kind and switch on their own, each with a count; in each,
+what was saved (a star on a journey, a line or a stop) and then what came
+lately (`recentViews` in `store.js`, on the phone only), a saved item not
+repeated among them. Trips have two histories, the searches and the ways
+opened; for a line or a stop, searching it and opening it are one act, so
+one list (stops with stations and pairs of stations). Entries keep what
 names them in the feed (a route id, the number on a stop's sign, positions),
 since the timetable's own numbers change from day to day; the worker's
 `findRecent` finds them in the day loaded. A trip keeps its journey and

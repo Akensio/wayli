@@ -1,4 +1,4 @@
-// Saved places (home, work, more), saved trips and saved stops, all on this device.
+// Saved places (home, work, more), saved trips, lines and stops, all on this device.
 import { Icon } from '../../ui/Icon';
 import { placeName, named } from '../../state/names';
 import { FromTo } from '../../ui/FromTo';
@@ -10,13 +10,17 @@ import * as results from '../../state/results';
 import { StopList } from './StopList';
 import type { Place } from '../../state/search';
 import type { Stop } from '../../state/nearby';
+import type { View } from '../../state/results';
+import { LineChip } from '../../ui/LineChip';
+import type { LineMode } from '../../ui/LineChip';
+import { agencyName } from '../../journey/agencies';
 
 type SavedTrip = { from: Place; to: Place; bike: string; folding?: boolean };
 
 export function Saved() {
   void lang.value; void saved.tick.value;
   const sp = savedPlaces.get() as { home: Place | null; work: Place | null; more: Place[] };
-  const trips = favs.get('trips') as Record<string, SavedTrip>, stops = favs.get('stops') as Record<string, Stop>;
+  const trips = favs.get('trips') as Record<string, SavedTrip>, stops = favs.get('stops') as Record<string, Stop>, lines = favs.get('lines') as Record<string, View>;
   const choose = async (slot: 'home' | 'work') => { const c = await saved.hooks.choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork')); if (c) { savedPlaces.set(slot, c); saved.refresh(); } };
   return (
     <>
@@ -48,6 +52,17 @@ export function Saved() {
           </div>
         ))}
       </div>
+      {Object.keys(lines).length > 0 && <>
+        <h2 class="sec">{t('favLines')}</h2>
+        <div id="favLines">
+          {(Object.values(lines) as Extract<View, { type: 'line' }>[]).map((v) => (
+            <div class="recent" onClick={() => results.hooks.openView(v)}>
+              <LineChip line={v.line} routeType={v.routeType} agency={v.agency} mode={v.mode as LineMode | undefined} />
+              <span class="txt"><span class="name"><bdi>{t('toward', { headsign: v.headsign })}</bdi></span><small>{agencyName(v.agency)}</small></span>
+            </div>
+          ))}
+        </div>
+      </>}
       <h2 class="sec">{t('favStops')}</h2>
       <div id="favStops" class="stops-list"><StopList stops={Object.values(stops)} onStop={saved.hooks.openStop} onLine={saved.hooks.openLine} /></div>
     </>

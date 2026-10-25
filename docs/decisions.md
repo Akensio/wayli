@@ -1193,3 +1193,9 @@ so they are not re-litigated.
   locate button moves the map to the rider without changing the zoom; a
   second tap, on the rider already, sets a fixed zoom (15). Following the
   rider moves the map the same way, its zoom left alone.
+- 2026-10-25: Gadi asked to organise the sheet's history: (searches, viewed,
+  saved) by (trips, stops, lines). Three tabs, trips, lines and stops,
+  following the bar's kind; in each, saved then recent. Not nine lists: for
+  lines and stops a search and a view are the same act (a pick opens it),
+  so only trips keep two histories (searches, ways opened). Lines can now be
+  saved too (a star on the line page, kept by the feed's route id).

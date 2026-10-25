@@ -155,6 +155,13 @@ h2.sec { font-size: 14px; color: var(--ink-2); text-transform: none; margin: 14p
 @media (prefers-reduced-motion: reduce) { .sortmenu { animation: none; } }
 .results-head .spacer { flex: 1; }
 .linkbtn { background: none; border: 0; color: var(--accent-text); font-weight: 600; cursor: pointer; padding: 4px 6px; font-size: 13px; }
+/* the drawer's history: three tabs, each its saved items then the recent ones */
+.rtabs { display: flex; gap: 6px; margin: 2px 0 4px; }
+.rtabs .chipbtn { display: inline-flex; align-items: center; gap: 5px; }
+.rtabs .chipbtn .i { width: 16px; height: 16px; }
+.rtabs .chipbtn.on { background: var(--ink); color: var(--bg); }
+.rtabs .chipbtn .n { font-size: 11px; font-weight: 700; opacity: .7; margin-inline-start: 2px; }
+.sec .secstar { width: 14px; height: 14px; color: var(--warn); margin-inline-end: 5px; vertical-align: -2px; }
 .recent { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
 .recent .ic { color: var(--ink-2); } .recent .txt { flex: 1; min-width: 0; } .recent .txt small { display: block; color: var(--ink-2); font-size: 12px; }
 .recent .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
