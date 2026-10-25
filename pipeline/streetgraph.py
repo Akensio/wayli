@@ -44,7 +44,13 @@ def load(path):
     kind = g["edgeFlags"] & fl["kind_mask"]
     walk_ok = (g["edgeFlags"] >> fl["flag_shift"]) & fl["walk"]
     speed = np.array([header["walk_speed"][str(k)] for k in range(6)], np.float64)
-    g["walkSec"] = np.where(walk_ok > 0, g["edgeLen"] / speed[kind], np.inf).astype(np.float32)
+    sec = g["edgeLen"] / speed[kind]
+    c = header.get("climb")
+    if c and "edgeUp" in g:   # climbs, as the app counts them on foot (src/streets.js secondsOn)
+        up = g["edgeUp"].astype(np.float64); down = g["edgeDown"].astype(np.float64)
+        extra = c["walk_up"] * up + np.where(down > c["steep"] * g["edgeLen"], c["walk_down_steep"] * down, 0.0)
+        sec = sec + np.where(kind == 4, 0.0, extra)
+    g["walkSec"] = np.where(walk_ok > 0, sec, np.inf).astype(np.float32)
     g["cell"] = header["cell_deg"]
     g["cellIndex"] = {int(k): (int(a), int(b)) for k, a, b in zip(g["cellKey"], g["cellStart"], g["cellEnd"])}
     # nodes that have at least one walkable edge

@@ -28,6 +28,7 @@ export function parseStreets(ab) {
   g.kindMask = fl.kind_mask; g.flagShift = fl.flag_shift; g.walkFlag = fl.walk; g.bikeFlag = fl.bike;
   g.walkSpeed = new Float32Array(8); g.bikeSpeed = new Float32Array(8);
   for (let k = 0; k < 6; k++) { g.walkSpeed[k] = header.walk_speed[k]; g.bikeSpeed[k] = header.bike_speed[k]; }
+  g.climb = header.climb && g.edgeUp ? header.climb : null;   // a graph built with heights (streets.py --dem)
   g.cellIndex = new Map();
   for (let i = 0; i < g.cellKey.length; i++) g.cellIndex.set(g.cellKey[i], i);
   return g;
@@ -101,12 +102,27 @@ export function nearestEdges(g, lat, lon, mode = 'walk', radius = 300, slack = 1
 /** The nearest point on a street usable by `mode`, or null. */
 export const nearestEdge = (g, lat, lon, mode = 'walk', radius = 300) => nearestEdges(g, lat, lon, mode, radius, 0, 1)[0] || null;
 
+/** Seconds along an open edge: its length at the speed of its kind, and its climbs (streets.py `CLIMB`, estimates): a
+ *  walker loses seconds per metre up and on steep descents (not on steps, whose speed has the climb in it); a rider
+ *  climbs no faster than a rider rises and gains on a descent up to a safe speed; a bike pushed (footways, steps)
+ *  climbs as on foot. */
+export function secondsOn(g, e, bike) {
+  const L = g.edgeLen[e], k = g.edgeFlags[e] & g.kindMask, v = (bike ? g.bikeSpeed : g.walkSpeed)[k];
+  let t = L / v;
+  const c = g.climb;
+  if (!c) return t;
+  const up = g.edgeUp[e], down = g.edgeDown[e];
+  if (!up && !down) return t;
+  if (bike && v >= 3) return Math.max(L / c.bike_vmax, Math.max(t, up / c.bike_vam) - c.bike_down * down);
+  if (k === 4) return t;
+  return t + c.walk_up * up + (down > c.steep * L ? c.walk_down_steep * down : 0);
+}
 /** Seconds along an edge for `mode`, or -1 when the edge is missing or closed to it. */
 function edgeSeconds(g, e, mode) {
   if (e < 0) return -1;
   const bike = mode === 'bike';
   if (!((g.edgeFlags[e] >> g.flagShift) & (bike ? g.bikeFlag : g.walkFlag))) return -1;
-  return g.edgeLen[e] / (bike ? g.bikeSpeed : g.walkSpeed)[g.edgeFlags[e] & g.kindMask];
+  return secondsOn(g, e, bike);
 }
 
 /**
@@ -162,7 +178,6 @@ class Heap {
 export function reach(g, node, mode, maxSeconds, onNode, prev) {
   const bike = mode === 'bike';
   const flag = bike ? g.bikeFlag : g.walkFlag;
-  const speed = bike ? g.bikeSpeed : g.walkSpeed;
   const seeds = Array.isArray(node) ? node : [[node, 0]];
   const dist = new Map();
   const heap = new Heap();
@@ -176,7 +191,7 @@ export function reach(g, node, mode, maxSeconds, onNode, prev) {
     for (let e = g.edgeOff[u]; e < g.edgeOff[u + 1]; e++) {
       const f = g.edgeFlags[e];
       if (!((f >> g.flagShift) & flag)) continue;
-      const nd = d + g.edgeLen[e] / speed[f & g.kindMask];
+      const nd = d + secondsOn(g, e, bike);
       if (nd > maxSeconds) continue;
       const v = g.edgeTo[e];
       const cur = dist.get(v);

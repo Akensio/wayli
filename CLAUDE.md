@@ -57,7 +57,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `docs/principles.md` | The design rules agreed with Gadi, each with its owner in the code and its test. |
 | `LICENSE` | GNU AGPL-3.0. |
 | `pipeline/compile.py` | GTFS zip to one service day's compact timetable (format in `docs/architecture.md`); with `--streets`, real walking transfers. |
-| `pipeline/streets.py`, `pipeline/streetgraph.py` | OpenStreetMap extract to the compact street graph; reader and stop-to-stop walking times for the compiler. |
+| `pipeline/streets.py`, `pipeline/streetgraph.py`, `pipeline/elevation.py` | OpenStreetMap extract to the compact street graph, with the climbs along each street from open elevation tiles; reader and stop-to-stop walking times for the compiler. |
 | `pipeline/shapes.py` | GTFS shapes to the compact courses file (simplified polylines per shape); the compiler (`--shapes`) records each pattern's course and where its stops fall on it. |
 | `pipeline/rail.py` | OpenStreetMap railways to a small rail graph with an A* router; the compiler (`--rail`) draws train patterns along the track, since the feed has no shapes for trains. |
 | `src/raptor.js` | Timetable loader, stop search, RAPTOR planner with window (profile) queries and ranking; browser and Node. |
