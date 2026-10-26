@@ -4,7 +4,7 @@
 import { profile, rank, journeySig, routeLabel } from '../engine/raptor.js';
 import { accessStops, route } from '../engine/streets.js';
 import { secondsOn } from '../engine/clock.js';
-import { estimateDelay } from '../engine/delays.js';
+import { estimateDelay, liveAt } from '../engine/delays.js';
 import { haversine } from '../engine/geo.js';
 import { hasCourse, pathTo, ridePath, streetPath } from './courses.js';
 import { st, tt } from './data.js';
@@ -47,19 +47,28 @@ function applyLive(vehicles) {
   }
   for (const [t, { v, rec }] of byTrip) {
     const { p, ns, base, stops } = tripStopList(t);
-    const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: rec, rideId: v.rideId, callSince: v.callSince, callSeenChange: v.callSeenChange }, stops, day);
+    const est = estimateDelay(v, stops, day);
     if (!est) continue;
     tripLive.set(t, { delay: est.delay, index: est.index, seen: rec.getTime(), stale: est.ageSec > 240, lat: v.lat, lon: v.lon });
-    if (Math.abs(est.delay) < 60 && !est.dep) continue;   // a train with learned sections has its own time at each station
+    if (est.rail) {
+      // a train moves only by the lateness the rider is shown at each station (liveAt: what we are sure of), never
+      // earlier, and is boarded when it pulls in, the time shown (2026-10-25, Gadi: leave at 21:28 for the train
+      // shown at 21:26)
+      for (let i = est.index; i < ns; i++) {
+        const late = liveAt(est, stops, i).delay, idx = base + i;
+        if (late <= 0) continue;
+        touched.add(p); liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
+        tt.arr[idx] += late; tt.dep[idx] = tt.arr[idx];
+      }
+      continue;
+    }
+    if (Math.abs(est.delay) < 60 && !est.dep) continue;   // a bus with learned sections has its own time at each stop
     touched.add(p);
     for (let i = est.index; i < ns; i++) {
       const idx = base + i;
       const own = (x) => (x && x[i] != null ? Math.round(x[i]) : null);
       let na = own(est.arr) ?? own(est.dep) ?? tt.arr[idx] + est.delay;
-      // boarded when it pulls in, the time the rider is shown (liveAt): a train leaves after its learned stand, which
-      // has its approach in it and runs long (2:53 at Rehovot), and the plan had the rider walk up after it had come in
-      // (2026-10-25, Gadi: leave at 21:28 for the train shown at 21:26). One standing there already leaves at its time.
-      let nd = est.at === i ? own(est.dep) ?? na : own(est.arr) ?? own(est.dep) ?? tt.dep[idx] + est.delay;
+      let nd = own(est.dep) ?? tt.dep[idx] + est.delay;
       if (na > nd) na = nd;
       liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
       tt.dep[idx] = nd; tt.arr[idx] = na;

@@ -24,9 +24,14 @@ const along = (g, x) => { const p = x * 10, i = Math.min(9, Math.floor(p)); retu
  *  from about a kilometre before it until about a kilometre before the next, so a train still named after one may
  *  well have left it (2026-10-25: named Herzliya at 09:08, it had left at 09:04 and was on time). It reached that
  *  station when the call first named it (`call.at`), stands its usual stand, and has not reached the next one yet:
- *  it gets there no sooner than `call.now` plus the last kilometre (45 s). */
+ *  it gets there no sooner than `call.now` plus the last kilometre (45 s).
+ *  A train standing at a station (`came`: when it pulled in, from its trail; else the earlier of now and the station's
+ *  time) leaves as at any station ahead: not before its time, nor before its usual stand is over, nor before now. The
+ *  feed's one time per station is about when a train pulls in, and at Tel Aviv Center it then stands some 4 minutes:
+ *  taken as leaving at its time, a train standing there read a minute later every minute it stood, and the next station
+ *  early first, then late (2026-10-26, train 959: 08:18, then 08:23 for 08:21; it came at 08:21:20). */
 const LAST_KM = 45;
-function railAhead(stops, pr, seen, lat, lon, call = null) {
+function railAhead(stops, pr, seen, lat, lon, call = null, cameAtStation = () => null) {
   const n = stops.length, k = pr.index;
   let at = -1;
   if (metres(lat, lon, stops[k].lat, stops[k].lon) <= AT_STATION) at = k;
@@ -41,10 +46,11 @@ function railAhead(stops, pr, seen, lat, lon, call = null) {
     if (at === n - 1) return { arr, dep, index: n - 2, frac: 1, next: at };
     dep[at] = Math.max(stops[at].dep, seen + stand(at), call.now + LAST_KM - run(at));
     t = dep[at] + run(at); i = at + 1; index = at; frac = 0;
-  } else if (at >= 0) {   // standing at a station: it leaves at its time, or now if that has passed
-    arr[at] = seen;
+  } else if (at >= 0) {   // standing at a station: it leaves after its stand (at its first station, at its time)
+    const came = cameAtStation(stops[at]);
+    arr[at] = came != null ? Math.min(came, seen) : Math.min(seen, stops[at].arr);
     if (at === n - 1) return { arr, dep, index: n - 2, frac: 1, next: at };
-    dep[at] = Math.max(stops[at].dep, seen);
+    dep[at] = Math.max(stops[at].dep, at > 0 ? arr[at] + stand(at) : 0, seen);
     t = dep[at] + run(at); i = at + 1; index = at; frac = 0;
   } else {         // between two: the learned profile says how much of the section's time is behind it
     const m = section(stops, k), done = m ? along(m, pr.frac) : pr.frac;
@@ -58,7 +64,41 @@ function railAhead(stops, pr, seen, lat, lon, call = null) {
     dep[i] = Math.max(stops[i].dep, t + stand(i));
     t = dep[i] + run(i);
   }
-  return { arr, dep, index, frac, next: at >= 0 ? at : next, at };
+  // late, at the station it is at or comes to next: how late it pulls in; standing there, also how much later it leaves
+  // than an on-time train would (at its time, or its stand after its time)
+  const j = at >= 0 ? at : next;
+  const late = at >= 0 && at < n - 1 ? Math.max(arr[at] - stops[at].arr, dep[at] - Math.max(stops[at].dep, at > 0 ? stops[at].arr + stand(at) : 0))
+    : arr[j] - stops[j].arr;
+  return { arr, dep, index, frac, next: j, at, late, rail: true };
+}
+// A train's lateness is shown only as far as we are sure of it. Most small train delays are made up on the way (the
+// timetable has slack), and a train does not leave a station before its time, so the rider is shown the timetable's
+// time plus the lateness we are 85% sure of: the predicted lateness less a margin that grows with how far ahead the
+// station is, from 2 minutes up, and none at all more than 30 minutes ahead. Backtested on three mornings' raw minute
+// files (tools/trainbacktest.mjs, its last line; 2026-10-21, 25 and 26): the point estimate showed a delay on 70% of
+// predictions, and a train that came on time as late in about 20% on ordinary mornings; this shows a delay on 6 to 13%,
+// one that came on time in under 1%, a time 2 minutes or more after the train came about as often as the timetable
+// itself does (1.3 to 3.8% against 0.9 to 3.2%), and 19 to 26% of real delays of 3 minutes or more.
+const SURE_MARGIN = [[300, 20], [600, 60], [1200, 100], [1800, 140]];   // [up to this many seconds ahead, margin in s]
+const SHOW_FROM = 120;
+/** How late to show a train at a station `ahead` seconds away, predicted `late` seconds late: 0, or whole minutes from
+ *  2 up, rounded down (the time shown and its "+N" then always agree: 08:58 and 7.5 minutes read 09:05 and +8). */
+export function sureLate(late, ahead) {
+  const m = SURE_MARGIN.find(([upTo]) => Math.max(0, ahead) < upTo);
+  if (!m) return 0;
+  const l = late - m[1];
+  return l >= SHOW_FROM ? Math.floor(l / 60) * 60 : 0;
+}
+/** When a train standing at a station pulled in, from its trail of recent fixes ([ms, lat, lon], oldest first, the last
+ *  one now): halfway between its first fix there and the one before, as pipeline/railtimes.py measures stands; its first
+ *  fix there when the trail starts at the station; null when the train is not at it. Seconds on `day`. */
+function cameAt(trail, st, day) {
+  if (!trail || !trail.length) return null;
+  const inside = (f) => metres(f[1], f[2], st.lat, st.lon) <= AT_STATION;
+  let i = trail.length - 1;
+  if (!inside(trail[i])) return null;
+  while (i > 0 && inside(trail[i - 1])) i--;
+  return secondsOn(new Date(i > 0 ? (trail[i - 1][0] + trail[i][0]) / 2 : trail[i][0]), day);
 }
 
 // ------------------------------------------------------------------ buses: learned running times
@@ -155,18 +195,22 @@ function busAhead(stops, pr, seen, day, seenMs, ride) {
  * point of the trip it is at, compared with when it was seen there. A vehicle still at the first stop
  * is late only once its start time has passed. A train with learned sections, or a bus with learned sections
  * ahead, gets its time at each later stop instead (`arr`, `dep`), and its delay is the one at the next stop.
+ * `late` is the best estimate, seconds; `delay` is what the rider is shown: the same for a bus, and for a train only
+ * what we are sure of (sureLate). A train's `trail` ([ms, lat, lon] of its recent fixes) says when it pulled in to
+ * the station it stands at.
  */
 export function estimateDelay(vehicle, stops, day) {
   if (!stops || stops.length < 2) return null;
-  const seen = secondsOn(vehicle.recordedAt, day);
-  const ageSec = (Date.now() - vehicle.recordedAt.getTime()) / 1000;
+  const recordedAt = new Date(vehicle.recordedAt);   // a Date, or its string or ms once it has crossed to the page and back
+  const seen = secondsOn(recordedAt, day);
+  const ageSec = (Date.now() - recordedAt.getTime()) / 1000;
   // a report an hour after its trip should have ended is no position of that trip (a vehicle still naming a trip it
   // finished long ago: one named its 15:05 trip at 21:37, 2026-10-25)
   if (seen > stops[stops.length - 1].arr + 3600) return null;
   // seen before its trip begins: it waits to start it (at its terminal, or still finishing the trip before on roads
   // this one shares), and has not run any of it. Placed along the trip it read as up to 15 minutes early, 73 buses in a
   // snapshot of 2026-10-25 21:38, most of them at a loop's terminal, which is near its last stops as well as its first.
-  if (seen < stops[0].dep - 120) return { delay: 0, index: 0, frac: 0, offPath: 0, seen, ageSec, stale: ageSec > 240, vehicle, waiting: true };
+  if (seen < stops[0].dep - 120) return { delay: 0, late: 0, index: 0, frac: 0, offPath: 0, seen, ageSec, stale: ageSec > 240, vehicle, waiting: true };
   const pr = projectOnStops(vehicle.lat, vehicle.lon, stops);
   if (pr.metres > 600) return null;   // not on this trip's path (or a very different route shape)
   // placed further along than it could have gone since its start (in under half the scheduled time, starting up to two
@@ -174,7 +218,8 @@ export function estimateDelay(vehicle, stops, day) {
   // their start, read as 15 minutes early 30 minutes along). It leaves when it leaves, late only once its time has passed.
   const schedHere = stops[pr.index].dep + pr.frac * Math.max(0, stops[pr.index + 1].arr - stops[pr.index].dep);
   if (schedHere - stops[0].dep > 300 && seen - (stops[0].dep - 120) < 0.5 * (schedHere - stops[0].dep)) {
-    return { delay: Math.max(0, seen - stops[0].dep), index: 0, frac: 0, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle, waiting: true };
+    const late = Math.max(0, seen - stops[0].dep);
+    return { delay: late, late, index: 0, frac: 0, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle, waiting: true };
   }
   // a train without GPS: when its call first named the station (or that station's time, when the change was not seen)
   let call = null;
@@ -185,14 +230,16 @@ export function estimateDelay(vehicle, stops, day) {
       call = { at: vehicle.callSeenChange ? since : Math.min(since, stops[k].arr), now: seen };
     }
   }
-  const ahead = (railTimes && railAhead(stops, pr, call ? call.at : seen, vehicle.lat, vehicle.lon, call)) || (busTimes && busAhead(stops, pr, seen, day, vehicle.recordedAt.getTime(), vehicle.rideId));
+  const ahead = (railTimes && railAhead(stops, pr, call ? call.at : seen, vehicle.lat, vehicle.lon, call, (st) => cameAt(vehicle.trail, st, day)))
+    || (busTimes && busAhead(stops, pr, seen, day, recordedAt.getTime(), vehicle.rideId));
   if (ahead) {
     // late is when it comes, against the one time the feed lists per station: arriving on time and standing its usual
     // stand is on time (a departure-based delay made every train late by its stand, 2026-10-25); a train standing at
-    // the station already is late by when it leaves
+    // the station already is late by when it leaves, against when an on-time train would (railAhead's `late`)
     const j = ahead.next, standing = ahead.at === j && j < stops.length - 1;
-    const delay = Math.max(-900, Math.min(5400, Math.round(standing ? ahead.dep[j] - stops[j].dep : ahead.arr[j] - stops[j].arr)));
-    return { delay, index: ahead.index, frac: ahead.frac, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle, arr: ahead.arr, dep: ahead.dep, at: ahead.at };
+    const late = Math.max(-900, Math.min(5400, Math.round(ahead.late ?? (standing ? ahead.dep[j] - stops[j].dep : ahead.arr[j] - stops[j].arr))));
+    const delay = ahead.rail ? sureLate(late, (ahead.arr[j] ?? seen) - seen) : late;
+    return { delay, late, rail: !!ahead.rail, index: ahead.index, frac: ahead.frac, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle, arr: ahead.arr, dep: ahead.dep, at: ahead.at };
   }
   let delay;
   if (pr.index === 0 && pr.frac < 0.05) delay = Math.max(0, seen - stops[0].dep);
@@ -201,16 +248,21 @@ export function estimateDelay(vehicle, stops, day) {
     delay = seen - (a + pr.frac * Math.max(0, b - a));
   }
   delay = Math.max(-900, Math.min(5400, Math.round(delay)));
-  return { delay, index: pr.index, frac: pr.frac, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle };
+  return { delay, late: delay, index: pr.index, frac: pr.frac, offPath: pr.metres, seen, ageSec, stale: ageSec > 240, vehicle };
 }
 /** The live time at a stop of the trip, given a delay estimate; passed when the vehicle is beyond it. A train's time
- *  is when it pulls in (the rider must be on the platform then), or when it leaves if it is standing there already. */
+ *  is its time at the station, late only by what we are sure of (sureLate; at the station it stands at, est.delay). */
 export function liveAt(est, stops, stopIndex) {
   if (!est) return null;
   const passed = est.index > stopIndex || (est.index === stopIndex && est.frac > 0.2);
+  if (est.rail) {
+    const a = est.arr[stopIndex];
+    const late = est.at === stopIndex || a == null ? est.delay : sureLate(a - stops[stopIndex].arr, a - est.seen);
+    return { time: stops[stopIndex].arr + late, delay: late, passed, stale: est.stale };
+  }
   const own = est.dep ? (est.at === stopIndex ? est.dep[stopIndex] ?? est.arr[stopIndex] : est.arr[stopIndex] ?? est.dep[stopIndex]) : null;
   const time = own != null ? Math.round(own) : stops[stopIndex].dep + est.delay;
   return { time, delay: time - stops[stopIndex].dep, passed, stale: est.stale };
 }
-/** Rounded delay for display: minutes, "on time" within a minute. */
+/** Rounded delay for display: minutes, "on time" within half a minute. */
 export function delayMinutes(delay) { return Math.round(delay / 60); }

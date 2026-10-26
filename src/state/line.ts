@@ -17,5 +17,8 @@ export const loading = signal(false);                   // another stop's times 
 export const now = signal<number | null>(null);         // seconds on the line's day, null when not today
 export const sel = signal<number | null>(null);         // the trip chosen
 export const selTimes = signal<(number | null)[]>([]);  // its time at each stop of the list
+/** Its live time at each stop of the list, from its vehicle (delays.js liveAt: the time the rider is shown), or null. */
+export type LiveTime = { time: number; delay: number; passed: boolean; stale: boolean };
+export const selLive = signal<(LiveTime | null)[]>([]);
 
 export const hooks = { close: () => {}, openLine: (_route: number) => {}, openStop: (_stop: number) => {}, setAnchor: (_i: number) => {}, pick: (_t: LineTime) => {} };

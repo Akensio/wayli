@@ -1,6 +1,6 @@
 // Train delays from learned section times (src/engine/delays.js, railAhead): node tools/railtimes.test.mjs (exits 1 on a failure).
 import assert from 'node:assert/strict';
-import { setRailTimes, estimateDelay, liveAt } from '../src/engine/delays.js';
+import { setRailTimes, estimateDelay, liveAt, sureLate } from '../src/engine/delays.js';
 
 const T = (h, m, s = 0) => h * 3600 + m * 60 + s;
 const day = '20261021';
@@ -23,29 +23,52 @@ assert.equal(estimateDelay(train(32.025, T(10, 6)), stops, day).delay, 180);
 setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60, 3: 60 } });
 let e = estimateDelay(train(32.025, T(10, 6)), stops, day);
 // halfway at 10:06: at 2 by 10:08:30 (2.5 min late: lateness is when it comes), away after its minute at 10:09:30,
-// at 3 by 10:14:30, away 10:15:30, at 4 by 10:21:30. A rider's time at a station is when the train pulls in.
-assert.equal(e.delay, 150);
-assert.equal(liveAt(e, stops, 1).time, T(10, 8, 30));
-assert.equal(liveAt(e, stops, 2).time, T(10, 14, 30));
-assert.equal(liveAt(e, stops, 3).time, T(10, 21, 30));
+// at 3 by 10:14:30, away 10:15:30, at 4 by 10:21:30
+assert.equal(e.late, 150);
+assert.deepEqual([e.arr[1], e.arr[2], e.arr[3]], [T(10, 8, 30), T(10, 14, 30), T(10, 21, 30)]);
+// what the rider is shown: the station's time, late only by what we are sure of (2.5 min predicted 2.5 min ahead:
+// at least 2 minutes; 1.5 min later on: not sure enough, the timetable's)
+assert.equal(e.delay, 120);
+assert.equal(liveAt(e, stops, 1).time, T(10, 8));
+assert.equal(liveAt(e, stops, 2).time, T(10, 13));
+assert.equal(liveAt(e, stops, 3).time, T(10, 20));
 assert.equal(liveAt(e, stops, 0).passed, true);
+assert.equal(sureLate(600, 900), 480);    // 10 min late 15 min ahead: at least 8 minutes
+assert.equal(sureLate(600, 2400), 0);     // 40 minutes ahead: the timetable's (late trains make time up)
+assert.equal(sureLate(130, 60), 0);       // under 2 minutes once unsure: on time
+assert.equal(sureLate(-200, 300), 0);     // early: never shown (a train does not leave before its time)
 
-// early at a station: it leaves at its time (the time shown there, standing), and the 5-minute section brings it to 3
-// early, at 10:12, where it waits
+// at a station on time: it leaves after its minute, at its time, and the 5-minute section brings it to 3 early, at
+// 10:12, where it waits; the rider is shown the timetable's times
 e = estimateDelay(train(32.05, T(10, 6, 30)), stops, day);
 assert.equal(e.delay, 0);
-assert.equal(liveAt(e, stops, 1).time, T(10, 7));
-assert.equal(liveAt(e, stops, 2).time, T(10, 12));
+assert.equal(e.dep[1], T(10, 7));
+assert.equal(e.arr[2], T(10, 12));
+assert.equal(liveAt(e, stops, 1).time, T(10, 6));
+assert.equal(liveAt(e, stops, 2).time, T(10, 13));
 assert.equal(liveAt(e, stops, 1).passed, false, 'standing at the station: not passed yet');
+// standing at 2 since 10:05:40 (its trail), where trains stand 4 minutes: it leaves at 10:09:40, not at its time, nor
+// a minute later each minute it stands (2026-10-26, train 959 at Tel Aviv Center); without the trail, from its time
+setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 240, 3: 60 } });
+const ms = (sec) => at(sec).getTime(), trail = [[ms(T(10, 4, 50)), 32.04, 34.8], [ms(T(10, 6, 30)), 32.05, 34.8], [ms(T(10, 8, 30)), 32.05, 34.8]];
+e = estimateDelay({ ...train(32.05, T(10, 8, 30)), trail }, stops, day);
+assert.equal(e.arr[1], T(10, 5, 40));
+assert.equal(e.dep[1], T(10, 9, 40));
+assert.equal(e.arr[2], T(10, 14, 40));
+assert.equal(e.late, -20);   // in 20 s early, out as an on-time train would be
+assert.equal(e.delay, 0);
+e = estimateDelay(train(32.05, T(10, 8, 30)), stops, day);
+assert.equal(e.dep[1], T(10, 10));
+setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60, 3: 60 } });
 
 // the profile: a slow start puts a train a third of the way along only 45% into the section's time
 setRailTimes({ s: { '1>2': [300, 0, 0.2, 0.35, 0.45, 0.55, 0.62, 0.7, 0.78, 0.85, 0.93, 1], '2>3': [300, ...even] }, d: { 2: 60, 3: 60 } });
 e = estimateDelay(train(32.05 * 0.3 + 32.0 * 0.7, T(10, 4)), stops, day);   // 30% along at 10:04: 45% of 300 s done
-assert.equal(liveAt(e, stops, 1).time, T(10, 4) + Math.round(0.55 * 300));
+assert.equal(Math.round(e.arr[1]), T(10, 4) + Math.round(0.55 * 300));
 // a learned catch-up per station (h) is ignored: it made every prediction early (2026-10-25)
 setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60, 3: 60 }, h: 20 });
 e = estimateDelay(train(32.025, T(10, 6)), stops, day);
-assert.equal(liveAt(e, stops, 2).time, T(10, 14, 30));
+assert.equal(e.arr[2], T(10, 14, 30));
 
 // a train without GPS, put at the station its call names (2). It is not standing there now: it reached it when the call
 // first named it (a kilometre out: 45 s later) and has not reached 3 yet (Herzliya at 09:08, 2026-10-25)
@@ -53,11 +76,11 @@ const nofix = (now, since, seenChange) => ({ lat: 32.05, lon: 34.8, recordedAt: 
 setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60, 3: 60 } });
 e = estimateDelay(nofix(T(10, 9), T(10, 5, 30), true), stops, day);
 // at 2 by 10:06:15, away after its minute at 10:07:15, at 3 by 10:12:15 (it was read as leaving 2 now, at 10:09)
-assert.equal(liveAt(e, stops, 2).time, T(10, 12, 15));
+assert.equal(e.arr[2], T(10, 12, 15));
 // the change of call not seen (the app just opened): it reached 2 no later than its time there
 e = estimateDelay(nofix(T(10, 9), T(10, 8), false), stops, day);
-assert.equal(liveAt(e, stops, 2).time, T(10, 12));
+assert.equal(e.arr[2], T(10, 12));
 // still named after 2 at 10:13:30: not at 3 before 10:14:15, whatever its time
 e = estimateDelay(nofix(T(10, 13, 30), T(10, 5, 30), true), stops, day);
-assert.equal(liveAt(e, stops, 2).time, T(10, 14, 15));
+assert.equal(e.arr[2], T(10, 14, 15));
 console.log('railtimes: learned sections ok');

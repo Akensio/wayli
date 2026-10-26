@@ -6,7 +6,8 @@
 //
 // The minute files come from Hasadna (https://open-bus-siri-requester.hasadna.org.il/, YYYY/MM/DD/HH/MM.br, UTC), the
 // same files the relay passes to the app, and are kept in data/siri/. Errors are in minutes, + when the prediction was
-// later than the train. 2026-10-25: 2.1 minutes typical (median |error|) against the timetable's 3.1.
+// later than the train. 2026-10-25: 2.1 minutes typical (median |error|) against the timetable's 3.1. The last line is
+// what the rider is shown (delays.js sureLate), against the timetable alone.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { gunzipSync, brotliDecompressSync } from 'node:zlib';
 import { parseTimetable } from '../src/engine/raptor.js';
@@ -78,11 +79,16 @@ for (const [ride, rs] of byRide) {
 }
 
 // minute by minute, as the app sees the trains (src/worker/vehicles.js remember and snapVehicles)
-const posSince = new Map(), callSince = new Map(), res = [];
+const posSince = new Map(), callSince = new Map(), trails = new Map(), res = [];
 for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
   const cur = rows.filter((r) => r[0] === t);
   for (const r of cur) {
     if (r[3] != null) { const loc = `${r[3]},${r[4]}`, o = posSince.get(r[1]); if (o && o.loc === loc) o.seen = t; else posSince.set(r[1], { loc, since: t, seen: t }); }
+    if (r[3] != null) {   // the worker's trail: the ride's fixes of the last half hour, oldest first
+      const tr = trails.get(r[1]) || []; if (!tr.length || tr[tr.length - 1][0] < r[2]) tr.push([r[2], r[3], r[4]]);
+      while (tr.length && tr[0][0] < t - 1800e3) tr.shift();
+      trails.set(r[1], tr);
+    }
     const c = callSince.get(r[1]); if (r[6] != null && (!c || c.code !== String(r[6]))) callSince.set(r[1], { code: String(r[6]), since: r[2], change: !!c });
   }
   if (t < T0 || t > T1) continue;
@@ -91,7 +97,7 @@ for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
     if (r[2] > t + 120e3 || r[2] < t - 1800e3) continue;
     const stops = tripOf(r[1]), tru = truth.get(r[1]); if (!stops || !tru) continue;
     if (r[3] != null && r[5] > 5) { const o = posSince.get(r[1]); if (o && t - o.since >= 120e3) continue; }   // a frozen fix
-    const v = { lat: r[3], lon: r[4], recordedAt: new Date(r[2]) }, gps = r[3] != null;
+    const v = { lat: r[3], lon: r[4], recordedAt: new Date(r[2]), trail: process.env.NO_TRAIL ? null : trails.get(r[1]) }, gps = r[3] != null;
     if (!gps) {   // put at the station its call names, with when the call first named it
       const s = byCode.get(String(r[6])); if (s === undefined || r[7] > 0) continue;
       v.lat = tt.stopLat[s]; v.lon = tt.stopLon[s];
@@ -101,7 +107,7 @@ for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
     for (let j = est.index + 1; j < stops.length; j++) {
       if (tru[j] == null || tru[j] <= now + 30) continue;
       const pred = est.arr ? est.arr[j] : stops[j].arr + est.delay;
-      if (pred != null) res.push({ gps, err: pred - tru[j], tt: stops[j].arr - tru[j], ahead: tru[j] - now });
+      if (pred != null) res.push({ gps, err: pred - tru[j], tt: stops[j].arr - tru[j], ahead: tru[j] - now, shown: delays.liveAt(est, stops, j).delay, real: tru[j] - stops[j].arr });
     }
   }
 }
@@ -112,3 +118,6 @@ console.log(`  timetable alone   ${line(res.map((x) => x.tt))}`);
 console.log(`  the app           ${line(res.map((x) => x.err))}`);
 for (const [a, b] of [[0, 10], [10, 20], [20, 30], [30, 60]]) console.log(`    ${p2(a)}-${p2(b)} min ahead ${line(res.filter((x) => x.ahead >= a * 60 && x.ahead < b * 60).map((x) => x.err))}`);
 console.log(`    without GPS     ${line(res.filter((x) => !x.gps).map((x) => x.err))}`);
+// what the rider is shown (delays.js liveAt: a train late only by what we are sure of), against the timetable alone
+const pct = (f, xs = res) => `${(100 * xs.filter(f).length / Math.max(1, xs.length)).toFixed(1)}%`, big = res.filter((x) => x.real >= 180);
+console.log(`  shown: a delay ${pct((x) => Math.round(x.shown / 60) !== 0)}, late when it came on time ${pct((x) => Math.round(x.shown / 60) >= 1 && x.real < 60)}, 2+ min after it came ${pct((x) => x.shown - x.real > 120)} (timetable alone ${pct((x) => -x.real > 120)}), real delays of 3+ min shown ${pct((x) => x.shown >= 90, big)}`);

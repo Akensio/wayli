@@ -25,6 +25,10 @@ const posSince = new Map();
 // call was seen before it, so `since` is the change itself, not just when the app started looking.
 const callSince = new Map();
   // ride -> { code, since: ms, seen: ms, change }
+// A train's trail: its fixes of the last half hour, oldest first, so that a train standing at a station says when it
+// pulled in (delays.js cameAt: it leaves after its usual stand from then, not at the station's time).
+const trails = new Map();
+  // ride -> [[recorded ms, lat, lon], ...]
 const snapTime = (id) => { const m = /^(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)\/(\d\d)$/.exec(id || ''); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : NaN; };
 function remember(j, t) {
   for (const d of (j && j.Siri && j.Siri.ServiceDelivery && j.Siri.ServiceDelivery.StopMonitoringDelivery) || []) {
@@ -39,6 +43,11 @@ function remember(j, t) {
         else callSince.set(key, { code, since: rt, seen: t, change: true });
       }
       const l = m.VehicleLocation; if (!l) continue;
+      if (String(m.OperatorRef) === '2') {
+        const rt = Date.parse(x.RecordedAtTime), tr = trails.get(key) || [];
+        if (rt && !tr.some((f) => f[0] === rt)) { tr.push([rt, Number(l.Latitude), Number(l.Longitude)]); tr.sort((a, b) => a[0] - b[0]); }
+        trails.set(key, tr);
+      }
       const loc = `${l.Latitude},${l.Longitude}`, o = posSince.get(key);
       // snapshots can come in out of order (the earlier one follows in the background): keep the earliest time at this place
       if (o && o.loc === loc) { o.since = Math.min(o.since, t); o.seen = Math.max(o.seen, t); } else posSince.set(key, { loc, since: t, seen: t });
@@ -46,6 +55,7 @@ function remember(j, t) {
   }
   for (const [k, o] of posSince) if (t - o.seen > SNAP_WINDOW_MS) posSince.delete(k);
   for (const [k, o] of callSince) if (t - o.seen > SNAP_WINDOW_MS) callSince.delete(k);
+  for (const [k, tr] of trails) { while (tr.length && t - tr[0][0] > SNAP_WINDOW_MS) tr.shift(); if (!tr.length) trails.delete(k); }
 }
 // A train takes its next trip's number some minutes before that trip starts: 18% of train fixes came before their
 // trip's start (2026-10-19 to 21), 94% of those from the train standing at its first station. The rest come from a
@@ -83,7 +93,7 @@ function handedOver(early, trains) {
     const was = estimateDelay(o, stops, day), now = estimateDelay(early, stops, day);
     if (!was || !now || now.index + now.frac < was.index + was.frac) continue;   // and further along its trip
     const real = (d) => d > -900 && d < 5400;   // a delay at the estimate's bounds is no estimate (a trip far off its time)
-    if (!real(was.delay) || !real(now.delay) || Math.abs(now.delay - was.delay) > 300) continue;
+    if (!real(was.late) || !real(now.late) || Math.abs(now.late - was.late) > 300) continue;
     if (best) return null;   // two trips fit: no guessing (a wrong one shows a train where it is not)
     best = o;
   }
@@ -118,6 +128,7 @@ function snapVehicles(j, t) {
       const v = { lineRef: String(m.LineRef), lat, lon, bearing: Number(m.Bearing) || 0, velocity: Number(m.Velocity) || 0, recordedAt,
         scheduledStart: new Date(m.OriginAimedDepartureTime), rideId: `${m.LineRef}/${m.OriginAimedDepartureTime}`, vehicleRef: m.VehicleRef,
         operator: Number(m.OperatorRef), atStop };
+      if (!atStop && v.operator === 2) v.trail = trails.get(v.rideId) || null;
       if (atStop && v.operator === 2) {   // a train known only by its call: when the call first named this station
         const k = callSince.get(v.rideId);
         if (k && k.code === String(m.MonitoredCall.StopPointRef)) { v.callSince = k.since; v.callSeenChange = k.change; }
@@ -209,7 +220,7 @@ export const vehiclesOps = {
       const t = tripFor(v.lineRef, secondsOn(new Date(v.scheduledStart), day));
       if (t < 0) return { trip: -1 };
       const { stops } = tripStopList(t);
-      const est = estimateDelay({ lat: v.lat, lon: v.lon, recordedAt: new Date(v.recordedAt), callSince: v.callSince, callSeenChange: v.callSeenChange }, stops, day);
+      const est = estimateDelay(v, stops, day);
       const ri = tt.patRoute[tt.tripPat[t]];
       return { trip: t, delay: est ? est.delay : null, stale: est ? est.ageSec > 240 : true, index: est ? est.index : -1, headsign: headsign(ri), route: ri, line: routeLabel(tt.routes[ri]), agency: tt.routes[ri][2], routeType: tt.routes[ri][3] };
     });

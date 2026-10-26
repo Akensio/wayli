@@ -13,6 +13,8 @@ import { Timetable } from '../../widgets/Timetable';
 import { LineChip } from '../../widgets/LineChip';
 import { favs, stored } from '../../lib/store.js';
 import { CloseAll } from '../../widgets/CloseAll';
+import { LiveMark } from '../../widgets/LiveMark';
+import * as delays from '../../engine/delays.js';
 
 export function LineDetail() {
   void lang.value;
@@ -23,7 +25,10 @@ export function LineDetail() {
   // saved by the line's number in the feed (its route id), as the history keeps it: a timetable's route index changes daily
   const key = info.ref ? 'line:' + info.ref : '', on = !!key && favs.has('lines', key);
   const toggleFav = () => { if (!key) return; favs.toggle('lines', key, { type: 'line', ref: info.ref, line: info.line, routeType: info.routeType, agency: info.agency, headsign: info.headsign, mode: info.mode }); };
-  const ai = line.anchor.value, a = info.stops[ai], times = line.times.value, sel = line.selTimes.value, base = sel[ai] ?? null;
+  // the chosen trip's time at each stop: live when its vehicle is seen (the time a trip with that ride shows too)
+  const ai = line.anchor.value, a = info.stops[ai], times = line.times.value, sel = line.selTimes.value, live = line.selLive.value;
+  const when = (i: number) => { const l = live[i]; return l && !l.passed ? l.time : sel[i] ?? null; };
+  const base = when(ai);
   return (
     <>
       <div class="bar">
@@ -49,14 +54,16 @@ export function LineDetail() {
         </>}
         <div id="lineStops">
           {info.stops.map((st, i) => {
-            const at = sel[i], rel = at != null && base != null ? Math.round((at - base) / 60) : null;
+            const at = when(i), rel = at != null && base != null ? Math.round((at - base) / 60) : null, l = live[i];
+            const late = l && !l.passed && l.delay > 0 && sel[i] != null;
             return (
               <div class={`linerow${i === ai ? ' anchor' : ''}${i < ai ? ' before' : ''}`} data-i={i} key={i} onClick={() => line.hooks.setAnchor(i)}>
                 <span class="idx">{i + 1}</span>
-                <span class="name">{st.name}<small class="muted"> {st.city || ''}</small>{i === ai && <small class="tag">{t('yourStop')}</small>}</span>
+                <span class="name">{st.name}<small class="muted"> {st.city || ''}</small>{i === ai && <small class="tag">{t('yourStop')}</small>}
+                  {i === ai && l && !l.passed && <> <LiveMark delayMin={delays.delayMinutes(l.delay)} stale={l.stale} /></>}</span>
                 {i === ai ? <button type="button" class="ghost slim" onClick={(e) => { e.stopPropagation(); line.hooks.openStop(st.stop); }}>{t('stopDetails')}</button>
                   : rel != null && <span class="rel">{rel > 0 ? '+' : rel < 0 ? '−' : ''}{Math.abs(rel)}′</span>}
-                {at != null && <span class="at">{fmt(at)}</span>}
+                {at != null && <span class="at">{late && <s>{fmt(sel[i]!)}</s>}{fmt(at)}</span>}
               </div>
             );
           })}

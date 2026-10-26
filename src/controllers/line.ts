@@ -12,12 +12,14 @@ import { openStop } from './stop';
 import { recentViews } from '../lib/store.js';
 import * as data from '../state/data';
 import { lastPos } from '../state/position';
-import { tripStopsCached } from '../worker/client';
+import { tripStopsCached, estimate } from '../worker/client';
+import * as delays from '../engine/delays.js';
 import type { LineTime } from '../state/line';
 import { metres } from '../engine/geo.js';
 import { timeOf } from '../lib/time';
 
 let seq = 0, timer = 0, current: LineInfo | null = null;
+let seenNow: { vs: any[]; st: any[] } = { vs: [], st: [] };   // the line's vehicles at the last look, and which trip each runs
 
 /** A line, as a timetable at `stop` when it calls there (the stop the rider came from: a stop's view, a ride's boarding
  *  stop), else at its stop nearest the rider, else its first; with `trip`, that trip chosen (a departure, a vehicle). */
@@ -69,7 +71,8 @@ async function setAnchor(i: number, my = seq, trip?: number): Promise<void> {
 async function pick(r: LineTime, my = seq): Promise<void> {
   const info = current;
   if (!info) return;
-  linePage.sel.value = r.trip;
+  linePage.sel.value = r.trip; linePage.selLive.value = [];
+  void selLive(my);
   try {
     const ts = await tripStopsCached(r.trip);
     if (my !== seq || linePage.sel.value !== r.trip) return;
@@ -79,7 +82,29 @@ async function pick(r: LineTime, my = seq): Promise<void> {
     linePage.selTimes.value = info.stops.map((s) => byStop.get(s.stop) ?? byName.get(s.name) ?? null);
   } catch { /* the times at the stop stay */ }
 }
-export function closeLine(): void { clearInterval(timer); seq++; current = null; }
+export function closeLine(): void { clearInterval(timer); seq++; current = null; seenNow = { vs: [], st: [] }; }
+/** The chosen trip's live time at each stop of the list, when its vehicle is among the line's: the time the rider is
+ *  shown everywhere (delays.js liveAt), so the line and a trip with that ride say the same. By stop, and by name for a
+ *  train calling at another platform of the same station. */
+async function selLive(my = seq): Promise<void> {
+  const info = current, trip = linePage.sel.value, k = seenNow.st.findIndex((s) => s && s.trip === trip);
+  if (!info || trip == null || k < 0) { linePage.selLive.value = []; return; }
+  const day = data.dayInfo.value?.date || '';
+  try {
+    const ts = await tripStopsCached(trip);
+    const est = await estimate(seenNow.vs[k], ts.stops, day);
+    if (my !== seq || linePage.sel.value !== trip) return;
+    if (!est) { linePage.selLive.value = []; return; }
+    const byStop = new Map<number, linePage.LiveTime>(), byName = new Map<string, linePage.LiveTime>();
+    (ts.stops as { stop: number; name: string }[]).forEach((s, i) => {
+      const at = delays.liveAt(est, ts.stops, i);
+      if (!at) return;
+      const lt = { time: at.time, delay: at.delay, passed: at.passed, stale: !!at.stale };
+      byStop.set(s.stop, lt); byName.set(s.name, lt);
+    });
+    linePage.selLive.value = info.stops.map((s) => byStop.get(s.stop) ?? byName.get(s.name) ?? null);
+  } catch { /* the timetable stays */ }
+}
 // the line's vehicles, once the map has drawn its course (map/render.ts)
 map.afterDraw.lineDetail = () => { lineLive(); };
 
@@ -98,6 +123,8 @@ async function lineLive(): Promise<void> {
     for (const mk of map.markers.lineVeh.splice(0)) mk.remove();
     const m = map.mapState.main;
     if (m && map.mapState.drawnFor === 'lineDetail') map.lineVehicleMarkers(m, map.markers.lineVeh, vs, st, info.routeType, null, { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route });
+    seenNow = { vs, st };
+    void selLive(my);
     const nw = feed.newest(vs);
     linePage.liveText.value = vs.length && nw ? `${t('vehiclesOnLine', { n: vs.length })} · ${timeOf(nw)}` : t('noLineVehicles');
     linePage.liveOk.value = vs.length > 0;

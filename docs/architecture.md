@@ -880,11 +880,25 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   fixes come within 300 m of it and leave. Also the stand a late train makes
   at each station. From a train's position the app then works out when it
   reaches the next station and, leaving each station no earlier than the
-  timetable after its usual stand, every later one. Its time at a station is
-  when it pulls in (the rider must be on the platform then; the feed lists
-  one time per station), or when it leaves if it is standing there already,
-  and its delay is its arrival at the next station against that listed time:
-  a departure-based delay made every train late by its stand. A train without
+  timetable after its usual stand, every later one; a train standing at a
+  station leaves after its stand from when it pulled in (the worker keeps
+  each train's fixes of the last half hour, its trail), not at the listed
+  time: the feed's one time per station is about when a train pulls in.
+  Its predicted lateness is its arrival at the next station against that
+  listed time (a departure-based delay made every train late by its stand).
+  What the rider is shown, everywhere a train's time appears (a trip, ride
+  options, a stop, the trains between two stations, a line, the planner,
+  the vehicle's badge; `liveAt` and `sureLate`), is the listed time plus
+  only the lateness we are 85% sure of: the prediction less a margin by
+  how far ahead the station is (20 s within 5 minutes to 140 s at 30), in
+  whole minutes from 2 up, never early, and nothing beyond 30 minutes
+  ahead. Most small train delays are made up on the way, and on ordinary
+  mornings the point estimate was no better than the timetable (2026-10-21
+  and 26: a typical miss of 1.5 against 1.4 minutes) and showed a train
+  that came on time as late in a fifth of predictions; shown this way, in
+  under 1%, while a time 2 minutes or more after the train came is about
+  as rare as with the timetable alone (`tools/trainbacktest.mjs`, last
+  line). A train without
   GPS names only a station (its call), from about a kilometre before it until
   about a kilometre before the next: it reached that station when the call
   first named it (the worker remembers when; on opening, no later than that
