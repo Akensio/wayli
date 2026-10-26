@@ -891,8 +891,9 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   the vehicle's badge; `liveAt` and `sureLate`), is the listed time plus
   only the lateness we are 85% sure of: the prediction less a margin by
   how far ahead the station is (20 s within 5 minutes to 140 s at 30), in
-  whole minutes from 2 up, never early, and nothing beyond 30 minutes
-  ahead. Most small train delays are made up on the way, and on ordinary
+  whole minutes from 2 up, never early; beyond 30 minutes ahead a
+  station only carries the lateness of the one before, less what the
+  train can make up between them (times never run backwards). Most small train delays are made up on the way, and on ordinary
   mornings the point estimate was no better than the timetable (2026-10-21
   and 26: a typical miss of 1.5 against 1.4 minutes) and showed a train
   that came on time as late in a fifth of predictions; shown this way, in

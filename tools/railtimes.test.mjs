@@ -83,4 +83,13 @@ assert.equal(e.arr[2], T(10, 12));
 // still named after 2 at 10:13:30: not at 3 before 10:14:15, whatever its time
 e = estimateDelay(nofix(T(10, 13, 30), T(10, 5, 30), true), stops, day);
 assert.equal(e.arr[2], T(10, 14, 15));
+// a train an hour late: every station ahead stays late, beyond the 30 minutes too (each station alone, those beyond read
+// on time, and a plan boarded the train late and left it "on time" before it had boarded; 2026-10-26)
+const far = [0, 1, 2, 3, 4, 5].map((k) => ({ code: 10 + k, lat: 32.0 + 0.05 * k, lon: 34.8, arr: T(10, 6 * k), dep: T(10, 6 * k) }));
+const secs = Object.fromEntries([0, 1, 2, 3, 4].map((k) => [`${10 + k}>${11 + k}`, [300, ...even]]));
+setRailTimes({ s: secs, d: Object.fromEntries([1, 2, 3, 4].map((k) => [10 + k, 60])) });
+e = estimateDelay(train(32.025, T(11, 2, 30)), far, day);   // halfway 0-1 an hour late
+const shownAt = [1, 2, 3, 4, 5].map((i) => liveAt(e, far, i).time);
+for (let i = 1; i < shownAt.length; i++) assert.ok(shownAt[i] > shownAt[i - 1], 'times along the trip never go backwards');
+assert.ok(liveAt(e, far, 5).delay >= 3000, 'still most of an hour late beyond half an hour ahead');
 console.log('railtimes: learned sections ok');

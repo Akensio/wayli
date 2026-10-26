@@ -74,11 +74,12 @@ function railAhead(stops, pr, seen, lat, lon, call = null, cameAtStation = () =>
 // A train's lateness is shown only as far as we are sure of it. Most small train delays are made up on the way (the
 // timetable has slack), and a train does not leave a station before its time, so the rider is shown the timetable's
 // time plus the lateness we are 85% sure of: the predicted lateness less a margin that grows with how far ahead the
-// station is, from 2 minutes up, and none at all more than 30 minutes ahead. Backtested on three mornings' raw minute
+// station is, from 2 minutes up, and beyond 30 minutes ahead only what the stations before it carry. Backtested on three mornings' raw minute
 // files (tools/trainbacktest.mjs, its last line; 2026-10-21, 25 and 26): the point estimate showed a delay on 70% of
-// predictions, and a train that came on time as late in about 20% on ordinary mornings; this shows a delay on 6 to 13%,
-// one that came on time in under 1%, a time 2 minutes or more after the train came about as often as the timetable
-// itself does (1.3 to 3.8% against 0.9 to 3.2%), and 19 to 26% of real delays of 3 minutes or more.
+// predictions, and a train that came on time as late in about 20% on ordinary mornings; this shows a delay on 7 to 14%,
+// one that came on time in about 1%, a time 2 minutes or more after the train came 1.5 to 4.8% (the timetable alone
+// 0.9 to 3.2%), and 19 to 22% of real delays of 3 minutes or more. Beyond 30 minutes a station carries the lateness of
+// the one before it, less what the train can make up (railShown): an hour-late train stays an hour late.
 const SURE_MARGIN = [[300, 20], [600, 60], [1200, 100], [1800, 140]];   // [up to this many seconds ahead, margin in s]
 const SHOW_FROM = 120;
 /** How late to show a train at a station `ahead` seconds away, predicted `late` seconds late: 0, or whole minutes from
@@ -88,6 +89,34 @@ export function sureLate(late, ahead) {
   if (!m) return 0;
   const l = late - m[1];
   return l >= SHOW_FROM ? Math.floor(l / 60) * 60 : 0;
+}
+/**
+ * The lateness shown at each station of a train's trip (seconds, by station index; null before the next one). Each
+ * station's own sure lateness (sureLate), but never less than the station before's plus what the train can make up
+ * between the two at its predicted pace: shown at station i at T, it cannot reach i + 1 before T plus its run there.
+ * Taken one by one, a train an hour late read an hour late at the stations within half an hour and on time beyond
+ * them: its times ran backwards, and a plan boarded it late and left it "on time" before it had boarded (2026-10-26,
+ * 236 at Tel Aviv Center 10:42, then University 09:35; a trip shown 10:19 → 10:17). A late train may run faster than
+ * its usual pace: the run carried over is three quarters of the predicted one (backtested: fewer trains shown late
+ * that came on time than at the full pace, 1.2-1.3% against 1.4-1.6%). Kept on the estimate.
+ */
+const CATCH_UP = 0.75;
+function railShown(est, stops) {
+  if (est.shown) return est.shown;
+  const n = stops.length, out = new Array(n).fill(null), j0 = est.at >= 0 ? est.at : est.index + 1;
+  for (let i = j0; i < n; i++) {
+    const a = est.arr[i];
+    if (a == null) break;
+    let late = i === j0 && est.at === i ? est.delay : sureLate(a - stops[i].arr, a - est.seen);
+    if (i > j0 && est.dep[i - 1] != null) {
+      // the station before's shown time plus the run between the two (predicted departure to predicted arrival)
+      const carried = stops[i - 1].arr + out[i - 1] + CATCH_UP * (a - est.dep[i - 1]) - stops[i].arr;
+      if (carried > late) late = Math.floor(carried / 60) * 60;
+    }
+    out[i] = Math.max(0, late);
+  }
+  est.shown = out;
+  return out;
 }
 /** When a train standing at a station pulled in, from its trail of recent fixes ([ms, lat, lon], oldest first, the last
  *  one now): halfway between its first fix there and the one before, as pipeline/railtimes.py measures stands; its first
@@ -256,8 +285,7 @@ export function liveAt(est, stops, stopIndex) {
   if (!est) return null;
   const passed = est.index > stopIndex || (est.index === stopIndex && est.frac > 0.2);
   if (est.rail) {
-    const a = est.arr[stopIndex];
-    const late = est.at === stopIndex || a == null ? est.delay : sureLate(a - stops[stopIndex].arr, a - est.seen);
+    const late = railShown(est, stops)[stopIndex] ?? est.delay;
     return { time: stops[stopIndex].arr + late, delay: late, passed, stale: est.stale };
   }
   const own = est.dep ? (est.at === stopIndex ? est.dep[stopIndex] ?? est.arr[stopIndex] : est.arr[stopIndex] ?? est.dep[stopIndex]) : null;
