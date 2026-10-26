@@ -1132,6 +1132,119 @@ https://www.gov.il/he/Departments/General/real_time_information_siri (its
 and trains, not the Jerusalem light rail, and answers with predicted
 arrival times per stop, which Hasadna's positions do not carry.
 
+## Live times, end to end
+
+The one place that says what every live number means, where it comes from,
+the rules it must keep, and everyone who reads it. Code that changes a live
+number changes this first. (Written 2026-10-26, after two bugs in one
+morning came from a number read as meaning something it did not.)
+
+### The pipeline
+
+```
+ Hasadna minute file (SIRI, every vehicle)        relay/relay.js, about a minute old
+        │
+        ▼
+ worker/vehicles.js  snapshot every 30 s; per ride it remembers
+        │            posSince (frozen fixes dropped), callSince (a train's
+        │            station call), trails (a train's fixes, 30 min)
+        ▼
+ vehicle v = { lineRef, scheduledStart, lat, lon, recordedAt, trail?, callSince? }
+        │  matched to a trip by (route id = lineRef, first departure = scheduledStart)
+        ▼
+ engine/delays.js estimateDelay(v, stops)  ──►  est
+        │   train: railAhead (learned runs, stands, profile)
+        │   bus:   busAhead  (learned hourly sections × live road factor)
+        │   else:  the timetable's pace
+        ▼
+ est = { late, delay, rail, index, frac, at, arr[], dep[], seen, stale }
+        │
+        ▼
+ engine/delays.js liveAt(est, stops, i)  ──►  { time, delay, passed, stale }   ← the ONE shown time at stop i
+        │   train: railShown (sure lateness, carried station to station)
+        │   bus:   the predicted arrival
+        ▼
+ every screen, and the planner (worker/plan.js applyLive moves the trip to these times)
+```
+
+### The quantities
+
+For one trip, stop `i` of its stop list:
+
+| Name | Meaning | Where |
+|---|---|---|
+| σᵢ | the listed time (the feed's arr = dep at a station) | `stops[i].arr` |
+| aᵢ, dᵢ | predicted arrival and departure, the best estimate | `est.arr[i]`, `est.dep[i]` |
+| `est.late` | best-estimate lateness at the vehicle's next stop (s) | internal checks only |
+| `est.delay` | the lateness the rider is shown at the vehicle's next stop (train: sure; bus: = late) | vehicle badges on the map |
+| Tᵢ, λᵢ | the shown time at stop i and its lateness, Tᵢ = σᵢ + λᵢ | `liveAt(est, stops, i)` |
+| leg `depart`/`arrive` | the times a plan gave the ride, with the live shift of the moment it was planned | a journey's legs |
+| leg `schedDepart`/`schedArrive` | the listed times of the same ride | a journey's legs |
+| leg `live.delay` | the lateness the plan used at the boarding stop: `depart − schedDepart` | cards, the detail before its own look |
+
+Seconds on the service day throughout. "Late" is always against σ at the
+same stop; a lateness at one stop is never shown beside a time at another.
+
+### The rules (each has its check)
+
+1. One shown time per stop. Whatever shows a vehicle's time at a stop, and
+   the planner boarding it there, uses `liveAt` for that trip and stop. No
+   screen recomputes it. (`tools/railtimes.test.mjs`; the line page and a
+   trip agree by construction.)
+2. A train is never shown early: λᵢ ≥ 0.
+3. Along a trip the shown times never run backwards: Tᵢ₊₁ ≥ Tᵢ + ¾ of the
+   predicted run between them. A train an hour late stays about an hour late
+   beyond the 30-minute horizon. (`railShown`; a test with an hour-late train.)
+4. A train's lateness is shown only when sure: λᵢ = sureLate(aᵢ − σᵢ, aᵢ − now)
+   (margin by distance ahead, whole minutes from 2 up), or the station
+   before's carried λ when that is more (rule 3).
+5. The planner moves a trip only to its shown times (arr and dep at stop i ←
+   Tᵢ, a train boarded when it pulls in), so a plan and the screens agree;
+   then, within a pattern, no trip later at a stop than the trip after it
+   (RAPTOR needs the trips in order). Both keep each trip's times in order.
+6. A planned time already carries the live shift of its moment. Never add a
+   delay to a planned time: compare it with a fresh `liveAt` instead.
+7. A label "+N" beside a time is that time minus σ at the same stop.
+
+### Who reads what
+
+| Reader | Reads | Shows |
+|---|---|---|
+| planner `worker/plan.js` applyLive | `liveAt` at every stop of each live trip | moves the trip; leg `live.delay` = depart − schedDepart |
+| result list `state/results.ts` | journey `depart`, the first ride's `depart`, the walk before it | on time, hurry or gone (below) |
+| result card `JourneyCard` | leg `depart`, `live.delay` | leave countdown; the first ride's "+N" |
+| trip detail `controllers/detail.ts` | `liveAt` at the boarding stop | the ride's time (struck listed time) and "+N" |
+| ride options, trains between two stations `controllers/liverides.ts` | `liveAt` at boarding and alighting stops | each row's times and ⦿ |
+| stop page `controllers/stop.ts` | `liveAt` at that stop | departures, ⦿ |
+| line page `controllers/line.ts` | `liveAt` at every stop of the chosen trip | the times down the list |
+| map vehicles `vehiclesStatus` | `est.delay` | "+N" on the rider's own vehicle, the bubble |
+| follow `controllers/follow.ts` | `liveAt` at the boarding (waiting) or alighting (on board) stop | the badge; the re-plan: its shift, that `liveAt` time less the planned time at the same stop, starts it (3 min or more) and moves the current way's arrival and the time it looks from |
+| worker handover check | `est.late` | nothing (is this report the same train going on) |
+
+### When to leave: the result list
+
+A journey's leave time L is its start (the walk or ride to the first stop,
+planned), its boarding time B the first ride's `depart`. With now n:
+
+```
+        L          B
+  ──────┼──────────┼──────────►  time
+   n here: on time ("leave in L − n min")
+              n here: late for the walk, the ride not gone ("hurry")
+                         n here, past B + 1 min: gone ("just left")
+```
+
+- On time, n ≤ L: a card, "leave in …".
+- Hurry, L < n ≤ B: the walk would need to be done faster. The plan sets
+  off as late as the ride allows, so the walk W before the first ride (to
+  its stop and any walk on) ends at B with nothing to spare. Within reach
+  when what is left covers it in a hurry: B − n ≥ 0.6·W (a fast walk or a
+  jog, 2 m/s against the planned 1.2; an estimate). Listed apart, one line that opens
+  ("you might still make N if you hurry"), each with its leave time in red
+  and how many minutes late you are. Out of reach: with the ones just left.
+- Gone, n > B + 60 s: the "just left" line (a plan from now looks 10
+  minutes back, so the ride you are on can still be followed).
+
 ## Crowd reports
 
 Structured, one tap each, never free text (moderation, safety and cost ruled

@@ -1,7 +1,8 @@
 // The list of ways: a head line (how many, with what, how live), the bicycle-only way when there is one, the
-// filters, the rides that just left, the cards, and earlier/later at the foot. While a plan is being made
+// filters, the rides that just left, those still in reach with a hurry, the cards, and earlier/later at the foot. While a plan is being made
 // the list gives way to one line.
 import { useState } from 'preact/hooks';
+import type { ComponentChildren, VNode } from 'preact';
 import { Icon } from '../../widgets/Icon';
 import { TimeRange } from '../../widgets/TimeRange';
 import type { IconName } from '../../widgets/icons';
@@ -46,31 +47,55 @@ function Filters() {
   );
 }
 
+/** A quiet line that opens on a tap to a few compact ways, each with a word on where it stands and a button (the ways
+ *  in reach if the rider hurries, and the rides that just left, share it). `fixed` shows the rows under a plain title. */
+function Strip({ cls, hint, fixed, children }: { cls: string; hint: string; fixed?: boolean; children: ComponentChildren }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div class={`strip ${cls}`}>
+      {fixed ? <div class="muted">{hint}</div>
+        : <button type="button" class={`strip-hint${open ? ' open' : ''}`} onClick={() => setOpen(!open)}>{hint} <Icon name="chevronDown" /></button>}
+      <div class="strip-rows" hidden={!fixed && !open}>{children}</div>
+    </div>
+  );
+}
+/** One way in a strip: its times and lines (a tap opens it), a note, and a button to start following it. */
+function StripRow({ j, q, note, act }: { j: Journey; q: Query; note: VNode; act: string }) {
+  return (
+    <div class="strip-row">
+      <div class="txt" onClick={() => results.hooks.openDetail(j, q)}>
+        <TimeRange from={j.depart} to={j.arrive} />
+        <span class="chips"><LegChips legs={j.legs.filter((l) => l.type === 'ride')} /></span>
+        {note}
+      </div>
+      <button type="button" class="ghost" onClick={(e) => { e.stopPropagation(); results.hooks.startTrip(j, q); }}><Icon name="play" /> {act}</button>
+    </div>
+  );
+}
+/** Ways whose leave time has passed but whose ride the rider can still reach with a brisk walk: the leave time in red
+ *  and how late it is (docs/architecture.md, "When to leave: the result list"). */
+function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
+  const nowSec = clock.nowOn(q.day);
+  return (
+    <Strip cls="hurry" hint={hurry.length === 1 ? t('hurryHint1') : t('hurryHint', { n: hurry.length })}>
+      {hurry.slice(0, 4).map((j) => (
+        <StripRow j={j} q={q} act={t('startTrip')}
+          note={<span class="late">{t('hurryLate', { time: fmt(j.depart), n: Math.max(1, Math.round((nowSec - j.depart) / 60)) })}</span>} />
+      ))}
+    </Strip>
+  );
+}
 /** Rides that just left: on a fresh plan one quiet line that opens on a tap (most riders want the next departures);
  *  on a plan restored from earlier they are shown, since the rider is likely on the way already. */
 function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored: boolean }) {
-  const [open, setOpen] = useState(false);
   const nowSec = clock.nowOn(q.day);
-  const rows = (
-    <div class="gone-rows" hidden={!restored && !open}>
-      {gone.slice().sort((a, b) => b.depart - a.depart).slice(0, 4).map((j) => (   // the four most recent: the one the rider is on is among them
-        <div class="gone">
-          <div class="txt" onClick={() => results.hooks.openDetail(j, q)}>
-            <TimeRange from={j.depart} to={j.arrive} />
-            <span class="chips"><LegChips legs={j.legs.filter((l) => l.type === 'ride')} /></span>
-            <span class="muted">{t('leftAgo', { n: Math.max(1, Math.round((nowSec - results.rideDep(j)) / 60)) })}</span>
-          </div>
-          <button type="button" class="ghost" onClick={(e) => { e.stopPropagation(); results.hooks.startTrip(j, q); }}><Icon name="play" /> {t('aboard')}</button>
-        </div>
-      ))}
-    </div>
-  );
   return (
-    <div class="gone-strip">
-      {restored ? <div class="muted">{t('goneTitle')}</div>
-        : <button type="button" class={`gone-hint${open ? ' open' : ''}`} onClick={() => setOpen(!open)}>{gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length })} <Icon name="chevronDown" /></button>}
-      {rows}
-    </div>
+    <Strip cls="gone" fixed={restored} hint={restored ? t('goneTitle') : gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length })}>
+      {gone.slice().sort((a, b) => b.depart - a.depart).slice(0, 4).map((j) => {   // the four most recent: the one the rider is on is among them
+        const left = nowSec - results.rideDep(j);   // a ride out of reach may not have left yet
+        return <StripRow j={j} q={q} act={t('aboard')} note={<span class="muted">{left > 0 ? t('leftAgo', { n: Math.max(1, Math.round(left / 60)) }) : t('leavesIn', { n: Math.max(0, Math.round(-left / 60)) })}</span>} />;
+      })}
+    </Strip>
   );
 }
 
@@ -79,12 +104,13 @@ export function Results() {
   const st = results.status.value, r = results.result.value, q = results.query.value, at = results.resultsAt.value;
   if (st !== 'idle') return <div id="results"><div class="empty">{t(st)}</div></div>;
   if (!r || !q) return <div id="results" />;
-  const { cards, gone, filteredOut } = results.list.value;
+  const { cards, hurry, gone, filteredOut } = results.list.value;
   const bikeOnly = r.bikeOnly;
   return (
     <div id="results">
       <Head q={q} n={(r.groups || r.journeys).length} at={at} />
       {gone.length > 0 && <GoneStrip gone={gone} q={q} restored={!!at} />}
+      {hurry.length > 0 && <HurryStrip hurry={hurry} q={q} />}
       {bikeOnly ? (
         <div class="journey" onClick={() => results.hooks.openDetail({ depart: 0, arrive: bikeOnly.seconds, transfers: 0, legs: [{ type: 'access', mode: 'bike', seconds: bikeOnly.seconds, path: bikeOnly.path, to: { name: describePlace(q.to) } }] }, q, true)}>
           <div class="top"><span class="times"><span class="chip bike"><Icon name="bike" /></span> {t('bikeOnly', { min: Math.round(bikeOnly.seconds / 60), km: (bikeOnly.metres / 1000).toFixed(1) })}</span></div>

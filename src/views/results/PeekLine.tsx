@@ -15,7 +15,7 @@ export function PeekLine() {
   const tap = () => { if (c) results.hooks.revealCard(c.idx, true); else results.hooks.peekTap(); };
   return (
     <button type="button" class="peekline" id="peekLine" hidden={!c} onClick={tap}>
-      {c && <><TimeRange from={c.j.depart} to={c.j.arrive} /><span class="muted">{dur(c.j.arrive - c.j.depart)} · {transfersText(c.j.transfers)}</span><Leave sec={c.dep} day={c.q.day} /></>}
+      {c && <><TimeRange from={c.j.depart} to={c.j.arrive} /><span class="muted">{dur(c.j.arrive - c.j.depart)} · {transfersText(c.j.transfers)}</span><Leave sec={c.j.depart} day={c.q.day} /></>}
     </button>
   );
 }

@@ -49,29 +49,15 @@ function applyLive(vehicles) {
     const { p, ns, base, stops } = tripStopList(t);
     const est = estimateDelay(v, stops, day);
     if (!est) continue;
-    tripLive.set(t, { delay: est.delay, index: est.index, seen: rec.getTime(), stale: est.ageSec > 240, lat: v.lat, lon: v.lon });
-    if (est.rail) {
-      // a train moves only by the lateness the rider is shown at each station (liveAt: what we are sure of), never
-      // earlier, and is boarded when it pulls in, the time shown (2026-10-25, Gadi: leave at 21:28 for the train
-      // shown at 21:26)
-      for (let i = est.index; i < ns; i++) {
-        const late = liveAt(est, stops, i).delay, idx = base + i;
-        if (late <= 0) continue;
-        touched.add(p); liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
-        tt.arr[idx] += late; tt.dep[idx] = tt.arr[idx];
-      }
-      continue;
-    }
-    if (Math.abs(est.delay) < 60 && !est.dep) continue;   // a bus with learned sections has its own time at each stop
-    touched.add(p);
+    tripLive.set(t, { seen: rec.getTime(), stale: est.ageSec > 240 });
+    if (!est.rail && !est.dep && Math.abs(est.delay) < 60) continue;   // a bus about on time, with no learned sections
+    // the trip moves to the time the rider is shown at each stop from the vehicle on (liveAt; docs/architecture.md,
+    // "Live times, end to end", rules 1 and 5): a train boarded when it pulls in, never earlier than its time
     for (let i = est.index; i < ns; i++) {
-      const idx = base + i;
-      const own = (x) => (x && x[i] != null ? Math.round(x[i]) : null);
-      let na = own(est.arr) ?? own(est.dep) ?? tt.arr[idx] + est.delay;
-      let nd = own(est.dep) ?? tt.dep[idx] + est.delay;
-      if (na > nd) na = nd;
-      liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
-      tt.dep[idx] = nd; tt.arr[idx] = na;
+      const at = liveAt(est, stops, i), idx = base + i;
+      if (tt.arr[idx] === at.time && tt.dep[idx] === at.time) continue;
+      touched.add(p); liveEdits.push(idx, tt.dep[idx], tt.arr[idx]);
+      tt.arr[idx] = tt.dep[idx] = at.time;
     }
   }
   // in order again: from the last trip back, none later at a stop than the one after it
@@ -103,7 +89,9 @@ function legOut(l, q) {
     const raw = rawTimes(p, l.trip);   // the schedule: dep/arr may carry a live shift during a plan
     Object.assign(o, { from: stopOut(l.from), to: stopOut(l.to), stops: l.stops, line: routeLabel(l.route),
       headsign: headsign(tt.patRoute[p]), agency: l.route[2], routeType: l.route[3],
-      trip: l.trip, routeId: liveId(l.route), estimated: !!l.route[6], route: tt.patRoute[p], firstDep: raw.dep[0], boardPos: bp, live: tripLive.get(l.trip) || null,
+      trip: l.trip, routeId: liveId(l.route), estimated: !!l.route[6], route: tt.patRoute[p], firstDep: raw.dep[0], boardPos: bp,
+      // the lateness the plan used at the boarding stop (rule 7: a "+N" beside a time is against the listed time there)
+      live: tripLive.has(l.trip) ? { delay: l.depart - (bp >= 0 ? raw.dep[bp] : l.depart), stale: tripLive.get(l.trip).stale, seen: tripLive.get(l.trip).seen } : null,
       schedDepart: bp >= 0 ? raw.dep[bp] : l.depart, schedArrive: bp >= 0 ? raw.arr[bp + l.stops] : l.arrive,
       pattern: p, alightPos: bp + l.stops,
       path: ridePath(p, bp, bp + l.stops) || l.via.map((s) => [tt.stopLat[s], tt.stopLon[s]]), pathKind: hasCourse(p) ? 'shape' : 'stops',

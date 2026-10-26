@@ -28,7 +28,7 @@ const LiveLine = ({ l }: { l?: Leg }) => {
 };
 
 export function JourneyCard({ card }: { card: Card }) {
-  const { j, q, options, lines, idx, dep } = card;
+  const { j, q, options, lines, idx } = card;
   const rides = j.legs.filter((l) => l.type === 'ride');
   const shown = results.altShown.value.has(idx), sel = shown && results.altSel.value === idx;
   void now.value;   // the "also at" times grey out as they pass
@@ -47,7 +47,7 @@ export function JourneyCard({ card }: { card: Card }) {
         </div>
       )}
       {rides.some((l) => l.estimated) && <div class="muted est">{t('estNote')}</div>}
-      <Leave sec={dep} day={q.day} liveInfo={rides[0]?.live} />
+      <Leave sec={j.depart} day={q.day} liveInfo={rides[0]?.live} />
       <LiveLine l={rides[0]} />
       <button type="button" class={`mapbtn${shown ? ' on' : ''}`} title={t('onMap')} aria-label={t('onMap')} onClick={(e) => { e.stopPropagation(); results.toggleAlt(idx); }}><Icon name="map" /></button>
     </div>
