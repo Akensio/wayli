@@ -112,11 +112,13 @@ for (const t of [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b)) {
   }
 }
 const q = (a, p) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(p * (s.length - 1))]; };
-const line = (xs) => (xs.length ? `n=${String(xs.length).padStart(6)}  typical ${(q(xs.map(Math.abs), 0.5) / 60).toFixed(1)}  90% within ${(q(xs.map(Math.abs), 0.9) / 60).toFixed(1)}  median ${(q(xs, 0.5) / 60).toFixed(1)}  within a minute ${Math.round(100 * xs.filter((e) => Math.abs(e) <= 60).length / xs.length)}%` : 'n=0');
+// 85% at most: the 85th percentile of the signed error, the margin a shown lateness must leave to be late by at most
+// what is shown 85% of the time (delays.js SURE_MARGIN is read off this column, per distance ahead)
+const line = (xs) => (xs.length ? `n=${String(xs.length).padStart(6)}  typical ${(q(xs.map(Math.abs), 0.5) / 60).toFixed(1)}  90% within ${(q(xs.map(Math.abs), 0.9) / 60).toFixed(1)}  median ${(q(xs, 0.5) / 60).toFixed(1)}  85% at most ${(q(xs, 0.85) / 60).toFixed(1)}  within a minute ${Math.round(100 * xs.filter((e) => Math.abs(e) <= 60).length / xs.length)}%` : 'n=0');
 console.log(`${day} ${from}-${to}: ${byRide.size} train rides, ${rows.length} reports (${rows.filter((r) => r[3] == null).length} without GPS); minutes, + = predicted later than the train came`);
 console.log(`  timetable alone   ${line(res.map((x) => x.tt))}`);
 console.log(`  the app           ${line(res.map((x) => x.err))}`);
-for (const [a, b] of [[0, 10], [10, 20], [20, 30], [30, 60]]) console.log(`    ${p2(a)}-${p2(b)} min ahead ${line(res.filter((x) => x.ahead >= a * 60 && x.ahead < b * 60).map((x) => x.err))}`);
+for (const [a, b] of [[0, 5], [5, 10], [10, 20], [20, 30], [30, 60]]) console.log(`    ${p2(a)}-${p2(b)} min ahead ${line(res.filter((x) => x.ahead >= a * 60 && x.ahead < b * 60).map((x) => x.err))}`);
 console.log(`    without GPS     ${line(res.filter((x) => !x.gps).map((x) => x.err))}`);
 // what the rider is shown (delays.js liveAt: a train late only by what we are sure of), against the timetable alone
 const pct = (f, xs = res) => `${(100 * xs.filter(f).length / Math.max(1, xs.length)).toFixed(1)}%`, big = res.filter((x) => x.real >= 180);

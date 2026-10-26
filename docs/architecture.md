@@ -889,9 +889,13 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   What the rider is shown, everywhere a train's time appears (a trip, ride
   options, a stop, the trains between two stations, a line, the planner,
   the vehicle's badge; `liveAt` and `sureLate`), is the listed time plus
-  only the lateness we are 85% sure of: the prediction less a margin by
-  how far ahead the station is (20 s within 5 minutes to 140 s at 30), in
-  whole minutes from 2 up, never early; beyond 30 minutes ahead a
+  only the lateness we are about 85% sure of: the prediction less a margin by
+  how far ahead the station is (20 s within 5 minutes, 60 to 10, 100 to 20,
+  140 to 30), in whole minutes from 2 up, never early. Each margin sits just
+  under the 85th percentile of the signed error at that distance on three
+  replayed mornings (`tools/trainbacktest.mjs`, its "85% at most" column:
+  30-36 s under 5 minutes, 66-84 at 5-10, 102-114 at 10-20, 138-162 at
+  20-30; 2026-10-21, 25 and 26, 07:30-10:30), so "sure" is 80 to 85%; beyond 30 minutes ahead a
   station only carries the lateness of the one before, less what the
   train can make up between them (times never run backwards). Most small train delays are made up on the way, and on ordinary
   mornings the point estimate was no better than the timetable (2026-10-21
