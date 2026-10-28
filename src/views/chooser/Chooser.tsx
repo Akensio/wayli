@@ -12,7 +12,6 @@ export function Chooser() {
   return (
     <>
       <div class="bar">
-        <button type="button" class="ghost" id="chCancel" onClick={() => chooser.finish(null)}>{t('cancel')}</button>
         <h2 id="chTitle">{chooser.title.value}</h2>
       </div>
       <div class="legs">

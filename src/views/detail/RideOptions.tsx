@@ -10,6 +10,7 @@ import { dur, inText } from '../../journey/format';
 import type { TrainRow, LiveTrain } from '../../state/station';
 import { LineChip } from '../../widgets/LineChip';
 import { LiveMark } from '../../widgets/LiveMark';
+import { Fold } from '../../widgets/Fold';
 
 type Props = {
   mine: number | null;                         // the trip the journey rides
@@ -54,7 +55,7 @@ export function RideOptions({ mine, load, liveFor, day, now, onOpen }: Props) {
           </div>
         );
       })}
-      {rows.length > FIRST && <div class="tt-bar"><button type="button" class={`tt-more${all ? ' on' : ''}`} onClick={() => setAll(!all)}><Icon name={all ? 'chevronUp' : 'chevronDown'} /> {all ? t('ttLess') : t('ttMore', { n: rows.length - FIRST })}</button></div>}
+      {rows.length > FIRST && <div class="tt-bar"><Fold pill open={all} onClick={() => setAll(!all)}>{all ? t('ttLess') : t('ttMore', { n: rows.length - FIRST })}</Fold></div>}
     </div>
   );
 }

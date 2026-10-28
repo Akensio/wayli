@@ -336,6 +336,8 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   min: ['דק\'', 'min'],
   hour: ['שע\'', 'h'],
   closeAll: ['סגירת הכל', 'Close all'],
+  expand: ['הרחבה למסך מלא', 'Expand'],
+  contract: ['כיווץ לחצי מסך', 'Contract'],
   inMin: ['בעוד {n} דק\'', 'in {n} min'],
   nowDep: ['עכשיו', 'now'],
   dayFmt: [['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']],

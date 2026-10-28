@@ -36,6 +36,7 @@ export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: 
   el.addEventListener('pointerdown', (e) => {
     if (e.button || onPage()) return;
     const target = e.target as HTMLElement, onHandle = handle.contains(target);
+    if (target.closest('.hbtn')) return;   // the handle row's buttons: a tap, never a drag
     const nearTop = e.clientY - el.getBoundingClientRect().top < 96;
     if (e.pointerType === 'touch' && sheet.state.value === 'peek') return;   // a finger on the collapsed sheet: the touch handler below
     // the body scrolls when half or fully open (a finger there is the touch handler's, at the scroll edges); the handle and the top always drag
@@ -62,7 +63,7 @@ export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: 
   };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   el.addEventListener('click', (e) => { if (swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
-  handle.addEventListener('click', () => { if (!swallow) sheet.toggle(); });
+  handle.addEventListener('click', (e) => { if (!swallow && !(e.target as HTMLElement).closest('.hbtn')) sheet.toggle(); });
 
   // Collapsed, every touch on the sheet is ours (touch-action none, so the browser never claims a gesture and
   // the events keep coming): a pull up opens it, a pull down is the pull-to-refresh. The direction is read

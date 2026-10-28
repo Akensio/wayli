@@ -4,6 +4,7 @@
 import { useState } from 'preact/hooks';
 import type { ComponentChildren, VNode } from 'preact';
 import { Icon } from '../../widgets/Icon';
+import { Fold } from '../../widgets/Fold';
 import { TimeRange } from '../../widgets/TimeRange';
 import type { IconName } from '../../widgets/icons';
 import { t, lang } from '../../lib/i18n';
@@ -54,7 +55,7 @@ function Strip({ cls, hint, fixed, children }: { cls: string; hint: string; fixe
   return (
     <div class={`strip ${cls}`}>
       {fixed ? <div class="muted">{hint}</div>
-        : <button type="button" class={`strip-hint${open ? ' open' : ''}`} onClick={() => setOpen(!open)}>{hint} <Icon name="chevronDown" /></button>}
+        : <Fold class="strip-hint" open={open} onClick={() => setOpen(!open)}>{hint}</Fold>}
       <div class="strip-rows" hidden={!fixed && !open}>{children}</div>
     </div>
   );

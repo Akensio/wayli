@@ -1,10 +1,11 @@
-// A line's times at a stop, the way a printed timetable at the stop has them: a row per hour, its minutes after it. The
-// times already gone are grey, the next one stands out, the chosen one is filled; the list opens at the hour of the next
+// A line's times at a stop, the way a printed timetable at the stop has them: a row per hour, its minutes after it
+// separated by commas (chips read as buttons, not as a timetable, 2026-10-28). The times already gone are grey, the next
+// one stands out, the chosen one is filled; the list opens at the hour of the next
 // one, a few hours tall and scrolling, or the whole day at a tap on "All day" above it (above, not under: under a box
 // that runs past the half-open sheet nobody saw it, 2026-10-25). A tap on a time chooses it (what it means is the
 // caller's: the stops' times on a line's page, the arrival on a ride).
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { Icon } from './Icon';
+import { Fold } from './Fold';
 import { t } from '../lib/i18n';
 import { two } from '../lib/time';
 
@@ -32,17 +33,17 @@ export function Timetable({ rows, now, sel, onPick, dim = false }: Props) {
   }, [rows, next?.trip, full]);
   return (
     <>
-    {hours.length > 3 && <div class="tt-bar"><button type="button" class={`tt-more${full ? ' on' : ''}`} aria-expanded={full} onClick={() => setFull(!full)}><Icon name={full ? 'chevronUp' : 'chevronDown'} /> {t(full ? 'ttLess' : 'ttAll')}</button></div>}
+    {hours.length > 3 && <div class="tt-bar"><Fold pill open={full} onClick={() => setFull(!full)}>{t(full ? 'ttLess' : 'ttAll')}</Fold></div>}
     <div class={`timetable${full ? ' full' : ''}${dim ? ' dim' : ''}`} ref={box}>
       {hours.map(({ h, rows: rs }) => (
         <div class="tt-row" key={h}>
           <span class="tt-h">{two(h % 24)}</span>
           <span class="tt-mins">
-            {rs.map((r) => (
-              <button type="button" key={r.trip} onClick={() => onPick(r)}
+            {rs.map((r, i) => (
+              <span key={r.trip}><button type="button" onClick={() => onPick(r)}
                 class={`tt-m${now != null && r.dep < now - 30 ? ' past' : ''}${next && r.trip === next.trip ? ' next' : ''}${r.trip === sel ? ' sel' : ''}`}>
                 {r.estimated ? '~' : ''}{two(Math.floor(r.dep / 60) % 60)}
-              </button>
+              </button>{i < rs.length - 1 ? <span class="tt-sep">,</span> : null}</span>
             ))}
           </span>
         </div>

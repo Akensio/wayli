@@ -12,6 +12,7 @@ import { agencyName } from '../../journey/agencies';
 import type { Leg } from '../../journey/types';
 import type { Badge } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
+import { Fold } from '../../widgets/Fold';
 
 type StopAlong = { arr: number; name: string };
 type Props = {
@@ -46,7 +47,7 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options }: P
     : <>{tf(l.depart!)}{ride && <><br />{tf(l.arrive!)}</>}</>;
   return (
     <div class={`leg ${l.type}${ride ? ' t' + l.routeType : ''}${cls ? ' ' + cls : ''}`}
-      onClick={onClick && ride ? (e) => { if ((e.target as HTMLElement).closest('.toggle, .stoplist, .rideopts')) return; onClick(); } : undefined}>
+      onClick={onClick && ride ? (e) => { if ((e.target as HTMLElement).closest('.fold, .stoplist, .wide')) return; onClick(); } : undefined}>
       <span class="t">{times}</span>
       <span class="dot" style={ride ? { background: routeColor(l.routeType, l.agency) } : undefined} />
       <span class="what">
@@ -55,15 +56,15 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options }: P
           {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? (liveTime != null && badge.delayText ? badge.delayText : badge.text) : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi>{est ? <span class="est"> · {t('estShort')}</span> : null}</small></>
             : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)}</>}
           {mode === 'detail' && stopsAlong.length > 2 && <>
-            <button type="button" class="toggle" onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</button>
+            <Fold open={stopsOpen} onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</Fold>
             <div class="stoplist" hidden={!stopsOpen}>{stopsAlong.map((s) => <div><span>{fmt(s.arr)}</span><span>{s.name}</span></div>)}</div>
           </>}
-          {mode === 'detail' && options && <>
-            <button type="button" class="toggle" onClick={() => setOptsOpen(!optsOpen)}>{optsOpen ? t('hideTimes') : t('rideOptions', { name: l.from!.name })}</button>
-            {optsOpen && <RideOptions mine={l.trip ?? null} {...options} />}
-          </>}
+          {mode === 'detail' && options && <Fold open={optsOpen} onClick={() => setOptsOpen(!optsOpen)}>{optsOpen ? t('hideTimes') : t('rideOptions', { name: l.from!.name })}</Fold>}
         </> : walkText(l, mins)}
       </span>
+      {/* the other rides doing this leg: a row of their own under the leg, the whole width of the list, not the text column
+          (there a narrow phone or large system text had nothing to give and the list scrolled sideways, 2026-10-28) */}
+      {ride && mode === 'detail' && options && optsOpen && <div class="wide"><RideOptions mine={l.trip ?? null} {...options} /></div>}
     </div>
   );
 }

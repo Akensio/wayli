@@ -11,7 +11,6 @@ import { now } from '../../state/clock';
 import { dur, tripKey, liveBadge } from '../../journey/format';
 import { shareJourney } from '../../journey/share';
 import { LegRow } from './LegRow';
-import { CloseAll } from '../../widgets/CloseAll';
 import { payLink } from '../../journey/pay';
 
 export function Detail() {
@@ -26,10 +25,8 @@ export function Detail() {
   return (
     <>
       <div class="bar">
-        <button type="button" class="ghost" id="detailBack" onClick={detail.hooks.close}>{t('back')}</button>
         <h2 id="detailTitle">{title}</h2>
         <StarButton id="detailStar" on={saved} onClick={toggleFav} />
-        <CloseAll />
       </div>
       <div class="actions">
         <button type="button" class="primary slim" id="detailStart" hidden={bikeOnly} disabled={over} title={over ? t('tripOver') : ''} onClick={() => detail.hooks.startTrip(j, q)}><Icon name="play" /> <span>{t('startTrip')}</span></button>

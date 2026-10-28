@@ -10,15 +10,19 @@ import * as line from '../../state/line';
 import { fmtPlus } from '../../journey/format';
 import { fmt } from '../../lib/time';
 import { Timetable } from '../../widgets/Timetable';
+import { Fold } from '../../widgets/Fold';
+import { useEffect, useState } from 'preact/hooks';
 import { LineChip } from '../../widgets/LineChip';
 import { favs, stored } from '../../lib/store.js';
-import { CloseAll } from '../../widgets/CloseAll';
 import { LiveMark } from '../../widgets/LiveMark';
 import * as delays from '../../engine/delays.js';
 
 export function LineDetail() {
   void lang.value;
   const info = line.info.value;
+  // the timetable starts folded, and folds again for another line (Gadi, 2026-10-28)
+  const [ttOpen, setTtOpen] = useState(false);
+  useEffect(() => { setTtOpen(false); }, [info]);
   if (!info) return null;
   const lv = line.liveText.value;
   void stored.value;
@@ -32,11 +36,9 @@ export function LineDetail() {
   return (
     <>
       <div class="bar">
-        <button type="button" class="ghost" id="lineBack" onClick={line.hooks.close}>{t('back')}</button>
         <LineChip line={info.line} routeType={info.routeType} agency={info.agency} mode={info.mode} big />
         <span class={`livebadge ${line.liveOk.value ? 'ok' : ''}`} id="lineLive" hidden={!lv}>{lv}</span>
         {key && <StarButton id="lineStar" on={on} onClick={toggleFav} />}
-        <CloseAll />
       </div>
       <div class="legs">
         <h2 id="lineTitle"><bdi>{info.mode === 'rail' && info.ends ? t('lineEnds', { a: info.ends[0], b: info.ends[1] }) : t('toward', { headsign: info.headsign })}</bdi></h2>
@@ -46,11 +48,13 @@ export function LineDetail() {
           {info.others.map((o) => <button type="button" class="chipbtn" onClick={() => line.hooks.openLine(o.route)}><Icon name="arrowsLR" /> {t('toward', { headsign: o.headsign })}</button>)}
         </div>
         {a && <>
-          <h2 class="sec" style="margin:12px 0 2px">{t('timesAtStop', { name: a.name })}</h2>
-          <div class="muted small">{t('pickStopHint')}</div>
-          {times === null ? <div class="empty">{t('loading')}</div>
-            : !times.length ? <div class="empty">{t('noTimesHere')}</div>
-            : <Timetable rows={times} now={line.now.value} sel={line.sel.value} onPick={line.hooks.pick} dim={line.loading.value} />}
+          <Fold class="sec" id="lineTtFold" open={ttOpen} onClick={() => setTtOpen(!ttOpen)}>{t('timesAtStop', { name: a.name })}</Fold>
+          {ttOpen && <>
+            <div class="muted small">{t('pickStopHint')}</div>
+            {times === null ? <div class="empty">{t('loading')}</div>
+              : !times.length ? <div class="empty">{t('noTimesHere')}</div>
+              : <Timetable rows={times} now={line.now.value} sel={line.sel.value} onPick={line.hooks.pick} dim={line.loading.value} />}
+          </>}
         </>}
         <div id="lineStops">
           {info.stops.map((st, i) => {

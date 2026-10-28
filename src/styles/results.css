@@ -30,12 +30,10 @@
 .strip-row .chips { display: inline-flex; gap: 4px; }
 .strip-row .muted { font-size: 12px; }
 .strip-row button.ghost { padding: 6px 10px; font-size: 13px; flex: none; color: var(--accent-text); font-weight: 600; }
-.strip-hint { display: flex; align-items: center; gap: 6px; background: none; border: 0; padding: 4px 2px 8px; color: var(--ink-2); font-size: 13px; cursor: pointer; }
-.strip-hint .i { transition: transform .2s; }
-.strip-hint.open .i { transform: rotate(180deg); }
+.strip .fold { display: flex; padding: 4px 2px 8px; color: var(--ink-2); font-weight: 400; }
 .strip-rows[hidden] { display: none; }
 /* in reach with a hurry: the leave time that passed, in red */
-.strip.hurry .strip-hint { color: var(--late); font-weight: 600; }
+.strip.hurry .fold { color: var(--late); font-weight: 600; }
 .strip.hurry .strip-row { border-color: color-mix(in srgb, var(--late) 45%, var(--line)); }
 .strip-row .late { color: var(--late); font-size: 12px; font-weight: 600; }
 .journey .leave:empty { display: none; }

@@ -12,7 +12,6 @@ import { now } from '../../state/clock';
 import { inText, dur } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
 import { LiveMark } from '../../widgets/LiveMark';
-import { CloseAll } from '../../widgets/CloseAll';
 
 export function StopDetail() {
   void lang.value; void now.value; void stored.value;
@@ -23,10 +22,8 @@ export function StopDetail() {
   return (
     <>
       <div class="bar">
-        <button type="button" class="ghost" id="stopBack" onClick={stop.hooks.close}>{t('back')}</button>
         <h2 id="stopTitle">{info.name}</h2>
         <StarButton id="stopStar" on={on} onClick={toggleFav} />
-        <CloseAll />
       </div>
       <div class="legs">
         <div class="muted" id="stopMeta">{info.city || ''}{info.code ? ' · ' + info.code : ''}</div>

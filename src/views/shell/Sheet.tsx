@@ -1,5 +1,6 @@
-// The bottom sheet: the handle, the page head (back and a title, on pages over the whole screen), and the
-// body with every screen and panel, one shown at a time.
+// The bottom sheet: the handle row (the grip, and on a panel Back and Close, always an expand/contract toggle: the
+// row is above the scrolling body, so they never scroll away), the page head (back and a title, on pages over the
+// whole screen), and the body with every screen and panel, one shown at a time.
 import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 import * as nav from '../../state/nav';
@@ -17,9 +18,18 @@ export function Sheet() {
   void lang.value;
   const k = nav.key.value, picking = nav.picking.value;
   const show = (id: string) => !picking && k === id;
+  const panel = !picking && !k.startsWith('screen-');   // a panel over the map: Back is one step, Close is the map
+  const full = sheet.state.value === 'full';
   return (
     <div class="sheet" id="sheet" data-state={sheet.state.value} hidden={picking}>
-      <div class="handle" id="sheetHandle"><span /></div>
+      <div class="handle" id="sheetHandle">
+        <button type="button" class="hbtn" id="sheetBack" hidden={!panel} aria-label={t('back')} title={t('back')} onClick={nav.back}><Icon name="back" class="chev" /></button>
+        <span class="grip" />
+        <span class="hend">
+          <button type="button" class="hbtn" id="sheetExpand" aria-label={t(full ? 'contract' : 'expand')} title={t(full ? 'contract' : 'expand')} onClick={() => sheet.set(full ? 'half' : 'full')}><Icon name={full ? 'chevronDown' : 'chevronUp'} /></button>
+          <button type="button" class="hbtn" id="sheetClose" hidden={!panel} aria-label={t('closeAll')} title={t('closeAll')} onClick={() => nav.closeAll()}><Icon name="close" /></button>
+        </span>
+      </div>
       <div class="pagehead"><button type="button" class="iconbtn flat" id="pageBack" aria-label={t('back')} onClick={nav.back}><Icon name="back" class="chev" /></button><h2 id="pageTitle">{nav.pageTitle()}</h2></div>
       <div class="sheet-body" id="sheetBody">
         <section class="screen" id="screen-plan" hidden={!show('screen-plan')}><PlanScreen /></section>

@@ -1,4 +1,11 @@
-/* widgets.css: pieces several views share: chips, live badges, the timetable, the time wheel, the toast, stars. */
+/* widgets.css: pieces several views share: chips, live badges, the timetable, the time wheel, the toast, stars, folds. */
+/* a fold (widgets/Fold): the label and a chevron that turns when open; as a pill, a chip that fills when open */
+.fold { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 4px 2px; color: var(--accent-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: start; }
+.fold .i { width: 16px; height: 16px; flex: none; transition: transform .2s; }
+.fold.open .i { transform: rotate(180deg); }
+.fold.pill { border-radius: 999px; padding: 5px 12px; background: var(--chip); }
+.fold.pill.open { background: var(--accent); color: var(--accent-ink); }
+.fold.sec { font-size: 15px; color: var(--ink); padding: 4px 0; }
 .ripple { position: absolute; border-radius: 50%; background: currentColor; opacity: .14; transform: scale(0); animation: ripple .45s ease-out forwards; pointer-events: none; }
 .chip .i { width: 1em; height: 1em; vertical-align: -.15em; }
 /* Israel Railways' mark before a train's number (widgets/RailLogo): as tall as a capital, as wide as it runs */

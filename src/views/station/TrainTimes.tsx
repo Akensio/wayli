@@ -6,7 +6,6 @@ import { fmt } from '../../lib/time';
 import * as st from '../../state/station';
 import { dur, inText } from '../../journey/format';
 import { now } from '../../state/clock';
-import { CloseAll } from '../../widgets/CloseAll';
 import { LineChip } from '../../widgets/LineChip';
 import { LiveMark } from '../../widgets/LiveMark';
 
@@ -18,9 +17,7 @@ export function TrainTimes() {
   return (
     <>
       <div class="bar">
-        <button type="button" class="ghost" id="trainsBack" onClick={st.hooks.closeTrains}>{t('back')}</button>
         <h2 id="trainsTitle"><bdi>{t('lineEnds', { a: p.from.name, b: p.to.name })}</bdi></h2>
-        <CloseAll />
       </div>
       <div class="legs">
         <div class="row"><h2 class="sec" style="margin:8px 0">{t(st.mode.value === 'lrt' ? 'directLrt' : 'directTrains')}</h2><span class="muted" id="trainsLive">{st.liveNote.value}</span></div>

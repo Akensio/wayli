@@ -1,6 +1,10 @@
 /* detail.css: a journey's detail: its legs, stops, ride options. */
 .legs { padding: 12px 16px 24px; }
-.leg { display: grid; grid-template-columns: 52px 14px 1fr; gap: 8px; align-items: start; padding: 6px 0; }
+/* three columns, and the text column may shrink (a grid column's floor is its content: with the other rides inside it, a
+   narrow phone or large system text pushed the list past the sheet, which then scrolled sideways on iPhones, 2026-10-28) */
+.leg { display: grid; grid-template-columns: 52px 14px minmax(0, 1fr); gap: 8px; align-items: start; padding: 6px 0; }
+.leg .what { min-width: 0; }
+.leg .wide { grid-column: 1 / -1; min-width: 0; }
 .leg .t { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 14px; padding-top: 2px; }
 .leg .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--ink-2); margin-top: 6px; }
 .leg.ride .dot { background: var(--bus); }
@@ -9,7 +13,7 @@
 .leg .what { font-size: 15px; }
 .leg .what small { display: block; color: var(--ink-2); font-size: 13px; }
 .leg .what .live { display: inline-block; margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; background: var(--chip); color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
-.leg .toggle { background: none; border: 0; color: var(--accent-text); font-size: 13px; padding: 2px 0; cursor: pointer; display: block; }
+.leg .fold { display: flex; padding: 2px 0; }
 .leg .stoplist { margin: 4px 0 2px; padding-inline-start: 4px; border-inline-start: 2px solid var(--line); }
 .leg .stoplist div { font-size: 13px; color: var(--ink-2); display: flex; gap: 8px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
 .leg .stoplist div span:first-child { min-width: 44px; }
@@ -23,7 +27,8 @@
 .leg .t b { color: var(--ink); }
 .detail .legs { padding: 4px 0 24px; }
 /* the ride the journey takes, among the others doing it */
-.rideopts { margin-top: 4px; }
+.rideopts { margin: 2px 0 4px; }
 .rideopts .trainrow { padding: 8px 2px; }
+.rideopts .trainrow .time, .rideopts .trainrow .in { flex: none; white-space: nowrap; }
 .rideopts .trainrow .time { font-size: 15px; }
 .rideopts .chip { font-size: 12px; padding: 1px 6px; }

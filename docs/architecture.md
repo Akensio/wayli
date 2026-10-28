@@ -299,7 +299,16 @@ nearest size to where it was let go; a short pull (40 px) or a quick one
 (0.5 px/ms) steps one size in its direction rather than falling back; only
 a long drag past the midpoint opens or closes all the way, as Android's own
 sheets do (speed picks the next size, never the far one). A tap on the
-handle cycles the sizes; a tap on empty map collapses it.
+handle cycles the sizes; a tap on empty map collapses it. The handle row
+is also the panels' toolbar (2026-10-28): on a panel, Back (one step) at
+its start and Close (every panel, back to the map) at its end, and on every
+screen a toggle that opens the sheet fully or back to half. The row sits
+above the scrolling body, so they never scroll out of reach, and it costs
+the body nothing, since the row was there; the panels' own bars keep the
+title, the chip, the live badge and the star. Every fold in the app (the
+just-left and hurry lines, a timetable's whole day, a ride's stops and its
+other rides, the line page's timetable, which starts folded) is one widget,
+`widgets/Fold`: a label and a chevron that turns when open.
 The map's own buttons (locate, compass) sit in the bottom corner above the
 sheet and fade with the map under a fully open sheet. Tilted, the map gets
 depth: a sky and a haze towards the horizon (MapLibre's sky, pitch up to
