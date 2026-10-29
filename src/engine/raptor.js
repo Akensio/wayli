@@ -255,7 +255,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
         // round 0 walks on from the access leg: the whole of it within accessMax (lblWalk there includes the access)
         if (k === 0 && accessMax != null ? w > accessMax : w > chainMax) continue;
         const q = trTo[i], tq = tp + trTime[i];
-        if (tq < tau[k][q] && better(k, q, tq) && tq <= bestDest) {
+        if (tq < tau[k][q] && better(k, q, tq) && tq <= bestDest + EGRESS_GRAIN) {
           improve(k, q, tq, w);
           lblType[k][q] = 2; lblFrom[k][q] = p; lblWalk[k][q] = w; lblRide[k][q] = 0;
           queue.push(q);
@@ -313,10 +313,20 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
     return m;
   };
   const extract = (k) => {
-    // which destination stop gives the round-k arrival
-    let bestD = null, bestT = INF;
-    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < bestT && endOk(k, d)) { bestT = v + d.walk; bestD = d; } }
-    if (!bestD) return;
+    // which destination stop to get off at in round k: the earliest arrival at the door, walk included; but among the
+    // stops that arrive within EGRESS_GRAIN of it, the one with the least walking (the walk on from the stop reached
+    // and the way to the door): once aboard, staying on to the stop by the door costs nothing, while getting off a
+    // block early to arrive seconds sooner is a walk for nothing. The journey's arrival is the real one.
+    let earliest = INF;
+    for (const d of dests) { const v = tau[k][d.stop]; if (v !== INF && v + d.walk < earliest && endOk(k, d)) earliest = v + d.walk; }
+    if (earliest === INF) return;
+    const walkOf = (d) => walkIn(k, d.stop) + d.walk;
+    let bestD = null;
+    for (const d of dests) {
+      const v = tau[k][d.stop]; if (v === INF || v + d.walk > earliest + EGRESS_GRAIN || !endOk(k, d)) continue;
+      if (!bestD || walkOf(d) < walkOf(bestD) || (walkOf(d) === walkOf(bestD) && v + d.walk < tau[k][bestD.stop] + bestD.walk)) bestD = d;
+    }
+    const bestT = tau[k][bestD.stop] + bestD.walk;
     const legs = [];
     let s = bestD.stop, kk = k, guard = 0;
     while (kk >= 0 && guard++ < 1000) {
@@ -402,7 +412,7 @@ export function profile(tt, origins, dests, fromTime, toTime, opts = {}) {
           const stop = patStops[sBase + pos];
           if (t >= 0) {
             const a = arr[base + (t - tFirst) * ns + pos];
-            if (better(k, stop, a) && a <= bestDest) {
+            if (better(k, stop, a) && a <= bestDest + EGRESS_GRAIN) {
               improve(k, stop, a);
               lblType[k][stop] = 1; lblTrip[k][stop] = t; lblBoardPos[k][stop] = boardPos; lblAlightPos[k][stop] = pos;
               lblWalk[k][stop] = 0; lblRide[k][stop] = 1;
@@ -437,6 +447,7 @@ export function plan(tt, origins, dests, depTime, maxTransfersOrOpts = 3) {
 
 const TRANSFER_PENALTY = 300;  // s: an extra transfer has to save at least this much
 const WALK_WEIGHT = 0.5;       // a minute walking costs this many minutes of riding, on top of its time
+const EGRESS_GRAIN = 60;       // s: getting off earlier to walk has to bring the rider to the door sooner by at least this much
 
 function cost(j) { return (j.arrive - j.depart) + TRANSFER_PENALTY * j.transfers + WALK_WEIGHT * j.walkSeconds; }
 

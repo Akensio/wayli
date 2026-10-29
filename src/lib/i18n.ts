@@ -166,6 +166,8 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   livePlanned: ['זמני אמת מ-{time}', 'live times as of {time}'],
   schedOnly: ['לוח זמנים בלבד', 'schedule only'],
   liveDelay: ['⦿ {d} דק\'', '⦿ {d} min'],
+  rideAtStop: ['{line} בתחנה {when}', '{line} at the stop {when}'],
+  rideAtStation: ['{line} ברציף {when}', '{line} at the station {when}'],
   estNote: ['קו סופ"ש (נעים בסופ"ש): כל 20–30 דקות, הזמנים משוערים ואין מיקום חי', 'Weekend line (Na\'im BeSofash): every 20–30 minutes; times are estimates and there is no live position'],
   directLrt: ['נסיעות ישירות', 'Direct rides'],
   directTrains: ['רכבות ישירות', 'Direct trains'],

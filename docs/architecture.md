@@ -87,7 +87,12 @@ are a required mode. Built the same day:
   arrival that save a transfer are kept, which the textbook pruning loses.
   Ranking: Pareto by departure, arrival and transfers, then an extra
   transfer has to save at least 5 minutes. The departure shown is the latest
-  that still makes the first vehicle.
+  that still makes the first vehicle. The stop to get off at: the earliest
+  arrival at the door, walk included, but among the stops within a minute of
+  it the one with the least walking, since once aboard staying on to the
+  stop by the door costs nothing and getting off a block early to arrive
+  seconds sooner is a walk for nothing; the journey's arrival stays the real
+  one.
 - **First and last mile** (`src/engine/streets.js`): Dijkstra on the street graph
   from a point, on foot (15 min) or by bike (20 min), to every stop it can
   reach; those become the origins or destinations. A point joins the
@@ -458,7 +463,14 @@ between the same stops that arrive later, marked "19:37→20:09", which the
 router drops as beaten but a rider at the platform wants) and the alternative lines of a leg shown together
 ("5 / 18"); "leave in 4 min" counts down (green when the first ride's vehicle has a
 fresh live report, orange when its report is older than four minutes,
-plain with the schedule alone) and departed options grey out;
+plain with the schedule alone), under it when the first ride reaches its
+stop ("60 at the stop in 14 min", the time the plan was made with, marked
+live when its vehicle was seen; how late it runs is not said, since the
+card never shows the planned time it would be against), and departed
+options grey out. The cards are in the order chosen by the option each
+one shows (its first departure still ahead), so "by arrival" is the
+arrival on the card; each card's number on the map comes from its group's
+first option and does not change as departures pass;
 earlier/later buttons shift the window; no results offers an hour later or
 a longer walk. The last search opens again, planned afresh, when the app is
 reopened within six hours; the

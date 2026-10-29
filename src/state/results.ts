@@ -58,8 +58,12 @@ function build(r: PlanResult | null, q: Query | null, at: number | null, f: Filt
   if (q.arriveBy) groups = groups.slice().sort((a, b) => first(b).depart - first(a).depart);   // latest departure first, by what each card shows
   if (f.fDirect) groups = groups.filter((g) => first(g).transfers === 0);
   if (f.fTrain) groups = groups.filter((g) => first(g).legs.some((l) => l.type === 'ride' && l.routeType === 2));
-  // arrive-by keeps its own order by arrival (the latest that is in time first); every other order sorts (stable)
-  if (!(q.arriveBy && f.resultSort === 'arrive')) { const sk = sortKey[f.resultSort]; groups = groups.slice().sort((a, b) => sk(first(a)) - sk(first(b)) || sortKey.depart(first(a)) - sortKey.depart(first(b))); }
+  // arrive-by keeps its own order by arrival (the latest that is in time first); every other order sorts (stable).
+  // The groups are sorted by their first option, which fixes each card's number (idx) for the map; the cards are
+  // sorted again below by the option each one shows, since the first may have gone by
+  const sorted = !(q.arriveBy && f.resultSort === 'arrive'), sk = sortKey[f.resultSort];
+  const byKey = (a: Journey, b: Journey) => sk(a) - sk(b) || sortKey.depart(a) - sortKey.depart(b);
+  if (sorted) groups = groups.slice().sort((a, b) => byKey(first(a), first(b)));
   const nowSec = clock.nowOn(q.day);
   const where = (j: Journey): Standing => (q.isNow ? standing(j, nowSec) : 'ontime');   // a plan for a set time is read as asked
   const onStrip = (j: Journey) => rideDep(j) >= nowSec - 600 || (!!at && j.arrive > nowSec);   // left lately, or (restored) still under way
@@ -72,6 +76,7 @@ function build(r: PlanResult | null, q: Query | null, at: number | null, f: Filt
     opts = opts.filter((j) => where(j) === 'ontime');
     if (opts.length) cards.push({ idx, j: opts[0], q, options: opts, lines: g.lines });
   });
+  if (sorted) cards.sort((a, b) => byKey(a.j, b.j));   // "by arrival" means the arrival the card shows
   hurry.sort((a, b) => rideDep(a) - rideDep(b));
   return { cards, hurry, gone, filteredOut: !groups.length };
 }

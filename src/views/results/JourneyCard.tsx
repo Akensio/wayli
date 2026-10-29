@@ -1,14 +1,14 @@
 // One way to get there: times and duration, the legs as chips, the lines and where they head, the other
-// departures of the same lines, when to leave (counting down), how late the first ride runs, and the map
+// departures of the same lines, when to leave (counting down), when the first ride reaches its stop, and the map
 // button that draws it on the map or takes it off.
-import * as delays from '../../engine/delays.js';
 import { Icon } from '../../widgets/Icon';
+import { LiveMark } from '../../widgets/LiveMark';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { now } from '../../state/clock';
 import * as results from '../../state/results';
-import { dur, transfersText, lineText, leaveText, delayText } from '../../journey/format';
+import { dur, transfersText, lineText, leaveText, inText } from '../../journey/format';
 import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
 import type { Leg } from '../../journey/types';
@@ -20,11 +20,15 @@ export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveIn
   const cls = liveInfo ? (liveInfo.stale ? ' unsure' : ' live') : '';
   return <div class={`leave${cls}${txt === t('departed') ? ' past' : ''}`}>{txt}</div>;
 }
-/** A ride planned with live data: how late its vehicle runs. */
-const LiveLine = ({ l }: { l?: Leg }) => {
-  if (!l || !l.live) return null;
-  const d = delays.delayMinutes(l.live.delay);
-  return <div class="muted"><span class={`live ${l.live.stale ? 'unsure' : 'ok'}`}>{delayText(d)}{l.live.stale ? ' ?' : ''}</span></div>;
+/** When the first ride reaches the stop it is boarded at, counting down ("60 at the stop in 14 min"): the time the
+ *  plan was made with, live when its vehicle was seen (marked, a ? when the report is old), the timetable's otherwise.
+ *  How late it runs is not said: against a planned time the card never shows, it told the rider nothing (Gadi). */
+const RideIn = ({ l, day }: { l?: Leg; day: string }) => {
+  void now.value;
+  if (!l) return null;
+  const when = inText(l.depart!, day);
+  if (!when) return null;
+  return <div class="muted ridein">{l.live && <><LiveMark stale={l.live.stale} /> </>}{t(l.routeType === 2 ? 'rideAtStation' : 'rideAtStop', { line: lineText(l.line), when })}</div>;
 };
 
 export function JourneyCard({ card }: { card: Card }) {
@@ -48,7 +52,7 @@ export function JourneyCard({ card }: { card: Card }) {
       )}
       {rides.some((l) => l.estimated) && <div class="muted est">{t('estNote')}</div>}
       <Leave sec={j.depart} day={q.day} liveInfo={rides[0]?.live} />
-      <LiveLine l={rides[0]} />
+      <RideIn l={rides[0]} day={q.day} />
       <button type="button" class={`mapbtn${shown ? ' on' : ''}`} title={t('onMap')} aria-label={t('onMap')} onClick={(e) => { e.stopPropagation(); results.toggleAlt(idx); }}><Icon name="map" /></button>
     </div>
   );
