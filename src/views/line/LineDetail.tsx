@@ -8,9 +8,10 @@ import { agencyName } from '../../journey/agencies';
 import { t, lang } from '../../lib/i18n';
 import * as line from '../../state/line';
 import { fmtPlus } from '../../journey/format';
-import { fmt } from '../../lib/time';
+
 import { Timetable } from '../../widgets/Timetable';
 import { Fold } from '../../widgets/Fold';
+import { ShownTime } from '../../widgets/ShownTime';
 import { useEffect, useState } from 'preact/hooks';
 import { LineChip } from '../../widgets/LineChip';
 import { favs, stored } from '../../lib/store.js';
@@ -67,7 +68,7 @@ export function LineDetail() {
                   {i === ai && l && !l.passed && <> <LiveMark delayMin={delays.delayMinutes(l.delay)} stale={l.stale} /></>}</span>
                 {i === ai ? <button type="button" class="ghost slim" onClick={(e) => { e.stopPropagation(); line.hooks.openStop(st.stop); }}>{t('stopDetails')}</button>
                   : rel != null && <span class="rel">{rel > 0 ? '+' : rel < 0 ? '−' : ''}{Math.abs(rel)}′</span>}
-                {at != null && <span class="at">{late && <s>{fmt(sel[i]!)}</s>}{fmt(at)}</span>}
+                {at != null && <ShownTime planned={late ? sel[i]! : at} live={late ? at : null} class="at" />}
               </div>
             );
           })}

@@ -29,9 +29,6 @@ export const dayShort = (s: string): string => dayLabel(s).split(' · ')[0];
 /** Seconds on a service day as the planner keeps them, "25:10" past midnight (never wrapped). */
 export const hm = (sec: number): string => `${two(Math.floor(sec / 3600))}:${two(Math.floor((sec % 3600) / 60))}`;
 /** "25:10" (or "08:00") as seconds. */
-/** Rows in the order of the time each shows: live where a vehicle is seen, planned otherwise. A list in planned order
- *  with live times on it read scrambled once a line ran 48 minutes late (Gadi, 2026-10-29). */
-export const byShownTime = <T>(rows: T[], shown: (r: T) => number): T[] => rows.slice().sort((a, b) => shown(a) - shown(b));
 export const secOf = (v: string): number => { const [h, m] = v.split(':').map(Number); return (Number.isNaN(h) ? 8 : h) * 3600 + (m || 0) * 60; };
 /** A time on a service day as the rider reads it: the calendar day and the clock ("25:10" on the 21st is 01:10 on the 22nd). */
 export const calendarOf = (day: string, sec: number): { cal: string; time: string } => ({ cal: clock.shiftDay(day, Math.floor(sec / 86400)), time: fmt(sec) });

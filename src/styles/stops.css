@@ -57,4 +57,3 @@
 .linerow .at { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 44px; text-align: end; }
 .linerow .rel { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; min-width: 34px; text-align: end; }
 .linerow .ghost.slim { padding: 3px 8px; font-size: 12px; }
-.linerow .at s { font-weight: 400; opacity: .6; margin-inline-end: 4px; }

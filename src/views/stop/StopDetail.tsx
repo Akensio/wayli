@@ -5,12 +5,13 @@
 import { Icon } from '../../widgets/Icon';
 import { StarButton } from '../../widgets/StarButton';
 import { t, lang } from '../../lib/i18n';
-import { fmt, byShownTime } from '../../lib/time';
+import { fmt } from '../../lib/time';
 import { favs, stored } from '../../lib/store.js';
 import * as stop from '../../state/stop';
 import { now } from '../../state/clock';
 import { inText, dur } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
+import { ShownTime } from '../../widgets/ShownTime';
 import { LiveMark } from '../../widgets/LiveMark';
 
 export function StopDetail() {
@@ -41,12 +42,12 @@ export function StopDetail() {
         <div class="row"><h2 class="sec" style="margin:8px 0">{t('nextDeps')}</h2><span class="muted" id="stopLiveNote">{stop.liveNote.value}</span></div>
         <div id="stopDeps">
           {deps && !deps.length && <div class="empty">{t('noDeps')}</div>}
-          {byShownTime(deps || [], (d) => { const lv = stop.liveDeps.value[String(d.trip)]; return lv && !lv.passed ? lv.time : d.time; }).map((d) => {
+          {(deps || []).map((d) => {
             const lv = stop.liveDeps.value[String(d.trip)];
             const timeCls = !lv ? 'time' : lv.passed ? 'time gone' : `time ${lv.stale ? 'unsure' : 'live'}`;
             return (
               <div class="dep" data-trip={d.trip} key={d.trip} onClick={() => stop.hooks.openTrip(d.trip, info.stop)}>
-                <span class={timeCls}>{lv && !lv.passed ? fmt(lv.time) : (d.estimated ? '~' : '') + fmt(d.time)}</span>
+                <ShownTime planned={d.time} live={lv && !lv.passed ? lv.time : null} class={timeCls} prefix={d.estimated ? '~' : ''} />
                 <LineChip line={d.line} routeType={d.routeType} agency={d.agency} />
                 <span class="head">{d.headsign}{d.estimated && <small class="est">{t('estShort')}</small>}</span>
                 <span class="in">

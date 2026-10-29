@@ -2,11 +2,12 @@
 // it heads (the way back: the swap between the two boxes at the top). A tap opens the train's stops.
 import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
-import { fmt, byShownTime } from '../../lib/time';
+
 import * as st from '../../state/station';
 import { dur, inText } from '../../journey/format';
 import { now } from '../../state/clock';
 import { LineChip } from '../../widgets/LineChip';
+import { ShownTime } from '../../widgets/ShownTime';
 import { LiveMark } from '../../widgets/LiveMark';
 
 export function TrainTimes() {
@@ -24,14 +25,14 @@ export function TrainTimes() {
         {rows === null && <div class="empty">{t('loading')}</div>}
         {rows && !rows.length && <div class="empty">{t(st.mode.value === 'lrt' ? 'noDirectLrt' : 'noDirectTrains')}</div>}
         <div id="trainRows">
-          {byShownTime(rows || [], (r) => { const lv = st.live.value[String(r.trip)]; return lv ? lv.dep : r.dep; }).map((r) => {
+          {(rows || []).map((r) => {
             const lv = st.live.value[String(r.trip)];
             const dep = lv ? lv.dep : r.dep, arr = lv ? lv.arr : r.arr;
             return (
               <div class={`trainrow${lv && lv.passed ? ' gone' : ''}`} key={r.trip} onClick={() => st.hooks.openTrip(r.trip, r.fromStop)}>
-                <span class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}>{fmt(dep)}</span>
+                <ShownTime planned={r.dep} live={lv ? lv.dep : null} class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`} />
                 <span class="arrow"><Icon name="chevronEnd" class="chev" /></span>
-                <span class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}>{fmt(arr)}</span>
+                <ShownTime planned={r.arr} live={lv ? lv.arr : null} class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`} />
                 <span class="what"><span><LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)} · {r.stops === 1 ? t('stops1') : t('stopsN', { n: r.stops })}</span><small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
                 <span class="in">{lv && !lv.passed ? <><LiveMark delayMin={lv.delayMin} stale={lv.stale} /> </> : null}{lv && lv.passed ? t('livePassed') : st.isNow.value ? inText(dep, day) : ''}</span>
               </div>

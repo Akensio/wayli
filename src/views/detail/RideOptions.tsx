@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Icon } from '../../widgets/Icon';
 import { t } from '../../lib/i18n';
-import { fmt, byShownTime } from '../../lib/time';
+import { ShownTime } from '../../widgets/ShownTime';
 import { dur, inText } from '../../journey/format';
 import type { TrainRow, LiveTrain } from '../../state/station';
 import { LineChip } from '../../widgets/LineChip';
@@ -39,17 +39,16 @@ export function RideOptions({ mine, load, liveFor, day, now, onOpen }: Props) {
   }, []);
   if (rows === null) return <div class="muted small">{t('loading')}</div>;
   if (!rows.length) return <div class="muted small">{t('noRideOptions')}</div>;
-  const ordered = byShownTime(rows, (r) => { const l = lv[String(r.trip)]; return l ? l.dep : r.dep; });
-  const shown = all ? ordered : ordered.slice(0, FIRST);
+  const shown = all ? rows : rows.slice(0, FIRST);
   return (
     <div class="rideopts">
       {shown.map((r) => {
         const l = lv[String(r.trip)], dep = l ? l.dep : r.dep, arr = l ? l.arr : r.arr, cls = l ? (l.stale ? ' unsure' : ' live') : '';
         return (
           <div class={`trainrow${l && l.passed ? ' gone' : ''}${r.trip === mine ? ' mine' : ''}`} key={r.trip} onClick={() => onOpen(r.trip, r.fromStop)}>
-            <span class={`time${cls}`}>{fmt(dep)}</span>
+            <ShownTime planned={r.dep} live={l ? l.dep : null} class={`time${cls}`} />
             <span class="arrow"><Icon name="chevronEnd" class="chev" /></span>
-            <span class={`time${cls}`}>{fmt(arr)}</span>
+            <ShownTime planned={r.arr} live={l ? l.arr : null} class={`time${cls}`} />
             <span class="what"><span><LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)}</span>
               <small><bdi>{t('toward', { headsign: r.headsign })}</bdi></small></span>
             <span class="in">{l && !l.passed ? <><LiveMark delayMin={l.delayMin} stale={l.stale} /> </> : null}{l && l.passed ? t('livePassed') : now != null ? inText(dep, day) : ''}</span>

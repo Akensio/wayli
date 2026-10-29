@@ -1,4 +1,6 @@
 /* widgets.css: pieces several views share: chips, live badges, the timetable, the time wheel, the toast, stars, folds. */
+/* a shown time (widgets/ShownTime): the planned one struck, small, before the live one */
+.shown s { font-weight: 400; opacity: .6; margin-inline-end: 4px; }
 /* a fold (widgets/Fold): the label and a chevron that turns when open; as a pill, a chip that fills when open */
 .fold { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 4px 2px; color: var(--accent-text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: start; }
 .fold .i { width: 16px; height: 16px; flex: none; transition: transform .2s; }
