@@ -155,10 +155,13 @@ def project_stops(slat, slon, plat, plon):
         px, py = sx - ax[prev:], sy - ay[prev:]
         t = np.clip((px * dx[prev:] + py * dy[prev:]) / seg2[prev:], 0.0, 1.0)
         d = np.hypot(px - t * dx[prev:], py - t * dy[prev:])
-        # a course can pass the same place twice (loops): take the first segment that is close
-        # enough, and only otherwise the nearest one ahead
-        close = np.flatnonzero(d < 60.0)
-        j = int(close[0]) if len(close) else int(np.argmin(d))
+        # a course can pass the same place twice (loops): take the first segment that passes the stop
+        # about as closely as the nearest one ahead does (within 15 m of it: the stop's own placing error),
+        # so a stop served on the first pass is not put on the second, which would push every stop after
+        # it along too. (A flat 60 m used to count as close, and the clamped end of the segment before a
+        # sharp turn took 13% of the stops from the segment they sit on, up to 60 m off, 2026-10-29.)
+        close = np.flatnonzero(d <= d.min() + 15.0)
+        j = int(close[0])
         worst = max(worst, float(d[j]))
         prev += j
         segs.append(prev)

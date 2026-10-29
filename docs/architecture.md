@@ -728,9 +728,12 @@ a week (a new OpenStreetMap extract), the day's timetable and the learned
 times nightly, and the courses only when the feed's shapes change.
 Each day's file says which shape every pattern runs on and where each of
 its stops falls along it (segment and fraction, computed by projecting the
-stop on the simplified course, never backwards; a pattern whose trips name
-no shape borrows a sibling's when its stops lie on it), so a ride between
-two stops is drawn along the road. A straight line between stops is never
+stop on the simplified course, never backwards, taking the first segment
+ahead that passes the stop within 15 m of the nearest one, so a loop's stop
+is placed on its first pass; a pattern whose trips name no shape borrows a
+sibling's when its stops lie on it), so a ride between two stops is drawn
+along the road; the pins at boarding and alighting sit at the stops
+themselves, where the walks end. A straight line between stops is never
 shown as a route: until the courses are loaded (or for the few patterns
 with no course at all) a ride is drawn dashed from stop to stop, and the
 faint whole lines around a ride or through a stop wait for their courses;

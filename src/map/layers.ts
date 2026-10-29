@@ -90,7 +90,10 @@ export function drawJourney(m: MLMap, j: Journey, markers: Marker[], focus = -1,
     coords.forEach((c) => bounds.extend(c));
     features.push({ type: 'Feature', properties: { color, ...legProps(l) }, geometry: { type: 'LineString', coordinates: coords } });
     if (l.type === 'ride') {
-      for (const c of [coords[0], coords[coords.length - 1]]) {
+      // the pins at the stops themselves (where the walk ends), not at the course's ends: a stop placed off its
+      // course by the data would otherwise show a pin away from where the rider is sent
+      const at = (st: Leg['from'], c: [number, number]): [number, number] => (st && typeof st.lon === 'number' && typeof st.lat === 'number' ? [st.lon, st.lat] : c);
+      for (const c of [at(l.from, coords[0]), at(l.to, coords[coords.length - 1])]) {
         const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = color;
         markers.push(new maplibregl.Marker({ element: el }).setLngLat(c).addTo(m));
       }
