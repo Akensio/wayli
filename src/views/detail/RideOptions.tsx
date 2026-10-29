@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Icon } from '../../widgets/Icon';
 import { t } from '../../lib/i18n';
-import { fmt } from '../../lib/time';
+import { fmt, byShownTime } from '../../lib/time';
 import { dur, inText } from '../../journey/format';
 import type { TrainRow, LiveTrain } from '../../state/station';
 import { LineChip } from '../../widgets/LineChip';
@@ -39,7 +39,8 @@ export function RideOptions({ mine, load, liveFor, day, now, onOpen }: Props) {
   }, []);
   if (rows === null) return <div class="muted small">{t('loading')}</div>;
   if (!rows.length) return <div class="muted small">{t('noRideOptions')}</div>;
-  const shown = all ? rows : rows.slice(0, FIRST);
+  const ordered = byShownTime(rows, (r) => { const l = lv[String(r.trip)]; return l ? l.dep : r.dep; });
+  const shown = all ? ordered : ordered.slice(0, FIRST);
   return (
     <div class="rideopts">
       {shown.map((r) => {

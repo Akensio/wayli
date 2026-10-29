@@ -2,7 +2,7 @@
 // it heads (the way back: the swap between the two boxes at the top). A tap opens the train's stops.
 import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
-import { fmt } from '../../lib/time';
+import { fmt, byShownTime } from '../../lib/time';
 import * as st from '../../state/station';
 import { dur, inText } from '../../journey/format';
 import { now } from '../../state/clock';
@@ -24,7 +24,7 @@ export function TrainTimes() {
         {rows === null && <div class="empty">{t('loading')}</div>}
         {rows && !rows.length && <div class="empty">{t(st.mode.value === 'lrt' ? 'noDirectLrt' : 'noDirectTrains')}</div>}
         <div id="trainRows">
-          {(rows || []).map((r) => {
+          {byShownTime(rows || [], (r) => { const lv = st.live.value[String(r.trip)]; return lv ? lv.dep : r.dep; }).map((r) => {
             const lv = st.live.value[String(r.trip)];
             const dep = lv ? lv.dep : r.dep, arr = lv ? lv.arr : r.arr;
             return (
