@@ -697,19 +697,24 @@ midnight.
 
 Data: `data/manifest.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
-being planned), the street graph (10.7 MB, loaded after the first answer;
-until it is in, points use straight-line access with a detour factor, and
-walks drawn straight then follow the streets once it arrives; a download
-that drops is fetched again after 5, 20 and 60 s and when the phone comes
-back online, the same for the address book and the courses), the
-address book, and the courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749
-shapes simplified to 6 m, 1.26M points as int32 1e-5 degrees, loaded last).
+being planned; each file is cached under its own compile time, so a deploy
+of the app alone does not make every phone download the day again), the
+courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749 shapes simplified to 6 m,
+1.26M points as int32 1e-5 degrees) and the address book, both loaded
+right after the first answer, and last the street graph (10.7 MB; until it
+is in, points use straight-line access with a detour factor, and walks drawn
+straight then follow the streets once it arrives; a download that drops is
+fetched again after 5, 20 and 60 s and when the phone comes back online,
+the same for the address book and the courses).
 Each day's file says which shape every pattern runs on and where each of
 its stops falls along it (segment and fraction, computed by projecting the
 stop on the simplified course, never backwards; a pattern whose trips name
 no shape borrows a sibling's when its stops lie on it), so a ride between
-two stops is drawn along the road; until the courses are loaded, rides are
-drawn stop to stop. Trains have no shapes in the feed at all (every rail
+two stops is drawn along the road. A straight line between stops is never
+shown as a route: until the courses are loaded (or for the few patterns
+with no course at all) a ride is drawn dashed from stop to stop, and the
+faint whole lines around a ride or through a stop wait for their courses;
+the redraw when the courses arrive puts both right. Trains have no shapes in the feed at all (every rail
 trip lacks a shape_id), so `pipeline/rail.py` turns OpenStreetMap's
 `railway=rail` ways (yards, sidings and spurs excluded) into a rail graph,
 and the compiler routes every pair of consecutive stations over it with

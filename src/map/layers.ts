@@ -6,12 +6,21 @@ import { legColor } from '../journey/colors';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as results from '../state/results';
-import type { Journey } from '../journey/types';
+import type { Journey, Leg } from '../journey/types';
 import { state, EMPTY, stopKindProp } from './shared';
 import { BADGE_KINDS, stationImage } from './images';
 import { wireStopLayers } from './popups';
 
 const setData = (m: MLMap, src: string, fc: GeoJSON.FeatureCollection) => { const s = m.getSource(src) as any; if (s) s.setData(fc); };
+/**
+ * What a leg's line feature says about itself: `ride` 1 for a ride, 0 for a walk; `approx` 1 for a ride drawn from
+ * its stops joined straight (planned before the courses were loaded, or a pattern with no course at all), which is
+ * drawn dashed, never as if it ran along the road. The results' ways and the journey layers read these.
+ */
+export const legProps = (l: Leg): { ride: 0 | 1; approx: 0 | 1 } => ({ ride: l.type === 'ride' ? 1 : 0, approx: l.type === 'ride' && l.pathKind === 'stops' ? 1 : 0 });
+const RIDE_ON_COURSE: any = ['all', ['==', ['get', 'ride'], 1], ['!=', ['get', 'approx'], 1]];
+const RIDE_APPROX: any = ['all', ['==', ['get', 'ride'], 1], ['==', ['get', 'approx'], 1]];
+const RIDE_DASH = [2, 1.5];   // longer than a walk's dots
 /** The map's sources and layers for a journey, created once, bottom to top: the other ways, the faded whole lines, then the journey. */
 export function ensureJourneyLayers(m: MLMap): void {
   if (m.getSource('journey')) return;
@@ -22,7 +31,8 @@ export function ensureJourneyLayers(m: MLMap): void {
   // the other ways to go, muted under the highlighted one; a wide invisible line takes the taps
   m.addSource('alts', { type: 'geojson', data: EMPTY });
   m.addLayer({ id: 'alt-casing', type: 'line', source: 'alts', paint: { 'line-color': '#ffffff', 'line-width': 7, 'line-opacity': .85 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-  m.addLayer({ id: 'alt-ride', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': '#8d939c', 'line-width': 4.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'alt-ride', type: 'line', source: 'alts', filter: RIDE_ON_COURSE, paint: { 'line-color': '#8d939c', 'line-width': 4.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'alt-ride-approx', type: 'line', source: 'alts', filter: RIDE_APPROX, paint: { 'line-color': '#8d939c', 'line-width': 4.5, 'line-dasharray': RIDE_DASH }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'alt-walk', type: 'line', source: 'alts', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': '#8d939c', 'line-width': 3.5, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'alt-hit', type: 'line', source: 'alts', paint: { 'line-color': '#000000', 'line-width': 18, 'line-opacity': 0.001 } });
   m.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) results.pickAlt(+f.properties.idx); });
@@ -30,9 +40,11 @@ export function ensureJourneyLayers(m: MLMap): void {
   // the whole lines, before and after the ride (or through a stop), faint but findable on either map
   m.addLayer({ id: 'context-line', type: 'line', source: 'context', paint: { 'line-color': ['get', 'color'], 'line-width': 4.5, 'line-opacity': 0.45 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
   m.addLayer({ id: 'context-stops', type: 'circle', source: 'context-stops', minzoom: 11, paint: { 'circle-radius': 3, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 1.5, 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 } });
-  // the highlighted way: a white casing, the rides wide in their line's colour, the walks dashed
+  // the highlighted way: a white casing, the rides wide in their line's colour (dashed while drawn stop to stop,
+  // without their course), the walks dotted
   m.addLayer({ id: 'journey-casing', type: 'line', source: 'journey', paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 10, 7], 'line-opacity': .95 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
-  m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 1], paint: { 'line-color': ['get', 'color'], 'line-width': 6.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'journey-ride', type: 'line', source: 'journey', filter: RIDE_ON_COURSE, paint: { 'line-color': ['get', 'color'], 'line-width': 6.5 }, layout: { 'line-cap': 'round', 'line-join': 'round' } });
+  m.addLayer({ id: 'journey-ride-approx', type: 'line', source: 'journey', filter: RIDE_APPROX, paint: { 'line-color': ['get', 'color'], 'line-width': 6.5, 'line-dasharray': RIDE_DASH }, layout: { 'line-cap': 'round' } });
   m.addLayer({ id: 'journey-walk', type: 'line', source: 'journey', filter: ['==', ['get', 'ride'], 0], paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] }, layout: { 'line-cap': 'round' } });
   // the highlighted way takes taps too, among the results (its card comes into view): a wide invisible line over it
   m.addLayer({ id: 'journey-hit', type: 'line', source: 'journey', paint: { 'line-color': '#000000', 'line-width': 18, 'line-opacity': 0.001 } });
@@ -47,7 +59,8 @@ export function ensureJourneyLayers(m: MLMap): void {
   for (const [id, src] of [['context-stations', 'context-stops'], ['journey-stations', 'stops']] as const) m.addLayer({ id, type: 'symbol', source: src, minzoom: 10, filter: ['has', 'kind'], layout: { 'icon-image': ['concat', 'wayli-st-', ['get', 'kind']], 'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 15, 1], 'icon-allow-overlap': true } });
   wireStopLayers(m, ['journey-stops', 'context-stops', 'journey-stations', 'context-stations']);
 }
-/** The whole line of every ride, faded, with all its stops: where the bus comes from and where it goes on. */
+/** The whole line of every ride, faded, with all its stops: where the bus comes from and where it goes on. A line
+ *  whose course is not there yet gets its stops only; the redraw when the courses arrive draws it. */
 async function drawContext(m: MLMap, j: Journey, focus = -1): Promise<void> {
   const rides = j.legs.filter((l, i) => l.type === 'ride' && l.pattern != null && (focus < 0 || i === focus));
   if (!rides.length || !data.ttReady.value) return;
@@ -57,14 +70,14 @@ async function drawContext(m: MLMap, j: Journey, focus = -1): Promise<void> {
     const lines: GeoJSON.Feature[] = [], dots: GeoJSON.Feature[] = [];
     courses.forEach((c, i) => {
       const color = legColor(rides[i]);
-      if (c.path && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: c.path.map((q: number[]) => [q[1], q[0]]) } });
+      if (c.course && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: c.path.map((q: number[]) => [q[1], q[0]]) } });
       for (const st of c.stops) dots.push({ type: 'Feature', properties: { color, name: st[2], stop: st[3], ...stopKindProp(st[3]) }, geometry: { type: 'Point', coordinates: [st[1], st[0]] } });
     });
     setData(m, 'context', { type: 'FeatureCollection', features: lines });
     setData(m, 'context-stops', { type: 'FeatureCollection', features: dots });
   } catch { /* the ride itself is still drawn */ }
 }
-/** Draw a journey: casing, rides, dashed walks, pins at boarding and alighting stops, dots at the stops between. Returns its bounds. */
+/** Draw a journey: casing, rides (dashed where drawn from stops), dotted walks, pins at boarding and alighting stops, dots at the stops between. Returns its bounds. */
 export function drawJourney(m: MLMap, j: Journey, markers: Marker[], focus = -1, context = true): LngLatBounds {
   ensureJourneyLayers(m);
   for (const mk of markers.splice(0)) mk.remove();
@@ -75,7 +88,7 @@ export function drawJourney(m: MLMap, j: Journey, markers: Marker[], focus = -1,
     const color = legColor(l);
     const coords = l.path.map((p) => [p[1], p[0]] as [number, number]);
     coords.forEach((c) => bounds.extend(c));
-    features.push({ type: 'Feature', properties: { color, ride: l.type === 'ride' ? 1 : 0 }, geometry: { type: 'LineString', coordinates: coords } });
+    features.push({ type: 'Feature', properties: { color, ...legProps(l) }, geometry: { type: 'LineString', coordinates: coords } });
     if (l.type === 'ride') {
       for (const c of [coords[0], coords[coords.length - 1]]) {
         const el = document.createElement('div'); el.className = 'wayli-pin'; el.style.background = color;

@@ -50,21 +50,26 @@ export const coursesOps = {
   streetPaths({ legs }) { return legs.map((l) => streetPath(l.from, l.to, l.mode)); },
   /** Courses for ride legs planned before the shapes were loaded: null where there is none. */
   ridePaths({ legs }) { return legs.map((l) => ridePath(l.pattern, l.boardPos, l.alightPos)); },
-  /** Rides as the map draws them: each one's course from where it is boarded to where it is left, and its stops. */
+  /** Rides as the map draws them: each one's course from where it is boarded to where it is left, and its stops.
+   *  `course` says the path follows the road or the track; without one (the courses not loaded yet, or a pattern
+   *  whose trips name no shape) the path joins the stops straight, and the map must not draw it as a route. */
   rideCourses({ legs }) {
     return legs.map((l) => {
       const o = tt.patStopsOff[l.pattern], stops = [];
       for (let i = l.boardPos; i <= l.alightPos; i++) { const st = tt.patStops[o + i]; stops.push({ lat: tt.stopLat[st], lon: tt.stopLon[st], stop: st }); }
-      return { path: ridePath(l.pattern, l.boardPos, l.alightPos) || stops.map((x) => [x.lat, x.lon]), stops };
+      const path = ridePath(l.pattern, l.boardPos, l.alightPos);
+      return { path: path || stops.map((x) => [x.lat, x.lon]), course: !!path, stops };
     });
   },
-  /** The whole course of each pattern and all its stops, for drawing a line around a ride. */
+  /** The whole course of each pattern and all its stops, for drawing a line around a ride or through a stop; `course`
+   *  as in rideCourses. */
   patternCourse({ patterns }) {
     return patterns.map((p) => {
       const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p];
       const stops = [];
       for (let i = 0; i < ns; i++) { const st = tt.patStops[tt.patStopsOff[p] + i]; stops.push([tt.stopLat[st], tt.stopLon[st], sName(st), st]); }
-      return { path: (ns >= 2 && ridePath(p, 0, ns - 1)) || stops.map((x) => [x[0], x[1]]), stops };
+      const path = ns >= 2 ? ridePath(p, 0, ns - 1) : null;
+      return { path: path || stops.map((x) => [x[0], x[1]]), course: !!path, stops };
     });
   },
 };

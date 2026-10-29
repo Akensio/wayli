@@ -11,7 +11,7 @@ export type Leg = {
   line?: string; headsign?: string; agency?: string; route?: number | string; routeType?: number;
   from?: { name: string; [k: string]: unknown }; to?: { name: string; [k: string]: unknown };
   path?: LatLon[];
-  pathKind?: 'shape' | 'stops' | string;
+  pathKind?: 'shape' | 'stops' | string;   // a ride: along its course, or its stops joined straight (drawn dashed); a walk: 'street' or 'straight'
   live?: LiveInfo | null;
   // a ride's place in the timetable: its trip and pattern, where it boards and alights, the line's id for live data
   trip?: number; pattern?: number | null; boardPos?: number; alightPos?: number; routeId?: number | string | null; firstDep?: number;

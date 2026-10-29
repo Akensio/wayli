@@ -89,7 +89,7 @@ export async function loadPlaces(): Promise<void> {
 export async function loadShapes(): Promise<void> {
   const f = manifest().shapes;
   if (data.shReady.value || !f) return;
-  // straight lines between stops until then
+  // until then rides are drawn dashed from stop to stop and a stop's page shows no lines; the redraw puts both right
   await retrying(async () => { await call('loadShapes', { url: fileUrl(f) }); data.shReady.value = true; map.redrawMap(true); }, () => { loadShapes(); });
 }
 /** The learned running times of rail sections: train delays from where a train is, in the data worker (where every estimate is made). */

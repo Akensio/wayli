@@ -205,11 +205,13 @@ export const linesOps = {
     const stops = [];
     if (best >= 0) for (let i = tt.patStopsOff[best]; i < tt.patStopsOff[best + 1]; i++) stops.push(stopOut(tt.patStops[i]));
     const ns = stops.length;
+    // the main pattern's course, or its stops joined straight before the courses are loaded (pathKind says which;
+    // the map asks for the course again once they are, by the pattern)
     const path = best >= 0 && ns >= 2 ? (ridePath(best, 0, ns - 1) || stops.map((s) => [s.lat, s.lon])) : [];
     // the other directions of the same line (same number and operator in the same area; for trains, the same two stations)
     const own = parseHeadsign(r[1]);
     const others = g ? lineDirs(g).filter((d) => parseHeadsign(tt.routes[d.route][1]) !== own).map((d) => ({ route: d.route, headsign: d.headsign })) : [];
     const routeIds = sibs.map((ri) => liveId(tt.routes[ri])).filter((x) => x != null);
-    return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOfType(r[3]), line: lineLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', trips, first, last, variants: pats.length, others: others.slice(0, 6) };
+    return { route, ref: r[4] != null ? String(r[4]) : null, routeId: liveId(r), routeIds, estimated: !!r[6], mode: g ? g.mode : modeOfType(r[3]), line: lineLabel(r), agency: r[2], routeType: r[3], headsign: headsign(route), ends: g && g.mode === 'rail' ? endNames(best) : null, stops, path, pathKind: best >= 0 && hasCourse(best) ? 'shape' : 'stops', pattern: best >= 0 ? best : null, trips, first, last, variants: pats.length, others: others.slice(0, 6) };
   },
 };

@@ -18,7 +18,7 @@ import * as station from '../state/station';
 import type { Journey } from '../journey/types';
 import type { TrainRow } from '../state/station';
 import { state, markers, EMPTY, stale, stopKindProp } from './shared';
-import { ensureJourneyLayers, drawJourney, withCourses, boundsOf } from './layers';
+import { ensureJourneyLayers, drawJourney, withCourses, boundsOf, legProps } from './layers';
 import { applyLiveShow, setStopLines } from './live';
 import { viewFor, visibleArea, centreOffset } from './view';
 import type { View, Sheet, Padding } from './view';
@@ -51,16 +51,17 @@ export function drawMe(pos: { lat: number; lon: number }): void {
   if (!markers.me) { const el = document.createElement('div'); el.className = 'wayli-me'; markers.me = new maplibregl.Marker({ element: el }).setLngLat([pos.lon, pos.lat]).addTo(m); }
   else markers.me.setLngLat([pos.lon, pos.lat]);
 }
-/** Courses as faint lines under the rest (a stop's lines). */
+/** Courses as faint lines under the rest (a stop's lines). Only real courses: a line whose course is not loaded yet
+ *  is left out rather than drawn as a straight ray across the city (the redraw when the courses arrive adds it). */
 async function stopCourses(m: MLMap, seq: number, stop: number, stops: number[]): Promise<void> {
   try {
     const routes = await call<{ pattern: number; ref: number | null; type: number; agency: string }[]>('stopRoutes', { stop, stops });
     if (stale(seq)) return;
     setStopLines(routes.filter((r) => r.ref != null).map((r) => String(r.ref)));
-    const courses = await call<{ path: [number, number][] | null }[]>('patternCourse', { patterns: routes.map((r) => r.pattern) });
+    const courses = await call<{ path: [number, number][]; course: boolean }[]>('patternCourse', { patterns: routes.map((r) => r.pattern) });
     if (stale(seq)) return;
     const lines: GeoJSON.Feature[] = [];
-    courses.forEach((c, i) => { if (c.path && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color: routeColor(routes[i].type, routes[i].agency) }, geometry: { type: 'LineString', coordinates: c.path.map((q) => [q[1], q[0]]) } }); });
+    courses.forEach((c, i) => { if (c.course && c.path.length >= 2) lines.push({ type: 'Feature', properties: { color: routeColor(routes[i].type, routes[i].agency) }, geometry: { type: 'LineString', coordinates: c.path.map((q) => [q[1], q[0]]) } }); });
     setData(m, 'context', { type: 'FeatureCollection', features: lines });
   } catch { /* the pin and the departures stay */ }
 }
@@ -84,7 +85,7 @@ const RECIPES: Record<View['draw'], Recipe> = {
         if (!l.path || l.path.length < 2) continue;
         const coords = l.path.map((p) => [p[1], p[0]] as [number, number]);
         coords.forEach((x) => b.extend(x));
-        if (c.idx !== altSel) features.push({ type: 'Feature', properties: { idx: c.idx, ride: l.type === 'ride' ? 1 : 0 }, geometry: { type: 'LineString', coordinates: coords } });
+        if (c.idx !== altSel) features.push({ type: 'Feature', properties: { idx: c.idx, ...legProps(l) }, geometry: { type: 'LineString', coordinates: coords } });
         if (l.type === 'ride' && (!longest || coords.length > longest.length)) longest = coords;
       }
       // each ride says its line where it runs (a third of the way along, clear of the boarding pin and the minutes at
@@ -125,11 +126,13 @@ const RECIPES: Record<View['draw'], Recipe> = {
     const id = `${j.depart}|${j.arrive}|${j.legs.length}|${focus}`;
     return { bounds: b, focus: focus >= 0 && j.legs[focus] ? boundsOf(j.legs[focus].path) : undefined, id };
   },
-  /** A line: its course, and every stop of it in its colour. */
-  line: (m) => {
+  /** A line: its course (dashed from stop to stop until the courses are loaded, like a ride), and every stop of it in its colour. */
+  line: async (m, _v, seq) => {
     const info = linePage.info.value;
     if (!info) return null;
-    const course: Journey = { depart: 0, arrive: 0, transfers: 0, legs: [{ type: 'ride', seconds: 0, routeType: info.routeType, agency: info.agency, path: info.path, pattern: null }] };
+    const course: Journey = { depart: 0, arrive: 0, transfers: 0, legs: [{ type: 'ride', seconds: 0, routeType: info.routeType, agency: info.agency, path: info.path, pathKind: info.pathKind, pattern: info.pattern ?? null, boardPos: 0, alightPos: info.stops.length - 1 }] };
+    if (info.pathKind === 'stops') await withCourses(course);   // a page opened before the courses arrived
+    if (stale(seq)) return null;
     const b = drawJourney(m, course, markers.journey);
     const color = routeColor(info.routeType, info.agency);
     setData(m, 'stops', { type: 'FeatureCollection', features: info.stops.map((st) => ({ type: 'Feature', properties: { stop: st.stop, color, ...stopKindProp(st.stop) }, geometry: { type: 'Point', coordinates: [st.lon, st.lat] } })) });

@@ -50,7 +50,9 @@ def main():
             print(f"site: {m.group(1)} left out, the feed starts {h['feed']['feed_start_date']}")
             continue
         shutil.copy(p, out / "data" / p.name)
-        days.append({"date": m.group(1), "file": p.name, "bytes": p.stat().st_size, "trips": h["counts"]["trips"], "stops": h["counts"]["stops"]})
+        # built: the compile time, the app's cache key for the file (keyed by the site's build instead, every app deploy made
+        # every phone download the day again and swap timetables mid-session, 2026-10-29)
+        days.append({"date": m.group(1), "file": p.name, "bytes": p.stat().st_size, "trips": h["counts"]["trips"], "stops": h["counts"]["stops"], "built": h.get("built")})
     if not days:
         raise SystemExit("no data/timetable-YYYYMMDD.bin.gz files; run pipeline/compile.py first")
     streets = None
