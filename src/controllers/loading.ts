@@ -10,7 +10,7 @@ import * as search from '../state/search';
 import * as names from '../state/names';
 import * as app from '../state/app';
 import * as map from '../map/index';
-import type { Manifest } from '../state/data';
+import type { Manifest, DataFile } from '../state/data';
 import { setStatus, loadFailed } from './status';
 
 const manifest = (): Manifest => data.manifest.value!;
@@ -19,8 +19,10 @@ feed.snapshot.query = (filter: object) => call('liveQuery', { urls: feed.RELAY_U
 // stored places shown in the other language are named again by the worker (state/names.ts)
 const WORDS = { he: { near: String(STR.nearName[0]), point: String(STR.pointName[0]) }, en: { near: String(STR.nearName[1]), point: String(STR.pointName[1]) } };
 names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });
-/** A data file's address, with the build in the query so a new build is fetched once and then cached. */
-const fileUrl = (f: { file: string; built?: string }): string => `${DATA_URL}${f.file}?v=${encodeURIComponent(f.built || manifest().built || '')}`;
+/** A data file's address, with its version in the query, so each version is fetched once and then served from the
+ *  service worker's cache: the content hash (a rebuilt file with nothing changed is not fetched again), or the build
+ *  time of files without one (the learned times, which change nightly anyway). */
+const fileUrl = (f: DataFile): string => `${DATA_URL}${f.file}?v=${encodeURIComponent(f.hash || f.built || manifest().built || '')}`;
 
 export async function loadManifest(): Promise<void> {
   const m: Manifest = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();

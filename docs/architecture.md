@@ -697,15 +697,23 @@ midnight.
 
 Data: `data/manifest.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
-being planned; each file is cached under its own compile time, so a deploy
-of the app alone does not make every phone download the day again), the
+being planned), the
 courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749 shapes simplified to 6 m,
 1.26M points as int32 1e-5 degrees) and the address book, both loaded
 right after the first answer, and last the street graph (10.7 MB; until it
 is in, points use straight-line access with a detour factor, and walks drawn
 straight then follow the streets once it arrives; a download that drops is
 fetched again after 5, 20 and 60 s and when the phone comes back online,
-the same for the address book and the courses).
+the same for the address book and the courses). Every data file is cached
+on the phone by the service worker under its version, which the manifest
+(fetched network first, 2 KB) gives per file: the content hash written
+into the file's header by `pipeline/container.py` (the header without its
+build time, plus the arrays), so a file rebuilt from the same input gives the
+same hash and is not downloaded again, and only files whose content changed
+are; the learned times, which change nightly by nature, are keyed by their
+build time. In practice the street graph and the address book change once
+a week (a new OpenStreetMap extract), the day's timetable and the learned
+times nightly, and the courses only when the feed's shapes change.
 Each day's file says which shape every pattern runs on and where each of
 its stops falls along it (segment and fraction, computed by projecting the
 stop on the simplified course, never backwards; a pattern whose trips name

@@ -9,6 +9,7 @@ courses), read on the phone by src/engine/container.js:
 and the whole gzip-compressed. Each script puts what else it needs in the header (counts, names, versions).
 """
 import gzip
+import hashlib
 import json
 import struct
 
@@ -32,9 +33,21 @@ class Sections:
         self.body.extend(a.astype(DTYPES[dtype]).tobytes())
 
 
+def content_hash(header, body):
+    """What the file says, as 16 hex digits: the header without its build time and the arrays. The same input built
+    again gives the same hash, so the app (which caches each file under it) downloads a rebuilt file only when
+    something in it changed."""
+    fixed = {k: v for k, v in header.items() if k not in ("built", "hash")}
+    h = hashlib.sha256(json.dumps(fixed, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+    h.update(body)
+    return h.hexdigest()[:16]
+
+
 def write(path, header, sections, level=9, ascii_only=True):
-    """Writes the container; its raw size and its header's, for the log. `ascii_only` False keeps Hebrew readable in
-    the header (and smaller); the header must already hold `sections.list`."""
+    """Writes the container, with its content hash ("hash") in the header; its raw size and its header's, for the
+    log. `ascii_only` False keeps Hebrew readable in the header (and smaller); the header must already hold
+    `sections.list`."""
+    header = {**header, "hash": content_hash(header, bytes(sections.body))}
     hjson = json.dumps(header, ensure_ascii=ascii_only, separators=(",", ":")).encode("utf-8")
     hjson += b" " * (-(4 + len(hjson)) % 4)
     raw = struct.pack("<I", len(hjson)) + hjson + bytes(sections.body)

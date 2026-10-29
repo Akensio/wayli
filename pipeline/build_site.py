@@ -50,9 +50,10 @@ def main():
             print(f"site: {m.group(1)} left out, the feed starts {h['feed']['feed_start_date']}")
             continue
         shutil.copy(p, out / "data" / p.name)
-        # built: the compile time, the app's cache key for the file (keyed by the site's build instead, every app deploy made
-        # every phone download the day again and swap timetables mid-session, 2026-10-29)
-        days.append({"date": m.group(1), "file": p.name, "bytes": p.stat().st_size, "trips": h["counts"]["trips"], "stops": h["counts"]["stops"], "built": h.get("built")})
+        # hash: the file's content hash (container.py), the app's cache key for it: a rebuilt file is downloaded again
+        # only when something in it changed; built, the compile time, stands in for files written before the hash
+        # (keyed by the site's build instead, every app deploy made every phone download the day again, 2026-10-29)
+        days.append({"date": m.group(1), "file": p.name, "bytes": p.stat().st_size, "trips": h["counts"]["trips"], "stops": h["counts"]["stops"], "built": h.get("built"), "hash": h.get("hash")})
     if not days:
         raise SystemExit("no data/timetable-YYYYMMDD.bin.gz files; run pipeline/compile.py first")
     streets = None
@@ -60,19 +61,19 @@ def main():
     if sp.exists():
         h = container.read_header(sp)
         shutil.copy(sp, out / "data" / sp.name)
-        streets = {"file": sp.name, "bytes": sp.stat().st_size, "nodes": h["counts"]["nodes"], "built": h.get("built")}
+        streets = {"file": sp.name, "bytes": sp.stat().st_size, "nodes": h["counts"]["nodes"], "built": h.get("built"), "hash": h.get("hash")}
     shapes = None
     hp = data / "shapes.bin.gz"
     if hp.exists():
         h = container.read_header(hp)
         shutil.copy(hp, out / "data" / hp.name)
-        shapes = {"file": hp.name, "bytes": hp.stat().st_size, "counts": h["counts"], "built": h.get("built")}
+        shapes = {"file": hp.name, "bytes": hp.stat().st_size, "counts": h["counts"], "built": h.get("built"), "hash": h.get("hash")}
     places = None
     pp = data / "places.bin.gz"
     if pp.exists():
         h = container.read_header(pp)
         shutil.copy(pp, out / "data" / pp.name)
-        places = {"file": pp.name, "bytes": pp.stat().st_size, "counts": h["counts"], "built": h.get("built")}
+        places = {"file": pp.name, "bytes": pp.stat().st_size, "counts": h["counts"], "built": h.get("built"), "hash": h.get("hash")}
     railtimes = None
     rp = data / "railtimes.json"
     if rp.exists():
