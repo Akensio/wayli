@@ -172,6 +172,26 @@ export function replanOrigin(journey, state, nowSec, delay = 0) {
   if (!v.toRide || !to || to.stop == null) return null;
   return { kind: 'walk', from: place(to), fromTime: Math.max(v.leg.arrive, nowSec), rideStep: state.step + 1 };
 }
+/** The changes ahead: for each ride after the first remaining one, the seconds between reaching its stop (the ride
+ *  before's arrival, live when known, plus the walks between) and its departure (live when known), with both times.
+ *  `live`: by leg index, { arrive?, depart? } of the vehicles seen. Negative: the change is missed. */
+export function connections(legs, step, live = {}) {
+  const out = {};
+  let prev = -1;
+  for (let i = step; i < legs.length; i++) {
+    const l = legs[i];
+    if (l.type !== 'ride') continue;
+    if (prev >= 0) {
+      let walk = 0;
+      for (let k = prev + 1; k < i; k++) walk += legs[k].seconds || 0;
+      const arr = (live[prev] && live[prev].arrive != null ? live[prev].arrive : legs[prev].arrive) + walk;
+      const dep = live[i] && live[i].depart != null ? live[i].depart : l.depart;
+      out[i] = { sec: dep - arr, arr, dep };
+    }
+    prev = i;
+  }
+  return out;
+}
 /** The rides of some legs as a key (trip and alighting stop each): equal keys mean the same plan. */
 export function ridesKey(legs) { return legs.filter((l) => l.type === 'ride').map((l) => `${l.trip}@${l.to.stop}`).join('|'); }
 export function remainingKey(journey, state) { return ridesKey(journey.legs.slice(state.step)); }

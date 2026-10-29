@@ -1,11 +1,12 @@
 // Following a trip: the state machine (follow.js, pure) advanced by the position and the clock every 5 s, the
-// next ride's vehicle every 30 s, a look for a faster way every minute when there is reason to; alerts on the
-// way; the trip kept in the store so it survives a reload, with a bar to come back to it when hidden. The
+// remaining rides' vehicles every 30 s (the current or next one for the step card and the map; every one for its
+// row, its stops and the change into it), a look for a faster way every minute when there is reason to; alerts on
+// the way; the trip kept in the store so it survives a reload, with a bar to come back to it when hidden. The
 // screen (features/follow) draws what is published into state/follow.ts.
 import * as clock from '../engine/clock.js';
 import * as delays from '../engine/delays.js';
 import * as feed from '../engine/feed.js';
-import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney, stepForward, stepBack } from '../engine/follow.js';
+import { initialState, aboardState, advance, view as followView, replanOrigin, ridesKey, remainingKey, spliceJourney, stepForward, stepBack, connections } from '../engine/follow.js';
 import { settings, activeTrip } from '../lib/store.js';
 import { t } from '../lib/i18n';
 import { dateOf, fmt } from '../lib/time';
@@ -18,14 +19,14 @@ import { notePos } from '../state/position';
 import * as map from '../map/index';
 import { lineText, liveBadge } from '../journey/format';
 import type { Journey, Query, PlanResult } from '../journey/types';
-import type { ActiveTrip, Alt, FollowState, Position } from '../state/follow';
+import type { ActiveTrip, Alt, FollowState, Position, LegLive } from '../state/follow';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
 
 type LiveEst = { est: { delay: number; [k: string]: unknown } | null; at: { time: number; delay: number; passed: boolean; stale?: boolean } | null; shift: number } | null;
 /** The trip being followed, with everything that runs while it is. */
 type Following = {
   a: ActiveTrip; pos: Position | null; watch: number | null; timers: number[]; wake: WakeLockSentinel | null;
-  liveEst: LiveEst; liveChecked: boolean; alt: Alt | null; dismissed: Record<string, number>; replanAt: number; replanning: boolean; toldKey: string | null;
+  liveEst: LiveEst; legLive: Record<number, LegLive>; liveChecked: boolean; alt: Alt | null; dismissed: Record<string, number>; replanAt: number; replanning: boolean; toldKey: string | null;
 };
 let fol: Following | null = null;
 let replanGain = 240;   // s: an alternative has to arrive this much earlier (plus 3 min per extra transfer) to be proposed
@@ -55,7 +56,7 @@ export function startTrip(j: Journey, q: Query): void {
 function openFollow(a: ActiveTrip): void {
   if (fol && fol.a !== a) closeFollow(false);
   if (!fol) {
-    const f: Following = { a, pos: null, watch: null, timers: [], wake: null, liveEst: null, liveChecked: false, alt: null, dismissed: {}, replanAt: 0, replanning: false, toldKey: null };
+    const f: Following = { a, pos: null, watch: null, timers: [], wake: null, liveEst: null, legLive: {}, liveChecked: false, alt: null, dismissed: {}, replanAt: 0, replanning: false, toldKey: null };
     fol = f;
     if (navigator.geolocation) {
       f.watch = navigator.geolocation.watchPosition((p) => {
@@ -126,35 +127,58 @@ function publish(): void {
   if (fol.a.state.done) setTimeout(() => { if (fol && fol.a.state.done) { closeFollow(true); nav.close('follow'); toast(t('arrived'), 4000); } }, 15000);
 }
 
-/** The vehicle of the current or next ride, every 30 s: on the map, as a badge, and its delay for re-planning. */
+/** The remaining rides' vehicles, every 30 s. The current or next ride's: on the map, as the step card's badge, and its
+ *  shift for re-planning. Every ride's (at most three): its badge at the boarding stop, its stops at their shown times,
+ *  and the change into it from the ride before (connections), so a late connecting bus shows, and a missed change
+ *  starts a re-plan (2026-10-29, Gadi). */
 async function followLive(): Promise<void> {
   if (!fol || !map.liveOn()) return;
-  const a = fol.a, now = clock.nowOn(a.day);
-  const leg = a.journey.legs.slice(a.state.step).find((l) => l.type === 'ride');
-  if (!leg || leg.routeId == null || leg.depart! - now > 3600 || !data.dayInfo.value || data.dayInfo.value.date !== a.day) { fol.liveEst = null; return; }
-  fol.liveChecked = true;
+  const a = fol.a, now = clock.nowOn(a.day), legs = a.journey.legs;
+  // the rides whose vehicle may be out (within the hour); the changes are computed for every remaining ride regardless,
+  // from the planned times where no vehicle is seen
+  const rides = legs.map((l, i) => ({ l, i })).filter((x) => x.i >= a.state.step && x.l.type === 'ride' && x.l.routeId != null && x.l.depart! - now <= 3600).slice(0, 3);
+  const polling = rides.length > 0 && !!data.dayInfo.value && data.dayInfo.value.date === a.day;
+  if (!polling) fol.liveEst = null; else fol.liveChecked = true;
   try {
-    const vs = await feed.vehiclesByLine(leg.routeId);
-    if (!fol) return;
-    const statuses: any[] = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
-    if (!fol) return;
-    for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
-    const m = map.mapState.main;
-    if (m && map.mapState.drawnFor === 'follow') map.lineVehicleMarkers(m, map.markers.followVehicle, vs, statuses, leg.routeType!, leg.trip!, { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route as number });
-    const v = feed.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
-    if (!v) { fol.liveEst = null; follow.liveBadge.value = null; publish(); replanCheck(); return; }
-    const ts = await tripStopsCached(leg.trip!);
-    if (!fol) return;
-    const est = await estimate(v, ts.stops, a.day);
-    if (!fol) return;
-    // waiting: its time at the stop to board; on board: at the stop to get off at. The shift is how much that moved since
-    // the plan, against the planned time at the same stop (docs/architecture.md, "Live times, end to end", rule 6)
-    const aboard = a.state.onBoard && leg.alightPos != null;
-    const at = delays.liveAt(est, ts.stops, aboard ? leg.alightPos! : leg.boardPos!);
-    fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive! : leg.depart!) } : null;
-    follow.liveBadge.value = at ? liveBadge(at) : null;
+    const legLive: Record<number, LegLive> = {}, times: Record<number, { arrive?: number; depart?: number }> = {};
+    let first = true;
+    for (const { l: leg, i } of polling ? rides : []) {
+      const vs = await feed.vehiclesByLine(leg.routeId!);
+      if (!fol) return;
+      if (first) {
+        const statuses: any[] = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
+        if (!fol) return;
+        for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
+        const m = map.mapState.main;
+        if (m && map.mapState.drawnFor === 'follow') map.lineVehicleMarkers(m, map.markers.followVehicle, vs, statuses, leg.routeType!, leg.trip!, { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route as number });
+      }
+      const v = feed.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
+      const ts = v ? await tripStopsCached(leg.trip!) : null;
+      if (!fol) return;
+      const est = v && ts ? await estimate(v, ts.stops, a.day) : null;
+      if (!fol) return;
+      const atBoard = est && ts ? delays.liveAt(est, ts.stops, leg.boardPos!) : null;
+      const atAlight = est && ts && leg.alightPos != null ? delays.liveAt(est, ts.stops, leg.alightPos) : null;
+      if (first) {
+        // waiting: its time at the stop to board; on board: at the stop to get off at. The shift is how much that moved
+        // since the plan, against the planned time at the same stop (docs/architecture.md, "Live times, end to end", rule 6)
+        const aboard = a.state.onBoard && leg.alightPos != null, at = aboard ? atAlight : atBoard;
+        fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive! : leg.depart!) } : null;
+        follow.liveBadge.value = v ? liveBadge(at) : null;
+      }
+      // the ride's stops at their shown times, the ones the vehicle has passed marked (the current ride's list opens)
+      const along = (leg.stopsAlong as { arr: number }[] | undefined) || [];
+      const stops = est && ts && leg.boardPos != null && leg.alightPos != null && along.length === leg.alightPos - leg.boardPos + 1
+        ? along.map((s, k) => { const x = delays.liveAt(est, ts.stops, leg.boardPos! + k); return { time: x ? x.time : s.arr, passed: !!x && x.passed }; }) : null;
+      legLive[i] = { badge: liveBadge(atBoard), change: null, stops };
+      times[i] = { depart: atBoard ? atBoard.time : undefined, arrive: atAlight && !atAlight.passed ? atAlight.time : undefined };
+      first = false;
+    }
+    const ch = connections(legs, a.state.step, times) as Record<number, { sec: number; arr: number; dep: number }>;
+    for (const k of Object.keys(ch)) { const i = +k; if (legLive[i]) legLive[i].change = ch[i]; else legLive[i] = { badge: null, change: ch[i], stops: null }; }
+    fol.legLive = legLive; follow.legLive.value = legLive;
     publish();
-    replanCheck();
+    if (polling) replanCheck();
   } catch { /* live is a bonus */ }
 }
 
@@ -167,12 +191,13 @@ async function replanCheck(force = false): Promise<void> {
   const shift = f.liveEst ? f.liveEst.shift : 0;   // how much the ride moved since it was planned
   const origin: any = replanOrigin(a.journey, a.state, now, shift);
   if (!origin) { replanSkip('nothing left to change'); if (f.alt) { f.alt = null; publish(); } return; }
-  // reasons to look: the ride is late, its vehicle is missing close to departure, or five minutes passed
+  // reasons to look: the ride is late, a change ahead is missed, its vehicle is missing close to departure, or five minutes passed
   const nextRide = a.journey.legs.slice(origin.rideStep).find((l) => l.type === 'ride');
   const late = shift >= 180;
+  const missed = Object.values(f.legLive).some((x) => x.change != null && x.change.sec < 0);
   const missing = f.liveChecked && !f.liveEst && nextRide && nextRide.depart! - now < 600 && nextRide.depart! - now > -300;
   const due = Date.now() - f.replanAt > 300000;
-  if (!force && !(late || missing || due)) { replanSkip('no reason yet'); return; }
+  if (!force && !(late || missed || missing || due)) { replanSkip('no reason yet'); return; }
   if (!force && Date.now() - f.replanAt < 90000) { replanSkip('too soon'); return; }
   f.replanning = true; f.replanAt = Date.now();
   try {

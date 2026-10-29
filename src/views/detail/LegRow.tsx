@@ -1,6 +1,6 @@
 // One leg of a journey as a row: the times down the side, a dot in the line's colour, and what to do:
 // ride a line toward its headsign (from, to, stops, operator), or walk or ride the bicycle somewhere.
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { RideOptions } from './RideOptions';
 import type { TrainRow, LiveTrain } from '../../state/station';
 import { t } from '../../lib/i18n';
@@ -24,6 +24,10 @@ type Props = {
   onClick?: () => void;        // a ride focuses on the map
   // the detail: every line that does this ride, from its stop to the one it is left at, with live times
   options?: { load: () => Promise<TrainRow[]>; liveFor: (rows: TrainRow[]) => Promise<Record<string, LiveTrain>>; day: string; now: number | null; onOpen: (trip: number, stop: number) => void };
+  // following: the stops open by themselves (the current ride), each at its shown time with the passed ones marked (the
+  // vehicle's word, or the rider's own stop index on board), and the change into this ride from the ride before
+  defaultStopsOpen?: boolean; stopLive?: { time: number; passed: boolean }[] | null; passedUpTo?: number | null;
+  change?: { sec: number; arr: number; dep: number } | null;
 };
 
 const walkText = (l: Leg, mins: number) => {
@@ -31,8 +35,9 @@ const walkText = (l: Leg, mins: number) => {
   return l.mode === 'bike' ? t('bikeTo', { min: mins, name: l.to!.name }) : t('walkTo', { min: mins, name: l.to!.name });
 };
 
-export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options }: Props) {
-  const [stopsOpen, setStopsOpen] = useState(false), [optsOpen, setOptsOpen] = useState(false);
+export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options, defaultStopsOpen, stopLive, passedUpTo, change }: Props) {
+  const [stopsOpen, setStopsOpen] = useState(!!defaultStopsOpen), [optsOpen, setOptsOpen] = useState(false);
+  useEffect(() => { if (defaultStopsOpen) setStopsOpen(true); }, [defaultStopsOpen]);   // opens when the ride becomes the current one
   const ride = l.type === 'ride';
   const mins = legMinutes(l.seconds);
   const stopsAlong = (l.stopsAlong as StopAlong[] | undefined) || [];
@@ -54,10 +59,15 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options }: P
         {ride ? <>
           <LineChip line={l.line} routeType={l.routeType} agency={l.agency} onClick={onChip && l.route != null && l.route !== '' ? (e) => { e.stopPropagation(); onChip(); } : undefined} />
           {mode === 'detail' ? <> {l.headsign}<span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>{badge ? (liveTime != null && badge.delayText ? badge.delayText : badge.text) : ''}</span><small><FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} · <bdi>{agencyName(l.agency || '')}</bdi>{est ? <span class="est"> · {t('estShort')}</span> : null}</small></>
-            : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)}</>}
-          {mode === 'detail' && stopsAlong.length > 2 && <>
+            : <> <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)}{badge && <span class={`live ${badge.cls}`}>{badge.text}</span>}</>}
+          {mode === 'follow' && change && <small class={`change ${change.sec < 0 ? 'missed' : change.sec < 120 ? 'tight' : 'ok'}`}>{change.sec < 0 ? t('changeMissed', { dep: fmt(change.dep), arr: fmt(change.arr) }) : t(change.sec < 120 ? 'changeTight' : 'changeOk', { n: Math.round(change.sec / 60) })}</small>}
+          {(mode === 'detail' ? stopsAlong.length > 2 : stopsAlong.length > 1) && <>
             <Fold open={stopsOpen} onClick={() => setStopsOpen(!stopsOpen)}>{stopsOpen ? t('hideStops') : t('showStops')}</Fold>
-            <div class="stoplist" hidden={!stopsOpen}>{stopsAlong.map((s) => <div><span>{fmt(s.arr)}</span><span>{s.name}</span></div>)}</div>
+            <div class="stoplist" hidden={!stopsOpen}>{stopsAlong.map((s, k) => {
+              const lv = stopLive ? stopLive[k] : null, time = lv ? lv.time : s.arr;
+              const passed = passedUpTo != null ? k <= passedUpTo : !!(lv && lv.passed), next = passedUpTo != null && k === passedUpTo + 1, last = k === stopsAlong.length - 1;
+              return <div class={`${passed ? 'passed' : ''}${next ? ' next' : ''}${last ? ' last' : ''}`}><span>{lv && Math.abs(time - s.arr) >= 60 ? <><s>{fmt(s.arr)}</s> {fmt(time)}</> : fmt(time)}</span><span>{s.name}{next && <small class="tag"> {t('nextTag')}</small>}</span></div>;
+            })}</div>
           </>}
           {mode === 'detail' && options && <Fold open={optsOpen} onClick={() => setOptsOpen(!optsOpen)}>{optsOpen ? t('hideTimes') : t('rideOptions', { name: l.from!.name })}</Fold>}
         </> : walkText(l, mins)}

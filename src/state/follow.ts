@@ -15,6 +15,10 @@ export const active = signal<ActiveTrip | null>(null);   // the trip being follo
 export const tick = signal(0);                             // bumped whenever its state advanced
 export const pos = signal<Position | null>(null);
 export const liveBadge = signal<Badge | null>(null);       // the next ride's vehicle
+/** What the live data says of each remaining ride, by leg index: its vehicle at the boarding stop, the change into it
+ *  (seconds to spare, negative when missed; with the times), and its stops at their shown times, passed ones marked. */
+export type LegLive = { badge: Badge | null; change: { sec: number; arr: number; dep: number } | null; stops: { time: number; passed: boolean }[] | null };
+export const legLive = signal<Record<number, LegLive>>({});
 export const alt = signal<Alt | null>(null);               // a faster way, proposed
 export const resumable = signal<ActiveTrip | null>(null);  // a trip in progress whose screen is hidden
 

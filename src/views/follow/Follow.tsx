@@ -37,7 +37,7 @@ function AltCard({ alt }: { alt: follow.Alt }) {
 
 export function Follow() {
   void lang.value; void follow.tick.value; void now.value;
-  const a = follow.active.value;
+  const a = follow.active.value, ll = follow.legLive.value;
   if (!a) return null;
   const j = a.journey, nowS = clock.nowOn(a.day), dest = a.q.to.name;
   const v = followView(j, a.state, nowS) as unknown as View;
@@ -62,6 +62,7 @@ export function Follow() {
     else { big = t('getOffAt', { name: v.alight.name }); small = `${t('stopsLeft', { n: v.stopsLeft })} · ${t('nextStopIs', { name: v.nextStop.name })} · ${t('arrivesAt', { time: fmt(l.arrive!) })}`; }
   }
   const alt = follow.alt.value;
+  const curRide = j.legs.findIndex((l, i) => i >= a.state.step && l.type === 'ride');   // its stops open by themselves
   return (
     <>
       <div class="fhead">
@@ -82,7 +83,8 @@ export function Follow() {
       </div>
       {alt && <AltCard alt={alt} />}
       <div class="legs" id="followNext">
-        {j.legs.map((l, i) => <LegRow key={i} l={l} mode="follow" cls={i < a.state.step ? 'done' : i === a.state.step ? 'current' : ''} />)}
+        {j.legs.map((l, i) => { const x = ll[i]; return <LegRow key={i} l={l} mode="follow" cls={i < a.state.step ? 'done' : i === a.state.step ? 'current' : ''}
+          badge={x ? x.badge : undefined} change={x ? x.change : null} stopLive={x ? x.stops : null} defaultStopsOpen={i === curRide} passedUpTo={i === a.state.step && a.state.onBoard ? a.state.rideIdx : null} />; })}
       </div>
     </>
   );

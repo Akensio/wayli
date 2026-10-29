@@ -17,6 +17,15 @@
 .leg .stoplist { margin: 4px 0 2px; padding-inline-start: 4px; border-inline-start: 2px solid var(--line); }
 .leg .stoplist div { font-size: 13px; color: var(--ink-2); display: flex; gap: 8px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
 .leg .stoplist div span:first-child { min-width: 44px; }
+/* following: the stops passed, the next one, the one to get off at; the change into a ride, by how much it is made */
+.leg .stoplist div.passed { opacity: .45; }
+.leg .stoplist div.next { color: var(--ink); font-weight: 700; }
+.leg .stoplist div.last span:last-child { font-weight: 700; color: var(--ink); }
+.leg .stoplist div .tag { font-weight: 600; color: var(--accent-text); }
+.leg .change { display: block; font-size: 13px; font-weight: 600; margin-top: 2px; }
+.leg .change.ok { color: var(--ok); }
+.leg .change.tight { color: var(--warn); }
+.leg .change.missed { color: var(--late); }
 .leg.done { opacity: .45; }
 .leg.current .what { font-weight: 700; }
 .leg .t s { opacity: .6; }

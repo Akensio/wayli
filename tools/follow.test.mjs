@@ -1,6 +1,6 @@
 // The trip-following state machine's manual steps: node tools/follow.test.mjs (exits 1 on a failure).
 import assert from 'node:assert/strict';
-import { initialState, advance, stepForward, stepBack, canStepBack } from '../src/engine/follow.js';
+import { initialState, advance, stepForward, stepBack, canStepBack, connections } from '../src/engine/follow.js';
 
 const T = (h, m) => h * 3600 + m * 60;
 const stop = (n, lat, arr) => ({ stop: n, name: `s${n}`, lat, lon: 34.8, arr });
@@ -44,6 +44,25 @@ end = stepBack(journey, end); assert.equal(end.done, false); assert.equal(end.st
   assert.equal(r.state.rideIdx, 2); assert.ok(!r.events.includes('getOffNext'), 'not yet: a stop before the last is still ahead');
   r = advance(j, r.state, at(3.15), T(21, 56));              // past stop 3: the next is the last
   assert.ok(r.events.includes('getOffNext'), 'now: the next stop is the one');
+}
+
+// the changes ahead: planned, then with the ride before late, then with the next ride late too
+{
+  const legs = [
+    { type: 'ride', depart: T(17, 24), arrive: T(17, 54), seconds: 1800 },
+    { type: 'walk', seconds: 300, depart: T(17, 54), arrive: T(17, 59) },
+    { type: 'ride', depart: T(18, 2), arrive: T(18, 30), seconds: 1680 },
+    { type: 'ride', depart: T(18, 35), arrive: T(18, 50), seconds: 900 },
+  ];
+  let c = connections(legs, 0);
+  assert.equal(c[0], undefined, 'the first remaining ride has no change before it');
+  assert.equal(c[2].sec, 180, 'planned: 3 minutes after the walk'); assert.equal(c[3].sec, 300);
+  c = connections(legs, 0, { 0: { arrive: T(17, 58) } });
+  assert.equal(c[2].sec, -60, 'the ride before 4 min late: the change is missed'); assert.equal(c[2].arr, T(18, 3));
+  c = connections(legs, 0, { 0: { arrive: T(17, 58) }, 2: { depart: T(18, 6) } });
+  assert.equal(c[2].sec, 180, 'the next ride 4 min late too: made again');
+  assert.equal(c[3].sec, 300, 'a ride with no vehicle keeps its planned times');
+  assert.deepEqual(connections(legs, 2), { 3: { sec: 300, arr: T(18, 30), dep: T(18, 35) } }, 'from the second ride on');
 }
 
 console.log('follow: manual steps ok');
