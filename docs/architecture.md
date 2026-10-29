@@ -725,7 +725,15 @@ same hash and is not downloaded again, and only files whose content changed
 are; the learned times, which change nightly by nature, are keyed by their
 build time. In practice the street graph and the address book change once
 a week (a new OpenStreetMap extract), the day's timetable and the learned
-times nightly, and the courses only when the feed's shapes change.
+times nightly, and the courses only when the feed's shapes change. A file
+whose size the manifest gives is fetched by the data worker in 1 MB pieces
+(HTTP ranges, which GitHub Pages serves), each kept in a cache of its own
+the moment it arrives, so a rider who opens the app for half a minute
+advances the download instead of starting it over; the next open fetches
+only the pieces still missing, and a whole copy the service worker cached
+earlier is cut into pieces rather than downloaded again. Pieces that do not
+make a readable file (a version change mid-download) are dropped and
+fetched anew.
 Each day's file says which shape every pattern runs on and where each of
 its stops falls along it (segment and fraction, computed by projecting the
 stop on the simplified course, never backwards, taking the first segment

@@ -52,7 +52,7 @@ export async function loadDay(date: string): Promise<void> {
   data.ttReady.value = false;
   search.busy.value = true;
   call('setLang', { lang: lang.value });   // names come back in the rider's language where the timetable carries them
-  const info: { date: string; counts: { trips: number } } = await call('loadTimetable', { url: fileUrl(d) });
+  const info: { date: string; counts: { trips: number } } = await call('loadTimetable', { url: fileUrl(d), bytes: d.bytes });
   data.dayInfo.value = info; data.ttReady.value = true; resetCaches(); map.resetLive();
   search.busy.value = false;
   map.loadStopsGeo(); map.refreshLiveMap();
@@ -82,7 +82,7 @@ export async function loadPlaces(): Promise<void> {
   const f = manifest().places;
   if (data.plReady.value || !f) return;
   await retrying(async () => {
-    await call('loadPlaces', { url: fileUrl(f) });
+    await call('loadPlaces', { url: fileUrl(f), bytes: f.bytes });
     data.plReady.value = true;
     // a box with text in it searches again, now with addresses
     for (const side of ['from', 'to'] as const) if (!search.sides[side].value && search.texts[side].value.trim().length >= 2) document.getElementById(side + 'Q')?.dispatchEvent(new Event('input', { bubbles: true }));
@@ -92,7 +92,7 @@ export async function loadShapes(): Promise<void> {
   const f = manifest().shapes;
   if (data.shReady.value || !f) return;
   // until then rides are drawn dashed from stop to stop and a stop's page shows no lines; the redraw puts both right
-  await retrying(async () => { await call('loadShapes', { url: fileUrl(f) }); data.shReady.value = true; map.redrawMap(true); }, () => { loadShapes(); });
+  await retrying(async () => { await call('loadShapes', { url: fileUrl(f), bytes: f.bytes }); data.shReady.value = true; map.redrawMap(true); }, () => { loadShapes(); });
 }
 /** The learned running times of rail sections: train delays from where a train is, in the data worker (where every estimate is made). */
 export async function loadRailTimes(): Promise<void> {
@@ -107,13 +107,13 @@ export async function loadRailTimes(): Promise<void> {
 export async function loadBusTimes(): Promise<void> {
   const f = manifest().bustimes;
   if (!f) return;
-  try { await call('loadBusTimes', { url: fileUrl(f) }); } catch { /* the timetable's own section times then */ }
+  try { await call('loadBusTimes', { url: fileUrl(f), bytes: f.bytes }); } catch { /* the timetable's own section times then */ }
 }
 export async function loadStreets(): Promise<void> {
   const f = manifest().streets;
   if (data.stReady.value || !f) return;
   await retrying(async () => {
-    await call('loadStreets', { url: fileUrl(f) });
+    await call('loadStreets', { url: fileUrl(f), bytes: f.bytes });
     data.stReady.value = true; setStatus(t('readyStreets'));
     map.redrawMap(true);   // walks drawn straight until now follow the streets
   }, () => { loadStreets(); });
