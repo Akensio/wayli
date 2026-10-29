@@ -41,7 +41,7 @@ export function StopDetail() {
         <div class="row"><h2 class="sec" style="margin:8px 0">{t('nextDeps')}</h2><span class="muted" id="stopLiveNote">{stop.liveNote.value}</span></div>
         <div id="stopDeps">
           {deps && !deps.length && <div class="empty">{t('noDeps')}</div>}
-          {byShownTime(deps || [], (d) => { const lv = stop.liveDeps.value[String(d.trip)]; return lv ? lv.time : d.time; }).map((d) => {
+          {byShownTime(deps || [], (d) => { const lv = stop.liveDeps.value[String(d.trip)]; return lv && !lv.passed ? lv.time : d.time; }).map((d) => {
             const lv = stop.liveDeps.value[String(d.trip)];
             const timeCls = !lv ? 'time' : lv.passed ? 'time gone' : `time ${lv.stale ? 'unsure' : 'live'}`;
             return (
