@@ -13,6 +13,7 @@ import { LegRow } from '../detail/LegRow';
 import type { Leg, RideLeg, WalkLeg } from '../../journey/types';
 import { payLink } from '../../journey/pay';
 import { isRide, ridesOf } from '../../journey/types';
+import { switchJourney, dismissAlt, hideFollow, endTrip, backStep, skipStep } from '../../controllers/follow';
 
 type ViewBase = {
   minutes: number;
@@ -59,10 +60,10 @@ function AltCard({ alt }: { alt: follow.Alt }) {
       </div>
       <div class="muted">{t('altArrive', { time: fmt(j.arrive), n: Math.round(alt.gain / 60) })}</div>
       <div class="row">
-        <button type="button" class="primary slim" onClick={() => follow.hooks.switchTo(alt)}>
+        <button type="button" class="primary slim" onClick={() => switchJourney(alt)}>
           {t('switchRoute')}
         </button>
-        <button type="button" class="ghost" onClick={() => follow.hooks.dismiss(alt)}>
+        <button type="button" class="ghost" onClick={() => dismissAlt(alt)}>
           {t('keepRoute')}
         </button>
       </div>
@@ -128,12 +129,12 @@ export function Follow() {
           id="followHide"
           title={t('hide')}
           aria-label={t('hide')}
-          onClick={follow.hooks.hide}
+          onClick={hideFollow}
         >
           <Icon name="chevronDown" />
         </button>
         <h2 id="followTitle">{title}</h2>
-        <button type="button" class="endbtn" id="followEnd" onClick={follow.hooks.end}>
+        <button type="button" class="endbtn" id="followEnd" onClick={endTrip}>
           <Icon name="close" /> {t('endTripLong')}
         </button>
       </div>
@@ -148,10 +149,10 @@ export function Follow() {
           {small}
         </div>
         <div class="stepper">
-          <button type="button" id="followBack" disabled={!canStepBack(a.state)} onClick={follow.hooks.back}>
+          <button type="button" id="followBack" disabled={!canStepBack(a.state)} onClick={backStep}>
             <Icon name="back" class="chev" /> {t('prevStep')}
           </button>
-          <button type="button" class="next" id="followSkip" hidden={v.kind === 'done'} onClick={follow.hooks.skip}>
+          <button type="button" class="next" id="followSkip" hidden={v.kind === 'done'} onClick={skipStep}>
             {t('nextStep')} <Icon name="chevronEnd" class="chev" />
           </button>
         </div>

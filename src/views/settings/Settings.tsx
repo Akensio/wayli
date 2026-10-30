@@ -19,6 +19,9 @@ import * as settings from '../../state/settings';
 import * as app from '../../state/app';
 import * as data from '../../state/data';
 import type { IconName } from '../../widgets/icons';
+import { appearanceChanged, testAlert, install } from '../../controllers/shell';
+import { setLang } from '../../controllers/lang';
+import { requestAlertPermission } from '../../controllers/alerts';
 
 const Seg = ({
   id,
@@ -121,7 +124,7 @@ export function Settings() {
   const setWalk = (v: number) => settings.set({ maxWalk: Math.max(3, Math.min(45, Math.round(v) || 15)) });
   const look = (patch: Partial<settings.Settings>) => {
     settings.set(patch);
-    app.hooks.appearanceChanged();
+    appearanceChanged();
   };
   const feed = app.feedInfo.value;
   const theme = s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system';
@@ -140,7 +143,7 @@ export function Settings() {
                 { v: 'he', label: 'עברית' },
                 { v: 'en', label: 'English' },
               ]}
-              onPick={(v) => app.hooks.setLang(v as 'he' | 'en')}
+              onPick={(v) => setLang(v as 'he' | 'en')}
             />
           </Item>
           {/* one look for the whole app; the map and the menus apart only when asked */}
@@ -284,7 +287,7 @@ export function Settings() {
             on={!!s.notify}
             onChange={async (on) => {
               settings.set({ notify: on });
-              if (on) await app.hooks.requestAlertPermission();
+              if (on) await requestAlertPermission();
             }}
           />
           <Toggle
@@ -294,7 +297,7 @@ export function Settings() {
             on={!!s.sound}
             onChange={(on) => settings.set({ sound: on })}
           />
-          <Act icon="bell" id="testAlert" label={t('testAlert')} onClick={() => app.hooks.testAlert()} />
+          <Act icon="bell" id="testAlert" label={t('testAlert')} onClick={() => testAlert()} />
         </div>
       </div>
       <div class="group">
@@ -305,7 +308,7 @@ export function Settings() {
             id="installBtn"
             label={t('install')}
             hidden={!app.installable.value}
-            onClick={() => app.hooks.install()}
+            onClick={() => install()}
           />
           <div class="item text" id="installHint" hidden={!app.installHint.value}>
             {app.installHint.value}

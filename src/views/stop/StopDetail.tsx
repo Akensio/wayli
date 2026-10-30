@@ -13,6 +13,8 @@ import { dur, liveClass } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
 import { InCell } from '../../widgets/LiveMark';
+import { refreshStop, openLineAtStop, openDestination, fromHere, toHere } from '../../controllers/stop';
+import { openTrip } from '../../controllers/line';
 
 export function StopDetail() {
   void lang.value;
@@ -50,21 +52,21 @@ export function StopDetail() {
         {info.lines.length > 0 && (
           <div class="stoplines" id="stopLines">
             {info.lines.map((l) => (
-              <button type="button" class="linkchip" onClick={() => l.route != null && stop.hooks.openLine(l.route)}>
+              <button type="button" class="linkchip" onClick={() => l.route != null && openLineAtStop(l.route)}>
                 <LineChip line={l.label} routeType={l.type} agency={l.agency} />
               </button>
             ))}
           </div>
         )}
         <div class="row" style="margin:8px 0">
-          <button type="button" class="ghost" id="stopFrom" onClick={stop.hooks.fromHere}>
+          <button type="button" class="ghost" id="stopFrom" onClick={fromHere}>
             {t('fromHere')}
           </button>
-          <button type="button" class="ghost" id="stopTo" onClick={stop.hooks.toHere}>
+          <button type="button" class="ghost" id="stopTo" onClick={toHere}>
             {t('toHere')}
           </button>
           <span class="spacer" style="flex:1" />
-          <button type="button" class="ghost" id="stopLive" onClick={stop.hooks.refresh}>
+          <button type="button" class="ghost" id="stopLive" onClick={refreshStop}>
             <Icon name="refresh" /> <span>{t('refresh')}</span>
           </button>
         </div>
@@ -82,7 +84,7 @@ export function StopDetail() {
             const lv = stop.liveDeps.value[String(d.trip)];
             const timeCls = lv && lv.passed ? 'time gone' : 'time' + liveClass(lv);
             return (
-              <div class="dep" data-trip={d.trip} key={d.trip} onClick={() => stop.hooks.openTrip(d.trip, info.stop)}>
+              <div class="dep" data-trip={d.trip} key={d.trip} onClick={() => openTrip(d.trip, info.stop)}>
                 <ShownTime
                   planned={d.time}
                   live={lv && !lv.passed ? lv.time : null}
@@ -110,7 +112,7 @@ export function StopDetail() {
             )}
             <div id="stationDests">
               {(stop.dests.value || []).map((d) => (
-                <button type="button" class="destrow" key={d.key} onClick={() => stop.hooks.openTo(d)}>
+                <button type="button" class="destrow" key={d.key} onClick={() => openDestination(d)}>
                   <span class="name">{d.name}</span>
                   <small>
                     {d.next != null

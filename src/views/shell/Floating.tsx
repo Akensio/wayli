@@ -8,6 +8,7 @@ import * as app from '../../state/app';
 import * as nav from '../../state/nav';
 import { ResumeBar } from '../follow/ResumeBar';
 import { SortPopover } from '../results/SortMenu';
+import { cancelPick } from '../../controllers/shell';
 
 export function Floating() {
   void lang.value;
@@ -36,7 +37,7 @@ export function PickBar() {
           {t('pickHint')}
         </span>
         <span class="spacer" style="flex:1" />
-        <button type="button" class="ghost" id="pickCancel" onClick={app.hooks.pickCancel}>
+        <button type="button" class="ghost" id="pickCancel" onClick={cancelPick}>
           {t('cancel')}
         </button>
       </div>

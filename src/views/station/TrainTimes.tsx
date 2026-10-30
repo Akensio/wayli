@@ -9,6 +9,7 @@ import { now } from '../../state/clock';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
 import { InCell } from '../../widgets/LiveMark';
+import { openTrip } from '../../controllers/line';
 
 export function TrainTimes() {
   void lang.value;
@@ -46,7 +47,7 @@ export function TrainTimes() {
               <div
                 class={`trainrow${lv && lv.passed ? ' gone' : ''}`}
                 key={r.trip}
-                onClick={() => st.hooks.openTrip(r.trip, r.fromStop)}
+                onClick={() => openTrip(r.trip, r.fromStop)}
               >
                 <ShownTime planned={r.dep} live={lv ? lv.dep : null} class={`time${liveClass(lv)}`} />
                 <span class="arrow">

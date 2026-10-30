@@ -19,13 +19,18 @@ import { agencyName } from '../../journey/agencies';
 import { distText } from '../../journey/format';
 import { FromTo } from '../../widgets/FromTo';
 import type { View } from '../../state/results';
+import * as data from '../../state/data';
+import { getPosition } from '../../state/position';
+import { toast } from '../../widgets/toast';
+import { pickOnMap } from '../../map/index';
+import { openRecent, findPlaces, findLineGroups, findStopGroups, planFromBar } from '../../controllers/planner';
 
 type Suggestion = {
   kind: string;
   name: string;
   city?: string;
   platforms?: number;
-  label?: string;
+  label?: string | null;
   approx?: number | null;
   lat?: number;
   lon?: number;
@@ -278,17 +283,15 @@ export function SearchField({
       })
       .slice(0, 4);
   };
-  const openRecent = (v: View) => {
+  const pickRecent = (v: View) => {
     open.value = false;
     inputRef.current?.blur();
-    search.hooks.openRecent(v);
+    openRecent(v);
   };
   // the line search's list: the lines matching what is typed, or near the rider while empty
   const lineList = async (q: string) => {
     const my = ++seq.current;
-    const found = search.hooks.ttReady()
-      ? await search.hooks.lineGroups(q, search.lineFilter.value).catch(() => [])
-      : [];
+    const found = data.ttReady.value ? await findLineGroups(q, search.lineFilter.value).catch(() => []) : [];
     if (my !== seq.current) return;
     setRows({ quick: false, lines: found, results: [], placesLoaded: true, near: !q, recent: q ? [] : recentFor() });
     show();
@@ -297,10 +300,8 @@ export function SearchField({
   const stopList = async (q: string) => {
     const my = ++seq.current;
     const from = stationSide === 'to' ? search.stFrom.value?.stops : undefined;
-    const found = search.hooks.ttReady()
-      ? await search.hooks
-          .stopGroups(q, stationSide ? search.pairMode.value : search.stopFilter.value, from)
-          .catch(() => [])
+    const found = data.ttReady.value
+      ? await findStopGroups(q, stationSide ? search.pairMode.value : search.stopFilter.value, from).catch(() => [])
       : [];
     if (my !== seq.current) return;
     setRows({
@@ -341,15 +342,15 @@ export function SearchField({
       timer.current = window.setTimeout(() => stopList(q), 150);
       return;
     }
-    if ((q.length < 2 && !(lines && /^\d+$/.test(q))) || !search.hooks.ttReady()) {
+    if ((q.length < 2 && !(lines && /^\d+$/.test(q))) || !data.ttReady.value) {
       open.value = false;
       return;
     } // one digit is a whole line number
     timer.current = window.setTimeout(async () => {
       const my = ++seq.current;
       const [found, lineRows] = await Promise.all([
-        search.hooks.search(q),
-        lines && q.length <= 5 ? search.hooks.lineGroups(q, 'all', 3).catch(() => []) : Promise.resolve([]),
+        findPlaces(q),
+        lines && q.length <= 5 ? findLineGroups(q, 'all', 3).catch(() => []) : Promise.resolve([]),
       ]);
       if (my !== seq.current) return;
       setRows({ quick: false, lines: lineRows, results: found.results, placesLoaded: found.placesLoaded });
@@ -490,7 +491,7 @@ export function SearchField({
       first.click();
       e.preventDefault();
     } else if (search.from.value && search.to.value) {
-      search.hooks.plan();
+      planFromBar();
       e.preventDefault();
     }
   };
@@ -502,11 +503,11 @@ export function SearchField({
     }
     text.value = t('locating');
     try {
-      onPick(search.myLocation(await search.hooks.getPosition()));
+      onPick(search.myLocation(await getPosition()));
     } catch {
       text.value = '';
       place.value = null;
-      search.hooks.toast(t('noLocation'));
+      toast(t('noLocation'));
     }
   };
   const pickMap = async () => {
@@ -516,7 +517,7 @@ export function SearchField({
       onMap();
       return;
     }
-    const p = await search.hooks.pickOnMap(search.from.value || search.to.value);
+    const p = await pickOnMap(search.from.value || search.to.value);
     if (p) onPick(p);
   };
   const savedList = savedPlaces.all() as (Place & { slot: string })[];
@@ -567,7 +568,7 @@ export function SearchField({
                   onClick={(e) => {
                     e.stopPropagation();
                     savedPlaces.add(p);
-                    search.hooks.toast(t('saved'));
+                    toast(t('saved'));
                     quickMenu();
                   }}
                 >
@@ -581,7 +582,7 @@ export function SearchField({
           <>
             {rows.recent && rows.recent.length > 0 && <div class="grp">{t('recentOnly')}</div>}
             {(rows.recent || []).map((v) => (
-              <RecentRow v={v} onOpen={openRecent} />
+              <RecentRow v={v} onOpen={pickRecent} />
             ))}
             {rows.lines.length > 0 && (
               <div class="grp">{rows.near && search.lineFilter.value === 'all' ? t('linesNear') : t('grpLines')}</div>

@@ -21,10 +21,8 @@ import type { Query } from '../journey/types';
 import { startDay } from './loading';
 import { openLine } from './line';
 import { openStop } from './stop';
-import { chooseStation, swapStations, openStation, openTrains, endStations } from './station';
+import { chooseStation, openStation, openTrains } from './station';
 import { openDetail } from './detail';
-import { startTrip } from './follow';
-import { layoutTop } from './shell';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
 
@@ -195,41 +193,43 @@ export function clearPlan(): void {
 }
 
 // What the bar needs: planning, searching, the map, the menu.
+/** Plan from the bar: over everything else, on the plan screen. */
+export function planFromBar(): void {
+  nav.closeAll();
+  nav.showScreen('plan');
+  plan();
+}
+/** The bar's X: the plan panel closes when one is open (its own history step), else the plan is cleared. */
+export function cancelPlan(): void {
+  if (nav.stack.value.some((e) => e.kind === 'plan')) nav.close('plan');
+  else clearPlan();
+}
+/** A recent or saved trip planned again: the bar filled from its query, from now. */
+export function replan(q: Query): void {
+  search.applyQuery(q);
+  search.resetNow();
+  planFromBar();
+}
+/** Places matching what is typed, the nearest first. */
+export const findPlaces = (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos });
+/** Lines matching what is typed, grouped by number and operator. */
+export const findLineGroups = (q: string, mode: search.LineFilter, limit = 30) =>
+  call('lineGroups', { q, mode, near: lastPos, limit });
+/** Stops matching the name or sign number (every station, for the trains), near the rider while nothing is typed. */
+export const findStopGroups = (q: string, mode: search.StopFilter, from?: number[]) =>
+  call('stopGroups', { q, mode, near: lastPos, limit: 60, from });
+/** A group from the stop search: the one stop view (a station too; its train chip is the timetable of two stations). */
+export const openStopGroup = (g: search.StopGroup): Promise<void> => openStop(g.stops[0], { stops: g.stops });
+// What the bar's own flows need back from here (state cannot import the controllers): planning when a place is picked,
+// the plan cleared when its panel closes.
 Object.assign(search.hooks, {
-  plan: () => {
-    nav.closeAll();
-    nav.showScreen('plan');
-    plan();
-  },
-  planTo: (p: Place) => planTo(p),
-  clearPlan: () => {
-    if (nav.stack.value.some((e) => e.kind === 'plan')) nav.close('plan');
-    else clearPlan();
-  },
-  hasResults: () => !!(results.result.value && results.query.value),
-  lastQuery: () => results.query.value,
-  search: (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos }),
-  lineGroups: (q: string, mode: search.LineFilter, limit = 30) => call('lineGroups', { q, mode, near: lastPos, limit }),
-  stopGroups: (q: string, mode: search.StopFilter, from?: number[]) =>
-    call('stopGroups', { q, mode, near: lastPos, limit: 60, from }),
-  // a station picked among all stops: the train timetable opens with it as the From station
-  openStopGroup: (g: search.StopGroup) => openStop(g.stops[0], { stops: g.stops }), // a station too: the one stop view (the train chip is the timetable of two stations)
-  chooseStation: (side: search.Side, g: search.StopGroup) => chooseStation(side, g),
-  openRecent: (v: results.View) => openRecent(v),
-  endStations: () => endStations(),
-  swapStations: () => swapStations(),
-  openLine: (r: any) => openLine(r.route),
-  getPosition: () => getPosition(),
-  pickOnMap: (start: Place | null) => map.pickOnMap(start),
-  openMenu: () => nav.showOverlay('drawer'),
-  layoutTop: () => layoutTop(),
-  toast: (msg: string) => toast(msg),
-  ttReady: () => data.ttReady.value,
-  lastPos: () => lastPos,
+  plan: planFromBar,
+  planTo,
+  clearPlan: cancelPlan,
 });
 /** Open again something from the history, found in the day loaded now. A trip opens as it was while that timetable is
  *  loaded and it has not ended; otherwise it is planned again from now, like a recent search. */
-async function openView(v: results.View): Promise<void> {
+export async function openView(v: results.View): Promise<void> {
   if (!data.ttReady.value) return;
   const gone = () => toast(t('notInDay'));
   if (v.type === 'trip') {
@@ -241,7 +241,7 @@ async function openView(v: results.View): Promise<void> {
       nav.closeAll();
       nav.showScreen('plan');
       openDetail(v.j, v.q);
-    } else results.hooks.replan(v.q);
+    } else replan(v.q);
     return;
   }
   if (v.type === 'line') {
@@ -279,7 +279,7 @@ async function findStation(a: { name: string; lat: number; lon: number }, mode: 
 }
 /** A recent line, stop or station picked in the list under the box. In the train timetable (two stations at the top) a
  *  station is the From one and a pair fills both; otherwise it opens as from the drawer and the bar folds. */
-async function openRecent(v: results.View): Promise<void> {
+export async function openRecent(v: results.View): Promise<void> {
   if (!search.railPair.value || (v.type !== 'station' && v.type !== 'trains')) {
     await openView(v);
     search.foldBar();
@@ -325,19 +325,9 @@ export function revealCard(idx: number, open: boolean): void {
     el.classList.add('flash');
   }, 60);
 }
-// What the results need: the detail and follow screens, planning again, the sheet and the map.
+// What the results' own flows need back from here: the sheet and the map after results come, a way's card brought
+// into view.
 Object.assign(results.hooks, {
-  openDetail: (j, q, bikeOnly) => openDetail(j, q, bikeOnly),
-  startTrip: (j, q) => startTrip(j, q),
-  plan: (opts) => plan(opts),
-  replan: (q) => {
-    search.applyQuery(q);
-    search.resetNow();
-    nav.closeAll();
-    nav.showScreen('plan');
-    plan();
-  },
-  openView: (v) => openView(v),
   afterResults: () => {
     const body = document.getElementById('sheetBody');
     if (body) body.scrollTop = 0;
@@ -346,9 +336,5 @@ Object.assign(results.hooks, {
     map.redrawMap(true);
   },
   redraw: () => map.redrawMap(true),
-  peekChanged: () => {
-    if (sheet.state.value === 'peek') sheet.set('peek');
-  },
-  peekTap: () => sheet.set('half'),
-  revealCard: (idx, open) => revealCard(idx, open),
+  revealCard,
 } satisfies typeof results.hooks);

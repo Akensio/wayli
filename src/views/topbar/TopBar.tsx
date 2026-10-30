@@ -16,6 +16,10 @@ import { SearchField } from './SearchField';
 import { WhenPopover, BikePopover, TimeChipInner, BikeChipInner } from './Popovers';
 import type { IconName } from '../../widgets/icons';
 import { useFlip } from '../../widgets/flip';
+import { layoutTop } from '../../controllers/shell';
+import { chooseStation, swapStations, endStations } from '../../controllers/station';
+import { cancelPlan, openStopGroup } from '../../controllers/planner';
+import { openLine } from '../../controllers/line';
 
 const LINE_FILTERS: { f: search.LineFilter; label: string; icon?: IconName }[] = [
   { f: 'all', label: 'fAll' },
@@ -105,7 +109,7 @@ export function TopBar() {
   useEffect(() => {
     const el = barRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => search.hooks.layoutTop());
+    const ro = new ResizeObserver(() => layoutTop());
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -203,7 +207,7 @@ export function TopBar() {
             stationSide={pair ? 'from' : undefined}
             onStop={(g) => {
               (document.getElementById('fromQ') as HTMLInputElement | null)?.blur();
-              search.hooks.chooseStation('from', g);
+              chooseStation('from', g);
             }}
             onPick={(p) => {
               (document.getElementById('fromQ') as HTMLInputElement | null)?.blur();
@@ -237,9 +241,9 @@ export function TopBar() {
             stationSide={pair ? 'to' : undefined}
             onStop={(g) => {
               (document.getElementById('toQ') as HTMLInputElement | null)?.blur();
-              if (pair) search.hooks.chooseStation('to', g);
+              if (pair) chooseStation('to', g);
               else {
-                search.hooks.openStopGroup(g);
+                openStopGroup(g);
                 search.foldBar();
               }
             }}
@@ -250,7 +254,7 @@ export function TopBar() {
             onLine={(r) => {
               if (!line) search.toText.value = '';
               (document.getElementById('toQ') as HTMLInputElement | null)?.blur();
-              search.hooks.openLine(r);
+              openLine(r.route);
               search.foldBar();
             }}
           >
@@ -262,7 +266,7 @@ export function TopBar() {
               aria-label={t('menu')}
               onClick={() => {
                 (document.getElementById('toQ') as HTMLInputElement | null)?.blur();
-                search.hooks.openMenu();
+                nav.showOverlay('drawer');
               }}
             >
               <MenuGlyph />
@@ -304,7 +308,7 @@ export function TopBar() {
           hidden={!edit || one}
           title={t('swap')}
           aria-label={t('swap')}
-          onClick={pair ? search.hooks.swapStations : search.swapPlaces}
+          onClick={pair ? swapStations : search.swapPlaces}
         >
           <Icon name="swap" />
         </button>
@@ -356,7 +360,7 @@ export function TopBar() {
             class="clearbtn"
             id="sumClear"
             aria-label={t('clearText')}
-            onClick={pair ? search.hooks.endStations : search.hooks.clearPlan}
+            onClick={pair ? endStations : cancelPlan}
           >
             <Icon name="close" />
           </button>

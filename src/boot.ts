@@ -20,7 +20,7 @@ import {
   loadRailTimes,
   loadBusTimes,
 } from './controllers/loading';
-import { plan, parseShared } from './controllers/planner';
+import { plan, planFromBar, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
 import { layoutTop, updateOnline, registerServiceWorker } from './controllers/shell';
 
@@ -70,7 +70,7 @@ async function boot(): Promise<void> {
   } else if (again) {
     const f = search.from.value;
     if (!f || f.transient) search.setPlace('from', { name: t('myLoc'), transient: true, auto: !f || !!f.auto }); // where you are now
-    search.hooks.plan();
+    planFromBar();
   }
   // the courses and the address book together (3.5 and 2.8 MB), then the street graph (12 MB): the courses shape
   // what is on screen at once (a ride, a stop's lines), the streets only refine walks that redraw themselves

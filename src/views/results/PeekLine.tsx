@@ -6,17 +6,19 @@ import { TimeRange } from '../../widgets/TimeRange';
 import * as results from '../../state/results';
 import { dur, transfersText } from '../../journey/format';
 import { Leave } from './JourneyCard';
+import * as sheet from '../../state/sheet';
+import { revealCard } from '../../controllers/planner';
 
 export function PeekLine() {
   void lang.value;
   const c = results.highlighted.value;
   // the collapsed sheet's height follows: measured after the line appears or goes
   useEffect(() => {
-    results.hooks.peekChanged();
+    if (sheet.state.value === 'peek') sheet.set('peek');
   }, [!!c]);
   const tap = () => {
-    if (c) results.hooks.revealCard(c.idx, true);
-    else results.hooks.peekTap();
+    if (c) revealCard(c.idx, true);
+    else sheet.set('half');
   };
   return (
     <button type="button" class="peekline" id="peekLine" hidden={!c} onClick={tap}>

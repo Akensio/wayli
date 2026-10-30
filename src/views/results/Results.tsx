@@ -18,8 +18,9 @@ import { JourneyCard } from './JourneyCard';
 import { SortChip } from './SortMenu';
 import type { Journey, Query } from '../../journey/types';
 import { ridesOf } from '../../journey/types';
-
-const plan = () => results.hooks.plan();
+import { plan } from '../../controllers/planner';
+import { openDetail } from '../../controllers/detail';
+import { startTrip } from '../../controllers/follow';
 
 function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
   let note = '';
@@ -113,7 +114,7 @@ function Strip({
 function StripRow({ j, q, note, act }: { j: Journey; q: Query; note: VNode; act: string }) {
   return (
     <div class="strip-row">
-      <div class="txt" onClick={() => results.hooks.openDetail(j, q)}>
+      <div class="txt" onClick={() => openDetail(j, q)}>
         <TimeRange from={j.depart} to={j.arrive} />
         <span class="chips">
           <LegChips legs={ridesOf(j.legs)} />
@@ -125,7 +126,7 @@ function StripRow({ j, q, note, act }: { j: Journey; q: Query; note: VNode; act:
         class="ghost"
         onClick={(e) => {
           e.stopPropagation();
-          results.hooks.startTrip(j, q);
+          startTrip(j, q);
         }}
       >
         <Icon name="play" /> {act}
@@ -241,7 +242,7 @@ function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Q
           </button>
         )}
         {r.reason && (q.maxWalk || 0) < 30 && (
-          <button type="button" class="ghost" onClick={() => results.hooks.plan({ maxWalk: 30 })}>
+          <button type="button" class="ghost" onClick={() => plan({ maxWalk: 30 })}>
             {t('tryMoreWalk')}
           </button>
         )}
@@ -274,7 +275,7 @@ export function Results() {
         <div
           class="journey"
           onClick={() =>
-            results.hooks.openDetail(
+            openDetail(
               {
                 depart: 0,
                 arrive: bikeOnly.seconds,

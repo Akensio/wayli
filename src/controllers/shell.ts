@@ -8,7 +8,6 @@ import * as nav from '../state/nav';
 import * as sheet from '../state/sheet';
 import * as search from '../state/search';
 import * as chooser from '../state/chooser';
-import * as saved from '../state/saved';
 import * as results from '../state/results';
 import * as detail from '../state/detail';
 import * as follow from '../state/follow';
@@ -20,10 +19,9 @@ import type { Place } from '../state/search';
 import { clearPlan, planTo, planFrom, revealCard } from './planner';
 import { closeDetail } from './detail';
 import { openStop, closeStop } from './stop';
-import { openLine, closeLine, openTrip } from './line';
+import { openLine, closeLine, openTrip, chooseAnchor } from './line';
 import { closeTrains } from './station';
 import { isFollowing, closeFollow } from './follow';
-import { setLang } from './lang';
 import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
 import { type Journey, isRide } from '../journey/types';
 
@@ -120,70 +118,62 @@ export async function registerServiceWorker(): Promise<void> {
 }
 
 // ---- the drawer and the settings' actions
-Object.assign(app.hooks, {
-  install: async () => {
-    if (!installPrompt) {
-      app.installHint.value = app.installHint.value ? '' : installHint();
-      return;
-    }
-    installPrompt.prompt();
-    await installPrompt.userChoice.catch(() => {});
-    installPrompt = null;
-  },
-  go: (name: string) => {
-    nav.closeAll();
-    nav.showScreen(name);
-    if (name === 'plan') sheet.set('half');
-  },
-  lineSearch: () => {
-    nav.closeAll();
-    nav.showScreen('plan');
-    search.lineMode();
-  }, // the rows, even over a plan's summary
-  stopSearch: () => {
-    nav.closeAll();
-    nav.showScreen('plan');
-    search.stopMode();
-  },
-  closeDrawer: () => nav.close('drawer'),
-  openSettings: () => nav.showOverlay('settings'), // over the drawer, which stays open under it
-  closeSettings: () => nav.close('settings'),
-  setLang: (l: 'he' | 'en') => setLang(l),
-  appearanceChanged: () => {
-    map.applyMapStyle();
-    map.applyTheme();
-  },
-  requestAlertPermission: () => requestAlertPermission(),
-  testAlert: async () => {
-    ensureAudio();
-    await requestAlertPermission();
-    alertUser(t('alertSoon'), t('testAlertMsg'));
-  },
-  pickCancel: () => map.closePicker(null),
-} satisfies typeof app.hooks);
+/** Install: Chrome's prompt when the browser gave one, else the hint for the browser's own steps (shown, or hidden again). */
+export async function install(): Promise<void> {
+  if (!installPrompt) {
+    app.installHint.value = app.installHint.value ? '' : installHint();
+    return;
+  }
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => {});
+  installPrompt = null;
+}
+/** The drawer's screens. */
+export function go(name: string): void {
+  nav.closeAll();
+  nav.showScreen(name);
+  if (name === 'plan') sheet.set('half');
+}
+/** The drawer's line search: the bar's rows, even over a plan's summary. */
+export function lineSearch(): void {
+  nav.closeAll();
+  nav.showScreen('plan');
+  search.lineMode();
+}
+export function stopSearch(): void {
+  nav.closeAll();
+  nav.showScreen('plan');
+  search.stopMode();
+}
+/** The map's look or the menus' theme changed in the settings. */
+export function appearanceChanged(): void {
+  map.applyMapStyle();
+  map.applyTheme();
+}
+export async function testAlert(): Promise<void> {
+  ensureAudio();
+  await requestAlertPermission();
+  alertUser(t('alertSoon'), t('testAlertMsg'));
+}
+/** The map picker's cancel. */
+export const cancelPick = (): void => map.closePicker(null);
 
 // ---- choosing a place (home, work, saved): search, my location named by reverse geocoding, or the map
 Object.assign(chooser.hooks, {
   show: () => nav.showOverlay('chooser'),
   close: () => nav.close('chooser'),
-  locate: async (): Promise<Place | null> => {
-    try {
-      const pos = await getPosition();
-      const r = await call('reverse', pos);
-      return { name: r.name, lat: pos.lat, lon: pos.lon };
-    } catch {
-      toast(t('noLocation'));
-      return null;
-    }
-  },
-  pickOnMap: () => map.pickOnMap(null),
 });
-Object.assign(saved.hooks, {
-  planTo: (p: Place) => planTo(p),
-  choosePlace: (title: string) => chooser.open(title),
-  openStop: (stop: number) => openStop(stop),
-  openLine: (route: number) => openLine(route),
-});
+/** My location as a named place (reverse geocoded), for the chooser's chip; null, with a toast, when it cannot be had. */
+export async function locate(): Promise<Place | null> {
+  try {
+    const pos = await getPosition();
+    const r = await call('reverse', pos);
+    return { name: r.name, lat: pos.lat, lon: pos.lon };
+  } catch {
+    toast(t('noLocation'));
+    return null;
+  }
+}
 // what the map's bubbles ask of the app
 Object.assign(map.hooks, {
   openTrip: (trip: number, stop: number) => openTrip(trip, stop),
@@ -214,7 +204,7 @@ Object.assign(map.hooks, {
   lineAt: (stop: number): boolean => {
     const i = line.info.value?.stops.findIndex((s) => s.stop === stop) ?? -1;
     if (i < 0) return false;
-    line.hooks.setAnchor(i);
+    chooseAnchor(i);
     return true;
   },
 });

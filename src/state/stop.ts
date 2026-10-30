@@ -50,15 +50,9 @@ export const liveDeps = signal<Record<string, LiveDep>>({});
 export const liveNote = signal('');
 export const dests = signal<Dest[] | null>(null); // a station's: where its trains go without a change (null while loading)
 
+/** What the page's own flow needs from the controllers: its history entry. */
 export const hooks = {
   show: () => {},
-  close: () => {},
-  refresh: () => {},
-  openTrip: (_trip: number, _stop: number) => {},
-  fromHere: () => {},
-  toHere: () => {},
-  openTo: (_d: Dest) => {}, // the trains between this station and that one
-  openLine: (_route: number) => {},
 };
 export function open(i: StopInfo, d: string, now: boolean): void {
   info.value = i;

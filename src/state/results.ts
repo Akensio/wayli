@@ -136,16 +136,11 @@ export type View = { at?: number } & (
   | { type: 'trains'; from: At; to: At; mode?: 'rail' | 'lrt' }
   | { type: 'trip'; q: Query; j: Journey; built?: string }
 );
+/** What the results' own flows need from the controllers: the sheet and the map after results come, a way's card
+ *  brought into view. */
 export const hooks = {
-  openDetail: (_j: Journey, _q: Query, _bikeOnly?: boolean) => {},
-  startTrip: (_j: Journey, _q: Query) => {},
-  plan: (_opts?: { maxWalk?: number }) => {},
-  replan: (_q: Query) => {}, // a recent trip tapped: the bar filled from it, planned from now
-  openView: (_v: View) => {}, // something opened before, opened again (store.js recentViews)
   afterResults: () => {}, // the sheet opens, the map draws
   redraw: () => {}, // the map draws the ways switched on
-  peekChanged: () => {}, // the collapsed sheet follows the peek line's height
-  peekTap: () => {}, // the peek line opens the sheet
   revealCard: (_idx: number, _open: boolean) => {}, // a way's card scrolled into view (the sheet opened first if asked)
 };
 

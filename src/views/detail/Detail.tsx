@@ -14,6 +14,15 @@ import { LegRow } from './LegRow';
 import { payLink } from '../../journey/pay';
 import { isRide } from '../../journey/types';
 import type { RideLeg } from '../../journey/types';
+import { rideOptions, rideLive } from '../../controllers/detail';
+import { openLine, openTrip } from '../../controllers/line';
+import { startTrip } from '../../controllers/follow';
+
+/** The ride's line, as a timetable at its boarding stop. */
+const openRideLine = (l: RideLeg) => {
+  const s = l.stopsAlong?.[0]?.stop;
+  return openLine(l.route, s != null ? { stop: s } : {});
+};
 
 /** A ride's live badge: the newest look at its vehicle, else the lateness the plan used at its boarding stop. */
 const rideBadge = (l: RideLeg) =>
@@ -56,7 +65,7 @@ export function Detail() {
           hidden={bikeOnly}
           disabled={over}
           title={over ? t('tripOver') : ''}
-          onClick={() => detail.hooks.startTrip(j, q)}
+          onClick={() => startTrip(j, q)}
         >
           <Icon name="play" /> <span>{t('startTrip')}</span>
         </button>
@@ -80,16 +89,16 @@ export function Detail() {
             mode="detail"
             cls={i === focus ? 'focus' : ''}
             badge={isRide(l) ? rideBadge(l) : null}
-            onChip={isRide(l) ? () => detail.hooks.openLine(l.route, l.stopsAlong?.[0]?.stop) : undefined}
+            onChip={isRide(l) ? () => openRideLine(l) : undefined}
             onClick={() => detail.focusLeg(i)}
             options={
               isRide(l) && (l.stopsAlong?.length ?? 0) >= 2
                 ? {
-                    load: () => detail.hooks.rideOptions(l, q),
-                    liveFor: (rows) => detail.hooks.rideLive(rows, q.day),
+                    load: () => rideOptions(l, q),
+                    liveFor: (rows) => rideLive(rows, q.day),
                     day: q.day,
                     now: q.isNow ? clock.nowOn(q.day) : null,
-                    onOpen: detail.hooks.openTrip,
+                    onOpen: openTrip,
                   }
                 : undefined
             }

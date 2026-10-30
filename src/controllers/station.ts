@@ -12,7 +12,6 @@ import * as map from '../map/index';
 import { asStation, type Station, type TrainRow } from '../state/station';
 import { openStop } from './stop';
 import { liveRides } from './liverides';
-import { openTrip } from './line';
 import { recentViews } from '../lib/store.js';
 
 let seq = 0,
@@ -115,12 +114,3 @@ export function swapStations(): void {
   if (a && b) openTrains(asStation(a), asStation(b));
   else if (a) openStation(asStation(a));
 }
-
-Object.assign(st.hooks, {
-  closeTrains: () => nav.close('trainTimes'),
-  openTrip: (trip: number, stop: number) => openTrip(trip, stop),
-  refresh: () => {
-    const p = st.pair.value;
-    if (p) openTrains(p.from, p.to);
-  },
-} satisfies typeof st.hooks);

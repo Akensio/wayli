@@ -425,7 +425,8 @@ async function replanCheck(force = false): Promise<void> {
     f.replanning = false;
   }
 }
-function switchJourney(alt: Alt): void {
+/** The faster way proposed, taken: spliced into the trip from where the rider joins it. */
+export function switchJourney(alt: Alt): void {
   if (!fol) return;
   const a = fol.a;
   const { journey, state } = spliceJourney(a.journey, a.state, alt.journey, alt.origin);
@@ -514,30 +515,32 @@ export function resumeAtStart(): void {
   } else if (a) activeTrip.clear();
 }
 
-Object.assign(follow.hooks, {
-  skip: () => step(1),
-  back: () => step(-1),
-  end: () => {
-    closeFollow(true);
-    nav.close('follow');
-    toast(t('tripEnded'));
-  },
-  hide: () => nav.close('follow'),
-  resume: () => {
-    const a = stored();
-    if (a) {
-      nav.closeAll();
-      openFollow(a);
-    }
-  },
-  switchTo: (alt: Alt) => switchJourney(alt),
-  dismiss: (alt: Alt) => {
-    if (!fol) return;
-    fol.dismissed[alt.key] = Date.now();
-    fol.alt = null;
-    publish();
-  },
-});
+/** "Next step" and "Back": the rider corrects the state machine by hand. */
+export const skipStep = (): void => step(1);
+export const backStep = (): void => step(-1);
+/** The trip is over: forgotten, its screen closed. */
+export function endTrip(): void {
+  closeFollow(true);
+  nav.close('follow');
+  toast(t('tripEnded'));
+}
+/** The follow screen folded away; the trip goes on and the resume bar offers it. */
+export const hideFollow = (): void => nav.close('follow');
+/** The resume bar tapped: the stored trip's screen again, over everything. */
+export function resumeTrip(): void {
+  const a = stored();
+  if (a) {
+    nav.closeAll();
+    openFollow(a);
+  }
+}
+/** The faster way proposed, declined: not again for a while. */
+export function dismissAlt(alt: Alt): void {
+  if (!fol) return;
+  fol.dismissed[alt.key] = Date.now();
+  fol.alt = null;
+  publish();
+}
 // the followed trip's vehicle and the rider, once the map has drawn the trip
 map.afterDraw.follow = () => {
   if (fol) {

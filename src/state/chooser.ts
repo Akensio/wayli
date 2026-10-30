@@ -7,11 +7,10 @@ export const text = signal('');
 export const place = signal<Place | null>(null);
 let resolver: ((p: Place | null) => void) | null = null;
 
+/** What the chooser's own flow needs from the controllers (state cannot import them): its history entry. */
 export const hooks = {
   show: () => {}, // the panel opens (a history entry)
   close: () => {}, // and closes
-  locate: async (): Promise<Place | null> => null, // my location, as a named place
-  pickOnMap: async (): Promise<Place | null> => null,
 };
 
 export function open(t: string): Promise<Place | null> {

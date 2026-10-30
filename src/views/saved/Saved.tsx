@@ -6,8 +6,6 @@ import { t, lang } from '../../lib/i18n';
 import { bikeText } from '../../journey/format';
 import { toast } from '../../widgets/toast';
 import { savedPlaces, favs, stored } from '../../lib/store.js';
-import * as saved from '../../state/saved';
-import * as results from '../../state/results';
 import { StopList } from './StopList';
 import type { Place } from '../../state/search';
 import type { SavedTrip } from '../../journey/types';
@@ -16,6 +14,10 @@ import type { View } from '../../state/results';
 import { LineChip } from '../../widgets/LineChip';
 import type { LineMode } from '../../widgets/LineChip';
 import { agencyName } from '../../journey/agencies';
+import * as chooser from '../../state/chooser';
+import { planTo, replan, openView } from '../../controllers/planner';
+import { openStop } from '../../controllers/stop';
+import { openLine } from '../../controllers/line';
 
 export function Saved() {
   void lang.value;
@@ -25,7 +27,7 @@ export function Saved() {
     stops = favs.get('stops') as Record<string, Stop>,
     lines = favs.get('lines') as Record<string, View>;
   const choose = async (slot: 'home' | 'work') => {
-    const c = await saved.hooks.choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork'));
+    const c = await chooser.open(t(slot === 'home' ? 'chooseHome' : 'chooseWork'));
     if (c) {
       savedPlaces.set(slot, c);
     }
@@ -41,7 +43,7 @@ export function Saved() {
               <span class="ic">
                 <Icon name={slot === 'home' ? 'home' : 'work'} />
               </span>
-              <span class="txt" onClick={() => (p ? saved.hooks.planTo(named(p)) : choose(slot))}>
+              <span class="txt" onClick={() => (p ? planTo(named(p)) : choose(slot))}>
                 <span class={`name${p ? '' : ' unset'}`}>{p ? placeName(p) : t('notSet')}</span>
                 <small>{t(slot)}</small>
               </span>
@@ -56,7 +58,7 @@ export function Saved() {
             <span class="ic">
               <Icon name="star" />
             </span>
-            <span class="txt" onClick={() => saved.hooks.planTo(named(p))}>
+            <span class="txt" onClick={() => planTo(named(p))}>
               <span class="name">{placeName(p)}</span>
             </span>
             <button
@@ -76,7 +78,7 @@ export function Saved() {
           class="ghost"
           style="margin-bottom:8px"
           onClick={async () => {
-            const c = await saved.hooks.choosePlace(t('choosePlace'));
+            const c = await chooser.open(t('choosePlace'));
             if (c) {
               savedPlaces.add(c);
               toast(t('saved'));
@@ -93,7 +95,7 @@ export function Saved() {
           <div
             class="journey"
             onClick={() =>
-              results.hooks.replan({
+              replan({
                 from: named(v.from),
                 to: named(v.to),
                 bike: v.bike,
@@ -125,7 +127,7 @@ export function Saved() {
           <h2 class="sec">{t('favLines')}</h2>
           <div id="favLines">
             {(Object.values(lines) as Extract<View, { type: 'line' }>[]).map((v) => (
-              <div class="recent" onClick={() => results.hooks.openView(v)}>
+              <div class="recent" onClick={() => openView(v)}>
                 <LineChip
                   line={v.line}
                   routeType={v.routeType}
@@ -145,7 +147,7 @@ export function Saved() {
       )}
       <h2 class="sec">{t('favStops')}</h2>
       <div id="favStops" class="stops-list">
-        <StopList stops={Object.values(stops)} onStop={saved.hooks.openStop} onLine={saved.hooks.openLine} />
+        <StopList stops={Object.values(stops)} onStop={(s) => openStop(s)} onLine={(r) => openLine(r)} />
       </div>
     </>
   );

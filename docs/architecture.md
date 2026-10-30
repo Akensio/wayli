@@ -159,7 +159,7 @@ the app).
   `places.js` (the address book), `clock.js` (Israel time), `feed.js` (the
   live vehicles), `delays.js` (delay estimates), `follow.js` (the
   trip-following state machine), `geo.js` (distances, and where a point is
-  along a trip), `modes.js` (what runs a line), `container.js` (reading the
+  along a trip), `modes.ts` (what runs a line), `container.js` (reading the
   data files) and `text.js` (how the searches compare names).
 - `worker/`: the data worker (it holds the data and answers every query, so
   the UI never blocks), a module per kind of question (`data`, `search`,
@@ -172,12 +172,14 @@ the app).
   `sheet` the bottom sheet's size, `nav` the stack of panels and screens with
   their history entries, `detail`, `follow`, `stop`, `line`, `station`,
   `saved`, `chooser`, `settings`, `app`, `data` what is loaded,
-  `position`, `clock` a 20-second tick for countdowns). Each exports a
-  `hooks` object the app fills in at start with what the feature needs from
-  the rest (planning, the worker, panels to open), so a feature never
-  imports the app.
-- `controllers/`: what happens behind the screens, one module each, and the
-  only place that fills in the `hooks`: `loading` (the manifest, a day's
+  `position`, `clock` a 20-second tick for countdowns). State never imports
+  a controller; the few things a state flow must set off in one (planning
+  when a place is picked, a panel's history entry, the sheet and the map
+  after results) go through a small `hooks` object the controller fills in
+  at start.
+- `controllers/`: what happens behind the screens, one module each,
+  exporting the functions the views call and filling the state's few
+  `hooks`: `loading` (the manifest, a day's
   timetable, the other data files), `planner` (planning, a destination from
   anywhere, the last search, clearing), `detail`, `stop`, `line`, `station`
   (each page's worker calls and live polls; `livepoll` a panel's live times
@@ -187,7 +189,8 @@ the app).
   `alerts`, `lang`, `status`, `shell` (install, online, the drawer's
   actions, what closing each panel stops).
 - `views/`: the parts of the screen, Preact components drawing from the
-  state modules only, a folder per feature named as in `state/` and
+  state modules and calling the controllers directly (a tap is one import
+  away from the work it starts), a folder per feature named as in `state/` and
   `controllers/`: `topbar/`, `results/`, `detail/`, `follow/`, `stop/`,
   `line/`, `station/` (the trains between two stations), `saved/`,
   `settings/`, `menu/`, `chooser/`, and `shell/` (the sheet with every

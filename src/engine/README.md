@@ -14,6 +14,10 @@ backtest).
 | `delays.js` | How late a vehicle runs: where it is along its trip, trains' and buses' learned section times (and the buses' live correction), the delay, a stop's live time. |
 | `follow.js` | Following a trip: a pure state machine from the journey, the position and the clock to what to tell the rider and when. |
 | `geo.js` | Distances on the ground: `haversine` (great circle) and `metres` (a flat approximation for vehicles along their trips, the same as the pipeline's); on that approximation `scaleAt`, `nearestOnSegment` and `projectOnStops` (where a point is along a trip). |
-| `modes.js` | What kind of vehicle runs a line, from its GTFS route type: rail, lrt, cable, taxi, flex or bus. |
+| `modes.ts` | What kind of vehicle runs a line, from its GTFS route type: `Mode`, rail, lrt, cable, taxi, flex or bus (the one word for it in the whole app). |
 | `container.js` | Reading the container every data file comes in (a header, then typed-array sections), for the timetable, the street graph, the address book and the courses. |
 | `text.js` | How the searches compare text (`norm`) and rank matches (`byScore`), shared by the stop search and the address book. |
+
+The files move to TypeScript as they are touched (`modes.ts` first) and are
+imported with their `.ts` extension: Vite transpiles them for the page and
+the worker, Node 22.18+ runs them as they are for `tools/`.

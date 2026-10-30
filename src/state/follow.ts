@@ -46,15 +46,6 @@ export const legLive = signal<Record<number, LegLive>>({});
 export const alt = signal<Alt | null>(null); // a faster way, proposed
 export const resumable = signal<ActiveTrip | null>(null); // a trip in progress whose screen is hidden
 
-export const hooks = {
-  skip: () => {}, // "next step": the rider says the state machine lags
-  back: () => {}, // "back": a step too far
-  end: () => {},
-  hide: () => {},
-  resume: () => {},
-  switchTo: (_alt: Alt) => {},
-  dismiss: (_alt: Alt) => {},
-};
 /** The controller publishes the trip after every step. */
 export function publish(a: ActiveTrip | null, found: Alt | null = null): void {
   active.value = a;

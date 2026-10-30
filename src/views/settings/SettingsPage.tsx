@@ -7,6 +7,7 @@ import { useSwipeClose } from '../../widgets/swipeClose';
 import { t, lang } from '../../lib/i18n';
 import * as app from '../../state/app';
 import { Settings } from './Settings';
+import * as nav from '../../state/nav';
 
 export function SettingsPage() {
   void lang.value;
@@ -16,7 +17,7 @@ export function SettingsPage() {
   const swipe = useSwipeClose({
     layer: ref,
     dir: () => (document.documentElement.dir === 'rtl' ? -1 : 1),
-    onClose: () => app.hooks.closeSettings(),
+    onClose: () => nav.close('settings'),
   });
   return (
     <section
@@ -33,7 +34,7 @@ export function SettingsPage() {
           class="iconbtn flat"
           id="settingsBack"
           aria-label={t('back')}
-          onClick={app.hooks.closeSettings}
+          onClick={() => nav.close('settings')}
         >
           <Icon name="back" class="chev" />
         </button>

@@ -13,6 +13,7 @@ import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
 import type { RideLeg } from '../../journey/types';
 import { ridesOf } from '../../journey/types';
+import { openDetail } from '../../controllers/detail';
 
 /** The countdown line; it re-renders with the clock. */
 export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveInfo?: RideLeg['live'] }) {
@@ -48,7 +49,7 @@ export function JourneyCard({ card }: { card: Card }) {
     sel = shown && results.altSel.value === idx;
   void now.value; // the "also at" times grey out as they pass
   return (
-    <div class={`journey${sel ? ' sel' : ''}`} data-idx={idx} onClick={() => results.hooks.openDetail(j, q)}>
+    <div class={`journey${sel ? ' sel' : ''}`} data-idx={idx} onClick={() => openDetail(j, q)}>
       <div class="top">
         {rides.some((l) => l.estimated) && <span class="est">~</span>}
         <TimeRange from={j.depart} to={j.arrive} />
@@ -76,7 +77,7 @@ export function JourneyCard({ card }: { card: Card }) {
                 title={o.slower ? t('arrivesLater') : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
-                  results.hooks.openDetail(o, q);
+                  openDetail(o, q);
                 }}
               >
                 {fmt(o.depart)}

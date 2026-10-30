@@ -1,8 +1,10 @@
 # controllers: what happens behind the screen
 
-The only place that fills the `hooks` of `state/`. Each module does the
-work for one feature: asks the worker, polls live data, opens panels, keeps
-timers. `boot.ts` imports them after the first paint.
+What the views call when a tap means work. Each module does the work for
+one feature (asks the worker, polls live data, opens panels, keeps timers)
+and exports the functions its views need (`openStop`, `planFromBar`,
+`endTrip`, ...); it also fills the few `hooks` of `state/`, for what a state
+flow must set off here. `boot.ts` starts the app after the first paint.
 
 | Module | What |
 |---|---|

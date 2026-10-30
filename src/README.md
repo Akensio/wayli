@@ -12,9 +12,11 @@ Preact with signals; Vite builds it into `dist/`.
   worker/ (data)  ─── uses ── engine/       engine/feed.js
           ▲                                        ▲
           │ worker/client.ts                       │
-  controllers/  ── fill the hooks of ──▶  state/  ◀── read by ── views/ (+ widgets/)
-          │                                        │
-          └──────────────▶  map/  ◀────────────────┘
+  controllers/  ◀──── call ────  views/ (+ widgets/)
+          │                           │
+          ├────▶  state/  ◀── read ───┤
+          │                           │
+          └──────────▶  map/  ◀───────┘
 ```
 
 At the top of `src/` only the entry files:
@@ -32,9 +34,9 @@ The folders, each with its own README:
 |---|---|---|
 | `engine/` | The logic with no screen: routing, streets, the address book, live estimates, following a trip. Runs in the worker and in Node. | nothing of the app |
 | `worker/` | The data worker and the app's client for it. | `engine/` |
-| `state/` | The app's state, one module per feature, as signals, with `hooks` the controllers fill. | `lib/`, `journey/`, `engine/` |
-| `controllers/` | What happens behind the screen: loading, planning, live polling, follow mode, alerts. The only place that fills the hooks. | everything below views |
-| `views/` | The parts of the screen (Preact components). They read state and call hooks; they never import a controller. | `state/`, `widgets/`, `lib/`, `journey/`, `engine/` |
+| `state/` | The app's state, one module per feature, as signals. A few `hooks` point back at the controllers for what a state flow must set off (a plan, a panel's history entry). | `lib/`, `journey/`, `engine/` |
+| `controllers/` | What happens behind the screen: loading, planning, live polling, follow mode, alerts. Exported functions the views call; they also fill the state's hooks. | everything below views |
+| `views/` | The parts of the screen (Preact components). They read state and call the controllers directly. | `controllers/`, `state/`, `map/` (the picker), `widgets/`, `lib/`, `journey/`, `engine/` |
 | `widgets/` | Small pieces several views share: icons, line chips, the timetable, toast, ripple. | `lib/`, `journey/`, `state/` |
 | `map/` | The one map under everything and what it draws for each panel. | `state/`, `worker/`, `journey/`, `lib/`, `widgets/`, `engine/` |
 | `journey/` | A journey's types, colours, words, sharing, the pay link. | `lib/`, `state/`, `engine/` |

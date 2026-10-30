@@ -247,11 +247,22 @@ export function closeAll(): void {
   if (WATCH) for (const e of old) unwatch(e);
   else stepBack(old.length);
 }
+/** A panel to the front: pushed when new. Already open, it is drawn anew (another stop or line in the same panel); if
+ *  other panels were opened over it since (a stop's page over a line's page, whose chip asked for a line), those close
+ *  first, so what was asked for is seen. */
 export function showOverlay(id: string): void {
-  if (isOpen(id)) {
+  const i = stack.value.findIndex((e) => e.kind === 'overlay' && e.id === id);
+  if (i >= 0) {
+    const above = stack.value.slice(i + 1);
+    if (above.length) {
+      stack.value = stack.value.slice(0, i + 1);
+      for (const e of [...above].reverse()) undo(e);
+      if (WATCH) for (const e of above) unwatch(e);
+      else stepBack(above.length);
+    }
     hooks.changed(true);
     return;
-  } // another stop or line in the same panel: drawn anew
+  }
   push({ kind: 'overlay', id });
   renderPanels();
 }

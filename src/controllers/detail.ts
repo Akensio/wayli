@@ -12,10 +12,8 @@ import * as nav from '../state/nav';
 import * as map from '../map/index';
 import { liveBadge } from '../journey/format';
 import type { Journey, Query, RideLeg } from '../journey/types';
-import { openLine, openTrip } from './line';
 import { liveRides } from './liverides';
-import type { TrainRow } from '../state/station';
-import { startTrip } from './follow';
+import type { TrainRow, LiveTrain } from '../state/station';
 import { recentViews } from '../lib/store.js';
 import { isRide } from '../journey/types';
 
@@ -85,19 +83,20 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
   );
 }
 
+/** Every line doing the ride, from its boarding stop to the one it is left at: from now on today, else from a little
+ *  before the ride planned. */
+export function rideOptions(l: RideLeg, q: Query): Promise<TrainRow[]> {
+  const along = l.stopsAlong || [];
+  if (along.length < 2) return Promise.resolve([]);
+  const fromTime = q.isNow ? clock.nowOn(q.day) - 120 : (l.depart ?? 0) - 1200;
+  return call('rideOptions', { from: [along[0].stop], to: [along[along.length - 1].stop], fromTime, limit: 60 });
+}
+/** The live state of those rides, when live data is on. */
+export async function rideLive(rows: TrainRow[], day: string): Promise<Record<string, LiveTrain>> {
+  return map.liveOn() ? (await liveRides(rows, day)).live : {};
+}
+// What the detail's own flows need back from here: the panel's history entry, the map drawn when the focus changes.
 Object.assign(detail.hooks, {
   show: () => nav.showOverlay('detail'),
-  close: () => nav.close('detail'),
   redraw: () => map.redrawMap(true),
-  openLine: (route: number, stop?: number) => openLine(route, stop != null ? { stop } : {}),
-  // every line doing the ride: from now on today, else from a little before the ride planned
-  rideOptions: (l: RideLeg, q: Query) => {
-    const along = l.stopsAlong || [];
-    if (along.length < 2) return Promise.resolve([]);
-    const fromTime = q.isNow ? clock.nowOn(q.day) - 120 : (l.depart ?? 0) - 1200;
-    return call('rideOptions', { from: [along[0].stop], to: [along[along.length - 1].stop], fromTime, limit: 60 });
-  },
-  rideLive: async (rows: TrainRow[], day: string) => (map.liveOn() ? (await liveRides(rows, day)).live : {}),
-  openTrip: (trip: number, stop: number) => openTrip(trip, stop),
-  startTrip: (j: Journey, q: Query) => startTrip(j, q),
 });

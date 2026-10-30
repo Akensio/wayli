@@ -7,7 +7,6 @@ import * as clock from '../engine/clock.js';
 import { t } from '../lib/i18n';
 import { calToday, hm, secOf, calendarOf } from '../lib/time';
 import * as settings from './settings';
-import type { View } from './results';
 
 export type Place = {
   name: string;
@@ -124,37 +123,15 @@ export const mode = computed<'rest' | 'edit' | 'summary'>(() => {
   return has ? 'summary' : 'rest';
 });
 
-/** What the rest of the app provides to the bar. Filled in by the app at start. */
+/** What the bar's own flows need from the controllers (state cannot import them): planning when a place is picked, the
+ *  plan cleared when its panel closes, the day's files, the search kind's history step. Filled in at start. */
 export const hooks = {
   plan: () => {},
   planTo: (_p: Place) => {},
   clearPlan: () => {},
-  hasResults: () => false,
-  lastQuery: (): { from: Place; to: Place } | null => null,
-  search: async (_q: string): Promise<{ results: any[]; placesLoaded: boolean }> => ({
-    results: [],
-    placesLoaded: false,
-  }),
-  lineGroups: async (_q: string, _mode: LineFilter, _limit?: number): Promise<LineGroup[]> => [],
-  stopGroups: async (_q: string, _mode: StopFilter, _from?: number[]): Promise<StopGroup[]> => [],
-  openStopGroup: (_g: StopGroup) => {},
-  chooseStation: (_side: Side, _g: StopGroup) => {},
-  swapStations: () => {},
-  openLine: (_r: any) => {},
-  openRecent: (_v: View) => {},
-  endStations: () => {}, // the X of the two stations' summary: back to the trip pill   // a recent line, stop or station from the list under the box
   kindChanged: (_k: Kind) => {}, // the line and stop searches are a step back can undo
-  getPosition: async (): Promise<{ lat: number; lon: number }> => {
-    throw new Error('no location');
-  },
-  pickOnMap: async (_start: Place | null): Promise<Place | null> => null,
-  openMenu: () => {},
   dayChanged: (_d: string) => {},
   startDay: (): string => '',
-  layoutTop: () => {},
-  toast: (_msg: string) => {},
-  ttReady: () => false,
-  lastPos: (): { lat: number; lon: number } | null => null,
 };
 
 // ---- actions

@@ -8,7 +8,6 @@ import * as nav from '../state/nav';
 import * as linePage from '../state/line';
 import * as map from '../map/index';
 import type { LineInfo } from '../state/line';
-import { openStop } from './stop';
 import { recentViews } from '../lib/store.js';
 import * as data from '../state/data';
 import { lastPos } from '../state/position';
@@ -218,14 +217,16 @@ async function lineLive(): Promise<void> {
   }
 }
 
-Object.assign(linePage.hooks, {
-  close: () => nav.close('lineDetail'),
-  // the other direction, at its stop nearest the one chosen here (across the street, usually)
-  openLine: (route: number) => {
-    const a = current?.stops[linePage.anchor.value];
-    openLine(route, a ? { near: a } : {});
-  },
-  openStop: (stop: number) => openStop(stop),
-  setAnchor: (i: number) => setAnchor(i),
-  pick: (r: LineTime) => pick(r),
-});
+/** The other direction of the line, at its stop nearest the one chosen here (across the street, usually). */
+export function openOtherDirection(route: number): void {
+  const a = current?.stops[linePage.anchor.value];
+  void openLine(route, a ? { near: a } : {});
+}
+/** A stop of the list tapped: the times at it. */
+export function chooseAnchor(i: number): void {
+  void setAnchor(i);
+}
+/** A time tapped: that trip at every stop. */
+export function chooseTime(r: LineTime): void {
+  void pick(r);
+}

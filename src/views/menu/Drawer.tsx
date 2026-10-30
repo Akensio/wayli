@@ -8,6 +8,8 @@ import { useSwipeClose } from '../../widgets/swipeClose';
 import { t, lang } from '../../lib/i18n';
 import * as app from '../../state/app';
 import type { IconName } from '../../widgets/icons';
+import * as nav from '../../state/nav';
+import { go, lineSearch, stopSearch } from '../../controllers/shell';
 
 export function Drawer() {
   void lang.value;
@@ -37,7 +39,7 @@ export function Drawer() {
     layer: navRef,
     fade: dropRef,
     dir: () => (document.documentElement.dir === 'rtl' ? 1 : -1),
-    onClose: () => app.hooks.closeDrawer(),
+    onClose: () => nav.close('drawer'),
   });
   return (
     <>
@@ -45,7 +47,7 @@ export function Drawer() {
         ref={dropRef}
         class={`backdrop${open ? ' open' : ''}`}
         id="backdrop"
-        onClick={app.hooks.closeDrawer}
+        onClick={() => nav.close('drawer')}
         {...swipe}
       />
       <nav ref={navRef} class={`drawer${open ? ' open' : ''}`} id="menu" aria-label={t('menu')} {...swipe}>
@@ -64,19 +66,19 @@ export function Drawer() {
             class="iconbtn flat"
             id="menuClose"
             aria-label={t('close')}
-            onClick={app.hooks.closeDrawer}
+            onClick={() => nav.close('drawer')}
           >
             <Icon name="close" />
           </button>
         </div>
-        <Row icon="route" label={t('tabPlan')} screen="plan" onClick={() => app.hooks.go('plan')} />
-        <button type="button" id="menuLines" onClick={app.hooks.lineSearch}>
+        <Row icon="route" label={t('tabPlan')} screen="plan" onClick={() => go('plan')} />
+        <button type="button" id="menuLines" onClick={lineSearch}>
           <span class="ic">
             <Icon name="bus" />
           </span>
           <span>{t('lineSearch')}</span>
         </button>
-        <button type="button" id="menuStops" onClick={app.hooks.stopSearch}>
+        <button type="button" id="menuStops" onClick={stopSearch}>
           <span class="ic">
             <Icon name="pin" />
           </span>
@@ -84,8 +86,8 @@ export function Drawer() {
         </button>
         {/* the three searches above, the pages below */}
         <hr class="msep" />
-        <Row icon="star" label={t('savedTitle')} screen="saved" onClick={() => app.hooks.go('saved')} />
-        <Row icon="sliders" label={t('tabMore')} screen="more" onClick={app.hooks.openSettings} />
+        <Row icon="star" label={t('savedTitle')} screen="saved" onClick={() => go('saved')} />
+        <Row icon="sliders" label={t('tabMore')} screen="more" onClick={() => nav.showOverlay('settings')} />
         <button type="button" id="menuReload" onClick={() => location.reload()}>
           <span class="ic">
             <Icon name="refresh" />

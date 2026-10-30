@@ -3,7 +3,7 @@
 // and what the line search and a line's page ask: the lines matching, a line's course and stops, its times at a stop.
 import { routeLabel, parseHeadsign, stationStopsOf } from '../engine/raptor.js';
 import { haversine } from '../engine/geo.js';
-import { modeOfType } from '../engine/modes.js';
+import { modeOfType } from '../engine/modes.ts';
 import { hasCourse, ridePath } from './courses.js';
 import { tt, onNewDay, onNewLang } from './data.js';
 import { cName, headsign, lineLabel, liveId, ssName, stopOut } from './names.js';

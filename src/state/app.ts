@@ -12,18 +12,3 @@ export const settingsOpen = signal(false); // the settings page, a layer over ev
 export const status = signal<{ text: string; error: boolean; frac: number | null; hidden?: boolean } | null>(null); // the loading pill (its last text stays readable once it hides)
 export const liveNote = signal(''); // the live map's line at the bottom
 export const liveLag = signal(false);
-
-export const hooks = {
-  install: () => {}, // Chrome's prompt, or the hint
-  go: (_screen: string) => {}, // the drawer's screens
-  openSettings: () => {},
-  closeSettings: () => {},
-  lineSearch: () => {},
-  stopSearch: () => {},
-  closeDrawer: () => {},
-  setLang: (_l: 'he' | 'en') => {},
-  appearanceChanged: () => {}, // the map's look or the menus' theme changed
-  requestAlertPermission: async () => {},
-  testAlert: () => {},
-  pickCancel: () => {}, // the map picker's cancel
-};

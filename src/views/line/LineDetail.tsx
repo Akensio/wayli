@@ -17,6 +17,8 @@ import { LineChip } from '../../widgets/LineChip';
 import { favs, stored } from '../../lib/store.js';
 import { LiveMark } from '../../widgets/LiveMark';
 import * as delays from '../../engine/delays.js';
+import { openOtherDirection, chooseTime, chooseAnchor } from '../../controllers/line';
+import { openStop } from '../../controllers/stop';
 
 /** The sign before a minutes difference: a plus, a proper minus, nothing for zero. */
 function signGlyph(n: number): string {
@@ -88,7 +90,7 @@ export function LineDetail() {
         {info.estimated && <div class="muted est">{t('estNote')}</div>}
         <div class="chips" id="lineDirs" style="margin:8px 0">
           {info.others.map((o) => (
-            <button type="button" class="chipbtn" onClick={() => line.hooks.openLine(o.route)}>
+            <button type="button" class="chipbtn" onClick={() => openOtherDirection(o.route)}>
               <Icon name="arrowsLR" /> {t('toward', { headsign: o.headsign })}
             </button>
           ))}
@@ -108,7 +110,7 @@ export function LineDetail() {
                     rows={times}
                     now={line.now.value}
                     sel={line.sel.value}
-                    onPick={line.hooks.pick}
+                    onPick={chooseTime}
                     dim={line.loading.value}
                   />
                 )}
@@ -127,7 +129,7 @@ export function LineDetail() {
                 class={`linerow${i === ai ? ' anchor' : ''}${i < ai ? ' before' : ''}`}
                 data-i={i}
                 key={i}
-                onClick={() => line.hooks.setAnchor(i)}
+                onClick={() => chooseAnchor(i)}
               >
                 <span class="idx">{i + 1}</span>
                 <span class="name">
@@ -147,7 +149,7 @@ export function LineDetail() {
                     class="ghost slim"
                     onClick={(e) => {
                       e.stopPropagation();
-                      line.hooks.openStop(st.stop);
+                      openStop(st.stop);
                     }}
                   >
                     {t('stopDetails')}

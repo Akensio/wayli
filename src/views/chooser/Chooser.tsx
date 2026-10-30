@@ -4,15 +4,17 @@ import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 import * as chooser from '../../state/chooser';
 import { SearchField } from '../topbar/SearchField';
+import { pickOnMap } from '../../map/index';
+import { locate } from '../../controllers/shell';
 
 export function Chooser() {
   void lang.value;
-  const locate = async () => {
-    const p = await chooser.hooks.locate();
+  const myLocation = async () => {
+    const p = await locate();
     if (p) chooser.finish(p);
   };
-  const map = async () => {
-    const p = await chooser.hooks.pickOnMap();
+  const fromMap = async () => {
+    const p = await pickOnMap(null);
     if (p) chooser.finish(p);
   };
   return (
@@ -28,18 +30,18 @@ export function Chooser() {
           place={chooser.place}
           placeholder={t('toQ')}
           onPick={(p) => chooser.finish(p)}
-          onLocate={locate}
-          onMap={map}
+          onLocate={myLocation}
+          onMap={fromMap}
         >
           <span class="icon">
             <Icon name="search" />
           </span>
         </SearchField>
         <div class="chips-row">
-          <button type="button" class="chipbtn" id="chLoc" onClick={locate}>
+          <button type="button" class="chipbtn" id="chLoc" onClick={myLocation}>
             <Icon name="locate" /> {t('myLoc')}
           </button>
-          <button type="button" class="chipbtn" id="chMap" onClick={map}>
+          <button type="button" class="chipbtn" id="chMap" onClick={fromMap}>
             <Icon name="map" /> {t('pickTitle')}
           </button>
         </div>

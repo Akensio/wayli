@@ -1,7 +1,8 @@
 # views: the parts of the screen
 
 Preact components, one folder per part of the screen. They draw from
-`state/` and call its hooks; small shared pieces come from `widgets/`.
+`state/` and call the controllers directly (a tap is one import away from
+the work it starts); small shared pieces come from `widgets/`.
 
 | Folder | What | Files |
 |---|---|---|
@@ -18,4 +19,4 @@ Preact components, one folder per part of the screen. They draw from
 | `chooser/` | Choosing a place for home, work or the saved list. | `Chooser` |
 | `shell/` | The bottom sheet holding every panel, the floating buttons, the sheet's gestures and the pull to refresh. | `Sheet`, `Floating`, `gestures`, `pullRefresh` |
 
-Each file opens with a comment saying what it draws. A feature has the same name here, in `state/` and in `controllers/` (`stop`, `line`, `station`, `saved`, ...).
+Each file opens with a comment saying what it draws. A feature has the same name here, in `state/` and in `controllers/` (`stop`, `line`, `station`, `chooser`, ...).

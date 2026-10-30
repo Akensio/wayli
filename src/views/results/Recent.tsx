@@ -20,6 +20,7 @@ import type { View } from '../../state/results';
 import type { Query, SavedTrip } from '../../journey/types';
 import { LegChips } from './LegChips';
 import { agencyName } from '../../journey/agencies';
+import { openView, replan } from '../../controllers/planner';
 
 /** A day and time as the rider reads them: the calendar day (a service day's night is the next day). */
 const clock = (day: string, sec: number): string => {
@@ -33,7 +34,7 @@ const whenText = (day?: string, time?: string): string =>
 type Recent = Query & { time?: string };
 
 function ViewRow({ v }: { v: View }) {
-  const open = () => results.hooks.openView(v);
+  const open = () => openView(v);
   if (v.type === 'trip') {
     const rides = v.j.legs.filter((l) => l.type === 'ride');
     return (
@@ -150,8 +151,8 @@ export function Recent() {
   // the sub-tab chosen, else the first with something in it
   const cur = sub.value[tab] ?? (SUBS[tab].find((x) => n[tab][x.k] > 0) ?? SUBS[tab][0]).k;
   const curSub = SUBS[tab].find((x) => x.k === cur)!;
-  const replan = (r: Recent | SavedTrip) =>
-    results.hooks.replan({
+  const planAgain = (r: Recent | SavedTrip) =>
+    replan({
       ...(r as Recent),
       from: named(r.from),
       to: named(r.to),
@@ -200,7 +201,7 @@ export function Recent() {
       </div>
       {list === 'trip:saved' &&
         savedTrips.map((v) => (
-          <div class="recent" onClick={() => replan(v)}>
+          <div class="recent" onClick={() => planAgain(v)}>
             <span class="ic">
               <Icon name="star" />
             </span>
@@ -221,7 +222,7 @@ export function Recent() {
         ))}
       {list === 'trip:searched' &&
         searches.map((r) => (
-          <div class="recent" onClick={() => replan(r)}>
+          <div class="recent" onClick={() => planAgain(r)}>
             <span class="ic">
               <Icon name="history" />
             </span>

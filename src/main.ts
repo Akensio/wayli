@@ -1,6 +1,6 @@
 // Wayli starts here: the icon sprite, the components (the top bar, what floats over the map, the sheet with
-// every screen and panel, the drawer, the settings page), the sheet's gestures, then the controllers behind them (boot.ts), which
-// fill in what the components need (the `hooks` of state/*).
+// every screen and panel, the drawer, the settings page), the sheet's gestures, then the start of the app (boot.ts):
+// the map, a trip in progress, the data.
 import './map/maplibre'; // first: the map library as a global, before any module that uses it
 // then the app's styles, after the map library's: its defaults must not win a tie (a tap's lingering :hover greyed the
 // following locate button when they came first, 2026-10-22)

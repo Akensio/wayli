@@ -8,9 +8,9 @@ import { ic } from './icons';
 import type { IconName } from './icons';
 import { chipColors } from '../journey/colors';
 import { LineName, lineNameHtml } from './RailLogo';
-import { modeOfType } from '../engine/modes.js';
+import { modeOfType, type Mode } from '../engine/modes.ts';
 
-export type LineMode = 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex';
+export type LineMode = Mode; // the same word everywhere, from the engine
 const MODE_ICON: Partial<Record<LineMode, IconName>> = { lrt: 'tram', cable: 'cable', taxi: 'taxi' }; // a train: Israel Railways' mark (LineName)
 
 type Line = { line?: string | null; routeType?: number | null; agency?: string | null; mode?: LineMode };
