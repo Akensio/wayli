@@ -36,6 +36,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install numpy osmium pillow # pillow (HPND): the elevation tiles' PNGs
+      - name: The compiler's own checks (the stop-on-course rule)
+        run: python3 -I pipeline/test_projection.py
       - name: The first service day (until 03:00 the night belongs to the previous date)
         id: day
         run: echo "start=$(TZ=Asia/Jerusalem date -d '-3 hours' +%Y%m%d)" >> "$GITHUB_OUTPUT"
