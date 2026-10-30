@@ -315,7 +315,10 @@ const replanSkip = (why: string) => {
 async function replanCheck(force = false): Promise<void> {
   if (!fol || fol.replanning) return;
   if (!map.liveOn() || !data.dayInfo.value || data.dayInfo.value.date !== fol.a.day || document.hidden) {
-    replanSkip(!map.liveOn() ? 'live off' : document.hidden ? 'hidden' : 'other day');
+    let why = 'other day';
+    if (!map.liveOn()) why = 'live off';
+    else if (document.hidden) why = 'hidden';
+    replanSkip(why);
     return;
   }
   const f = fol,

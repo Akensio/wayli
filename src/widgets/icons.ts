@@ -2,6 +2,18 @@
 // referenced by name (ic for HTML strings, the Icon component for Preact); the map badges draw the same
 // paths on canvas.
 
+/** The vehicle icon for a GTFS route type: a train, a tram, else a bus. */
+export function vehicleIcon(routeType?: number | null): IconName {
+  if (routeType === 2) return 'train';
+  if (routeType === 0) return 'tram';
+  return 'bus';
+}
+/** The vehicle icon for a mode name (engine/modes.js): rail a train, lrt a tram, else a bus. */
+export function modeIcon(mode?: string | null): IconName {
+  if (mode === 'rail') return 'train';
+  if (mode === 'lrt') return 'tram';
+  return 'bus';
+}
 export const ICONS = {
   menu: 'M4 7h16M4 12h16M4 17h16',
   user: 'M12 12.5a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5zM4.5 21a7.5 7.5 0 0 1 15 0',

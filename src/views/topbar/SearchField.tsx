@@ -8,8 +8,9 @@ import { placeName, named } from '../../state/names';
 import { useSignal, useSignalEffect } from '@preact/signals';
 import type { Signal } from '@preact/signals';
 import { t, lang } from '../../lib/i18n';
-import { ic } from '../../widgets/icons';
+import { ic, modeIcon } from '../../widgets/icons';
 import { Icon } from '../../widgets/Icon';
+import type { IconName } from '../../widgets/icons';
 import { savedPlaces, recentPlaces, recentViews } from '../../lib/store.js';
 import * as search from '../../state/search';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
@@ -104,8 +105,55 @@ function StopRow({ g, onStop }: { g: StopGroup; onStop: (g: StopGroup) => void }
   );
 }
 
+/** A saved place's icon by its slot: home, work, or a star for the rest. */
+function slotIcon(slot: string): IconName {
+  if (slot === 'home') return 'home';
+  if (slot === 'work') return 'work';
+  return 'star';
+}
+/** The heading over the stops found: the stations (all, or the light rail's) or the stops near when nothing was typed,
+ *  "stops" for a search. */
+function stopsGroupTitle(near: boolean): string {
+  if (!near) return t('grpStops');
+  if (search.stopFilter.value === 'rail') return t('stationsAll');
+  if (search.stopFilter.value === 'lrt') return t('stationsLrt');
+  return t('stopsNear');
+}
+/** What kind of place a result is, as its small print: a stop (with its platforms), a named place, or the kind's name. */
+function resultKind(g: { kind: string; platforms?: number | null; label?: string | null }): string {
+  if (g.kind === 'stop') return g.platforms && g.platforms > 1 ? t('platforms', { n: g.platforms }) : t('kindStop');
+  if (g.kind === 'poi') return g.label || t('kindPoi');
+  return t('kind' + g.kind[0].toUpperCase() + g.kind.slice(1));
+}
+/** The line under an empty list: a hint before typing, "no match" after, or that the address book is still loading. */
+function emptyHint(rows: { near?: boolean; placesLoaded?: boolean }, lineKind: boolean, stopKind: boolean): string {
+  if (lineKind) return rows.near ? t('linesHint') : t('lineNoMatch');
+  if (stopKind) return rows.near ? t('stopsHint') : t('noMatch');
+  return rows.placesLoaded ? t('noMatch') : t('placesPending');
+}
+/** What a recent row says beside its icon: where a line goes, the two stations, a stop with its city and code, a station. */
+function recentText(v: View) {
+  if (v.type === 'line')
+    return (
+      <>
+        <bdi>{t('toward', { headsign: v.headsign })}</bdi>
+        <small>{agencyName(v.agency)}</small>
+      </>
+    );
+  if (v.type === 'trains') return <FromTo from={v.from.name} to={v.to.name} />;
+  if (v.type === 'stop')
+    return (
+      <>
+        <bdi>{v.name}</bdi>
+        <small>{[v.city, v.code].filter(Boolean).join(' · ')}</small>
+      </>
+    );
+  if (v.type === 'station') return <bdi>{v.name}</bdi>;
+  return null;
+}
 /** Something opened lately: a line (its chip, where it goes), a stop, a station, or the trains between two stations. */
 function RecentRow({ v, onOpen }: { v: View; onOpen: (v: View) => void }) {
+  const icon: IconName = v.type === 'station' || v.type === 'trains' ? modeIcon(v.mode || 'rail') : 'pin';
   return (
     <button type="button" class="quick recentrow" onClick={() => onOpen(v)}>
       {v.type === 'line' ? (
@@ -117,26 +165,10 @@ function RecentRow({ v, onOpen }: { v: View; onOpen: (v: View) => void }) {
         />
       ) : (
         <span class="ic">
-          <Icon name={v.type === 'station' || v.type === 'trains' ? (v.mode === 'lrt' ? 'tram' : 'train') : 'pin'} />
+          <Icon name={icon} />
         </span>
       )}
-      <span class="txt">
-        {v.type === 'line' ? (
-          <>
-            <bdi>{t('toward', { headsign: v.headsign })}</bdi>
-            <small>{agencyName(v.agency)}</small>
-          </>
-        ) : v.type === 'trains' ? (
-          <FromTo from={v.from.name} to={v.to.name} />
-        ) : v.type === 'stop' ? (
-          <>
-            <bdi>{v.name}</bdi>
-            <small>{[v.city, v.code].filter(Boolean).join(' · ')}</small>
-          </>
-        ) : v.type === 'station' ? (
-          <bdi>{v.name}</bdi>
-        ) : null}
-      </span>
+      <span class="txt">{recentText(v)}</span>
     </button>
   );
 }
@@ -239,13 +271,11 @@ export function SearchField({
     if (stationSide === 'to') return [];
     const f = stationSide ? search.pairMode.value : search.stopFilter.value;
     return vs
-      .filter((v) =>
-        v.type === 'stop'
-          ? f === 'all' || f === 'bus'
-          : v.type === 'station' || v.type === 'trains'
-            ? f === 'all' || f === (v.mode || 'rail')
-            : false,
-      )
+      .filter((v) => {
+        if (v.type === 'stop') return f === 'all' || f === 'bus';
+        if (v.type === 'station' || v.type === 'trains') return f === 'all' || f === (v.mode || 'rail');
+        return false;
+      })
       .slice(0, 4);
   };
   const openRecent = (v: View) => {
@@ -517,7 +547,7 @@ export function SearchField({
             {savedList.map((p) => (
               <button type="button" class="quick" onClick={() => pick(p)}>
                 <span class="ic">
-                  <Icon name={p.slot === 'home' ? 'home' : p.slot === 'work' ? 'work' : 'star'} />
+                  <Icon name={slotIcon(p.slot)} />
                 </span>
                 <span class="txt">
                   {p.slot === 'more' ? placeName(p) : t(p.slot)}
@@ -566,17 +596,7 @@ export function SearchField({
                 }}
               />
             ))}
-            {rows.stops && rows.stops.length > 0 && (
-              <div class="grp">
-                {rows.near
-                  ? search.stopFilter.value === 'rail'
-                    ? t('stationsAll')
-                    : search.stopFilter.value === 'lrt'
-                      ? t('stationsLrt')
-                      : t('stopsNear')
-                  : t('grpStops')}
-              </div>
-            )}
+            {rows.stops && rows.stops.length > 0 && <div class="grp">{stopsGroupTitle(!!rows.near)}</div>}
             {(rows.stops || []).map((g) => (
               <StopRow
                 key={g.key}
@@ -589,14 +609,7 @@ export function SearchField({
             ))}
             {rows.lines.length > 0 && rows.results.length > 0 && <div class="grp">{t('grpPlaces')}</div>}
             {rows.results.map((g) => {
-              const kind =
-                g.kind === 'stop'
-                  ? g.platforms && g.platforms > 1
-                    ? t('platforms', { n: g.platforms })
-                    : t('kindStop')
-                  : g.kind === 'poi'
-                    ? g.label || t('kindPoi')
-                    : t('kind' + g.kind[0].toUpperCase() + g.kind.slice(1));
+              const kind = resultKind(g);
               return (
                 <button type="button" onClick={() => pick(fromResult(g))}>
                   {g.name}
@@ -613,17 +626,7 @@ export function SearchField({
               !(rows.stops && rows.stops.length) &&
               !(rows.recent && rows.recent.length) && (
                 <button type="button" disabled>
-                  {lineKind
-                    ? rows.near
-                      ? t('linesHint')
-                      : t('lineNoMatch')
-                    : stopKind
-                      ? rows.near
-                        ? t('stopsHint')
-                        : t('noMatch')
-                      : rows.placesLoaded
-                        ? t('noMatch')
-                        : t('placesPending')}
+                  {emptyHint(rows, lineKind, stopKind)}
                 </button>
               )}
           </>

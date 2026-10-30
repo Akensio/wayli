@@ -245,13 +245,9 @@ export function drawJourney(m: MLMap, j: Journey, markers: Marker[], focus = -1,
       }
       // the stops between boarding and alighting: from the leg's stop list (the path itself follows the road now)
       const along = l.stopsAlong as { lon: number; lat: number; stop: number }[] | undefined;
-      const between = along
-        ? along
-            .slice(1, -1)
-            .map((st) => ({ c: [st.lon, st.lat] as [number, number], stop: st.stop as number | string }))
-        : l.pathKind === 'stops'
-          ? coords.slice(1, -1).map((c) => ({ c, stop: '' as number | string }))
-          : [];
+      let between: { c: [number, number]; stop: number | string }[] = [];
+      if (along) between = along.slice(1, -1).map((st) => ({ c: [st.lon, st.lat] as [number, number], stop: st.stop }));
+      else if (l.pathKind === 'stops') between = coords.slice(1, -1).map((c) => ({ c, stop: '' }));
       for (const b of between)
         dots.push({
           type: 'Feature',

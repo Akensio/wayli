@@ -9,6 +9,7 @@ import { FromTo } from '../../widgets/FromTo';
 import { routeColor } from '../../journey/colors';
 import { stopsText, legMinutes } from '../../journey/format';
 import { agencyName } from '../../journey/agencies';
+import type { ComponentChildren } from 'preact';
 import type { Leg } from '../../journey/types';
 import type { Badge } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
@@ -48,6 +49,15 @@ const walkText = (l: Leg, mins: number) => {
     : t('walkTo', { min: mins, name: l.to!.name });
 };
 
+/** A change's standing from its margin: missed below zero, tight under two minutes, else fine. */
+function changeClass(sec: number): 'missed' | 'tight' | 'ok' {
+  if (sec < 0) return 'missed';
+  return sec < 120 ? 'tight' : 'ok';
+}
+function changeText(change: { sec: number; arr: number; dep: number }): string {
+  if (change.sec < 0) return t('changeMissed', { dep: fmt(change.dep), arr: fmt(change.arr) });
+  return t(change.sec < 120 ? 'changeTight' : 'changeOk', { n: Math.round(change.sec / 60) });
+}
 export function LegRow({
   l,
   mode,
@@ -79,10 +89,10 @@ export function LegRow({
   // a ride's two times: boarding, and under it getting off, which says so ("to 21:48"), since the walk after starts at
   // that same minute and shows it too (Gadi: two times with no cue read as two different things)
   const till = (sec: number) => <small class="till">{t('till', { time: tf(sec) })}</small>;
-  const times =
-    mode === 'follow' ? (
-      tf(l.depart!)
-    ) : shifted ? (
+  let times: ComponentChildren;
+  if (mode === 'follow') times = tf(l.depart!);
+  else if (shifted)
+    times = (
       <>
         <s>{fmt(l.schedDepart as number)}</s>
         <br />
@@ -90,7 +100,9 @@ export function LegRow({
         <br />
         {till(l.arrive!)}
       </>
-    ) : (
+    );
+  else
+    times = (
       <>
         {tf(l.depart!)}
         {ride && (
@@ -101,6 +113,9 @@ export function LegRow({
         )}
       </>
     );
+  // the badge: the delay alone beside a live time already shown, else its whole text
+  let badgeText = '';
+  if (badge) badgeText = liveTime != null && badge.delayText ? badge.delayText : badge.text;
   return (
     <div
       class={`leg ${l.type}${ride ? ' t' + l.routeType : ''}${cls ? ' ' + cls : ''}`}
@@ -136,7 +151,7 @@ export function LegRow({
                 {' '}
                 {l.headsign}
                 <span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>
-                  {badge ? (liveTime != null && badge.delayText ? badge.delayText : badge.text) : ''}
+                  {badgeText}
                 </span>
                 <small>
                   <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops as number)} ·{' '}
@@ -152,11 +167,7 @@ export function LegRow({
               </>
             )}
             {mode === 'follow' && change && (
-              <small class={`change ${change.sec < 0 ? 'missed' : change.sec < 120 ? 'tight' : 'ok'}`}>
-                {change.sec < 0
-                  ? t('changeMissed', { dep: fmt(change.dep), arr: fmt(change.arr) })
-                  : t(change.sec < 120 ? 'changeTight' : 'changeOk', { n: Math.round(change.sec / 60) })}
-              </small>
+              <small class={`change ${changeClass(change.sec)}`}>{changeText(change)}</small>
             )}
             {(mode === 'detail' ? stopsAlong.length > 2 : stopsAlong.length > 1) && (
               <>

@@ -54,4 +54,8 @@ export function set(st: SheetState): void {
   document.documentElement.style.setProperty('--sheet-box', boxPx() + 'px');
   hooks.changed(prev, st);
 }
-export const toggle = (): void => set(state.value === 'peek' ? 'half' : state.value === 'half' ? 'full' : 'peek');
+export function toggle(): void {
+  if (state.value === 'peek') set('half');
+  else if (state.value === 'half') set('full');
+  else set('peek');
+}

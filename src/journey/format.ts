@@ -7,17 +7,15 @@ import { tripKey as storeTripKey } from '../lib/store.js';
 import type { Place } from '../state/search';
 
 /** A distance as the rider reads it: to the metre close by, by 50 m within a kilometre, then in km (one decimal under 10). */
-export const distText = (m: number): string =>
-  m < 100
-    ? t('distM', { m: Math.round(m) })
-    : m < 1000
-      ? t('distM', { m: Math.round(m / 50) * 50 })
-      : t('distKm', {
-          km:
-            m < 10000
-              ? (Math.round(m / 100) / 10).toLocaleString(lang.value === 'he' ? 'he-IL' : 'en-GB')
-              : Math.round(m / 1000),
-        });
+export function distText(m: number): string {
+  if (m < 100) return t('distM', { m: Math.round(m) });
+  if (m < 1000) return t('distM', { m: Math.round(m / 50) * 50 });
+  const km =
+    m < 10000
+      ? (Math.round(m / 100) / 10).toLocaleString(lang.value === 'he' ? 'he-IL' : 'en-GB')
+      : Math.round(m / 1000);
+  return t('distKm', { km });
+}
 /** A walk's or a ride's length in whole minutes, never 0. */
 export const legMinutes: (sec: number) => number = clock.legMinutes;
 export const dur = (sec: number): string => {
@@ -29,10 +27,27 @@ export const signed = (n: number): string => (n > 0 ? '+' : '') + n;
 /** How late a vehicle runs: "on time" or "+3 min late". */
 export const delayText = (d: number): string => (d === 0 ? t('onTime') : t('liveDelay', { d: signed(d) }));
 /** The bicycle choice: none, to the stop, or taken along. */
-export const bikeText = (b?: string | null): string =>
-  t(b === 'along' ? 'bikeAlong' : b === 'park' ? 'bikePark' : 'bikeNone');
-export const transfersText = (n: number): string =>
-  n === 0 ? t('direct') : n === 1 ? t('transfer1') : t('transfers', { n });
+export function bikeText(b?: string | null): string {
+  if (b === 'along') return t('bikeAlong');
+  if (b === 'park') return t('bikePark');
+  return t('bikeNone');
+}
+export function transfersText(n: number): string {
+  if (n === 0) return t('direct');
+  if (n === 1) return t('transfer1');
+  return t('transfers', { n });
+}
+/** The class a time or a countdown carries for its live standing: live, unsure when the report is old, none without. */
+export function liveClass(live?: { stale?: boolean } | null): '' | ' live' | ' unsure' {
+  if (!live) return '';
+  return live.stale ? ' unsure' : ' live';
+}
+/** What a point on the map is called from what is found at it: a plain "point" when nothing is near, "near X" beyond
+ *  40 m, else the name itself (the worker's `reverse`). */
+export function reverseName(g: { kind: string; distance: number; name: string }): string {
+  if (g.kind === 'point') return t('pointName');
+  return g.distance > 40 ? t('nearName', { name: g.name }) : g.name;
+}
 export const lineText = (line?: string | null): string => (line === 'train' ? t('train') : line || '');
 export const stopsText = (n: number): string => (n === 1 ? t('stops1') : t('stopsN', { n }));
 export const describePlace = (p: Place | null | undefined): string =>
@@ -70,7 +85,9 @@ export function liveBadge(at: LiveAt): Badge {
 /** "now", "in n min" (up to two hours), or nothing. */
 export function inText(sec: number, day: string): string {
   const n = minutesUntil(sec, day);
-  return n <= 0 ? t('nowDep') : n > 120 ? '' : t('inMin', { n });
+  if (n <= 0) return t('nowDep');
+  if (n > 120) return '';
+  return t('inMin', { n });
 }
 /** A time past midnight on the same service day gets a mark. */
 export const fmtPlus = (sec: number): string => fmt(sec) + (sec >= 86400 ? '⁺' : '');

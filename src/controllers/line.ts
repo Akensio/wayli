@@ -184,7 +184,9 @@ map.afterDraw.lineDetail = () => {
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive(): Promise<void> {
   const info = current;
-  const ids = info?.routeIds?.length ? info.routeIds : info?.routeId != null ? [info.routeId] : [];
+  let ids: number[] = [];
+  if (info?.routeIds?.length) ids = info.routeIds;
+  else if (info?.routeId != null) ids = [info.routeId];
   if (!info || !nav.isOpen('lineDetail') || !map.liveOn() || !ids.length) return;
   const my = seq;
   try {

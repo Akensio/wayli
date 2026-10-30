@@ -46,7 +46,10 @@ export async function initMap(): Promise<void> {
     /* private mode */
   }
   const start = view || lastPos || { lat: 32.08, lon: 34.78 };
-  state.main = makeMap('mainMap', [start.lat, start.lon], view ? view.zoom : lastPos ? 14.5 : 11);
+  let zoom = 11;
+  if (view) zoom = view.zoom;
+  else if (lastPos) zoom = 14.5;
+  state.main = makeMap('mainMap', [start.lat, start.lon], zoom);
   try {
     window.wayliDebug = { ...(window.wayliDebug || {}), map: state.main };
   } catch {

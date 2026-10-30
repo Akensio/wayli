@@ -57,17 +57,11 @@ export type Kind = 'trip' | 'line' | 'stop';
 export const kind = signal<Kind>('trip');
 export const lineFilter = signal<LineFilter>('all');
 export const stopFilter = signal<StopFilter>('all');
-export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ' | 'stopQ'>(() =>
-  kind.value === 'line'
-    ? lineFilter.value === 'rail'
-      ? 'stationQ'
-      : 'lineNumber'
-    : kind.value === 'stop'
-      ? stopFilter.value === 'rail' || stopFilter.value === 'lrt'
-        ? 'stationQ'
-        : 'stopQ'
-      : 'goQ',
-);
+export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ' | 'stopQ'>(() => {
+  if (kind.value === 'line') return lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber';
+  if (kind.value === 'stop') return stopFilter.value === 'rail' || stopFilter.value === 'lrt' ? 'stationQ' : 'stopQ';
+  return 'goQ';
+});
 // the full keyboard everywhere: line numbers carry letters ("4א"), and words narrow them ("274 תל אביב")
 export const toInputMode = computed<'' | 'numeric'>(() => '');
 // The train timetable (the stop search for trains, and for the light rail): two stations at the top, as riders who plan

@@ -21,8 +21,9 @@ import type { Journey, Query } from '../../journey/types';
 const plan = () => results.hooks.plan();
 
 function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
-  const note =
-    q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
+  let note = '';
+  if (q.bike === 'along') note = q.folding ? t('foldingNote') : t('withBikeOnBoard');
+  else if (q.bike === 'park') note = t('parkNote');
   return (
     <div class="results-head muted">
       <span>
@@ -156,12 +157,11 @@ function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
  *  on a plan restored from earlier they are shown, since the rider is likely on the way already. */
 function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored: boolean }) {
   const nowSec = clock.nowOn(q.day);
+  let hint = t('goneHint', { n: gone.length });
+  if (restored) hint = t('goneTitle');
+  else if (gone.length === 1) hint = t('goneHint1');
   return (
-    <Strip
-      cls="gone"
-      fixed={restored}
-      hint={restored ? t('goneTitle') : gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length })}
-    >
+    <Strip cls="gone" fixed={restored} hint={hint}>
       {gone
         .slice()
         .sort((a, b) => b.depart - a.depart)
@@ -196,15 +196,12 @@ function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Q
     next = days[days.indexOf(q.day) + 1];
   const friday = new Date(+q.day.slice(0, 4), +q.day.slice(4, 6) - 1, +q.day.slice(6, 8)).getDay() === 5;
   const noMore = !r.reason && r.nextAt == null;
+  let message = t('noMoreToday') + (friday ? ' ' + t('afterShabbat') : '');
+  if (r.reason) message = t(r.reason);
+  else if (r.nextAt != null) message = t('nothingBefore', { time: fmt(r.nextAt) });
   return (
     <>
-      <div class="empty">
-        {r.reason
-          ? t(r.reason)
-          : r.nextAt != null
-            ? t('nothingBefore', { time: fmt(r.nextAt) })
-            : t('noMoreToday') + (friday ? ' ' + t('afterShabbat') : '')}
-      </div>
+      <div class="empty">{message}</div>
       <div class="results-foot">
         {r.nextAt != null && (
           <button
@@ -272,7 +269,7 @@ export function Results() {
       <Head q={q} n={(r.groups || r.journeys).length} at={at} />
       {gone.length > 0 && <GoneStrip gone={gone} q={q} restored={!!at} />}
       {hurry.length > 0 && <HurryStrip hurry={hurry} q={q} />}
-      {bikeOnly ? (
+      {bikeOnly && (
         <div
           class="journey"
           onClick={() =>
@@ -305,9 +302,10 @@ export function Results() {
             </span>
           </div>
         </div>
-      ) : q.bike !== 'none' && r.streets && !q.from.stops && !q.to.stops ? (
+      )}
+      {!bikeOnly && q.bike !== 'none' && r.streets && !q.from.stops && !q.to.stops && (
         <div class="muted">{t('noBikeOnly')}</div>
-      ) : null}
+      )}
       {!r.journeys.length ? (
         <NoWays r={r} q={q} />
       ) : (

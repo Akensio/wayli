@@ -384,21 +384,18 @@ function slowerSiblings(journeys, fromTime, q) {
  * times, possibly with different lines on a leg. Groups keep the journey order (earliest first) and list
  * the indices of their options and the distinct lines per leg.
  */
+/** A leg as the grouping sees it: its kind and its stops, so journeys that board and alight alike share a card. */
+function legKey(l) {
+  if (l.type === 'ride') return `r${l.from.stop}-${l.to.stop}`;
+  if (l.type === 'walk') return `w${l.from.stop}-${l.to.stop}`;
+  if (l.type === 'access') return `a${l.to.stop}`;
+  return `e${l.from.stop}`;
+}
 function groupJourneys(journeys) {
   const byKey = new Map(),
     groups = [];
   journeys.forEach((j, idx) => {
-    const key = j.legs
-      .map((l) =>
-        l.type === 'ride'
-          ? `r${l.from.stop}-${l.to.stop}`
-          : l.type === 'walk'
-            ? `w${l.from.stop}-${l.to.stop}`
-            : l.type === 'access'
-              ? `a${l.to.stop}`
-              : `e${l.from.stop}`,
-      )
-      .join('|');
+    const key = j.legs.map(legKey).join('|');
     let g = byKey.get(key);
     if (!g) {
       g = { options: [], lines: j.legs.map(() => []) };

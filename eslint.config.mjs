@@ -21,6 +21,7 @@ export default tseslint.config(
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-nested-ternary': 'error', // a chain reads as an if; a ternary inside a branch reads as nothing (2026-10-31)
       'prefer-const': 'off',
       'no-cond-assign': 'off',
       '@typescript-eslint/no-explicit-any': 'off',

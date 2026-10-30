@@ -42,8 +42,9 @@ export const searchOps = {
       const named = {};
       for (const W of ['he', 'en']) {
         const r = reverseIn(p.lat, p.lon, W);
-        named[W] =
-          r.kind === 'point' ? words[W].point : r.distance > 40 ? words[W].near.replace('{name}', r.name) : r.name;
+        if (r.kind === 'point') named[W] = words[W].point;
+        else if (r.distance > 40) named[W] = words[W].near.replace('{name}', r.name);
+        else named[W] = r.name;
       }
       return named.he === p.name || named.en === p.name ? named[L] : null;
     };
@@ -66,7 +67,8 @@ export const searchOps = {
     const bandBonus = (g) => {
       if (!near) return 0;
       const km = haversine(near.lat, near.lon, g.lat, g.lon) / 1000;
-      return km < 3 ? 3 : km < 15 ? 1.5 : 0;
+      if (km < 3) return 3;
+      return km < 15 ? 1.5 : 0;
     };
     const stops = searchStops(tt, q, limit, L).map((g) => ({
       kind: 'stop',

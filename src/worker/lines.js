@@ -77,12 +77,9 @@ function indexLines() {
       ends = routeEnds(r[1]);
     // a train line is its two stations (each train is a route of its own, with its train number). Any other line is its code in the feed (the "makat" its
     // directions and variants share), or, in a timetable built before it was kept, its number and operator where it runs.
-    const key =
-      mode === 'rail'
-        ? `rail|${ends ? ends.slice().sort().join('|') : r[1]}`
-        : r[5]
-          ? `${mode}|${r[2]}|${r[5]}`
-          : `${mode}|${routeLabel(r)}|${r[2]}|${ends ? ends.map(endCity).sort().join('|') : ''}`;
+    let key = `${mode}|${routeLabel(r)}|${r[2]}|${ends ? ends.map(endCity).sort().join('|') : ''}`;
+    if (mode === 'rail') key = `rail|${ends ? ends.slice().sort().join('|') : r[1]}`;
+    else if (r[5]) key = `${mode}|${r[2]}|${r[5]}`;
     let g = groups.get(key);
     if (!g) groups.set(key, (g = { key, mode, label: lineLabel(r), routes: [], trips: 0, names: [] }));
     g.routes.push(i);
@@ -238,8 +235,12 @@ export const linesOps = {
         score = 'train'.startsWith(n) || 'רכבת'.startsWith(n) || g.names.some((x) => x.includes(n)) ? 2 : 0;
       else {
         const label = g.label.toLowerCase();
-        if (numTok) score = (label === numTok ? 3 : label.startsWith(numTok) ? 1 : 0) * (placeOk(g) ? 1 : 0);
-        else {
+        if (numTok) {
+          let byNumber = 0;
+          if (label === numTok) byNumber = 3;
+          else if (label.startsWith(numTok)) byNumber = 1;
+          score = placeOk(g) ? byNumber : 0;
+        } else {
           score = label === n ? 3 : 0;
           if (!score && g.mode === 'lrt' && n.length > 1 && ('light rail'.startsWith(n) || 'רכבת קלה'.startsWith(n)))
             score = 1.5; // after the trains for "רכבת"

@@ -47,6 +47,13 @@ export function TopBar() {
     sum = mode === 'summary';
   const kind = search.kind.value,
     pair = search.railPair.value;
+  // the tag before the box and the folded pill's icon say which search this is
+  let tag = t('tagTo');
+  if (kind === 'line') tag = t('kindLine');
+  else if (kind === 'stop' && !pair) tag = t('kindStopSearch');
+  let kindIcon: IconName = 'pin';
+  if (kind === 'line') kindIcon = 'bus';
+  else if (pair) kindIcon = 'train';
   const line = kind !== 'trip'; // the line and stop searches: kind chips under the box
   const one = line && !pair; // one box (the train timetable has two: from and to station)
   // switching keeps the keyboard and the list as they were: a box that had the keyboard keeps it (the To box, if the
@@ -261,7 +268,7 @@ export function TopBar() {
               <MenuGlyph />
             </button>
             <span class="tag" key={`${kind}${pair}`}>
-              {kind === 'line' ? t('kindLine') : kind === 'stop' && !pair ? t('kindStopSearch') : t('tagTo')}
+              {tag}
             </span>
             {line && !edit ? (
               // folded, the line and stop searches say which they are where the logo sits; its x is the trip search again
@@ -272,7 +279,7 @@ export function TopBar() {
                 aria-label={t('backToTrip')}
                 onClick={() => search.setKind('trip')}
               >
-                <Icon name={kind === 'line' ? 'bus' : pair ? 'train' : 'pin'} />
+                <Icon name={kindIcon} />
                 {kind === 'line' ? t('kindLine') : t('kindStopSearch')}
                 <Icon name="close" class="x" />
               </button>

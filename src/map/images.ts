@@ -1,5 +1,5 @@
 // Marker images drawn on canvas at 2x: station badges and the vehicles' heading arrows.
-import { ICONS } from '../widgets/icons';
+import { ICONS, modeIcon } from '../widgets/icons';
 import { routeColor } from '../journey/colors';
 
 export const BADGE_KINDS = ['rail', 'lrt', 'station', 'bus'] as const;
@@ -10,7 +10,9 @@ export function stationImage(kind: string): ImageData {
     c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d')!;
-  const color = kind === 'rail' ? routeColor(2) : kind === 'lrt' ? routeColor(0) : station ? routeColor(3) : '#5f6b72';
+  let color = station ? routeColor(3) : '#5f6b72';
+  if (kind === 'rail') color = routeColor(2);
+  else if (kind === 'lrt') color = routeColor(0);
   ctx.beginPath();
   ctx.arc(size / 2, size / 2, size / 2 - (station ? 2.5 : 2), 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff';
@@ -25,7 +27,7 @@ export function stationImage(kind: string): ImageData {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = color;
-  ctx.stroke(new Path2D(ICONS[kind === 'rail' ? 'train' : kind === 'lrt' ? 'tram' : 'bus']));
+  ctx.stroke(new Path2D(ICONS[modeIcon(kind)]));
   return ctx.getImageData(0, 0, size, size);
 }
 /** A small upward triangle in a colour, with a white edge. */

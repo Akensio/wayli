@@ -18,6 +18,12 @@ import { favs, stored } from '../../lib/store.js';
 import { LiveMark } from '../../widgets/LiveMark';
 import * as delays from '../../engine/delays.js';
 
+/** The sign before a minutes difference: a plus, a proper minus, nothing for zero. */
+function signGlyph(n: number): string {
+  if (n > 0) return '+';
+  if (n < 0) return '−';
+  return '';
+}
 export function LineDetail() {
   void lang.value;
   const info = line.info.value;
@@ -95,11 +101,9 @@ export function LineDetail() {
             {ttOpen && (
               <>
                 <div class="muted small">{t('pickStopHint')}</div>
-                {times === null ? (
-                  <div class="empty">{t('loading')}</div>
-                ) : !times.length ? (
-                  <div class="empty">{t('noTimesHere')}</div>
-                ) : (
+                {times === null && <div class="empty">{t('loading')}</div>}
+                {times !== null && !times.length && <div class="empty">{t('noTimesHere')}</div>}
+                {times !== null && times.length > 0 && (
                   <Timetable
                     rows={times}
                     now={line.now.value}
@@ -151,7 +155,7 @@ export function LineDetail() {
                 ) : (
                   rel != null && (
                     <span class="rel">
-                      {rel > 0 ? '+' : rel < 0 ? '−' : ''}
+                      {signGlyph(rel)}
                       {Math.abs(rel)}′
                     </span>
                   )

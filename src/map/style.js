@@ -175,19 +175,15 @@ function roleOf(layer, prop) {
     const casing = /casing/.test(id);
     if (/rail/.test(id)) return 'rail';
     if (/^tunnel_/.test(id)) return casing ? 'tunnelCasing' : 'tunnel';
-    const cls = /motorway/.test(id)
-      ? 'motorway'
-      : /trunk|primary/.test(id)
-        ? 'primary'
-        : /secondary|tertiary|_link/.test(id)
-          ? 'secondary'
-          : /minor|street/.test(id)
-            ? 'minor'
-            : /service|track/.test(id)
-              ? 'service'
-              : /path|pedestrian/.test(id)
-                ? 'path'
-                : 'minor';
+    const roadClass = [
+      [/motorway/, 'motorway'],
+      [/trunk|primary/, 'primary'],
+      [/secondary|tertiary|_link/, 'secondary'],
+      [/minor|street/, 'minor'],
+      [/service|track/, 'service'],
+      [/path|pedestrian/, 'path'],
+    ].find(([re]) => re.test(id));
+    const cls = roadClass ? roadClass[1] : 'minor';
     return casing ? cls + 'Casing' : cls;
   }
   return type === 'line' ? 'minor' : 'landuse';

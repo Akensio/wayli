@@ -32,12 +32,9 @@ function AltCard({ alt }: { alt: follow.Alt }) {
   const rides = j.legs.filter((l) => l.type === 'ride');
   const cur = a.journey.legs[a.state.step];
   const sameVehicle = o.kind === 'ride' && rides[0] && rides[0].trip === cur.trip;
-  const first =
-    o.kind === 'ride'
-      ? t('altGetOff', { stop: sameVehicle ? rides[0].to!.name : o.offAt!.name })
-      : o.kind === 'wait'
-        ? t('altInstead', { line: lineText(cur.line) })
-        : '';
+  let first = '';
+  if (o.kind === 'ride') first = t('altGetOff', { stop: sameVehicle ? rides[0].to!.name : o.offAt!.name });
+  else if (o.kind === 'wait') first = t('altInstead', { line: lineText(cur.line) });
   const nextRide = sameVehicle ? rides[1] : rides[0];
   const then = nextRide
     ? t('altThen', { line: lineText(nextRide.line), headsign: nextRide.headsign || '', time: fmt(nextRide.depart!) })
@@ -92,12 +89,9 @@ export function Follow() {
   } else if (v.kind === 'walk' || v.kind === 'final') {
     const l = v.leg;
     title = v.toRide ? t('followTitle', { line: lineText(v.toRide.line), to: dest }) : t('walkTitle', { to: dest });
-    big =
-      v.kind === 'final'
-        ? t('walkToDest', { min: v.minutes, name: dest })
-        : l.mode === 'bike'
-          ? t('bikeTo', { min: v.minutes, name: l.to!.name })
-          : t('walkTo', { min: v.minutes, name: l.to!.name });
+    if (v.kind === 'final') big = t('walkToDest', { min: v.minutes, name: dest });
+    else if (l.mode === 'bike') big = t('bikeTo', { min: v.minutes, name: l.to!.name });
+    else big = t('walkTo', { min: v.minutes, name: l.to!.name });
     small = v.toRide
       ? `${lineText(v.toRide.line)} ${t('departsAt', { time: fmt(v.toRide.depart!) })}${inShort(v.departsIn)}${liveLine}`
       : t('arrivesAt', { time: fmt(l.arrive!) });
@@ -169,12 +163,15 @@ export function Follow() {
       <div class="legs" id="followNext">
         {j.legs.map((l, i) => {
           const x = ll[i];
+          let stepCls = '';
+          if (i < a.state.step) stepCls = 'done';
+          else if (i === a.state.step) stepCls = 'current';
           return (
             <LegRow
               key={i}
               l={l}
               mode="follow"
-              cls={i < a.state.step ? 'done' : i === a.state.step ? 'current' : ''}
+              cls={stepCls}
               badge={x ? x.badge : undefined}
               change={x ? x.change : null}
               stopLive={x ? x.stops : null}

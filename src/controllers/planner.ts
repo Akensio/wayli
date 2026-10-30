@@ -98,8 +98,10 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
     arriveBy = search.timeMode.value === 'arrive';
   const at = search.atSeconds();
   const isNow = !search.timeTouched.value && !arriveBy; // a plan from now looks ten minutes back too: a ride just boarded can still be followed
-  const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at,
-    toTime = arriveBy ? at : at + 3600;
+  let fromTime = at;
+  if (arriveBy) fromTime = Math.max(0, at - 7200);
+  else if (isNow) fromTime = Math.max(0, at - 600);
+  const toTime = arriveBy ? at : at + 3600;
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   search.busy.value = true;
   results.status.value = 'planning';

@@ -202,13 +202,18 @@ export const hasBusTimes = () => !!busTimes;
 /** 0 Sunday to Thursday, 1 Friday, 2 Saturday, for a service day YYYYMMDD. */
 const kindOf = (day) => {
   const w = new Date(Date.UTC(+day.slice(0, 4), +day.slice(4, 6) - 1, +day.slice(6, 8))).getUTCDay();
-  return w === 5 ? 1 : w === 6 ? 2 : 0;
+  if (w === 5) return 1;
+  if (w === 6) return 2;
+  return 0;
 };
 const bandOf = (sec) => {
   const h = Math.floor(sec / 3600);
   return h < 5 ? 0 : Math.min(busTimes.bands - 1, h - 5);
 };
-const decode = (v) => (!v ? null : v <= 150 ? 2 * v : 300 + 15 * (v - 150));
+const decode = (v) => {
+  if (!v) return null;
+  return v <= 150 ? 2 * v : 300 + 15 * (v - 150);
+};
 /** The learned time of section k (stop k to stop k+1) for a bus there at `at`, else null. */
 function busRun(stops, k, at, kind) {
   const i =
@@ -421,11 +426,10 @@ export function liveAt(est, stops, stopIndex) {
     const late = railShown(est, stops)[stopIndex] ?? est.delay;
     return { time: stops[stopIndex].arr + late, delay: late, passed, stale: est.stale };
   }
-  const own = est.dep
-    ? est.at === stopIndex
-      ? (est.dep[stopIndex] ?? est.arr[stopIndex])
-      : (est.arr[stopIndex] ?? est.dep[stopIndex])
-    : null;
+  let own = null;
+  if (est.dep)
+    own =
+      est.at === stopIndex ? (est.dep[stopIndex] ?? est.arr[stopIndex]) : (est.arr[stopIndex] ?? est.dep[stopIndex]);
   const time = own != null ? Math.round(own) : stops[stopIndex].dep + est.delay;
   return { time, delay: time - stops[stopIndex].dep, passed, stale: est.stale };
 }

@@ -8,7 +8,7 @@ import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { now } from '../../state/clock';
 import * as results from '../../state/results';
-import { dur, transfersText, lineText, leaveText, inText } from '../../journey/format';
+import { dur, transfersText, lineText, leaveText, inText, liveClass } from '../../journey/format';
 import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
 import type { Leg } from '../../journey/types';
@@ -17,7 +17,7 @@ import type { Leg } from '../../journey/types';
 export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveInfo?: Leg['live'] }) {
   void now.value;
   const txt = leaveText(sec, day);
-  const cls = liveInfo ? (liveInfo.stale ? ' unsure' : ' live') : '';
+  const cls = liveClass(liveInfo);
   return <div class={`leave${cls}${txt === t('departed') ? ' past' : ''}`}>{txt}</div>;
 }
 /** When the first ride reaches the stop it is boarded at, counting down ("60 at the stop in 14 min"): the time the

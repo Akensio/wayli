@@ -62,6 +62,10 @@ export function compassReport(): string {
   const dot = document.querySelector<HTMLElement>('.maplibregl-user-location-dot, .wayli-me'),
     cone = dot?.querySelector<HTMLElement>('.wayli-cone');
   const age = seenAt ? Math.round((performance.now() - seenAt) / 1000) : null;
+  let dotState = 'no';
+  if (dot) dotState = dot.className.includes('stale') ? 'stale' : 'yes';
+  let coneState = 'none';
+  if (cone) coneState = cone.classList.contains('on') ? `on ${cone.style.getPropertyValue('--heading')}` : 'off';
   return [
     `listening ${listening ? 'yes' : 'no'}`,
     `permission ${permission}`,
@@ -69,8 +73,8 @@ export function compassReport(): string {
     `plain ${seen.plainAbs}/${seen.plainRel} abs/rel`,
     `ios ${seen.ios}`,
     `heading ${heading == null ? '-' : Math.round(heading) + '°'}${age != null ? ` ${age}s ago` : ''}`,
-    `dot ${dot ? (dot.className.includes('stale') ? 'stale' : 'yes') : 'no'}`,
-    `cone ${cone ? (cone.classList.contains('on') ? `on ${cone.style.getPropertyValue('--heading')}` : 'off') : 'none'}`,
+    `dot ${dotState}`,
+    `cone ${coneState}`,
   ].join(' · ');
 }
 

@@ -6,7 +6,7 @@ import * as delays from '../engine/delays.js';
 import * as feed from '../engine/feed.js';
 import { esc } from '../widgets/html';
 import { t, lang } from '../lib/i18n';
-import { ic } from '../widgets/icons';
+import { ic, vehicleIcon } from '../widgets/icons';
 import { routeColor } from '../journey/colors';
 import { agencyName } from '../journey/agencies';
 import { call } from '../worker/client';
@@ -17,7 +17,7 @@ import { viewFor } from './view';
 import { currentSheet, cameraPadding } from './render';
 import { fmt, timeOf } from '../lib/time';
 import { lineChipHtml } from '../widgets/LineChip';
-import { signed, delayText } from '../journey/format';
+import { signed, delayText, reverseName } from '../journey/format';
 
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 export const heading = (v: { bearing?: number | null; velocity?: number | null }): number =>
@@ -74,7 +74,9 @@ function keepInView(m: MLMap, el: HTMLElement): void {
     bottom = c.bottom - pad.bottom + 8;
   let dy = r.bottom > bottom ? r.bottom - bottom : 0;
   if (r.top - dy < top) dy = r.top - top;
-  const dx = r.left < c.left + 8 ? r.left - c.left - 8 : r.right > c.right - 8 ? r.right - c.right + 8 : 0;
+  let dx = 0;
+  if (r.left < c.left + 8) dx = r.left - c.left - 8;
+  else if (r.right > c.right - 8) dx = r.right - c.right + 8;
   if (Math.abs(dx) > 1 || Math.abs(dy) > 1) m.panBy([dx, dy], { duration: 250 });
 }
 /** The open bubble's title, changed in place (a name that arrives later): reopening it would flicker. */
@@ -186,12 +188,14 @@ export async function placeBubble(
   const lngLat: [number, number] = poi
     ? ((poi.geometry as any).coordinates.slice() as [number, number])
     : [e.lngLat.lng, e.lngLat.lat];
-  let p = {
-    name: poi
-      ? lang.value === 'he'
+  let poiName = '…';
+  if (poi)
+    poiName =
+      lang.value === 'he'
         ? poi.properties['name:he'] || poi.properties.name
-        : poi.properties['name:en'] || poi.properties['name:latin'] || poi.properties.name
-      : '…',
+        : poi.properties['name:en'] || poi.properties['name:latin'] || poi.properties.name;
+  let p = {
+    name: poiName,
     lat: lngLat[1],
     lon: lngLat[0],
   };
@@ -210,7 +214,7 @@ export async function placeBubble(
     const g: any = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
     p = {
       ...p,
-      name: g.kind === 'point' ? t('pointName') : g.distance > 40 ? t('nearName', { name: g.name }) : g.name,
+      name: reverseName(g),
     };
   } catch {
     p = { ...p, name: t('pointName') };
@@ -251,7 +255,7 @@ export function lineVehicleMarkers(
   mine: number | null,
   fallback: { line?: string; headsign?: string; agency?: string; route?: number | null } = {},
 ): void {
-  const icon = ic(routeType === 2 ? 'train' : routeType === 0 ? 'tram' : 'bus');
+  const icon = ic(vehicleIcon(routeType));
   const newest = feed.newest(vs);
   vs.forEach((v, i) => {
     if (!feed.isFresh(v, 300, newest)) return; // last seen long before this line's newest report: its position says nothing now

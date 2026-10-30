@@ -6,10 +6,10 @@ import { useEffect, useState } from 'preact/hooks';
 import { Icon } from '../../widgets/Icon';
 import { t } from '../../lib/i18n';
 import { ShownTime } from '../../widgets/ShownTime';
-import { dur, inText } from '../../journey/format';
+import { dur, liveClass } from '../../journey/format';
 import type { TrainRow, LiveTrain } from '../../state/station';
 import { LineChip } from '../../widgets/LineChip';
-import { LiveMark } from '../../widgets/LiveMark';
+import { InCell } from '../../widgets/LiveMark';
 import { Fold } from '../../widgets/Fold';
 
 type Props = {
@@ -60,7 +60,7 @@ export function RideOptions({ mine, load, liveFor, day, now, onOpen }: Props) {
         const l = lv[String(r.trip)],
           dep = l ? l.dep : r.dep,
           arr = l ? l.arr : r.arr,
-          cls = l ? (l.stale ? ' unsure' : ' live') : '';
+          cls = liveClass(l);
         return (
           <div
             class={`trainrow${l && l.passed ? ' gone' : ''}${r.trip === mine ? ' mine' : ''}`}
@@ -80,14 +80,7 @@ export function RideOptions({ mine, load, liveFor, day, now, onOpen }: Props) {
                 <bdi>{t('toward', { headsign: r.headsign })}</bdi>
               </small>
             </span>
-            <span class="in">
-              {l && !l.passed ? (
-                <>
-                  <LiveMark delayMin={l.delayMin} stale={l.stale} />{' '}
-                </>
-              ) : null}
-              {l && l.passed ? t('livePassed') : now != null ? inText(dep, day) : ''}
-            </span>
+            <InCell live={l} time={dep} day={day} counting={now != null} />
           </div>
         );
       })}

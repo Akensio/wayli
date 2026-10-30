@@ -10,6 +10,7 @@ import { lastPos } from '../state/position';
 import type { Place } from '../state/search';
 import { mapReady, pick } from './shared';
 import { openPopup, closePopup, setPopupTitle } from './popups';
+import { reverseName } from '../journey/format';
 
 let resolver: ((p: Place | null) => void) | null = null;
 
@@ -54,7 +55,7 @@ export async function pickAt(
     const r: any = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
     picked = {
       ...picked,
-      name: r.kind === 'point' ? t('pointName') : r.distance > 40 ? t('nearName', { name: r.name }) : r.name,
+      name: reverseName(r),
     };
   } catch {
     picked = { ...picked, name: t('pointName') };

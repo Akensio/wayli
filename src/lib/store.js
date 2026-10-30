@@ -121,21 +121,18 @@ export const recentTrips = {
  * what names it in the feed (route id, the number on a stop's sign, positions), since the timetable's own numbers
  * change from day to day; a trip keeps the journey itself and the build it came from.
  */
-const viewKey = (v) =>
-  v.type === 'line'
-    ? `line:${v.ref}`
-    : v.type === 'stop'
-      ? `stop:${v.code || `${v.lat},${v.lon}`}`
-      : v.type === 'station'
-        ? `station:${v.name}`
-        : v.type === 'trains'
-          ? `trains:${v.from.name}|${v.to.name}`
-          : `trip:${v.q.from.name}|${v.q.to.name}|${v.q.day}|${v.j.depart}`;
+function viewKey(v) {
+  if (v.type === 'line') return `line:${v.ref}`;
+  if (v.type === 'stop') return `stop:${v.code || `${v.lat},${v.lon}`}`;
+  if (v.type === 'station') return `station:${v.name}`;
+  if (v.type === 'trains') return `trains:${v.from.name}|${v.to.name}`;
+  return `trip:${v.q.from.name}|${v.q.to.name}|${v.q.day}|${v.j.depart}`;
+}
 // the kept number of each kind (a way opened carries its whole journey: at most 20 of those)
 function capViews(l) {
   const n = recentKeep(),
     seen = { trip: 0, line: 0, stop: 0 };
-  const kind = (x) => (x.type === 'trip' ? 'trip' : x.type === 'line' ? 'line' : 'stop');
+  const kind = (x) => (x.type === 'trip' || x.type === 'line' ? x.type : 'stop');
   return l.filter((x) => {
     const k = kind(x);
     return ++seen[k] <= (k === 'trip' ? Math.min(n, 20) : n);

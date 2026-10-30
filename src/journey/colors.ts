@@ -27,16 +27,13 @@ const agencyColor = (agency?: string | null): string => {
   for (const [k, c] of AGENCY_COLORS) if (a.startsWith(k)) return c;
   return BUS_DEFAULT;
 };
-export const routeColor = (type?: number | null, agency?: string | null): string =>
-  type === 2
-    ? TRAIN_COLOR
-    : type === 0
-      ? LRT_COLOR
-      : type === 5 || type === 6 || type === 7
-        ? CABLE_COLOR
-        : type === 8
-          ? TAXI_COLOR
-          : agencyColor(agency);
+export function routeColor(type?: number | null, agency?: string | null): string {
+  if (type === 2) return TRAIN_COLOR;
+  if (type === 0) return LRT_COLOR;
+  if (type === 5 || type === 6 || type === 7) return CABLE_COLOR;
+  if (type === 8) return TAXI_COLOR;
+  return agencyColor(agency);
+}
 /** Dark text on light colours, white on the rest. */
 export function textOn(hex: string): string {
   const n = parseInt(hex.slice(1), 16);
@@ -48,5 +45,7 @@ export const chipColors = (type?: number | null, agency?: string | null): { back
   const c = routeColor(type, agency);
   return { background: c, color: textOn(c) };
 };
-export const legColor = (l: Leg): string =>
-  l.type === 'ride' ? routeColor(l.routeType, l.agency) : l.mode === 'bike' ? '#1f5fa8' : '#2b3036';
+export function legColor(l: Leg): string {
+  if (l.type === 'ride') return routeColor(l.routeType, l.agency);
+  return l.mode === 'bike' ? '#1f5fa8' : '#2b3036';
+}

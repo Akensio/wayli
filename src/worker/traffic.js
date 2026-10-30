@@ -186,7 +186,8 @@ function trafficIn(box) {
     const now = m * usualRun(stops, 0, nowSec, day),
       x = now / free;
     if (!now) continue;
-    const level = x <= 1.5 ? 0 : x <= 2.2 ? 1 : x <= 3.2 ? 2 : 3;
+    let level = [1.5, 2.2, 3.2].findIndex((upTo) => x <= upTo); // the slowdown's bands, the worst past the last
+    if (level < 0) level = 3;
     const path = ridePath(p, k, k + 1) || [
       [tt.stopLat[s1], tt.stopLon[s1]],
       [tt.stopLat[s2], tt.stopLon[s2]],

@@ -4,11 +4,11 @@ import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 
 import * as st from '../../state/station';
-import { dur, inText } from '../../journey/format';
+import { dur, liveClass } from '../../journey/format';
 import { now } from '../../state/clock';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
-import { LiveMark } from '../../widgets/LiveMark';
+import { InCell } from '../../widgets/LiveMark';
 
 export function TrainTimes() {
   void lang.value;
@@ -48,19 +48,11 @@ export function TrainTimes() {
                 key={r.trip}
                 onClick={() => st.hooks.openTrip(r.trip, r.fromStop)}
               >
-                <ShownTime
-                  planned={r.dep}
-                  live={lv ? lv.dep : null}
-                  class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}
-                />
+                <ShownTime planned={r.dep} live={lv ? lv.dep : null} class={`time${liveClass(lv)}`} />
                 <span class="arrow">
                   <Icon name="chevronEnd" class="chev" />
                 </span>
-                <ShownTime
-                  planned={r.arr}
-                  live={lv ? lv.arr : null}
-                  class={`time${lv ? (lv.stale ? ' unsure' : ' live') : ''}`}
-                />
+                <ShownTime planned={r.arr} live={lv ? lv.arr : null} class={`time${liveClass(lv)}`} />
                 <span class="what">
                   <span>
                     <LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)} ·{' '}
@@ -70,14 +62,7 @@ export function TrainTimes() {
                     <bdi>{t('toward', { headsign: r.headsign })}</bdi>
                   </small>
                 </span>
-                <span class="in">
-                  {lv && !lv.passed ? (
-                    <>
-                      <LiveMark delayMin={lv.delayMin} stale={lv.stale} />{' '}
-                    </>
-                  ) : null}
-                  {lv && lv.passed ? t('livePassed') : st.isNow.value ? inText(dep, day) : ''}
-                </span>
+                <InCell live={lv} time={dep} day={day} counting={st.isNow.value} />
               </div>
             );
           })}

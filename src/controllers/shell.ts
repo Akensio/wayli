@@ -25,6 +25,7 @@ import { closeTrains } from './station';
 import { isFollowing, closeFollow } from './follow';
 import { setLang } from './lang';
 import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
+import { type Journey } from '../journey/types';
 
 /** The top bar's height, for the map controls, the status pill and the menu under it; the sheet's full size. */
 export function layoutTop(): void {
@@ -61,10 +62,19 @@ function installHint(): string {
     chrome = /CriOS/.test(ua),
     firefox = /FxiOS/.test(ua),
     edge = /EdgiOS/.test(ua);
-  return t('iosInstall', {
-    browser: chrome ? 'Chrome' : firefox ? 'Firefox' : edge ? 'Edge' : 'Safari',
-    where: chrome ? t('shareAddr') : firefox || edge ? t('shareMenu') : t('shareBottom'),
-  });
+  let browser = 'Safari',
+    where = t('shareBottom');
+  if (chrome) {
+    browser = 'Chrome';
+    where = t('shareAddr');
+  } else if (firefox) {
+    browser = 'Firefox';
+    where = t('shareMenu');
+  } else if (edge) {
+    browser = 'Edge';
+    where = t('shareMenu');
+  }
+  return t('iosInstall', { browser, where });
 }
 export const updateOnline = (): void => {
   app.online.value = navigator.onLine !== false;
@@ -183,14 +193,10 @@ Object.assign(map.hooks, {
   planFrom: (p: Place) => planFrom(p),
   timeAt: (stop: number): number | null => {
     const key = nav.key.value;
-    const j =
-      key === 'detail'
-        ? detail.journey.value
-        : key === 'follow'
-          ? follow.active.value?.journey
-          : key === 'screen-plan'
-            ? results.highlighted.value?.j
-            : null;
+    let j: Journey | null | undefined = null;
+    if (key === 'detail') j = detail.journey.value;
+    else if (key === 'follow') j = follow.active.value?.journey;
+    else if (key === 'screen-plan') j = results.highlighted.value?.j;
     if (j) {
       for (const l of j.legs) {
         const s = l.stopsAlong?.find((x) => x.stop === stop);

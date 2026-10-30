@@ -9,10 +9,10 @@ import { fmt } from '../../lib/time';
 import { favs, stored } from '../../lib/store.js';
 import * as stop from '../../state/stop';
 import { now } from '../../state/clock';
-import { inText, dur } from '../../journey/format';
+import { dur, liveClass } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
-import { LiveMark } from '../../widgets/LiveMark';
+import { InCell } from '../../widgets/LiveMark';
 
 export function StopDetail() {
   void lang.value;
@@ -80,7 +80,7 @@ export function StopDetail() {
           {deps && !deps.length && <div class="empty">{t('noDeps')}</div>}
           {(deps || []).map((d) => {
             const lv = stop.liveDeps.value[String(d.trip)];
-            const timeCls = !lv ? 'time' : lv.passed ? 'time gone' : `time ${lv.stale ? 'unsure' : 'live'}`;
+            const timeCls = lv && lv.passed ? 'time gone' : 'time' + liveClass(lv);
             return (
               <div class="dep" data-trip={d.trip} key={d.trip} onClick={() => stop.hooks.openTrip(d.trip, info.stop)}>
                 <ShownTime
@@ -94,21 +94,7 @@ export function StopDetail() {
                   {d.headsign}
                   {d.estimated && <small class="est">{t('estShort')}</small>}
                 </span>
-                <span class="in">
-                  {lv ? (
-                    lv.passed ? (
-                      t('livePassed')
-                    ) : (
-                      <>
-                        {inText(lv.time, day)} <LiveMark delayMin={lv.delayMin} stale={lv.stale} />
-                      </>
-                    )
-                  ) : isNow ? (
-                    inText(d.time, day)
-                  ) : (
-                    ''
-                  )}
-                </span>
+                <InCell live={lv} time={lv && !lv.passed ? lv.time : d.time} day={day} counting={isNow} />
               </div>
             );
           })}

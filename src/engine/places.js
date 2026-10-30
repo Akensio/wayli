@@ -52,7 +52,9 @@ const IMPORTANT = new Set([
 function proximity(near, lat, lon) {
   if (!near) return 0;
   const km = haversine(near.lat, near.lon, lat, lon) / 1000;
-  return km <= 3 ? 3 - km * 0.05 : km >= 30 ? 0 : (2.85 * (30 - km)) / 27; // nearer first, even among places close by
+  if (km <= 3) return 3 - km * 0.05; // nearer first, even among places close by
+  if (km >= 30) return 0;
+  return (2.85 * (30 - km)) / 27;
 }
 
 export function parsePlaces(ab) {
@@ -184,7 +186,10 @@ const LANDMARK = new Set(Object.keys(LANDMARK_HE));
 /** A place's kind in words: the Hebrew label, else a general one ("חנות", "משרד", "מקום"); in English the tag's own value. */
 export function kindLabel(kind, lang = 'he') {
   if (lang !== 'he') return kind.split('=')[1].replace(/_/g, ' ');
-  return KIND_HE[kind] || (kind.startsWith('shop=') ? 'חנות' : kind.startsWith('office=') ? 'משרד' : 'מקום');
+  if (KIND_HE[kind]) return KIND_HE[kind];
+  if (kind.startsWith('shop=')) return 'חנות';
+  if (kind.startsWith('office=')) return 'משרד';
+  return 'מקום';
 }
 
 // ---------------------------------------------------------------- names typed in Latin letters
@@ -250,10 +255,12 @@ const HEB_SK = {
 }; // א ע י: dropped
 const squash = (s) => s.replace(/(.)\1+/g, '$1');
 /** 'hVrdm' -> ['hvrdm', 'hrdm'] (V: ו, a consonant or a vowel); K: כ, written k or kh/ch (x); X: ח, written h or kh/ch. */
+// the letters a Latin spelling may stand for: V may be silent (a vav read as a vowel), K may be a kaf or a khaf, X a het or a khaf
+const LATIN_ALTS = { V: ['v', ''], K: ['k', 'x'], X: ['h', 'x'] };
 function expand(s) {
   let out = [''];
   for (const c of s) {
-    const alts = c === 'V' ? ['v', ''] : c === 'K' ? ['k', 'x'] : c === 'X' ? ['h', 'x'] : [c];
+    const alts = LATIN_ALTS[c] || [c];
     const next = [];
     for (const o of out) for (const a of alts) next.push(o + a);
     out = next.length > 16 ? next.slice(0, 16) : next;
@@ -312,7 +319,11 @@ function ensureLatin(pl) {
 }
 
 function wordScore(q, w, i, firstWordNames) {
-  if (w === q) return q.length < 2 ? 1 : !firstWordNames ? 4 : i === 0 ? 5 : 3;
+  if (w === q) {
+    if (q.length < 2) return 1;
+    if (!firstWordNames) return 4;
+    return i === 0 ? 5 : 3;
+  }
   if (q.length >= 2 && w.startsWith(q)) return i === 0 ? 2.5 : 2;
   if (q.length >= 3 && w.includes(q)) return 1;
   return 0;
@@ -321,9 +332,13 @@ function skelScore(qv, wv, i, firstWordNames) {
   let best = 0;
   for (const a of qv)
     for (const b of wv) {
-      if (a === b)
-        best = Math.max(best, a.length < 3 ? 1.5 : firstWordNames && i === 0 ? 4.5 : 2.9); // two consonants say little ("hs": Hish, Yehoash); only a street's first word counts as exact
-      else if (a.length >= 2 && b.startsWith(a)) best = Math.max(best, i === 0 ? 2.2 : 1.8);
+      if (a === b) {
+        // two consonants say little ("hs": Hish, Yehoash); only a street's first word counts as exact
+        let exact = 2.9;
+        if (a.length < 3) exact = 1.5;
+        else if (firstWordNames && i === 0) exact = 4.5;
+        best = Math.max(best, exact);
+      } else if (a.length >= 2 && b.startsWith(a)) best = Math.max(best, i === 0 ? 2.2 : 1.8);
     }
   return best;
 }
@@ -488,7 +503,8 @@ export function placeAt(pl, lat, lon, lang, name) {
   const both = (f) => {
     const he = f('he'),
       en = f('en');
-    return he === name || en === name ? (lang === 'en' ? en : he) : null;
+    if (he !== name && en !== name) return null;
+    return lang === 'en' ? en : he;
   };
   let hit = null;
   for (let i = 0; i < pl.addrLat.length && !hit; i++) {

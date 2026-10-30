@@ -22,6 +22,13 @@ import { currentSheet } from './render';
 import { metres } from '../engine/geo.js';
 import { timeOf } from '../lib/time';
 
+/** How faded a live vehicle is drawn: much when the whole feed lags four minutes, some when its own report is over
+ *  two minutes old, else not at all. */
+function liveOpacity(feedLag: number, age: number): number {
+  if (feedLag >= 4) return 0.4;
+  return age > 120 ? 0.55 : 1;
+}
+
 export const liveOn = (): boolean => !!settings.get().live && navigator.onLine !== false;
 const LIVE_LAYERS = ['lm-veh', 'lm-veh-dir', 'lm-veh-label', 'lm-traffic'];
 // every vehicle in view, only those of some lines (the results'), every one with those of some lines brought forward
@@ -189,7 +196,7 @@ export async function refreshLiveMap(): Promise<void> {
             color,
             ckey: color.slice(1),
             tcol: textOn(color),
-            opacity: feedLag >= 4 ? 0.4 : age > 120 ? 0.55 : 1,
+            opacity: liveOpacity(feedLag, age),
             bearing: heading(v),
             headsign: lb ? lb.headsign : '',
             agency: lb ? lb.agency : '',
@@ -212,12 +219,13 @@ export async function refreshLiveMap(): Promise<void> {
       ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length
       : features.length;
     const nNear = near ? features.filter((f) => near.includes(f.properties!.ref as string)).length : 0;
-    const scope = Array.isArray(liveShow)
-      ? t(viewFor(currentSheet()).live === 'stop' ? 'liveScopeStop' : 'liveScopeSearch')
-      : near
-        ? t('liveNearOf', { n: nNear })
-        : '';
-    const age = ageMin >= 4 ? t('liveAgeBehind', { n: ageMin }) : ageMin >= 3 ? t('liveAge', { n: ageMin }) : '';
+    let scope = '';
+    if (Array.isArray(liveShow))
+      scope = t(viewFor(currentSheet()).live === 'stop' ? 'liveScopeStop' : 'liveScopeSearch');
+    else if (near) scope = t('liveNearOf', { n: nNear });
+    let age = '';
+    if (ageMin >= 4) age = t('liveAgeBehind', { n: ageMin });
+    else if (ageMin >= 3) age = t('liveAge', { n: ageMin });
     // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
     const via = feed.source.relay ? '' : t('liveViaDb', { why: feed.source.why });
     app.liveNote.value =

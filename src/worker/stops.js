@@ -99,8 +99,14 @@ export const stopsOps = {
               .map((d) => d.key),
           )
         : null;
-    const stopMode = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
-    const gmode = (ss) => (ss.some((x) => rail[x]) ? 'rail' : ss.some((x) => lrt[x]) ? 'lrt' : 'bus'); // the number on a station's sign is no rider's
+    const stopMode = (s) => {
+      if (rail[s]) return 'rail';
+      return lrt[s] ? 'lrt' : 'bus';
+    };
+    const gmode = (ss) => {
+      if (ss.some((x) => rail[x])) return 'rail'; // the number on a station's sign is no rider's
+      return ss.some((x) => lrt[x]) ? 'lrt' : 'bus';
+    };
     const groupOf = stationOf;
     const out = new Map();
     const add = (s, score) => {
@@ -132,12 +138,12 @@ export const stopsOps = {
     if (!n) {
       for (let s = 0; s < tt.stops.length; s++) {
         // trains and light rail: every station (nearest first); else the stops within 600 m
+        if (mode === 'rail' && !rail[s]) continue;
+        if (mode === 'lrt' && !lrt[s]) continue;
         if (
-          mode === 'rail'
-            ? !rail[s]
-            : mode === 'lrt'
-              ? !lrt[s]
-              : !near || haversine(near.lat, near.lon, tt.stopLat[s], tt.stopLon[s]) > 600
+          mode !== 'rail' &&
+          mode !== 'lrt' &&
+          (!near || haversine(near.lat, near.lon, tt.stopLat[s], tt.stopLon[s]) > 600)
         )
           continue;
         add(s, 0);
@@ -257,7 +263,10 @@ export const stopsOps = {
   stopsGeo() {
     const rail = railStops(),
       lrt = lrtStops();
-    const kindOf = (s) => (rail[s] ? 'rail' : lrt[s] ? 'lrt' : 'bus');
+    const kindOf = (s) => {
+      if (rail[s]) return 'rail';
+      return lrt[s] ? 'lrt' : 'bus';
+    };
     const features = [];
     const stKind = new Map();
     for (const [p, members] of tt.stationStops) {
@@ -296,18 +305,16 @@ export const stopsOps = {
       if (p >= 0 && stops.every((s) => tt.stopParent[s] === p)) station = p;
     }
     // a light rail stop is both its directions
-    const members =
-      station >= 0
-        ? (tt.stationStops.get(station) || [stop]).slice()
-        : stops && stops.length
-          ? stops.slice()
-          : lrtGroups().has(stop)
-            ? lrtGroups().get(stop).stops.slice()
-            : [stop];
+    let members = [stop];
+    if (station >= 0) members = (tt.stationStops.get(station) || [stop]).slice();
+    else if (stops && stops.length) members = stops.slice();
+    else if (lrtGroups().has(stop)) members = lrtGroups().get(stop).stops.slice();
     const rail = railStops(),
       hasRail = members.some((s) => rail[s]),
       hasLrt = !hasRail && members.some((s) => lrtStops()[s]);
-    const reach = hasRail ? 'rail' : hasLrt ? 'lrt' : null; // where its trains go without a change (stationReach)
+    let reach = null; // where its trains go without a change (stationReach)
+    if (hasRail) reach = 'rail';
+    else if (hasLrt) reach = 'lrt';
     // the number on a stop's sign is for buses: a railway station's is no rider's
     if (station < 0 && members.length === 1)
       return {

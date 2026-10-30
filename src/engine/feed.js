@@ -43,7 +43,8 @@ let newestSeen = 0; // ms: the newest report any query returned; "fresh" is meas
  *  2026-10-19 15:34: Tel Aviv 20 min behind, the country 6), so a set is judged against its own newest report.
  *  @param {any} v @param {number} [windowSec] @param {Date|number|null} [ref] */
 export function isFresh(v, windowSec = 300, ref = null) {
-  const r = ref ? (ref instanceof Date ? ref.getTime() : ref) : newestSeen || Date.now();
+  let r = newestSeen || Date.now();
+  if (ref) r = ref instanceof Date ? ref.getTime() : ref;
   return r - v.recordedAt.getTime() <= windowSec * 1000;
 }
 /** Latest position per ride (a few rows carry impossible future times; they are dropped). */

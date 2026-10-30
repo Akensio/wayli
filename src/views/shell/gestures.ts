@@ -46,7 +46,9 @@ export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: 
     let best: SheetState = 'peek';
     for (const st of ['half', 'full'] as const)
       if (Math.abs(sheet.px(st) - hh) < Math.abs(sheet.px(best) - hh)) best = st;
-    const dir = Math.abs(v) >= 0.5 && Math.abs(dy) >= 12 ? (v < 0 ? 1 : -1) : Math.abs(dy) > 40 ? (dy > 0 ? 1 : -1) : 0;
+    let dir = 0;
+    if (Math.abs(v) >= 0.5 && Math.abs(dy) >= 12) dir = v < 0 ? 1 : -1;
+    else if (Math.abs(dy) > 40) dir = dy > 0 ? 1 : -1;
     if (dir) {
       const step = sheet.ORDER[Math.max(0, Math.min(2, i0 + dir))];
       if ((sheet.ORDER.indexOf(best) - i0) * dir <= 0) best = step; // a decisive move lands at least one size along
