@@ -9,8 +9,16 @@ GTFS feed nor its SIRI real-time feed has them (checked 2026-10-23: none of line
 59 vehicles reporting nationally on Friday night). Tel Aviv's municipality publishes their routes and stops on its GIS
 server, behind the official map (https://busofash.co.il): layer 992 (one line per direction, named "from X to Y") and
 layer 993 (a stop per line, with the Ministry's stop code). No timetable is published. What is known, and used:
-  - hours: Friday 16:30 to 02:00, Saturday 09:00 to 17:30 (https://busofash.co.il, 2026-10-23);
-  - frequency: every 20 minutes (https://en.wikipedia.org/wiki/Na'im_Busofash), 710 every 30 (HEADWAY_OF);
+  - hours and frequency, per line and day, from the operator's page for the line (Noa Tanua,
+    https://www.noat.co.il/routes/line-716: "שישי 17:00 - 01:30 כל שעתיים", "שבת 10:00 - 18:00 כל שעתיים"), read as the
+    first and last departures from the line's first stop and the headway; they differ a lot between lines (2026-10-30:
+    the city lines 705, 708, 718 every 20 minutes, 707, 709, 710, 717 every 30, the intercity 711 and 716 every two
+    hours, 713, 715, 721-723 hourly, 714 and 729 every 45 minutes), so a flat guess was wrong by hours on some. When
+    the page does not answer, the hours kept from the last run; with none, the service's general hours (HOURS,
+    Friday 16:30 to 02:00, Saturday 09:00 to 17:30, https://busofash.co.il) every 20 minutes (HEADWAY);
+  - the return direction (towards the suburb; the outbound starts where the city is not Tel Aviv) leaves after the
+    outbound's one-way run, as one bus shuttling would (an estimate: with a two-hour headway it is the difference
+    between 17:00 and 18:00);
   - speed, an estimate: on Saturday daytime the buses in Gush Dan covered 24 km/h stop to stop in a straight line
     (Hasadna's positions, 2026-10-17); on Thursday evening 15 (2026-10-22). Friday evening is taken as 20.
 So every trip here is an estimate: the agency's id starts with "est-", which the compiler records on the route and the
@@ -35,16 +43,56 @@ LINES, STOPS = 992, 993
 # busofash.co.il: Friday 16:30-02:00, Saturday 09:00-17:30, read as the first and last departures from the line's first
 # stop (2026-10-24: Bus Nearby lists a line 710 bus at about 18:00 near Derech HaShalom, 25 minutes into its route,
 # which fits a 17:30 last departure, not a last trip ending at 17:30)
-HOURS = {"fri": (16 * 3600 + 1800, 26 * 3600), "sat": (9 * 3600, 17 * 3600 + 1800)}
+HOURS = {"fri": (16 * 3600 + 1800, 26 * 3600), "sat": (9 * 3600, 17 * 3600 + 1800)}   # the fallback, see above
 HEADWAY = 20 * 60
-# lines that run less often (estimates): 710 every 30 minutes (Time Out on Na'im BeSofash: every 20 minutes, 710 every
-# 30; Mako 2019 said hourly), which also puts its last Saturday bus at Derech HaShalom near 18:00, as Bus Nearby lists it
-HEADWAY_OF = {"710": 30 * 60}
+OPERATOR = "https://www.noat.co.il/routes/line-{line}"
+TLV = "תל אביב"   # the city every line reaches: the direction starting elsewhere is the outbound one
 SPEED = {"fri": 20 / 3.6, "sat": 24 / 3.6}   # m/s, straight line from stop to stop (estimates, see above)
 NEAR = 40      # m: a stop this close to a line's course is on it
 SHAPE_BASE = 2_000_000_000
 AGENCY = "est-naim"
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
+
+
+def hms(t):
+    """'17:00' as seconds; a time past midnight ('01:30') is read on the night of the day by the caller."""
+    h, m = t.split(":")
+    return int(h) * 3600 + int(m) * 60
+
+
+def parse_hours(page):
+    """A line's page: {'fri': [first, last, headway], 'sat': [...]} in seconds, or None when a day is missing. The
+    times are in the page's text ("שישי" heading, then "17:00 - 01:30<br>כל שעתיים"); a last time before the first is
+    the next morning."""
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
+    out = {}
+    for day, word in (("fri", "שישי"), ("sat", "שבת")):
+        m = re.search(word + r"\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s+כל\s+(שעתיים|שעה וחצי|שעה|(\d+) דקות)", text)
+        if not m:
+            return None
+        h0, h1 = hms(m.group(1)), hms(m.group(2))
+        if h1 <= h0:
+            h1 += 86400
+        every = {"שעתיים": 7200, "שעה וחצי": 5400, "שעה": 3600}.get(m.group(3)) or int(m.group(4)) * 60
+        out[day] = [h0, h1, every]
+    return out
+
+
+def operator_hours(line):
+    """The line's hours and headway per day from the operator's page, or None when it does not answer (a short page
+    is a refusal; tried three times, since the site answers one request in a few with a stub)."""
+    req = urllib.request.Request(OPERATOR.format(line=line), headers={"User-Agent": "Mozilla/5.0 (wayli pipeline)"})
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                page = r.read().decode("utf-8", "replace")
+            hours = parse_hours(page) if len(page) > 100_000 else None
+            if hours:
+                return hours
+        except Exception as e:  # noqa: BLE001
+            log(f"  line {line}: {e} (try {attempt + 1})")
+        time.sleep(5 * (attempt + 1))
+    return None
 
 
 def get(layer, **q):
@@ -186,7 +234,9 @@ def directions(data, stops_by_code, heading):
     return out
 
 
-def merge(gtfs, dirs, stops_by_code):
+def merge(gtfs, dirs, stops_by_code, hours):
+    """The directions as GTFS routes, trips and stop times, into the zip in place. `hours` per line (operator_hours),
+    the general hours for a line without."""
     z = zipfile.ZipFile(gtfs)
     cal = list(rows(z, "calendar.txt"))
     start, end = min(r["start_date"] for r in cal), max(r["end_date"] for r in cal)
@@ -196,6 +246,20 @@ def merge(gtfs, dirs, stops_by_code):
     for k, day in (("fri", "friday"), ("sat", "saturday")):
         add["calendar.txt"].append({"service_id": f"{AGENCY}-{k}", **{d: "1" if d == day else "0" for d in
                                     ("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday")}, "start_date": start, "end_date": end})
+    # the outbound direction of each line: the one starting outside Tel Aviv (both or neither: the first); the return
+    # leaves after the outbound's one-way run, rounded up to five minutes, as one bus shuttling would
+    by_line = defaultdict(list)
+    for i, d in enumerate(dirs):
+        by_line[d["line"]].append(i)
+    outbound = {}
+    for line, idx in by_line.items():
+        away = [i for i in idx if TLV not in stops_by_code[dirs[i]["stops"][0]]["city"]]
+        outbound[line] = away[0] if len(away) == 1 else idx[0]
+    gaps_of = {}
+    for i, d in enumerate(dirs):
+        S = [stops_by_code[c] for c in d["stops"]]
+        gaps_of[i] = [math.hypot(*(a - b for a, b in zip(xy(S[j + 1]["lat"], S[j + 1]["lon"], S[0]["lat"]), xy(S[j]["lat"], S[j]["lon"], S[0]["lat"]))))
+                      for j in range(len(S) - 1)]
     n_trips = 0
     for i, d in enumerate(dirs):
         S = [stops_by_code[c] for c in d["stops"]]
@@ -207,10 +271,12 @@ def merge(gtfs, dirs, stops_by_code):
                                   "route_type": "3", "route_color": d["color"]})
         for n, (lon, lat) in enumerate(d["course"]):
             add["shapes.txt"].append({"shape_id": shape, "shape_pt_lat": f"{lat:.6f}", "shape_pt_lon": f"{lon:.6f}", "shape_pt_sequence": str(n + 1)})
-        gaps = [math.hypot(*(a - b for a, b in zip(xy(S[j + 1]["lat"], S[j + 1]["lon"], S[0]["lat"]), xy(S[j]["lat"], S[j]["lon"], S[0]["lat"]))))
-                for j in range(len(S) - 1)]
-        for k, (h0, h1) in HOURS.items():
+        gaps = gaps_of[i]
+        for k in ("fri", "sat"):
+            h0, h1, every = (hours.get(d["line"]) or {}).get(k) or (*HOURS[k], HEADWAY)
             runs = [max(30, round(g / SPEED[k])) for g in gaps]
+            if i != outbound[d["line"]]:
+                h0 += -(-sum(max(30, round(g / SPEED[k])) for g in gaps_of[outbound[d["line"]]]) // 300) * 300
             t0 = h0
             while t0 <= h1:   # the last trip leaves at the end of the service
                 tid = f"{rid}-{k}-{t0 // 60}"
@@ -223,7 +289,7 @@ def merge(gtfs, dirs, stops_by_code):
                     hms = f"{t // 3600:02d}:{t % 3600 // 60:02d}:{t % 60:02d}"
                     add["stop_times.txt"].append({"trip_id": tid, "arrival_time": hms, "departure_time": hms, "stop_id": s["id"], "stop_sequence": str(j + 1)})
                 n_trips += 1
-                t0 += HEADWAY_OF.get(str(d["line"]), HEADWAY)
+                t0 += every
     tmp = gtfs + ".tmp"
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as out:
         for info in z.infolist():
@@ -249,16 +315,15 @@ def main():
     ap.add_argument("gtfs")
     ap.add_argument("--cache", default="data/weekend.json")
     a = ap.parse_args()
+    kept = json.load(open(a.cache)) if os.path.exists(a.cache) else {}
     try:
         data = fetch()
-        with open(a.cache, "w") as f:
-            json.dump(data, f)
     except Exception as e:  # noqa: BLE001
-        if not os.path.exists(a.cache):
+        if not kept:
             log(f"the municipality's server did not answer ({e}) and nothing is kept: no weekend lines this time")
             return
         log(f"the municipality's server did not answer ({e}): the answer kept from before is used")
-        data = json.load(open(a.cache))
+        data = kept
     z = zipfile.ZipFile(a.gtfs)
     if any(r.get("agency_id") == AGENCY for r in rows(z, "agency.txt")):
         log("the weekend lines are in this feed already")
@@ -272,7 +337,20 @@ def main():
         except ValueError:
             continue
     codes = {f["properties"].get("stop_code") for f in data["stops"]} & set(stops_by_code)
-    merge(a.gtfs, directions(data, stops_by_code, headings(a.gtfs, codes, stops_by_code)), stops_by_code)
+    dirs = directions(data, stops_by_code, headings(a.gtfs, codes, stops_by_code))
+    # each line's hours and headway from the operator, else the ones kept from the last run (the cache carries both
+    # the municipality's answer and these)
+    hours = {}
+    for line in sorted({d["line"] for d in dirs}):
+        h = operator_hours(line) or (kept.get("hours") or {}).get(str(line))
+        if h:
+            hours[line] = h
+        hm = lambda t: f"{t // 3600 % 24:02d}:{t % 3600 // 60:02d}"
+        log(f"  line {line}: " + ("; ".join(f"{k} {hm(v[0])}-{hm(v[1])} every {v[2] // 60} min" for k, v in h.items()) if h else "no hours from the operator: the general hours"))
+        time.sleep(3)   # the site answers a burst of requests with a stub (HTTP 429)
+    with open(a.cache, "w") as f:
+        json.dump({**data, "hours": {str(k): v for k, v in hours.items()}}, f)
+    merge(a.gtfs, dirs, stops_by_code, hours)
 
 
 if __name__ == "__main__":

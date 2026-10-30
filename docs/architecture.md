@@ -858,10 +858,15 @@ station's platforms into one result.
   Aviv's GIS server behind the official map (layers 992 and 993; stops by
   the Ministry's stop code), merged into the feed as an agency whose id
   starts "est-" (the compiler sets the route's estimated flag). No
-  timetable is published: the hours are the official ones (Friday
-  16:30-02:00, Saturday 09:00-17:30, busofash.co.il) as first and last
-  departures, every 20 minutes (Wikipedia; 710 every 30, Time Out), at an estimated 20 km/h on Friday evening and 24 on Saturday
-  stop to stop (Gush Dan buses measured 24 on a Saturday, 15 on a Thursday
+  timetable is published, but the operator's page for each line (Noa Tanua,
+  noat.co.il/routes/line-716) gives its hours and headway per day, read as
+  the first and last departures from the line's first stop and the interval
+  (they differ a lot: 716 every two hours, 713 hourly, 705 every 20 minutes;
+  the hours kept from the last run when a page does not answer, the service's
+  general hours every 20 minutes as the last fallback); the return direction
+  leaves after the outbound's one-way run, as one bus shuttling would; the
+  speed an estimated 20 km/h on Friday evening and 24 on Saturday stop to
+  stop (Gush Dan buses measured 24 on a Saturday, 15 on a Thursday
   evening). A stop goes with the direction travelling the way the feed's
   own buses leave it, else the one passing it on the right; of 1,377 stops
   12 land in both directions (ends), 51 in neither. The app shows their
