@@ -1,9 +1,9 @@
 // Words for journeys: durations, transfers, line names, the countdown to a departure.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.js';
 import { t, lang } from '../lib/i18n';
 import { fmt } from '../lib/time';
-import { tripKey as storeTripKey } from '../lib/store.js';
+import { tripKey as storeTripKey } from '../lib/store.ts';
 import type { Place } from '../state/search';
 
 /** A distance as the rider reads it: to the metre close by, by 50 m within a kilometre, then in km (one decimal under 10). */

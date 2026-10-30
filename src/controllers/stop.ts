@@ -1,7 +1,7 @@
 // A stop in the sheet, the one view of a stop wherever it was opened (the map, a search, a line, a trip): its lines,
 // next departures (from now, or from the bar's time on another day) refreshed with live times every 45 s while it is
 // open, from here and to here; a station is all its platforms, and where its trains go without a change.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.js';
 import * as feed from '../engine/feed.js';
 import { isNowDay } from '../lib/time';
@@ -13,7 +13,7 @@ import * as nav from '../state/nav';
 import * as stopPage from '../state/stop';
 import type { StopInfo, Departure } from '../state/stop';
 import { planTo, planFrom } from './planner';
-import { recentViews } from '../lib/store.js';
+import { recentViews } from '../lib/store.ts';
 import { openTrains, chooseStation } from './station';
 import { openLine } from './line';
 import { asStation, type Dest } from '../state/station';

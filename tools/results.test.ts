@@ -2,7 +2,7 @@
 // number (idx) follows its group's first option, which a plan from now (it looks ten minutes back) may already have
 // filed under "just left".
 import { test, expect } from 'vitest';
-import * as clock from '../src/engine/clock.js';
+import * as clock from '../src/engine/clock.ts';
 import * as results from '../src/state/results';
 import type { Journey, RideLeg } from '../src/journey/types';
 

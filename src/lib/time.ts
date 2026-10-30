@@ -1,7 +1,7 @@
 // Times and days as the planner uses them: seconds on a service day, dates as YYYYMMDD strings, and the
 // day labels the rider reads (Today, Tomorrow, or the date). The rider only ever sees calendar days: a service day
 // runs past midnight, and its night is shown as the next calendar day's small hours.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import { t } from './i18n';
 
 /** A moment's clock time in Israel, HH:MM: when a vehicle was seen, live times as of. */

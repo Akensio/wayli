@@ -1,7 +1,7 @@
 // Starting the app, after the components have painted: the service worker, the map, a trip in progress, then
 // the data (the manifest, the day to start on, a shared link or the last search, the timetable, then the
 // address book, the street graph and the courses in the background).
-import { lastSearch } from './lib/store.js';
+import { lastSearch } from './lib/store.ts';
 import * as search from './state/search';
 import { warmPosition } from './state/position';
 import * as map from './map/index';

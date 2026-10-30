@@ -12,12 +12,12 @@ import type { LineMode } from '../../widgets/LineChip';
 import { t, lang } from '../../lib/i18n';
 import { bikeText } from '../../journey/format';
 import { dayLabel, calToday, calendarOf, secOf } from '../../lib/time';
-import { recentTrips, recentViews, favs, recentKeep, stored } from '../../lib/store.js';
+import { recentTrips, recentViews, favs, recentKeep, stored, type RecentTrip } from '../../lib/store.ts';
 import * as results from '../../state/results';
 import * as search from '../../state/search';
 import * as nav from '../../state/nav';
 import type { View } from '../../state/results';
-import type { Query, SavedTrip } from '../../journey/types';
+import type { SavedTrip } from '../../journey/types';
 import { LegChips } from './LegChips';
 import { agencyName } from '../../journey/agencies';
 import { openView, replan } from '../../controllers/planner';
@@ -30,8 +30,6 @@ const clock = (day: string, sec: number): string => {
 /** A search's day and time, or its day alone when it was for now. */
 const whenText = (day?: string, time?: string): string =>
   time ? clock(day || calToday(), secOf(time)) : dayLabel(day || calToday());
-
-type Recent = Query & { time?: string };
 
 function ViewRow({ v }: { v: View }) {
   const open = () => openView(v);
@@ -94,7 +92,6 @@ function ViewRow({ v }: { v: View }) {
   );
 }
 
-type SavedStop = { name: string; city?: string; code?: string; lat: number; lon: number };
 type Tab = 'trip' | 'line' | 'stop';
 const TABS = [
   { k: 'trip', icon: 'route', label: 'kindTrip' },
@@ -125,12 +122,12 @@ export function Recent() {
   void nav.key.value; // the history grows while a panel is open
   const tab = results.recentTab.value,
     pair = search.kind.value === 'stop' && search.railPair.value;
-  const views = recentViews.list() as View[];
-  const savedTrips = Object.values(favs.get('trips') as Record<string, SavedTrip>);
-  const savedLines = Object.values(favs.get('lines') as Record<string, View>);
-  const savedStops = Object.values(favs.get('stops') as Record<string, SavedStop>);
+  const views = recentViews.list();
+  const savedTrips = Object.values(favs.get('trips'));
+  const savedLines = Object.values(favs.get('lines'));
+  const savedStops = Object.values(favs.get('stops'));
   const keep = recentKeep();
-  const searches = (recentTrips.list() as Recent[]).slice(0, keep);
+  const searches = recentTrips.list().slice(0, keep);
   const ways = views.filter((v) => v.type === 'trip').slice(0, keep);
   const lines = views.filter((v) => v.type === 'line').slice(0, keep);
   // the train timetable (two stations at the top) keeps to stations and the trains between them
@@ -151,14 +148,16 @@ export function Recent() {
   // the sub-tab chosen, else the first with something in it
   const cur = sub.value[tab] ?? (SUBS[tab].find((x) => n[tab][x.k] > 0) ?? SUBS[tab][0]).k;
   const curSub = SUBS[tab].find((x) => x.k === cur)!;
-  const planAgain = (r: Recent | SavedTrip) =>
+  // a recent search as it was asked (its day and time); a saved trip from now
+  const planAgain = (r: RecentTrip | SavedTrip) =>
     replan({
-      ...(r as Recent),
       from: named(r.from),
       to: named(r.to),
-      at: (r as Recent).time || (r as Recent).at || '',
-      day: (r as Recent).day || '',
-      arriveBy: !!(r as Recent).arriveBy,
+      bike: r.bike,
+      folding: !!r.folding,
+      at: ('time' in r && r.time) || '',
+      day: ('day' in r && r.day) || '',
+      arriveBy: 'arriveBy' in r && !!r.arriveBy,
     });
   const list = `${tab}:${cur}`;
   return (

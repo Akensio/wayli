@@ -1,6 +1,6 @@
 // Loading the data: the manifest (which days, which files), a day's timetable, then the address book, the
 // street graph and the courses in the background. The worker downloads and unpacks; the pill shows how far.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.js';
 import { t, lang, STR } from '../lib/i18n';
 import { calToday, dayLabel, two } from '../lib/time';

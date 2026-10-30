@@ -19,7 +19,7 @@ import { arrowImage } from './images';
 import { heading, vehiclePopup } from './popups';
 import { viewFor } from './view';
 import { currentSheet } from './render';
-import { metres } from '../engine/geo.js';
+import { metres } from '../engine/geo.ts';
 import { timeOf } from '../lib/time';
 
 /** How faded a live vehicle is drawn: much when the whole feed lags four minutes, some when its own report is over

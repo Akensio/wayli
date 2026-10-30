@@ -11,7 +11,7 @@ import { t, lang } from '../../lib/i18n';
 import { ic, modeIcon } from '../../widgets/icons';
 import { Icon } from '../../widgets/Icon';
 import type { IconName } from '../../widgets/icons';
-import { savedPlaces, recentPlaces, recentViews } from '../../lib/store.js';
+import { savedPlaces, recentPlaces, recentViews } from '../../lib/store.ts';
 import * as search from '../../state/search';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
 import { LineChip } from '../../widgets/LineChip';
@@ -268,7 +268,7 @@ export function SearchField({
   };
   // what was opened lately, of the kind the chips choose (the To box of the train timetable lists only where trains go)
   const recentFor = (): View[] => {
-    const vs = recentViews.list() as View[];
+    const vs = recentViews.list();
     if (lineKind) {
       const f = search.lineFilter.value;
       return vs.filter((v) => v.type === 'line' && (f === 'all' || (v.mode || 'bus') === f)).slice(0, 4);
@@ -520,8 +520,8 @@ export function SearchField({
     const p = await pickOnMap(search.from.value || search.to.value);
     if (p) onPick(p);
   };
-  const savedList = savedPlaces.all() as (Place & { slot: string })[];
-  const recent = (recentPlaces.list() as Place[]).filter((r) => !savedPlaces.has(r));
+  const savedList = savedPlaces.all();
+  const recent = recentPlaces.list().filter((r) => !savedPlaces.has(r));
   const xShown = focused.value && !!text.value;
   const drop = (
     <div

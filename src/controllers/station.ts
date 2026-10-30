@@ -1,7 +1,7 @@
 // The train timetable (the stop search's train chip: two stations at the top): the From station opens as the one stop
 // view (its departures, where its trains go), and once To is set the direct trains between the two with their live
 // times (every 45 s while open). A rider of trains thinks from station to station, not by line.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import { isNowDay } from '../lib/time';
 import { call } from '../worker/client';
 import { livePoll } from './livepoll';
@@ -12,7 +12,7 @@ import * as map from '../map/index';
 import { asStation, type Station, type TrainRow } from '../state/station';
 import { openStop } from './stop';
 import { liveRides } from './liverides';
-import { recentViews } from '../lib/store.js';
+import { recentViews } from '../lib/store.ts';
 
 let seq = 0,
   timer = 0;

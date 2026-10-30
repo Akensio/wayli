@@ -14,7 +14,7 @@ import { Fold } from '../../widgets/Fold';
 import { ShownTime } from '../../widgets/ShownTime';
 import { useEffect, useState } from 'preact/hooks';
 import { LineChip } from '../../widgets/LineChip';
-import { favs, stored } from '../../lib/store.js';
+import { favs, stored } from '../../lib/store.ts';
 import { LiveMark } from '../../widgets/LiveMark';
 import * as delays from '../../engine/delays.js';
 import { openOtherDirection, chooseTime, chooseAnchor } from '../../controllers/line';
@@ -41,7 +41,7 @@ export function LineDetail() {
   const key = info.ref ? 'line:' + info.ref : '',
     on = !!key && favs.has('lines', key);
   const toggleFav = () => {
-    if (!key) return;
+    if (!key || !info.ref) return;
     favs.toggle('lines', key, {
       type: 'line',
       ref: info.ref,

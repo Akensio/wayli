@@ -3,7 +3,7 @@
 // app sets them through the actions here. What the planner itself does (routing, results, the map) stays
 // behind `hooks`, which the app fills in at start.
 import { signal, computed, effect } from '@preact/signals';
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import { t } from '../lib/i18n';
 import { calToday, hm, secOf, calendarOf } from '../lib/time';
 import * as settings from './settings';

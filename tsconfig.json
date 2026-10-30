@@ -12,6 +12,7 @@
     "checkJs": false,
     "noEmit": true,
     "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "esModuleInterop": true,

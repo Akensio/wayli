@@ -6,7 +6,19 @@
 // lighter greys in a clear hierarchy, deep teal water, light text with a dark halo.
 
 const LIBERTY = 'https://tiles.openfreemap.org/styles/liberty';
-const cache = {};
+const cache: Partial<Record<string, LibertyStyle>> = {};
+
+/** A layer of the style as this file touches it: id, type, source layer, filter and the colour properties. */
+type Layer = {
+  id: string;
+  type: string;
+  'source-layer'?: string;
+  filter?: unknown;
+  paint?: Record<string, unknown>;
+  layout?: Record<string, unknown>;
+};
+/** Liberty's style document, as fetched; only `layers` and `name` are read or written. */
+export type LibertyStyle = { name?: string; layers?: Layer[]; [k: string]: unknown };
 
 const TEAL = {
   // the app's turquoise (#12998b) tints what carries colour: motorways, water, parks, casings and labels; the rest stays neutral
@@ -150,10 +162,15 @@ const NEUTRAL = {
   },
 };
 /** The palettes: `teal` carries the app's turquoise, `neutral` is the quiet grey family (Positron, Transit app); each light and dark. */
-export const PALETTES = { teal: TEAL, neutral: NEUTRAL };
+/** What a colour in the style stands for: a role, each palette giving it a colour. */
+export type Role = keyof typeof TEAL.light;
+export type Palette = Record<Role, string>;
+export type Tint = 'teal' | 'neutral';
+export type Shade = 'light' | 'dark';
+export const PALETTES: Record<Tint, Record<Shade, Palette>> = { teal: TEAL, neutral: NEUTRAL };
 
 /** The palette key a layer's colour property maps to, from the layer's id and the property. */
-function roleOf(layer, prop) {
+function roleOf(layer: Layer, prop: string): Role {
   const id = layer.id || '',
     type = layer.type;
   if (prop === 'text-color') return /^place|^country|^state|^continent/.test(id) ? 'place' : 'text';
@@ -175,23 +192,25 @@ function roleOf(layer, prop) {
     const casing = /casing/.test(id);
     if (/rail/.test(id)) return 'rail';
     if (/^tunnel_/.test(id)) return casing ? 'tunnelCasing' : 'tunnel';
-    const roadClass = [
-      [/motorway/, 'motorway'],
-      [/trunk|primary/, 'primary'],
-      [/secondary|tertiary|_link/, 'secondary'],
-      [/minor|street/, 'minor'],
-      [/service|track/, 'service'],
-      [/path|pedestrian/, 'path'],
-    ].find(([re]) => re.test(id));
+    const roadClass = (
+      [
+        [/motorway/, 'motorway'],
+        [/trunk|primary/, 'primary'],
+        [/secondary|tertiary|_link/, 'secondary'],
+        [/minor|street/, 'minor'],
+        [/service|track/, 'service'],
+        [/path|pedestrian/, 'path'],
+      ] as [RegExp, string][]
+    ).find(([re]) => re.test(id));
     const cls = roadClass ? roadClass[1] : 'minor';
-    return casing ? cls + 'Casing' : cls;
+    return (casing ? cls + 'Casing' : cls) as Role;
   }
   return type === 'line' ? 'minor' : 'landuse';
 }
 
-const NAMED = { white: '#ffffff', black: '#000000', transparent: 'rgba(0,0,0,0)' };
+const NAMED: Record<string, string> = { white: '#ffffff', black: '#000000', transparent: 'rgba(0,0,0,0)' };
 /** The alpha of a style colour (1 when opaque or unknown). */
-function alphaOf(s) {
+function alphaOf(s: unknown): number {
   const v = (NAMED[String(s).trim().toLowerCase()] || String(s)).trim();
   let m = /^#([0-9a-f]{8})$/i.exec(v);
   if (m) return parseInt(m[1].slice(6), 16) / 255;
@@ -204,9 +223,13 @@ function alphaOf(s) {
   }
   return 1;
 }
-const hexToRgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const hexToRgb = (h: string): [number, number, number] => [
+  parseInt(h.slice(1, 3), 16),
+  parseInt(h.slice(3, 5), 16),
+  parseInt(h.slice(5, 7), 16),
+];
 /** The palette colour for a role, keeping the alpha the style gave (fades over zoom, see-through areas). */
-function paint(original, role, pal) {
+function paint(original: unknown, role: Role, pal: Palette): unknown {
   if (typeof original !== 'string') return original;
   const a = alphaOf(original);
   const hex = pal[role] || pal.landuse;
@@ -215,11 +238,11 @@ function paint(original, role, pal) {
   return `rgba(${r},${g},${b},${+a.toFixed(3)})`;
 }
 /** Walk a paint/layout value: plain colours, and colours inside expressions (interpolate, match, case, stops). */
-function walk(v, role, pal) {
+function walk(v: unknown, role: Role, pal: Palette): unknown {
   if (typeof v === 'string') return /^(#|rgb|hsl|white|black|transparent)/i.test(v.trim()) ? paint(v, role, pal) : v;
   if (Array.isArray(v)) return v.map((x) => walk(x, role, pal));
-  if (v && typeof v === 'object' && Array.isArray(v.stops))
-    return { ...v, stops: v.stops.map(([z, c]) => [z, walk(c, role, pal)]) };
+  if (v && typeof v === 'object' && Array.isArray((v as { stops?: unknown }).stops))
+    return { ...v, stops: (v as { stops: [unknown, unknown][] }).stops.map(([z, c]) => [z, walk(c, role, pal)]) };
   return v;
 }
 const COLOR_PROPS = [
@@ -237,16 +260,16 @@ const COLOR_PROPS = [
 ];
 
 /** Liberty in Wayli's palette, 'light' or 'dark'; fetched once per mode. */
-export async function styledLiberty(mode = 'light', tint = 'teal') {
+export async function styledLiberty(mode: Shade = 'light', tint: Tint = 'teal'): Promise<LibertyStyle> {
   const key = tint + ':' + mode;
   if (cache[key]) return cache[key];
   const pal = (PALETTES[tint] || TEAL)[mode] || TEAL.light;
-  const style = await (await fetch(LIBERTY)).json();
+  const style = (await (await fetch(LIBERTY)).json()) as LibertyStyle;
   for (const layer of style.layers || []) {
     // an app for riders in Israel does not name "Palestinian Territories" on its map (Gadi, 2026-10-24): that country
     // label is left out, by its code and by its name in either language, whatever language the labels are shown in
     if (layer['source-layer'] === 'place' && /^label_(country|state)/.test(layer.id)) {
-      const not = (field, part) => ['!', ['in', part, ['coalesce', ['get', field], '']]];
+      const not = (field: string, part: string) => ['!', ['in', part, ['coalesce', ['get', field], '']]];
       layer.filter = [
         'all',
         layer.filter || true,
@@ -270,7 +293,7 @@ export async function styledLiberty(mode = 'light', tint = 'teal') {
       if (layer.paint['fill-pattern']) layer.paint['fill-opacity'] = 0.12;
       if (layer.paint['line-pattern']) layer.paint['line-opacity'] = 0.25;
     }
-    for (const section of ['paint', 'layout']) {
+    for (const section of ['paint', 'layout'] as const) {
       const props = layer[section];
       if (!props) continue;
       for (const k of COLOR_PROPS) {
@@ -285,7 +308,7 @@ export async function styledLiberty(mode = 'light', tint = 'teal') {
                 'match',
                 ['get', 'class'],
                 'trunk',
-                walk(props[k], role.replace('primary', 'motorway'), pal),
+                walk(props[k], role.replace('primary', 'motorway') as Role, pal),
                 walk(props[k], role, pal),
               ]
             : walk(props[k], role, pal);

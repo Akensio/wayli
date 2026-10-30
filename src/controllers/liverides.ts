@@ -2,7 +2,7 @@
 // lines that do it): each ride's vehicle, matched by its line and first departure, placed on its trip, and its time at
 // the stop it is boarded at and the one it is left at. The vehicles come by line: from the relay that is a filter on
 // the minute's snapshot already in the worker; only without it is each line a request to Hasadna.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.js';
 import * as feed from '../engine/feed.js';
 import { tripStopsCached, estimate } from '../worker/client';

@@ -2,7 +2,7 @@
 // (style.js); the interface theme and the status bar follow the map's ground colour. The labels follow
 // the rider's language.
 import type { Map as MLMap } from 'maplibre-gl';
-import { styledLiberty, PALETTES } from './style.js';
+import { styledLiberty, PALETTES } from './style.ts';
 import * as settings from '../state/settings';
 import { lang } from '../lib/i18n';
 import { state } from './shared';

@@ -8,7 +8,7 @@ import { Fold } from '../../widgets/Fold';
 import { TimeRange } from '../../widgets/TimeRange';
 import type { IconName } from '../../widgets/icons';
 import { t, lang } from '../../lib/i18n';
-import * as clock from '../../engine/clock.js';
+import * as clock from '../../engine/clock.ts';
 import { fmt, secOf, timeOf } from '../../lib/time';
 import * as search from '../../state/search';
 import * as results from '../../state/results';

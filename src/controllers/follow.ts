@@ -3,7 +3,7 @@
 // row, its stops and the change into it), a look for a faster way every minute when there is reason to; alerts on
 // the way; the trip kept in the store so it survives a reload, with a bar to come back to it when hidden. The
 // screen (features/follow) draws what is published into state/follow.ts.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.js';
 import * as feed from '../engine/feed.js';
 import {
@@ -19,7 +19,7 @@ import {
   stepBack,
   connections,
 } from '../engine/follow.js';
-import { settings, activeTrip } from '../lib/store.js';
+import { settings, activeTrip } from '../lib/store.ts';
 import { t } from '../lib/i18n';
 import { dateOf, fmt } from '../lib/time';
 import { toast } from '../widgets/toast';
@@ -63,7 +63,7 @@ export const isFollowing = (): boolean => fol != null;
 /** A trip over by 45 minutes, or started 12 hours ago, is not resumed. */
 const tripStale = (a: ActiveTrip): boolean =>
   clock.nowOn(a.day) > a.journey.arrive + 2700 || Date.now() - (a.startedAt || 0) > 12 * 3600e3;
-const stored = (): ActiveTrip | null => activeTrip.get() as ActiveTrip | null;
+const stored = (): ActiveTrip | null => activeTrip.get();
 
 export function startTrip(j: Journey, q: Query): void {
   const day = q.day;

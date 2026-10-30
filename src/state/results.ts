@@ -2,8 +2,8 @@
 // the map and which one is highlighted, and the recent trips shown while there is nothing else. The list is
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
 import { signal, computed } from '@preact/signals';
-import * as clock from '../engine/clock.js';
-import { settings } from '../lib/store.js';
+import * as clock from '../engine/clock.ts';
+import { settings } from '../lib/store.ts';
 import { lang } from '../lib/i18n';
 import * as search from './search';
 import { now } from './clock';

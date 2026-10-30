@@ -2,9 +2,9 @@
 // a plan from now takes the delays of the vehicles on the road into account. Also: a destination chosen
 // anywhere (a bubble, a saved place) planned from where you are, the last search shown again, the plan cleared.
 import { effect } from '@preact/signals';
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.js';
-import { settings, recentPlaces, recentTrips, lastSearch } from '../lib/store.js';
+import { settings, recentPlaces, recentTrips, lastSearch } from '../lib/store.ts';
 import { t, lang } from '../lib/i18n';
 import { dateOf } from '../lib/time';
 import { call } from '../worker/client';

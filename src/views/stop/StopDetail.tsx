@@ -6,7 +6,7 @@ import { Icon } from '../../widgets/Icon';
 import { StarButton } from '../../widgets/StarButton';
 import { t, lang } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
-import { favs, stored } from '../../lib/store.js';
+import { favs, stored } from '../../lib/store.ts';
 import * as stop from '../../state/stop';
 import { now } from '../../state/clock';
 import { dur, liveClass } from '../../journey/format';

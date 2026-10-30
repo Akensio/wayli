@@ -1,6 +1,6 @@
 // The journey detail: the journey on the map (one ride alone when focused), and for a journey happening around
 // now, a live badge on each ride and every vehicle of those lines on the map.
-import * as clock from '../engine/clock.js';
+import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.js';
 import * as feed from '../engine/feed.js';
 import * as search from '../state/search';
@@ -14,7 +14,7 @@ import { liveBadge } from '../journey/format';
 import type { Journey, Query, RideLeg } from '../journey/types';
 import { liveRides } from './liverides';
 import type { TrainRow, LiveTrain } from '../state/station';
-import { recentViews } from '../lib/store.js';
+import { recentViews } from '../lib/store.ts';
 import { isRide } from '../journey/types';
 
 let seq = 0; // the journey shown; a live answer for an older one is dropped
