@@ -100,6 +100,26 @@ function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored:
   );
 }
 
+/** No way in the window: why, and the way out. With the next departure known (the worker looked past the window),
+ *  "nothing before 20:23" and a button that plans from then; with nothing more that day, "no more ways today" (on a
+ *  Friday, that they resume after Shabbat) and a button for the next day the data has; a stop too far, the walk setting. */
+function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Query }) {
+  const days = search.days.value, next = days[days.indexOf(q.day) + 1];
+  const friday = new Date(+q.day.slice(0, 4), +q.day.slice(4, 6) - 1, +q.day.slice(6, 8)).getDay() === 5;
+  const noMore = !r.reason && r.nextAt == null;
+  return (
+    <>
+      <div class="empty">{r.reason ? t(r.reason) : r.nextAt != null ? t('nothingBefore', { time: fmt(r.nextAt) }) : t('noMoreToday') + (friday ? ' ' + t('afterShabbat') : '')}</div>
+      <div class="results-foot">
+        {r.nextAt != null && <button type="button" class="ghost" onClick={() => { search.setAt(r.nextAt!); plan(); }}>{t('planFrom', { time: fmt(r.nextAt) })}</button>}
+        {noMore && next && <button type="button" class="ghost" onClick={() => { search.setDayAt(next, 5 * 3600); plan(); }}>{t('tomorrow')}</button>}
+        {r.reason && <button type="button" class="ghost" onClick={() => { search.setAt(search.atSeconds() + 3600); plan(); }}>{t('tryLater')}</button>}
+        {r.reason && (q.maxWalk || 0) < 30 && <button type="button" class="ghost" onClick={() => results.hooks.plan({ maxWalk: 30 })}>{t('tryMoreWalk')}</button>}
+      </div>
+    </>
+  );
+}
+
 export function Results() {
   void lang.value;
   const st = results.status.value, r = results.result.value, q = results.query.value, at = results.resultsAt.value;
@@ -117,15 +137,7 @@ export function Results() {
           <div class="top"><span class="times"><span class="chip bike"><Icon name="bike" /></span> {t('bikeOnly', { min: Math.round(bikeOnly.seconds / 60), km: (bikeOnly.metres / 1000).toFixed(1) })}</span></div>
         </div>
       ) : q.bike !== 'none' && r.streets && !q.from.stops && !q.to.stops ? <div class="muted">{t('noBikeOnly')}</div> : null}
-      {!r.journeys.length ? (
-        <>
-          <div class="empty">{t(r.reason || 'noJourney')}</div>
-          <div class="results-foot">
-            <button type="button" class="ghost" onClick={() => { search.setAt(search.atSeconds() + 3600); plan(); }}>{t('tryLater')}</button>
-            {r.reason && (q.maxWalk || 0) < 30 && <button type="button" class="ghost" onClick={() => results.hooks.plan({ maxWalk: 30 })}>{t('tryMoreWalk')}</button>}
-          </div>
-        </>
-      ) : (
+      {!r.journeys.length ? <NoWays r={r} q={q} /> : (
         <>
           <Filters />
           {filteredOut && <div class="empty">{t('filterNone')}</div>}

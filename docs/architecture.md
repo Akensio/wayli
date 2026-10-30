@@ -471,7 +471,11 @@ options grey out. The cards are in the order chosen by the option each
 one shows (its first departure still ahead), so "by arrival" is the
 arrival on the card; each card's number on the map comes from its group's
 first option and does not change as departures pass;
-earlier/later buttons shift the window; no results offers an hour later or
+earlier/later buttons shift the window; no result in the window says when
+the next way leaves ("nothing before 20:23", the worker having searched
+once from the window's end, with a button that plans from then), or that
+nothing more runs that day (on a Friday, that transport resumes after
+Shabbat) with a button for the next day; a stop too far offers an hour later or
 a longer walk. The last search opens again, planned afresh, when the app is
 reopened within six hours; the
 recent searches sit under the form and re-plan from now. The sheet's

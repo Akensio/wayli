@@ -246,6 +246,12 @@ function setWhen(w: When): void {
   at.value = hm(sec); timeTouched.value = true;
   if (d !== day.value) { day.value = d; hooks.dayChanged(d); }
 }
+/** A service day the data has and a time on it, departing (the results' "plan from 20:23" and "tomorrow"). */
+export function setDayAt(d: string, sec: number): void {
+  if (!days.value.includes(d)) return;
+  timeMode.value = 'depart'; setAt(sec);
+  if (d !== day.value) { day.value = d; hooks.dayChanged(d); }
+}
 /** Back to "now": the current service day, its time, departing. */
 export function resetNow(): void {
   const d = hooks.startDay();

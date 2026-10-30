@@ -230,11 +230,13 @@ def merge(gtfs, dirs, stops_by_code):
             with z.open(info) as src:
                 data = src.read()
             if info.filename in add:
-                head = next(csv.reader(io.StringIO(data[:4096].decode("utf-8-sig"))))
+                # the header from the decoded text, not from a cut of the bytes: a cut at 4096 bytes fell inside a
+                # Hebrew letter on 2026-10-30 and the whole merge died (no weekend lines in that day's build)
+                text = data.decode("utf-8-sig")
+                head = next(csv.reader(io.StringIO(text.split("\n", 1)[0])))
                 buf = io.StringIO()
                 w = csv.DictWriter(buf, fieldnames=head, extrasaction="ignore", lineterminator="\r\n")
                 w.writerows(add[info.filename])
-                text = data.decode("utf-8-sig")
                 data = ("﻿" + text + ("" if text.endswith("\n") else "\r\n") + buf.getvalue()).encode("utf-8")
             # the members keep their own times: the same lines give the same zip, so the build's caches still hold
             out.writestr(zipfile.ZipInfo(info.filename, date_time=info.date_time), data, compress_type=zipfile.ZIP_DEFLATED)

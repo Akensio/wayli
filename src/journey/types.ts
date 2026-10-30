@@ -25,6 +25,7 @@ export type PlanResult = {
   journeys: Journey[];
   groups?: Group[];
   reason?: string;
+  nextAt?: number | null;   // no journey in the window: when the next way leaves, or null for none more on that day
   streets?: boolean;
   bikeOnly?: { seconds: number; metres: number; path: LatLon[] } | null;
   [k: string]: unknown;

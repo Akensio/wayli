@@ -1,7 +1,7 @@
 // Planning: the two places to stops, the delays of the vehicles on the road into the timetable for a plan from now,
 // the two searches (everything, and trains only), and the journeys as the app shows them: legs with their courses,
 // the easiest place to change, walks merged, slower departures of the same way, and ways grouped.
-import { profile, rank, journeySig, routeLabel } from '../engine/raptor.js';
+import { profile, plan as planFrom, rank, journeySig, routeLabel } from '../engine/raptor.js';
 import { accessStops, route } from '../engine/streets.js';
 import { secondsOn } from '../engine/clock.js';
 import { estimateDelay, liveAt } from '../engine/delays.js';
@@ -270,12 +270,16 @@ export const planOps = {
       legs: mergeWalks(j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q))),
     }));
     if (!arriveBy) journeys.push(...slowerSiblings(journeys, fromTime, q));
+    // nothing in the window: when the next way leaves (one search from the window's end finds the first ride after
+    // it, however long the wait), or null when nothing more runs on this service day (a Friday evening)
+    let nextAt = null;
+    if (!journeys.length && !arriveBy) { const n = planFrom(tt, q.from.places, q.to.places, toTime, opts).journeys; if (n.length) nextAt = Math.min(...n.map((j) => j.depart)); }
     let bikeOnly = null;
     if (st && bike !== 'none' && q.from.point && q.to.point) {
       const br = route(st, q.from.point.lat, q.from.point.lon, q.to.point.lat, q.to.point.lon, 'bike', 3 * 3600);
       if (br) bikeOnly = { seconds: br.seconds, metres: br.metres, path: [[q.from.point.lat, q.from.point.lon], ...br.path, [q.to.point.lat, q.to.point.lon]] };
     }
-    return { journeys, groups: groupJourneys(journeys), bikeOnly, candidates: r.candidates, streets: !!st, live, ms: performance.now() - t0 };
+    return { journeys, groups: groupJourneys(journeys), nextAt, bikeOnly, candidates: r.candidates, streets: !!st, live, ms: performance.now() - t0 };
     }
   },
 };
