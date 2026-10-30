@@ -36,7 +36,7 @@ export function Detail() {
       <div class="muted center" id="detailNote">{bikeOnly ? '' : t('legHint')}</div>
       <div class={`legs${focus >= 0 ? ' focused' : ''}`} id="detailLegs">
         {j.legs.map((l, i) => (
-          <LegRow key={i} l={l} mode="detail" cls={i === focus ? 'focus' : ''} after={i > 0 && l.type !== 'ride' && j.legs[i - 1].arrive === l.depart}
+          <LegRow key={i} l={l} mode="detail" cls={i === focus ? 'focus' : ''}
             badge={detail.badges.value[String(l.trip ?? '')] || (l.live ? liveBadge({ time: l.depart!, delay: l.live.delay, passed: false, stale: l.live.stale }) : null)}
             onChip={() => detail.hooks.openLine(+l.route!, l.stopsAlong?.[0]?.stop)} onClick={() => detail.focusLeg(i)}
             options={l.type === 'ride' && (l.stopsAlong?.length ?? 0) >= 2 ? { load: () => detail.hooks.rideOptions(l, q), liveFor: (rows) => detail.hooks.rideLive(rows, q.day), day: q.day, now: q.isNow ? clock.nowOn(q.day) : null, onOpen: detail.hooks.openTrip } : undefined} />

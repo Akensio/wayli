@@ -18,9 +18,6 @@ type StopAlong = { arr: number; name: string };
 type Props = {
   l: Leg;
   mode: 'detail' | 'follow';   // the detail shows both times, a live badge, the stops along; the follow shows the departure
-  // this walk begins the moment the leg before ends (a change, the walk from the last stop): no time of its own, the
-  // time belongs to the stop and is on the row above (Gadi: "what is this 21:48 appearing twice?")
-  after?: boolean;
   cls?: string;                // done, current, focus
   badge?: Badge | null;
   onChip?: () => void;         // the line chip opens the line
@@ -38,7 +35,7 @@ const walkText = (l: Leg, mins: number) => {
   return l.mode === 'bike' ? t('bikeTo', { min: mins, name: l.to!.name }) : t('walkTo', { min: mins, name: l.to!.name });
 };
 
-export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options, defaultStopsOpen, stopLive, passedUpTo, change, after }: Props) {
+export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options, defaultStopsOpen, stopLive, passedUpTo, change }: Props) {
   const [stopsOpen, setStopsOpen] = useState(!!defaultStopsOpen), [optsOpen, setOptsOpen] = useState(false);
   useEffect(() => { if (defaultStopsOpen) setStopsOpen(true); }, [defaultStopsOpen]);   // opens when the ride becomes the current one
   const ride = l.type === 'ride';
@@ -50,9 +47,12 @@ export function LegRow({ l, mode, cls = '', badge, onChip, onClick, options, def
   const dep = liveTime ?? l.depart!;
   const shifted = mode === 'detail' && ride && l.schedDepart != null && Math.abs((l.schedDepart as number) - dep) >= 60;
   const est = ride && l.estimated, tf = (sec: number) => (est ? '~' : '') + fmt(sec);   // an estimated time says so
-  const times = after ? null : mode === 'follow' ? tf(l.depart!)
-    : shifted ? <><s>{fmt(l.schedDepart as number)}</s><br /><b>{fmt(dep)}</b><br />{fmt(l.arrive!)}</>
-    : <>{tf(l.depart!)}{ride && <><br />{tf(l.arrive!)}</>}</>;
+  // a ride's two times: boarding, and under it getting off, which says so ("to 21:48"), since the walk after starts at
+  // that same minute and shows it too (Gadi: two times with no cue read as two different things)
+  const till = (sec: number) => <small class="till">{t('till', { time: tf(sec) })}</small>;
+  const times = mode === 'follow' ? tf(l.depart!)
+    : shifted ? <><s>{fmt(l.schedDepart as number)}</s><br /><b>{fmt(dep)}</b><br />{till(l.arrive!)}</>
+    : <>{tf(l.depart!)}{ride && <><br />{till(l.arrive!)}</>}</>;
   return (
     <div class={`leg ${l.type}${ride ? ' t' + l.routeType : ''}${cls ? ' ' + cls : ''}`}
       onClick={onClick && ride ? (e) => { if ((e.target as HTMLElement).closest('.fold, .stoplist, .wide')) return; onClick(); } : undefined}>

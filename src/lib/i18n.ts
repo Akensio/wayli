@@ -354,6 +354,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   today: ['היום', 'Today'],
   tomorrow: ['מחר', 'Tomorrow'],
   leaveIn: ['יוצאים בעוד {n} דק\'', 'Leave in {n} min'],
+  till: ['עד {time}', 'to {time}'],
   leaveNow: ['יוצאים עכשיו', 'Leave now'],
   copied: ['הקישור הועתק', 'Link copied'],
   ttAll: ['כל היום', 'All day'],
