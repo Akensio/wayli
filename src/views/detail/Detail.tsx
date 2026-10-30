@@ -12,7 +12,13 @@ import { dur, tripKey, liveBadge } from '../../journey/format';
 import { shareJourney } from '../../journey/share';
 import { LegRow } from './LegRow';
 import { payLink } from '../../journey/pay';
+import { isRide } from '../../journey/types';
+import type { RideLeg } from '../../journey/types';
 
+/** A ride's live badge: the newest look at its vehicle, else the lateness the plan used at its boarding stop. */
+const rideBadge = (l: RideLeg) =>
+  detail.badges.value[String(l.trip)] ||
+  (l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: l.live.stale }) : null);
 export function Detail() {
   void lang.value;
   void now.value;
@@ -73,14 +79,11 @@ export function Detail() {
             l={l}
             mode="detail"
             cls={i === focus ? 'focus' : ''}
-            badge={
-              detail.badges.value[String(l.trip ?? '')] ||
-              (l.live ? liveBadge({ time: l.depart!, delay: l.live.delay, passed: false, stale: l.live.stale }) : null)
-            }
-            onChip={() => detail.hooks.openLine(+l.route!, l.stopsAlong?.[0]?.stop)}
+            badge={isRide(l) ? rideBadge(l) : null}
+            onChip={isRide(l) ? () => detail.hooks.openLine(l.route, l.stopsAlong?.[0]?.stop) : undefined}
             onClick={() => detail.focusLeg(i)}
             options={
-              l.type === 'ride' && (l.stopsAlong?.length ?? 0) >= 2
+              isRide(l) && (l.stopsAlong?.length ?? 0) >= 2
                 ? {
                     load: () => detail.hooks.rideOptions(l, q),
                     liveFor: (rows) => detail.hooks.rideLive(rows, q.day),

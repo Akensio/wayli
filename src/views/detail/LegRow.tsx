@@ -10,10 +10,11 @@ import { routeColor } from '../../journey/colors';
 import { stopsText, legMinutes } from '../../journey/format';
 import { agencyName } from '../../journey/agencies';
 import type { ComponentChildren } from 'preact';
-import type { Leg } from '../../journey/types';
+import type { Leg, WalkLeg } from '../../journey/types';
 import type { Badge } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
 import { Fold } from '../../widgets/Fold';
+import { isRide } from '../../journey/types';
 
 type StopAlong = { arr: number; name: string };
 type Props = {
@@ -39,7 +40,7 @@ type Props = {
   change?: { sec: number; arr: number; dep: number } | null;
 };
 
-const walkText = (l: Leg, mins: number) => {
+const walkText = (l: WalkLeg, mins: number) => {
   if (l.type === 'egress')
     return l.mode === 'bike'
       ? t('bikeFrom', { min: mins, name: l.from!.name })
@@ -78,7 +79,7 @@ export function LegRow({
   }, [defaultStopsOpen]); // opens when the ride becomes the current one
   const ride = l.type === 'ride';
   const mins = legMinutes(l.seconds);
-  const stopsAlong = (l.stopsAlong as StopAlong[] | undefined) || [];
+  const stopsAlong: StopAlong[] = isRide(l) ? l.stopsAlong || [] : [];
   // one departure time: the newest live look at the vehicle (the badge) when there is one, else the planned one; the
   // badge then says only how late, so the planned and the live time never stand side by side (2026-10-22)
   const liveTime = mode === 'detail' && ride && badge && badge.time != null ? badge.time : null;
@@ -138,7 +139,7 @@ export function LegRow({
               routeType={l.routeType}
               agency={l.agency}
               onClick={
-                onChip && l.route != null && l.route !== ''
+                onChip && l.route != null
                   ? (e) => {
                       e.stopPropagation();
                       onChip();

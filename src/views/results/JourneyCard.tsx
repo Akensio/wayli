@@ -11,10 +11,11 @@ import * as results from '../../state/results';
 import { dur, transfersText, lineText, leaveText, inText, liveClass } from '../../journey/format';
 import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
-import type { Leg } from '../../journey/types';
+import type { RideLeg } from '../../journey/types';
+import { ridesOf } from '../../journey/types';
 
 /** The countdown line; it re-renders with the clock. */
-export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveInfo?: Leg['live'] }) {
+export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveInfo?: RideLeg['live'] }) {
   void now.value;
   const txt = leaveText(sec, day);
   const cls = liveClass(liveInfo);
@@ -23,10 +24,10 @@ export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveIn
 /** When the first ride reaches the stop it is boarded at, counting down ("60 at the stop in 14 min"): the time the
  *  plan was made with, live when its vehicle was seen (marked, a ? when the report is old), the timetable's otherwise.
  *  How late it runs is not said: against a planned time the card never shows, it told the rider nothing (Gadi). */
-const RideIn = ({ l, day }: { l?: Leg; day: string }) => {
+const RideIn = ({ l, day }: { l?: RideLeg; day: string }) => {
   void now.value;
   if (!l) return null;
-  const when = inText(l.depart!, day);
+  const when = inText(l.depart, day);
   if (!when) return null;
   return (
     <div class="muted ridein">
@@ -42,7 +43,7 @@ const RideIn = ({ l, day }: { l?: Leg; day: string }) => {
 
 export function JourneyCard({ card }: { card: Card }) {
   const { j, q, options, lines, idx } = card;
-  const rides = j.legs.filter((l) => l.type === 'ride');
+  const rides = ridesOf(j.legs);
   const shown = results.altShown.value.has(idx),
     sel = shown && results.altSel.value === idx;
   void now.value; // the "also at" times grey out as they pass

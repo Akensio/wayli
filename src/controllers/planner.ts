@@ -17,7 +17,7 @@ import { lastPos, getPosition } from '../state/position';
 import * as map from '../map/index';
 import { toast } from '../widgets/toast';
 import type { Place } from '../state/search';
-import type { Query, PlanResult } from '../journey/types';
+import type { Query } from '../journey/types';
 import { startDay } from './loading';
 import { openLine } from './line';
 import { openStop } from './stop';

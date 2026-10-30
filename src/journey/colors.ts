@@ -1,6 +1,5 @@
 // Line colours: trains navy, light rail red, the Carmelit and the cable car deep teal, shared taxis yellow, buses in their operator's
 // colour (approximate brand colours; the table is the one place to correct them), other operators slate green.
-import type { Leg } from './types';
 
 const AGENCY_COLORS: [string, string][] = [
   ['אגד', '#008761'],
@@ -45,7 +44,7 @@ export const chipColors = (type?: number | null, agency?: string | null): { back
   const c = routeColor(type, agency);
   return { background: c, color: textOn(c) };
 };
-export function legColor(l: Leg): string {
+export function legColor(l: { type: string; routeType?: number; agency?: string; mode?: string }): string {
   if (l.type === 'ride') return routeColor(l.routeType, l.agency);
   return l.mode === 'bike' ? '#1f5fa8' : '#2b3036';
 }

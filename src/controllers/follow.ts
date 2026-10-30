@@ -30,9 +30,10 @@ import * as follow from '../state/follow';
 import { notePos } from '../state/position';
 import * as map from '../map/index';
 import { lineText, liveBadge } from '../journey/format';
-import type { Journey, Query, PlanResult } from '../journey/types';
+import type { Journey, Query, RideLeg } from '../journey/types';
 import type { ActiveTrip, Alt, FollowState, Position, LegLive } from '../state/follow';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
+import { isRide } from '../journey/types';
 
 type LiveEst = {
   est: { delay: number; [k: string]: unknown } | null;
@@ -71,10 +72,13 @@ export function startTrip(j: Journey, q: Query): void {
     return;
   }
   ensureAudio();
-  const firstRide = j.legs.find((l) => l.type === 'ride');
-  const aboard = firstRide && clock.nowOn(day) > firstRide.depart! + 60; // started after the ride left: the rider is on it
+  const firstRide = j.legs.find(isRide);
+  const aboard = firstRide && clock.nowOn(day) > firstRide.depart + 60; // started after the ride left: the rider is on it
   const a: ActiveTrip = {
-    journey: { ...j, to: q.to.lat != null ? { name: q.to.name, lat: q.to.lat, lon: q.to.lon } : null },
+    journey: {
+      ...j,
+      to: q.to.lat != null && q.to.lon != null ? { name: q.to.name, lat: q.to.lat, lon: q.to.lon } : null,
+    },
     q: { from: q.from, to: q.to, bike: q.bike, folding: q.folding },
     day,
     state: (aboard ? aboardState(j, clock.nowOn(day)) : initialState()) as FollowState,
@@ -233,7 +237,10 @@ async function followLive(): Promise<void> {
   // from the planned times where no vehicle is seen
   const rides = legs
     .map((l, i) => ({ l, i }))
-    .filter((x) => x.i >= a.state.step && x.l.type === 'ride' && x.l.routeId != null && x.l.depart! - now <= 3600)
+    .filter(
+      (x): x is { l: RideLeg; i: number } =>
+        x.i >= a.state.step && isRide(x.l) && x.l.routeId != null && x.l.depart - now <= 3600,
+    )
     .slice(0, 3);
   const polling = rides.length > 0 && !!data.dayInfo.value && data.dayInfo.value.date === a.day;
   if (!polling) fol.liveEst = null;
@@ -251,34 +258,34 @@ async function followLive(): Promise<void> {
         for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
         const m = map.mapState.main;
         if (m && map.mapState.drawnFor === 'follow')
-          map.lineVehicleMarkers(m, map.markers.followVehicle, vs, statuses, leg.routeType!, leg.trip!, {
+          map.lineVehicleMarkers(m, map.markers.followVehicle, vs, statuses, leg.routeType, leg.trip, {
             line: leg.line,
             headsign: leg.headsign,
             agency: leg.agency,
-            route: leg.route as number,
+            route: leg.route,
           });
       }
       const v = feed.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
-      const ts = v ? await tripStopsCached(leg.trip!) : null;
+      const ts = v ? await tripStopsCached(leg.trip) : null;
       if (!fol) return;
       const est = v && ts ? await estimate(v, ts.stops, a.day) : null;
       if (!fol) return;
-      const atBoard = est && ts ? delays.liveAt(est, ts.stops, leg.boardPos!) : null;
-      const atAlight = est && ts && leg.alightPos != null ? delays.liveAt(est, ts.stops, leg.alightPos) : null;
+      const atBoard = est && ts ? delays.liveAt(est, ts.stops, leg.boardPos) : null;
+      const atAlight = est && ts ? delays.liveAt(est, ts.stops, leg.alightPos) : null;
       if (first) {
         // waiting: its time at the stop to board; on board: at the stop to get off at. The shift is how much that moved
         // since the plan, against the planned time at the same stop (docs/architecture.md, "Live times, end to end", rule 6)
-        const aboard = a.state.onBoard && leg.alightPos != null,
+        const aboard = a.state.onBoard,
           at = aboard ? atAlight : atBoard;
-        fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive! : leg.depart!) } : null;
+        fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive : leg.depart) } : null;
         follow.liveBadge.value = v ? liveBadge(at) : null;
       }
       // the ride's stops at their shown times, the ones the vehicle has passed marked (the current ride's list opens)
-      const along = (leg.stopsAlong as { arr: number }[] | undefined) || [];
+      const along = leg.stopsAlong || [];
       const stops =
-        est && ts && leg.boardPos != null && leg.alightPos != null && along.length === leg.alightPos - leg.boardPos + 1
+        est && ts && along.length === leg.alightPos - leg.boardPos + 1
           ? along.map((s, k) => {
-              const x = delays.liveAt(est, ts.stops, leg.boardPos! + k);
+              const x = delays.liveAt(est, ts.stops, leg.boardPos + k);
               return { time: x ? x.time : s.arr, passed: !!x && x.passed };
             })
           : null;

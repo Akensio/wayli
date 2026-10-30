@@ -25,7 +25,7 @@ import { closeTrains } from './station';
 import { isFollowing, closeFollow } from './follow';
 import { setLang } from './lang';
 import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
-import { type Journey } from '../journey/types';
+import { type Journey, isRide } from '../journey/types';
 
 /** The top bar's height, for the map controls, the status pill and the menu under it; the sheet's full size. */
 export function layoutTop(): void {
@@ -199,6 +199,7 @@ Object.assign(map.hooks, {
     else if (key === 'screen-plan') j = results.highlighted.value?.j;
     if (j) {
       for (const l of j.legs) {
+        if (!isRide(l)) continue;
         const s = l.stopsAlong?.find((x) => x.stop === stop);
         if (s) return s.arr;
       }

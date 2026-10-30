@@ -10,31 +10,36 @@ import { now } from '../../state/clock';
 import { lineText, inShort } from '../../journey/format';
 import { LegChips } from '../results/LegChips';
 import { LegRow } from '../detail/LegRow';
-import type { Leg } from '../../journey/types';
+import type { Leg, RideLeg, WalkLeg } from '../../journey/types';
 import { payLink } from '../../journey/pay';
+import { isRide, ridesOf } from '../../journey/types';
 
-type View = {
-  kind: 'done' | 'walk' | 'final' | 'wait' | 'ride';
-  leg: Leg;
-  toRide?: Leg;
+type ViewBase = {
   minutes: number;
   departsIn: number;
   stopsLeft: number;
   alight: { name: string };
   nextStop: { name: string };
 };
+/** The step the rider is at (engine/follow.js view): on foot with the ride it leads to, or at or on a ride. */
+type View = ViewBase &
+  (
+    | { kind: 'done'; leg: Leg; toRide?: RideLeg | null }
+    | { kind: 'walk' | 'final'; leg: WalkLeg; toRide?: RideLeg | null }
+    | { kind: 'wait' | 'ride'; leg: RideLeg; toRide?: RideLeg | null }
+  );
 
 /** The card proposing the alternative. */
 function AltCard({ alt }: { alt: follow.Alt }) {
   const a = follow.active.value!,
     j = alt.journey,
     o = alt.origin;
-  const rides = j.legs.filter((l) => l.type === 'ride');
+  const rides = ridesOf(j.legs);
   const cur = a.journey.legs[a.state.step];
-  const sameVehicle = o.kind === 'ride' && rides[0] && rides[0].trip === cur.trip;
+  const sameVehicle = o.kind === 'ride' && rides[0] != null && isRide(cur) && rides[0].trip === cur.trip;
   let first = '';
   if (o.kind === 'ride') first = t('altGetOff', { stop: sameVehicle ? rides[0].to!.name : o.offAt!.name });
-  else if (o.kind === 'wait') first = t('altInstead', { line: lineText(cur.line) });
+  else if (o.kind === 'wait') first = t('altInstead', { line: lineText(isRide(cur) ? cur.line : '') });
   const nextRide = sameVehicle ? rides[1] : rides[0];
   const then = nextRide
     ? t('altThen', { line: lineText(nextRide.line), headsign: nextRide.headsign || '', time: fmt(nextRide.depart!) })

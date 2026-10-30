@@ -11,12 +11,13 @@ import * as detail from '../state/detail';
 import * as nav from '../state/nav';
 import * as map from '../map/index';
 import { liveBadge } from '../journey/format';
-import type { Journey, Query } from '../journey/types';
+import type { Journey, Query, RideLeg } from '../journey/types';
 import { openLine, openTrip } from './line';
 import { liveRides } from './liverides';
 import type { TrainRow } from '../state/station';
 import { startTrip } from './follow';
 import { recentViews } from '../lib/store.js';
+import { isRide } from '../journey/types';
 
 let seq = 0; // the journey shown; a live answer for an older one is dropped
 
@@ -47,18 +48,13 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
   const now = clock.nowOn(day);
   if (j.depart - now > 5400 || now - j.arrive > 1800) return;
   const rides = j.legs
-    .filter(
-      (l, i) =>
-        l.type === 'ride' &&
-        l.routeId != null &&
-        (focus < 0 || i === focus) &&
-        l.depart! - now < 5400 &&
-        now - l.arrive! < 900,
-    )
+    .filter((l, i) => focus < 0 || i === focus)
+    .filter(isRide)
+    .filter((l) => l.routeId != null && l.depart - now < 5400 && now - l.arrive < 900)
     .slice(0, 4);
   await Promise.all(
     rides.map(async (l) => {
-      const trip = l.trip!;
+      const trip = l.trip;
       try {
         const vs = await feed.vehiclesByLine(l.routeId);
         if (my !== seq) return;
@@ -66,11 +62,11 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
         if (my !== seq) return;
         const m = map.mapState.main;
         if (m && map.mapState.drawnFor === 'detail')
-          map.lineVehicleMarkers(m, map.markers.live, vs, statuses, l.routeType!, trip, {
+          map.lineVehicleMarkers(m, map.markers.live, vs, statuses, l.routeType, trip, {
             line: l.line,
             headsign: l.headsign,
             agency: l.agency,
-            route: l.route as number,
+            route: l.route,
           });
         const v = feed.matchTrip(vs, l.routeId, l.firstDep, day);
         if (!v) {
@@ -95,7 +91,7 @@ Object.assign(detail.hooks, {
   redraw: () => map.redrawMap(true),
   openLine: (route: number, stop?: number) => openLine(route, stop != null ? { stop } : {}),
   // every line doing the ride: from now on today, else from a little before the ride planned
-  rideOptions: (l: Journey['legs'][number], q: Query) => {
+  rideOptions: (l: RideLeg, q: Query) => {
     const along = l.stopsAlong || [];
     if (along.length < 2) return Promise.resolve([]);
     const fromTime = q.isNow ? clock.nowOn(q.day) - 120 : (l.depart ?? 0) - 1200;

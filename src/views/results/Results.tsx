@@ -17,6 +17,7 @@ import { LegChips } from './LegChips';
 import { JourneyCard } from './JourneyCard';
 import { SortChip } from './SortMenu';
 import type { Journey, Query } from '../../journey/types';
+import { ridesOf } from '../../journey/types';
 
 const plan = () => results.hooks.plan();
 
@@ -115,7 +116,7 @@ function StripRow({ j, q, note, act }: { j: Journey; q: Query; note: VNode; act:
       <div class="txt" onClick={() => results.hooks.openDetail(j, q)}>
         <TimeRange from={j.depart} to={j.arrive} />
         <span class="chips">
-          <LegChips legs={j.legs.filter((l) => l.type === 'ride')} />
+          <LegChips legs={ridesOf(j.legs)} />
         </span>
         {note}
       </div>
@@ -283,6 +284,8 @@ export function Results() {
                     type: 'access',
                     mode: 'bike',
                     seconds: bikeOnly.seconds,
+                    depart: 0,
+                    arrive: bikeOnly.seconds,
                     path: bikeOnly.path,
                     to: { name: describePlace(q.to) },
                   },

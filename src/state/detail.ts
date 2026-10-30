@@ -2,7 +2,7 @@
 // of its rides as they come in.
 import { signal } from '@preact/signals';
 import type { TrainRow, LiveTrain } from './station';
-import type { Journey, Query, Leg } from '../journey/types';
+import type { Journey, Query, RideLeg } from '../journey/types';
 import type { Badge } from '../journey/format';
 
 export const journey = signal<Journey | null>(null);
@@ -17,7 +17,7 @@ export const hooks = {
   close: () => {},
   redraw: () => {}, // the map draws the journey, the focused ride alone
   openLine: (_route: number, _stop?: number) => {}, // at the ride's boarding stop
-  rideOptions: async (_l: Leg, _q: Query): Promise<TrainRow[]> => [], // every line doing a ride, from its stop to the one it is left at
+  rideOptions: async (_l: RideLeg, _q: Query): Promise<TrainRow[]> => [], // every line doing a ride, from its stop to the one it is left at
   rideLive: async (_rows: TrainRow[], _day: string): Promise<Record<string, LiveTrain>> => ({}),
   openTrip: (_trip: number, _stop: number) => {}, // a row: its line at the stop, that trip chosen
   startTrip: (_j: Journey, _q: Query) => {},

@@ -15,7 +15,7 @@ import * as follow from '../state/follow';
 import * as linePage from '../state/line';
 import * as stopPage from '../state/stop';
 import * as station from '../state/station';
-import type { Journey } from '../journey/types';
+import type { Journey, Drawable } from '../journey/types';
 import type { TrainRow } from '../state/station';
 import { state, markers, EMPTY, stale, stopKindProp } from './shared';
 import { ensureJourneyLayers, drawJourney, withCourses, boundsOf, legProps } from './layers';
@@ -168,14 +168,10 @@ const RECIPES: Record<View['draw'], Recipe> = {
   line: async (m, _v, seq) => {
     const info = linePage.info.value;
     if (!info) return null;
-    const course: Journey = {
-      depart: 0,
-      arrive: 0,
-      transfers: 0,
+    const course: Drawable = {
       legs: [
         {
           type: 'ride',
-          seconds: 0,
           routeType: info.routeType,
           agency: info.agency,
           path: info.path,
@@ -248,20 +244,16 @@ const RECIPES: Record<View['draw'], Recipe> = {
     }
     const next = legs[0],
       c0 = courses[0];
-    const ride: Journey = {
-      depart: 0,
-      arrive: 0,
-      transfers: 0,
+    const ride: Drawable = {
       legs: [
         {
           type: 'ride',
-          seconds: 0,
           routeType: next.routeType,
           agency: next.agency,
           path: c0.path,
           pattern: null,
           stopsAlong: c0.stops,
-        } as any,
+        },
       ],
     };
     b.extend(drawJourney(m, ride, markers.journey, -1, false));
