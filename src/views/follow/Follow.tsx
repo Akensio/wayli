@@ -83,7 +83,7 @@ export function Follow() {
       </div>
       {alt && <AltCard alt={alt} />}
       <div class="legs" id="followNext">
-        {j.legs.map((l, i) => { const x = ll[i]; return <LegRow key={i} l={l} mode="follow" cls={i < a.state.step ? 'done' : i === a.state.step ? 'current' : ''}
+        {j.legs.map((l, i) => { const x = ll[i]; return <LegRow key={i} l={l} mode="follow" cls={i < a.state.step ? 'done' : i === a.state.step ? 'current' : ''} after={i > 0 && l.type !== 'ride' && j.legs[i - 1].arrive === l.depart}
           badge={x ? x.badge : undefined} change={x ? x.change : null} stopLive={x ? x.stops : null} defaultStopsOpen={i === curRide} passedUpTo={i === a.state.step && a.state.onBoard ? a.state.rideIdx : null} />; })}
       </div>
     </>
