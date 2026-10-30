@@ -9,14 +9,18 @@
 import { metres, projectOnStops } from './geo.js';
 import { legMinutes } from './clock.js';
 
-const AT_STOP = 60;        // m: close enough to count as being at a stop or the destination
+const AT_STOP = 60; // m: close enough to count as being at a stop or the destination
 
-export function initialState() { return { step: 0, onBoard: false, rideIdx: 0, alerted: {}, done: false, hold: -1, startedAt: Date.now() }; }
+export function initialState() {
+  return { step: 0, onBoard: false, rideIdx: 0, alerted: {}, done: false, hold: -1, startedAt: Date.now() };
+}
 /** The state for a rider who starts following once already on board: on the ride that has departed (the last
  *  one to have, else the first), so the walk to the stop is not waited for. */
 export function aboardState(journey, nowSec) {
   let idx = journey.legs.findIndex((l) => l.type === 'ride');
-  journey.legs.forEach((l, i) => { if (l.type === 'ride' && l.depart <= nowSec) idx = i; });
+  journey.legs.forEach((l, i) => {
+    if (l.type === 'ride' && l.depart <= nowSec) idx = i;
+  });
   return { ...initialState(), step: Math.max(0, idx), onBoard: true, rideIdx: 0 };
 }
 
@@ -51,8 +55,13 @@ export function advance(journey, state, pos, nowSec) {
       const there = near(pos, end, AT_STOP);
       const overdue = clock && nowSec > leg.arrive + (pos ? 900 : 180);
       if (!there && !overdue) break;
-      if (last) { s.done = true; events.push('arrived'); break; }
-      s.step++; events.push('reached');
+      if (last) {
+        s.done = true;
+        events.push('arrived');
+        break;
+      }
+      s.step++;
+      events.push('reached');
       continue;
     }
     // a ride: waiting at the boarding stop, then on board
@@ -60,15 +69,18 @@ export function advance(journey, state, pos, nowSec) {
     const lastIdx = stops.length - 1;
     if (!s.onBoard) {
       // on board once the rider has left the boarding stop along the route, or the vehicle should be gone
-      let idx = 0, moved = false;
+      let idx = 0,
+        moved = false;
       if (pos && stops.length > 1) {
         const p = along(pos, stops, 0);
         idx = nearestStop(pos, stops, 0);
-        moved = p.d <= 400 && (p.i >= 1 || !near(pos, stops[0], 150));   // on the way, past the boarding stop
+        moved = p.d <= 400 && (p.i >= 1 || !near(pos, stops[0], 150)); // on the way, past the boarding stop
       }
       const gone = clock && nowSec > leg.depart + (pos ? 600 : 90);
       if (!moved && !gone) break;
-      s.onBoard = true; s.rideIdx = Math.max(0, idx); events.push('boarded');
+      s.onBoard = true;
+      s.rideIdx = Math.max(0, idx);
+      events.push('boarded');
     }
     if (pos && stops.length > 1) {
       const idx = nearestStop(pos, stops, s.rideIdx);
@@ -81,35 +93,66 @@ export function advance(journey, state, pos, nowSec) {
     }
     // the next stop is the one to get off at once the one before it is passed (by position, or by the clock without one)
     const alightSoon = s.rideIdx >= lastIdx - 1 || (!pos && nowSec >= leg.arrive - 120);
-    if (alightSoon && !s.alerted['soon' + s.step]) { s.alerted['soon' + s.step] = true; events.push('getOffNext'); }
-    const atAlight = (pos && near(pos, stops[lastIdx], AT_STOP + 20)) || (clock && ((!pos && nowSec >= leg.arrive + 30) || (pos && nowSec >= leg.arrive + 900)));
+    if (alightSoon && !s.alerted['soon' + s.step]) {
+      s.alerted['soon' + s.step] = true;
+      events.push('getOffNext');
+    }
+    const atAlight =
+      (pos && near(pos, stops[lastIdx], AT_STOP + 20)) ||
+      (clock && ((!pos && nowSec >= leg.arrive + 30) || (pos && nowSec >= leg.arrive + 900)));
     if (!atAlight) break;
-    if (!s.alerted['off' + s.step]) { s.alerted['off' + s.step] = true; events.push('getOff'); }
-    s.onBoard = false; s.rideIdx = 0;
-    if (last) { s.done = true; events.push('arrived'); break; }
+    if (!s.alerted['off' + s.step]) {
+      s.alerted['off' + s.step] = true;
+      events.push('getOff');
+    }
+    s.onBoard = false;
+    s.rideIdx = 0;
+    if (last) {
+      s.done = true;
+      events.push('arrived');
+      break;
+    }
     s.step++;
   }
-  if (s.step >= legs.length && !s.done) { s.done = true; events.push('arrived'); }
+  if (s.step >= legs.length && !s.done) {
+    s.done = true;
+    events.push('arrived');
+  }
   return { state: s, events };
 }
 
 /** "Next step" by hand: on board the vehicle being waited for, else on to the next leg (or done). The step reached is
  *  held: the clock does not move it on, a position still can. */
 export function stepForward(journey, state) {
-  const s = { ...state, alerted: { ...state.alerted } }, legs = journey.legs, leg = legs[s.step];
+  const s = { ...state, alerted: { ...state.alerted } },
+    legs = journey.legs,
+    leg = legs[s.step];
   if (s.done) return s;
-  if (leg && leg.type === 'ride' && !s.onBoard) { s.onBoard = true; s.rideIdx = 0; }
-  else if (s.step >= legs.length - 1) s.done = true;
-  else { s.step++; s.onBoard = false; s.rideIdx = 0; }
+  if (leg && leg.type === 'ride' && !s.onBoard) {
+    s.onBoard = true;
+    s.rideIdx = 0;
+  } else if (s.step >= legs.length - 1) s.done = true;
+  else {
+    s.step++;
+    s.onBoard = false;
+    s.rideIdx = 0;
+  }
   s.hold = s.step;
   return s;
 }
 /** "Back" by hand: the exact reverse of stepForward, held the same way. */
 export function stepBack(journey, state) {
-  const s = { ...state, alerted: { ...state.alerted } }, legs = journey.legs;
+  const s = { ...state, alerted: { ...state.alerted } },
+    legs = journey.legs;
   if (s.done) s.done = false;
-  else if (legs[s.step] && legs[s.step].type === 'ride' && s.onBoard) { s.onBoard = false; s.rideIdx = 0; }
-  else if (s.step > 0) { s.step--; s.onBoard = legs[s.step].type === 'ride'; s.rideIdx = 0; }
+  else if (legs[s.step] && legs[s.step].type === 'ride' && s.onBoard) {
+    s.onBoard = false;
+    s.rideIdx = 0;
+  } else if (s.step > 0) {
+    s.step--;
+    s.onBoard = legs[s.step].type === 'ride';
+    s.rideIdx = 0;
+  }
   s.hold = s.step;
   return s;
 }
@@ -128,7 +171,7 @@ function along(pos, stops, fromIdx) {
 function nearestStop(pos, stops, fromIdx) {
   if (stops.length < 2 || fromIdx >= stops.length - 1) return fromIdx;
   const p = along(pos, stops, fromIdx);
-  if (p.d > 400) return fromIdx;   // far off the route: no step taken on its word
+  if (p.d > 400) return fromIdx; // far off the route: no step taken on its word
   return near(pos, stops[p.i + 1], AT_STOP) ? p.i + 1 : p.i;
 }
 
@@ -140,14 +183,30 @@ export function view(journey, state, nowSec) {
   const nextRide = legs.slice(state.step + (leg.type === 'ride' ? 1 : 0)).find((l) => l.type === 'ride');
   if (leg.type !== 'ride') {
     const toRide = legs[state.step + 1] && legs[state.step + 1].type === 'ride' ? legs[state.step + 1] : null;
-    return { kind: leg.type === 'egress' ? 'final' : 'walk', leg, toRide, minutes: legMinutes(leg.seconds), departsIn: toRide ? Math.round((toRide.depart - nowSec) / 60) : null };
+    return {
+      kind: leg.type === 'egress' ? 'final' : 'walk',
+      leg,
+      toRide,
+      minutes: legMinutes(leg.seconds),
+      departsIn: toRide ? Math.round((toRide.depart - nowSec) / 60) : null,
+    };
   }
   const stops = leg.stopsAlong || [];
   const lastIdx = stops.length - 1;
-  if (!state.onBoard) return { kind: 'wait', leg, departsIn: Math.round((leg.depart - nowSec) / 60), stopsLeft: lastIdx };
+  if (!state.onBoard)
+    return { kind: 'wait', leg, departsIn: Math.round((leg.depart - nowSec) / 60), stopsLeft: lastIdx };
   const stopsLeft = Math.max(0, lastIdx - state.rideIdx);
   const nextStop = stops[Math.min(lastIdx, state.rideIdx + 1)];
-  return { kind: 'ride', leg, stopsLeft, nextStop, alight: stops[lastIdx], arrivesIn: Math.round((leg.arrive - nowSec) / 60), after: legs[state.step + 1] || null, nextRide };
+  return {
+    kind: 'ride',
+    leg,
+    stopsLeft,
+    nextStop,
+    alight: stops[lastIdx],
+    arrivesIn: Math.round((leg.arrive - nowSec) / 60),
+    after: legs[state.step + 1] || null,
+    nextRide,
+  };
 }
 
 // ------------------------------------------------------------------ re-planning on the way
@@ -193,8 +252,15 @@ export function connections(legs, step, live = {}) {
   return out;
 }
 /** The rides of some legs as a key (trip and alighting stop each): equal keys mean the same plan. */
-export function ridesKey(legs) { return legs.filter((l) => l.type === 'ride').map((l) => `${l.trip}@${l.to.stop}`).join('|'); }
-export function remainingKey(journey, state) { return ridesKey(journey.legs.slice(state.step)); }
+export function ridesKey(legs) {
+  return legs
+    .filter((l) => l.type === 'ride')
+    .map((l) => `${l.trip}@${l.to.stop}`)
+    .join('|');
+}
+export function remainingKey(journey, state) {
+  return ridesKey(journey.legs.slice(state.step));
+}
 /** The journey and state after switching to an alternative planned from `origin`. */
 export function spliceJourney(journey, state, alt, origin) {
   const legs = journey.legs;
@@ -205,16 +271,32 @@ export function spliceJourney(journey, state, alt, origin) {
     if (alt.legs[0] && alt.legs[0].type === 'ride' && alt.legs[0].trip === cur.trip) {
       // the same vehicle, a different stop to get off at: the new ride starts at the next stop, which is ahead
       newLegs = alt.legs;
-      newState.onBoard = true; newState.rideIdx = 0;
+      newState.onBoard = true;
+      newState.rideIdx = 0;
     } else {
       // get off at the next stop: the current ride, cut there, then the alternative
       const s = origin.offAt;
-      const idx = Math.max(0, cur.stopsAlong.findIndex((x) => x.stop === s.stop && x.arr === s.arr));
+      const idx = Math.max(
+        0,
+        cur.stopsAlong.findIndex((x) => x.stop === s.stop && x.arr === s.arr),
+      );
       const along = cur.stopsAlong.slice(0, idx + 1);
-      const trunc = { ...cur, to: { stop: s.stop, name: s.name, lat: s.lat, lon: s.lon, city: '', code: '' }, arrive: s.arr, seconds: s.arr - cur.depart, stops: idx,
-        alightPos: cur.boardPos >= 0 ? cur.boardPos + idx : -1, pattern: cur.boardPos >= 0 ? cur.pattern : null, schedArrive: s.arr, stopsAlong: along, pathKind: 'stops', path: along.map((x) => [x.lat, x.lon]) };
+      const trunc = {
+        ...cur,
+        to: { stop: s.stop, name: s.name, lat: s.lat, lon: s.lon, city: '', code: '' },
+        arrive: s.arr,
+        seconds: s.arr - cur.depart,
+        stops: idx,
+        alightPos: cur.boardPos >= 0 ? cur.boardPos + idx : -1,
+        pattern: cur.boardPos >= 0 ? cur.pattern : null,
+        schedArrive: s.arr,
+        stopsAlong: along,
+        pathKind: 'stops',
+        path: along.map((x) => [x.lat, x.lon]),
+      };
       newLegs = [trunc, ...alt.legs];
-      newState.onBoard = true; newState.rideIdx = Math.min(state.rideIdx, idx);
+      newState.onBoard = true;
+      newState.rideIdx = Math.min(state.rideIdx, idx);
     }
   } else if (origin.kind === 'wait') {
     newLegs = alt.legs;
@@ -222,5 +304,8 @@ export function spliceJourney(journey, state, alt, origin) {
     newLegs = [legs[state.step], ...alt.legs];
   }
   const rides = newLegs.filter((l) => l.type === 'ride').length;
-  return { journey: { ...journey, legs: newLegs, arrive: alt.arrive, transfers: Math.max(0, rides - 1) }, state: newState };
+  return {
+    journey: { ...journey, legs: newLegs, arrive: alt.arrive, transfers: Math.max(0, rides - 1) },
+    state: newState,
+  };
 }

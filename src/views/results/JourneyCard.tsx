@@ -28,32 +28,77 @@ const RideIn = ({ l, day }: { l?: Leg; day: string }) => {
   if (!l) return null;
   const when = inText(l.depart!, day);
   if (!when) return null;
-  return <div class="muted ridein">{l.live && <><LiveMark stale={l.live.stale} /> </>}{t(l.routeType === 2 ? 'rideAtStation' : 'rideAtStop', { line: lineText(l.line), when })}</div>;
+  return (
+    <div class="muted ridein">
+      {l.live && (
+        <>
+          <LiveMark stale={l.live.stale} />{' '}
+        </>
+      )}
+      {t(l.routeType === 2 ? 'rideAtStation' : 'rideAtStop', { line: lineText(l.line), when })}
+    </div>
+  );
 };
 
 export function JourneyCard({ card }: { card: Card }) {
   const { j, q, options, lines, idx } = card;
   const rides = j.legs.filter((l) => l.type === 'ride');
-  const shown = results.altShown.value.has(idx), sel = shown && results.altSel.value === idx;
-  void now.value;   // the "also at" times grey out as they pass
+  const shown = results.altShown.value.has(idx),
+    sel = shown && results.altSel.value === idx;
+  void now.value; // the "also at" times grey out as they pass
   return (
     <div class={`journey${sel ? ' sel' : ''}`} data-idx={idx} onClick={() => results.hooks.openDetail(j, q)}>
-      <div class="top">{rides.some((l) => l.estimated) && <span class="est">~</span>}<TimeRange from={j.depart} to={j.arrive} /><span class="dur">{dur(j.arrive - j.depart)} · {transfersText(j.transfers)}</span></div>
-      <div class="chips"><LegChips legs={j.legs} lines={lines} /></div>
-      <div class="sub">{rides.map((l) => `${lineText(l.line)} ${t('toward', { headsign: l.headsign || '' })}`).join(' · ')}</div>
+      <div class="top">
+        {rides.some((l) => l.estimated) && <span class="est">~</span>}
+        <TimeRange from={j.depart} to={j.arrive} />
+        <span class="dur">
+          {dur(j.arrive - j.depart)} · {transfersText(j.transfers)}
+        </span>
+      </div>
+      <div class="chips">
+        <LegChips legs={j.legs} lines={lines} />
+      </div>
+      <div class="sub">
+        {rides.map((l) => `${lineText(l.line)} ${t('toward', { headsign: l.headsign || '' })}`).join(' · ')}
+      </div>
       {options.length > 1 && (
-        <div class="opts"><span class="muted">{t('alsoAt')}</span>
-          {options.slice(1).sort((a, b) => a.depart - b.depart).map((o) => (
-            // an earlier one that arrives later (the train at the platform) says when it arrives
-            <button type="button" class={`opt${o.slower ? ' slower' : ''}${leaveText(o.depart, q.day) === t('departed') ? ' past' : ''}`} title={o.slower ? t('arrivesLater') : undefined}
-              onClick={(e) => { e.stopPropagation(); results.hooks.openDetail(o, q); }}>{fmt(o.depart)}{o.slower && <small dir="ltr">→{fmt(o.arrive)}</small>}</button>
-          ))}
+        <div class="opts">
+          <span class="muted">{t('alsoAt')}</span>
+          {options
+            .slice(1)
+            .sort((a, b) => a.depart - b.depart)
+            .map((o) => (
+              // an earlier one that arrives later (the train at the platform) says when it arrives
+              <button
+                type="button"
+                class={`opt${o.slower ? ' slower' : ''}${leaveText(o.depart, q.day) === t('departed') ? ' past' : ''}`}
+                title={o.slower ? t('arrivesLater') : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  results.hooks.openDetail(o, q);
+                }}
+              >
+                {fmt(o.depart)}
+                {o.slower && <small dir="ltr">→{fmt(o.arrive)}</small>}
+              </button>
+            ))}
         </div>
       )}
       {rides.some((l) => l.estimated) && <div class="muted est">{t('estNote')}</div>}
       <Leave sec={j.depart} day={q.day} liveInfo={rides[0]?.live} />
       <RideIn l={rides[0]} day={q.day} />
-      <button type="button" class={`mapbtn${shown ? ' on' : ''}`} title={t('onMap')} aria-label={t('onMap')} onClick={(e) => { e.stopPropagation(); results.toggleAlt(idx); }}><Icon name="map" /></button>
+      <button
+        type="button"
+        class={`mapbtn${shown ? ' on' : ''}`}
+        title={t('onMap')}
+        aria-label={t('onMap')}
+        onClick={(e) => {
+          e.stopPropagation();
+          results.toggleAlt(idx);
+        }}
+      >
+        <Icon name="map" />
+      </button>
     </div>
   );
 }

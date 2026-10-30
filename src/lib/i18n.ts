@@ -25,23 +25,41 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   build: ['גרסה {v}', 'build {v}'],
   readyStreets: ['רשת הרחובות נטענה.', 'Street network loaded.'],
   loadFail: ['הטעינה נכשלה: {msg}', 'Loading failed: {msg}'],
-  noLocation: ['אין גישה למיקום. אפשרו מיקום לאתר, או חפשו תחנה.', 'Location unavailable. Allow location access, or search for a stop.'],
+  noLocation: [
+    'אין גישה למיקום. אפשרו מיקום לאתר, או חפשו תחנה.',
+    'Location unavailable. Allow location access, or search for a stop.',
+  ],
   saved: ['נשמר', 'Saved'],
   offline: ['לא מקוון', 'offline'],
   settings: ['הגדרות', 'Settings'],
   setLang: ['שפה', 'Language'],
   menuNote: ['בלי חשבון. הכול נשאר בטלפון.', 'No account. Everything stays on your phone.'],
-  iosInstall: ['ב-{browser}: לחצו על כפתור השיתוף ({where}) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', 'In {browser}: tap the Share button ({where}) and then "Add to Home Screen". The app then opens full screen, without the browser bar.'],
+  iosInstall: [
+    'ב-{browser}: לחצו על כפתור השיתוף ({where}) ואז על "הוסף למסך הבית". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.',
+    'In {browser}: tap the Share button ({where}) and then "Add to Home Screen". The app then opens full screen, without the browser bar.',
+  ],
   shareBottom: ['ריבוע עם חץ למעלה, בתחתית המסך', 'the square with an arrow, at the bottom of the screen'],
   shareAddr: ['ריבוע עם חץ למעלה, ליד שורת הכתובת', 'the square with an arrow, next to the address bar'],
   shareMenu: ['בתפריט הדפדפן', 'in the browser menu'],
-  menuInstall: ['בתפריט הדפדפן (⋮ או ☰): "הוספה למסך הבית" או "התקנת אפליקציה". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.', 'In the browser menu (⋮ or ☰): "Add to home screen" or "Install app". The app then opens full screen, without the browser bar.'],
+  menuInstall: [
+    'בתפריט הדפדפן (⋮ או ☰): "הוספה למסך הבית" או "התקנת אפליקציה". האפליקציה תיפתח במסך מלא, בלי סרגל הדפדפן.',
+    'In the browser menu (⋮ or ☰): "Add to home screen" or "Install app". The app then opens full screen, without the browser bar.',
+  ],
   reload: ['רענון האפליקציה', 'Reload the app'],
-  liveNote: ['זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון מוריד את מיקומי כל כלי הרכב בארץ דרך שרת ממסר של Wayli (שלא מקבל מכם שום מיקום או קו), וכשהוא לא זמין, שולח לשרת של הסדנא את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.', 'Live times come from the Public Knowledge Workshop\'s Open Bus project. While on, the phone downloads every vehicle\'s position in the country through Wayli\'s relay (which gets no place or line from you), and when that is unavailable, sends their server the line numbers and the area you are looking at. Nothing else.'],
+  liveNote: [
+    'זמני האמת מגיעים מפרויקט האוטובוס הפתוח של הסדנא לידע ציבורי. כשהם פועלים, הטלפון מוריד את מיקומי כל כלי הרכב בארץ דרך שרת ממסר של Wayli (שלא מקבל מכם שום מיקום או קו), וכשהוא לא זמין, שולח לשרת של הסדנא את מספרי הקווים והאזור שאתם מסתכלים עליו. שום דבר אחר.',
+    "Live times come from the Public Knowledge Workshop's Open Bus project. While on, the phone downloads every vehicle's position in the country through Wayli's relay (which gets no place or line from you), and when that is unavailable, sends their server the line numbers and the area you are looking at. Nothing else.",
+  ],
   close: ['סגירה', 'Close'],
   alertSoon: ['עוד תחנה אחת', 'One more stop'],
-  testAlertMsg: ['כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.', 'This is what an alert looks like. If none showed, allow notifications for this site.'],
-  alertPermNo: ['התראות חסומות לאתר; יישארו רטט וצליל.', 'Notifications are blocked for this site; vibration and sound remain.'],
+  testAlertMsg: [
+    'כך תיראה התראה. אם לא קיבלתם התראה, אפשרו התראות לאתר.',
+    'This is what an alert looks like. If none showed, allow notifications for this site.',
+  ],
+  alertPermNo: [
+    'התראות חסומות לאתר; יישארו רטט וצליל.',
+    'Notifications are blocked for this site; vibration and sound remain.',
+  ],
   lineSearch: ['חיפוש קו לפי מספר', 'Search a line by number'],
   liveInfo: ['על הרכבים במפה', 'About the vehicles on the map'],
   stopSearch: ['חיפוש תחנה', 'Search a stop'],
@@ -111,7 +129,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   estShort: ['זמנים משוערים', 'times estimated'],
   kindStopSearch: ['תחנה', 'Stop'],
   backToTrip: ['חזרה לחיפוש נסיעה', 'Back to trip search'],
-  notInDay: ['לא נמצא בלוח הזמנים של היום', 'Not in today\'s timetable'],
+  notInDay: ['לא נמצא בלוח הזמנים של היום', "Not in today's timetable"],
   grpStops: ['תחנות', 'Stops'],
   stopQ: ['שם תחנה או מספר…', 'Stop name or number…'],
   stopsNear: ['תחנות בקרבתך', 'Stops near you'],
@@ -127,21 +145,33 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   subOpened: ['נפתחו', 'Opened'],
   subSearched: ['חיפושים', 'Searched'],
   favEmptyLines: ['עדיין אין קווים שמורים. בעמוד של קו, לחצו על הכוכב.', 'No saved lines yet. Tap the star on a line.'],
-  recentNone: ['עוד אין כאן כלום: מה שתחפשו ותפתחו יופיע כאן', 'Nothing here yet: what you search and open shows up here'],
+  recentNone: [
+    'עוד אין כאן כלום: מה שתחפשו ותפתחו יופיע כאן',
+    'Nothing here yet: what you search and open shows up here',
+  ],
   noJourney: ['לא נמצא מסלול עד 3 החלפות בחלון הזמן הזה.', 'No journey with up to 3 transfers in this time window.'],
   walk: ['הליכה', 'walk'],
   ride: ['{line} · {agency} · {stops} תחנות', '{line} · {agency} · {stops} stops'],
   bikeOnly: ['רכיבה כל הדרך: {min} דק\', {km} ק"מ', 'Bike all the way: {min} min, {km} km'],
-  bikeAllWay: ['רכיבה כל הדרך: {min} דק\'', 'Bike all the way: {min} min'],
+  bikeAllWay: ["רכיבה כל הדרך: {min} דק'", 'Bike all the way: {min} min'],
   noBikeOnly: ['רכיבה כל הדרך: אין מסלול עד 3 שעות.', 'Bike all the way: no route within 3 hours.'],
   found: ['{n} דרכים להגיע', '{n} ways to get there'],
   onMap: ['הצגה במפה', 'Show on the map'],
   fDirect: ['ישיר', 'Direct'],
-  filterNone: ['אין דרך כזאת בשעות האלה; הסינון מוצג בלי תוצאות', 'No such way at these hours; the filter leaves nothing'],
-  withBikeOnBoard: [' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים', ' · bike on board: trains off-peak and intercity buses'],
+  filterNone: [
+    'אין דרך כזאת בשעות האלה; הסינון מוצג בלי תוצאות',
+    'No such way at these hours; the filter leaves nothing',
+  ],
+  withBikeOnBoard: [
+    ' · אופניים ברכב: רכבות מחוץ לשעות העומס ואוטובוסים בינעירוניים',
+    ' · bike on board: trains off-peak and intercity buses',
+  ],
   foldingNote: [' · אופניים מתקפלים', ' · folding bike'],
   parkNote: [' · האופניים נשארים בתחנה הראשונה', ' · bike stays at the first stop'],
-  favEmptyTrips: ['עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.', 'No saved trips yet. Tap the star in a journey.'],
+  favEmptyTrips: [
+    'עדיין אין מסלולים שמורים. בפרטי מסלול, לחצו על הכוכב.',
+    'No saved trips yet. Tap the star in a journey.',
+  ],
   favEmptyStops: ['עדיין אין תחנות שמורות. בפרטי תחנה, לחצו על הכוכב.', 'No saved stops yet. Tap the star in a stop.'],
   planAgain: ['חישוב מחדש מעכשיו', 'Plan again from now'],
   resultsFrom: ['תוצאות מ-{time}', 'Results from {time}'],
@@ -149,12 +179,12 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   goneTitle: ['יצאו לפני רגע · כבר בנסיעה?', 'Just left · already riding?'],
   goneHint: ['כבר בנסיעה? {n} נסיעות יצאו לפני רגע', 'Already riding? {n} rides just left'],
   goneHint1: ['כבר בנסיעה? נסיעה אחת יצאה לפני רגע', 'Already riding? One ride just left'],
-  leftAgo: ['יצא לפני {n} דק\'', 'left {n} min ago'],
-  leavesIn: ['יוצא בעוד {n} דק\'', 'leaves in {n} min'],
+  leftAgo: ["יצא לפני {n} דק'", 'left {n} min ago'],
+  leavesIn: ["יוצא בעוד {n} דק'", 'leaves in {n} min'],
   hurryHint: ['ממהרים? {n} נסיעות עוד אפשר לתפוס', 'In a hurry? You might still make {n} rides'],
   hurryHint1: ['ממהרים? נסיעה אחת עוד אפשר לתפוס', 'In a hurry? You might still make one ride'],
-  hurryLate: ['לצאת ב-{time} · באיחור {n} דק\'', 'Leave {time} · {n} min late'],
-  aboard: ['אני בפנים', 'I\'m on it'],
+  hurryLate: ["לצאת ב-{time} · באיחור {n} דק'", 'Leave {time} · {n} min late'],
+  aboard: ['אני בפנים', "I'm on it"],
   earlier: ['‹ מוקדם יותר', '‹ Earlier'],
   later: ['מאוחר יותר ›', 'Later ›'],
   tryLater: ['לנסות שעה מאוחרת יותר', 'Try an hour later'],
@@ -162,25 +192,28 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   planFrom: ['לתכנן מ-{time}', 'Plan from {time}'],
   noMoreToday: ['אין עוד מסלולים היום.', 'No more ways today.'],
   afterShabbat: ['התחבורה הציבורית חוזרת במוצאי שבת.', 'Public transport resumes after Shabbat.'],
-  tryMoreWalk: ['לאפשר הליכה של 30 דק\'', 'Allow a 30 min walk'],
+  tryMoreWalk: ["לאפשר הליכה של 30 דק'", 'Allow a 30 min walk'],
   arriveByNote: ['הגעה עד {time} · המאוחר ביותר קודם', 'Arrive by {time} · latest first'],
   alsoAt: ['גם ב:', 'Also at:'],
   onTime: ['בזמן', 'on time'],
   arrivesLater: ['יוצאת קודם, מגיעה מאוחר יותר', 'Leaves earlier, arrives later'],
   livePlanned: ['זמני אמת מ-{time}', 'live times as of {time}'],
   schedOnly: ['לוח זמנים בלבד', 'schedule only'],
-  liveDelay: ['⦿ {d} דק\'', '⦿ {d} min'],
+  liveDelay: ["⦿ {d} דק'", '⦿ {d} min'],
   rideAtStop: ['{line} בתחנה {when}', '{line} at the stop {when}'],
   rideAtStation: ['{line} ברציף {when}', '{line} at the station {when}'],
-  estNote: ['קו סופ"ש (נעים בסופ"ש): אין לוח זמנים רשמי. הזמנים משוערים משעות הפעילות והתדירות שמפרסם המפעיל, ואין מיקום חי', 'Weekend line (Na\'im BeSofash): no timetable is published. The times are estimates from the operator\'s hours and frequency, and there is no live position'],
+  estNote: [
+    'קו סופ"ש (נעים בסופ"ש): אין לוח זמנים רשמי. הזמנים משוערים משעות הפעילות והתדירות שמפרסם המפעיל, ואין מיקום חי',
+    "Weekend line (Na'im BeSofash): no timetable is published. The times are estimates from the operator's hours and frequency, and there is no live position",
+  ],
   directLrt: ['נסיעות ישירות', 'Direct rides'],
   directTrains: ['רכבות ישירות', 'Direct trains'],
 
   // ---- A journey's detail and its rides
-  walkTo: ['הליכה {min} דק\' אל {name}', 'walk {min} min to {name}'],
-  bikeTo: ['רכיבה {min} דק\' אל {name}', 'bike {min} min to {name}'],
-  walkFrom: ['הליכה {min} דק\' מ{name} ליעד', 'walk {min} min from {name}'],
-  bikeFrom: ['רכיבה {min} דק\' מ{name} ליעד', 'bike {min} min from {name}'],
+  walkTo: ["הליכה {min} דק' אל {name}", 'walk {min} min to {name}'],
+  bikeTo: ["רכיבה {min} דק' אל {name}", 'bike {min} min to {name}'],
+  walkFrom: ["הליכה {min} דק' מ{name} ליעד", 'walk {min} min from {name}'],
+  bikeFrom: ["רכיבה {min} דק' מ{name} ליעד", 'bike {min} min from {name}'],
   pay: ['תשלום', 'Pay'],
   payHint: ['תשלום על הנסיעה באפליקציית הופאון (רב-פס)', 'Pay for the ride in the HopOn (Rav-Pass) app'],
   startTrip: ['התחלת נסיעה', 'Start trip'],
@@ -211,9 +244,12 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   stopsLeft: ['עוד {n} תחנות', '{n} stops to go'],
   nextStopIs: ['התחנה הבאה: {name}', 'Next stop: {name}'],
   nextTag: ['הבאה', 'next'],
-  changeOk: ['זמן להחלפה: {n} דק\'', 'Change: {n} min to spare'],
-  changeTight: ['החלפה צפופה: {n} דק\'', 'Tight change: {n} min'],
-  changeMissed: ['לא תספיקו: יוצא ב-{dep}, מגיעים ב-{arr}', 'You will miss it: it leaves at {dep}, you arrive at {arr}'],
+  changeOk: ["זמן להחלפה: {n} דק'", 'Change: {n} min to spare'],
+  changeTight: ["החלפה צפופה: {n} דק'", 'Tight change: {n} min'],
+  changeMissed: [
+    'לא תספיקו: יוצא ב-{dep}, מגיעים ב-{arr}',
+    'You will miss it: it leaves at {dep}, you arrive at {arr}',
+  ],
   getOffNext: ['לרדת בתחנה הבאה!', 'Get off at the next stop!'],
   arrived: ['הגעתם ליעד 🎉', 'You have arrived 🎉'],
   arrivesAt: ['הגעה ב-{time}', 'arrives at {time}'],
@@ -222,10 +258,10 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   alertOff: ['לרדת כאן', 'Get off here'],
   alertArrived: ['הגעתם', 'You have arrived'],
   gpsNo: ['אין מיקום, מתקדם לפי השעון', 'no position, following the clock'],
-  gpsOk: ['מיקום {acc} מ\'', 'position ±{acc} m'],
+  gpsOk: ["מיקום {acc} מ'", 'position ±{acc} m'],
   followTitle: ['{line} ← {to}', '{line} → {to}'],
   walkTitle: ['הליכה ← {to}', 'Walk → {to}'],
-  walkToDest: ['הליכה {min} דק\' אל היעד: {name}', 'walk {min} min to the destination: {name}'],
+  walkToDest: ["הליכה {min} דק' אל היעד: {name}", 'walk {min} min to the destination: {name}'],
   statusRide: ['עוד {n} תחנות · לרדת ב{name} בסביבות {time}', '{n} stops left · get off at {name} ~{time}'],
   statusLast: ['התחנה הבאה: {name} · לרדת בסביבות {time}', 'Next stop: {name} · get off ~{time}'],
   statusWait: ['{line} יוצא מ{stop} ב-{time}', '{line} leaves {stop} at {time}'],
@@ -234,7 +270,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   altGetOff: ['לרדת ב{stop}', 'Get off at {stop}'],
   altInstead: ['במקום קו {line}', 'Instead of line {line}'],
   altThen: ['קו {line} לכיוון {headsign} ב-{time}', 'line {line} towards {headsign} at {time}'],
-  altArrive: ['הגעה ב-{time}, {n} דק\' קודם', 'arrive at {time}, {n} min earlier'],
+  altArrive: ["הגעה ב-{time}, {n} דק' קודם", 'arrive at {time}, {n} min earlier'],
   switchRoute: ['מעבר למסלול הזה', 'Switch to it'],
   keepRoute: ['להישאר', 'Keep mine'],
   routeSwitched: ['המסלול הוחלף', 'Route switched'],
@@ -258,10 +294,16 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   nextTrain: ['הבאה ב-{time}, {ride}', 'next at {time}, {ride}'],
   noMoreTrains: ['אין עוד רכבות היום', 'no more trains today'],
   noLrt: ['אין היום רכבת קלה מהתחנה', 'No light rail from this stop today'],
-  noDirectLrt: ['אין עוד נסיעה ישירה היום. לחיבורים, תכננו נסיעה.', 'No more direct rides today. For connections, plan a trip.'],
+  noDirectLrt: [
+    'אין עוד נסיעה ישירה היום. לחיבורים, תכננו נסיעה.',
+    'No more direct rides today. For connections, plan a trip.',
+  ],
   noMoreLrt: ['אין עוד היום', 'none left today'],
   noTrains: ['אין היום רכבות מהתחנה', 'No trains from this station today'],
-  noDirectTrains: ['אין עוד רכבת ישירה היום. לחיבורים, תכננו נסיעה.', 'No more direct trains today. For connections, plan a trip.'],
+  noDirectTrains: [
+    'אין עוד רכבת ישירה היום. לחיבורים, תכננו נסיעה.',
+    'No more direct trains today. For connections, plan a trip.',
+  ],
   vehiclesOnLine: ['{n} בשידור', '{n} reporting'],
   noLineVehicles: ['אין רכב בשידור בקו', 'No vehicle of this line reporting'],
 
@@ -280,7 +322,10 @@ export const STR: Record<string, [he: Text, en: Text]> = {
 
   // ---- Settings
   setRecentN: ['כמה אחרונים לשמור', 'Recent items to keep'],
-  setRecentNHint: ['מכל סוג: מסלולים, חיפושים, קווים, תחנות ומקומות. נשמר בטלפון בלבד', 'Of each kind: ways, searches, lines, stops and places. Kept on this phone only'],
+  setRecentNHint: [
+    'מכל סוג: מסלולים, חיפושים, קווים, תחנות ומקומות. נשמר בטלפון בלבד',
+    'Of each kind: ways, searches, lines, stops and places. Kept on this phone only',
+  ],
   setMap: ['מראה המפה', 'Map look'],
   setTint: ['צבעי המפה', 'Map colours'],
   tintTeal: ['טורקיז', 'Turquoise'],
@@ -290,7 +335,10 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   setStopFilter: ['חיפוש תחנה נפתח על', 'Stop search opens on'],
   setStopFilterHint: ['מה מוצג קודם בחיפוש לפי תחנה', 'what the search by stop shows first'],
   setTerrain: ['גבהים בתלת־ממד', '3D heights'],
-  terrainHint: ['הרים ועמקים כשהמפה מוטה (גרירה בשתי אצבעות למעלה). צורך יותר נתונים.', 'Hills and valleys when the map is tilted (two fingers dragged up). Uses more data.'],
+  terrainHint: [
+    'הרים ועמקים כשהמפה מוטה (גרירה בשתי אצבעות למעלה). צורך יותר נתונים.',
+    'Hills and valleys when the map is tilted (two fingers dragged up). Uses more data.',
+  ],
   setTheme: ['מראה התפריטים', 'Menus look'],
   mapLight: ['בהיר', 'Light'],
   mapDark: ['כהה', 'Dark'],
@@ -310,25 +358,31 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   clearHistory: ['מחיקת היסטוריה', 'Clear history'],
   compassLine: ['מצפן', 'Compass'],
   setTraffic: ['עומסי תנועה במפה', 'Traffic on the map'],
-  trafficNote: ['צבע הכבישים לפי מהירות האוטובוסים עליהם ברבע השעה האחרונה, לעומת זרימה חופשית: ירוק חופשי, כתום איטי, אדום עומס', 'Roads coloured by how fast buses moved on them in the last 15 minutes, against free flow: green free, orange slow, red jammed'],
+  trafficNote: [
+    'צבע הכבישים לפי מהירות האוטובוסים עליהם ברבע השעה האחרונה, לעומת זרימה חופשית: ירוק חופשי, כתום איטי, אדום עומס',
+    'Roads coloured by how fast buses moved on them in the last 15 minutes, against free flow: green free, orange slow, red jammed',
+  ],
   historyCleared: ['ההיסטוריה נמחקה', 'History cleared'],
-  about: ['<p><b>Wayli</b> מתכנן נסיעות בתחבורה הציבורית בישראל על הטלפון שלכם: לוח הזמנים הארצי ורשת הרחובות יורדים פעם אחת, והחיפוש רץ מקומית. חיפושים, היסטוריה ומקומות שמורים נשארים בטלפון.</p><p>זמני אמת: פרויקט האוטובוס הפתוח של הסדנא לידע ציבורי (אפשר לכבות בהגדרות). הנתונים: משרד התחבורה (GTFS) ו-OpenStreetMap. התוכנה חופשית ברישיון AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>. סמל רכבת ישראל: מתוך "Flag of Israel Railways.svg" מאת Meronim, ויקישיתוף, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a> (הסמל לבדו, משורטט מחדש).</p><p>עדיין אין: דיווחים. לוח זמנים: {feed}.</p>', '<p><b>Wayli</b> plans public-transport trips in Israel on your phone: the national timetable and the street network download once, and every search runs locally. Searches, history and saved places stay on the phone.</p><p>Live times: the Public Knowledge Workshop\'s Open Bus project (can be turned off in settings). Data: Ministry of Transport (GTFS) and OpenStreetMap. Free software, AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>. Israel Railways\' mark: from "Flag of Israel Railways.svg" by Meronim, Wikimedia Commons, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a> (the mark alone, traced).</p><p>Not yet: reports. Timetable: {feed}.</p>'],
+  about: [
+    '<p><b>Wayli</b> מתכנן נסיעות בתחבורה הציבורית בישראל על הטלפון שלכם: לוח הזמנים הארצי ורשת הרחובות יורדים פעם אחת, והחיפוש רץ מקומית. חיפושים, היסטוריה ומקומות שמורים נשארים בטלפון.</p><p>זמני אמת: פרויקט האוטובוס הפתוח של הסדנא לידע ציבורי (אפשר לכבות בהגדרות). הנתונים: משרד התחבורה (GTFS) ו-OpenStreetMap. התוכנה חופשית ברישיון AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>. סמל רכבת ישראל: מתוך "Flag of Israel Railways.svg" מאת Meronim, ויקישיתוף, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a> (הסמל לבדו, משורטט מחדש).</p><p>עדיין אין: דיווחים. לוח זמנים: {feed}.</p>',
+    '<p><b>Wayli</b> plans public-transport trips in Israel on your phone: the national timetable and the street network download once, and every search runs locally. Searches, history and saved places stay on the phone.</p><p>Live times: the Public Knowledge Workshop\'s Open Bus project (can be turned off in settings). Data: Ministry of Transport (GTFS) and OpenStreetMap. Free software, AGPL-3.0: <a href="https://github.com/Akensio/wayli">github.com/Akensio/wayli</a>. Israel Railways\' mark: from "Flag of Israel Railways.svg" by Meronim, Wikimedia Commons, <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a> (the mark alone, traced).</p><p>Not yet: reports. Timetable: {feed}.</p>',
+  ],
 
   // ---- The map: live vehicles, bubbles, the picker
   choose: ['בחירה', 'Choose'],
   nearName: ['ליד {name}', 'near {name}'],
   pointName: ['נקודה במפה', 'Point on the map'],
-  agoMin: ['לפני {n} דק\'', '{n} min ago'],
+  agoMin: ["לפני {n} דק'", '{n} min ago'],
   liveLoading: ['טוען מיקומים בזמן אמת…', 'Loading live positions…'],
   liveOffline: ['אין חיבור: אין מיקומים בזמן אמת', 'Offline: no live positions'],
   liveMapCount: ['{n} רכבים{scope} · נתונים מ-{time}{age}', '{n} vehicles{scope} · data as of {time}{age}'],
-  liveViaDb: [' · מהמאגר של הסדנא (הממסר: {why})', ' · from Hasadna\'s database (relay: {why})'],
+  liveViaDb: [' · מהמאגר של הסדנא (הממסר: {why})', " · from Hasadna's database (relay: {why})"],
   liveMapOne: ['רכב אחד{scope} · נתונים מ-{time}{age}', 'One vehicle{scope} · data as of {time}{age}'],
   liveScopeSearch: [' מקווי החיפוש', ' of the lines searched'],
   liveScopeStop: [' מהקווים בתחנה', ' of the lines at this stop'],
   liveNearOf: [' ({n} מהקווים שלידי, בולטים)', ' ({n} of the lines near me, in front)'],
-  liveAge: [' (לפני {n} דק\')', ' ({n} min ago)'],
-  liveAgeBehind: [' (לפני {n} דק\', המקור מפגר)', ' ({n} min ago, the source is behind)'],
+  liveAge: [" (לפני {n} דק')", ' ({n} min ago)'],
+  liveAgeBehind: [" (לפני {n} דק', המקור מפגר)", ' ({n} min ago, the source is behind)'],
   liveMapNone: ['אין כרגע רכבים משדרים{scope} באזור הזה', 'No vehicles{scope} reporting in this area right now'],
   liveMapZoom: ['התקרבו כדי לראות רכבים', 'Zoom in to see vehicles'],
   seenAgo: ['דווח ב-{time}', 'reported at {time}'],
@@ -337,28 +391,34 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   rideHere: ['הנסיעה עוברת כאן ב-{time}', 'Your ride passes here at {time}'],
   lineHere: ['הנסיעה שנבחרה עוברת כאן ב-{time}', 'The trip chosen passes here at {time}'],
   timesHere: ['הזמנים כאן', 'Times here'],
-  offDayLine: ['הקו לא מופיע בלוח הזמנים הרשמי של היום, אבל הרכב משדר', 'Not in today\'s official timetable, but this vehicle is reporting'],
+  offDayLine: [
+    'הקו לא מופיע בלוח הזמנים הרשמי של היום, אבל הרכב משדר',
+    "Not in today's official timetable, but this vehicle is reporting",
+  ],
 
   // ---- Words for journeys: durations, days, lines, sharing
   direct: ['ישיר', 'direct'],
   transfer1: ['החלפה אחת', '1 transfer'],
   transfers: ['{n} החלפות', '{n} transfers'],
-  min: ['דק\'', 'min'],
-  hour: ['שע\'', 'h'],
+  min: ["דק'", 'min'],
+  hour: ["שע'", 'h'],
   closeAll: ['סגירת הכל', 'Close all'],
   expand: ['הרחבה למסך מלא', 'Expand'],
   contract: ['כיווץ לחצי מסך', 'Contract'],
-  inMin: ['בעוד {n} דק\'', 'in {n} min'],
+  inMin: ["בעוד {n} דק'", 'in {n} min'],
   nowDep: ['עכשיו', 'now'],
-  dayFmt: [['יום א\'', 'יום ב\'', 'יום ג\'', 'יום ד\'', 'יום ה\'', 'יום ו\'', 'שבת'], ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']],
+  dayFmt: [
+    ["יום א'", "יום ב'", "יום ג'", "יום ד'", "יום ה'", "יום ו'", 'שבת'],
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  ],
   today: ['היום', 'Today'],
   tomorrow: ['מחר', 'Tomorrow'],
-  leaveIn: ['יוצאים בעוד {n} דק\'', 'Leave in {n} min'],
+  leaveIn: ["יוצאים בעוד {n} דק'", 'Leave in {n} min'],
   till: ['עד {time}', 'to {time}'],
   leaveNow: ['יוצאים עכשיו', 'Leave now'],
   copied: ['הקישור הועתק', 'Link copied'],
   ttAll: ['כל היום', 'All day'],
-  distM: ['{m} מ\'', '{m} m'],
+  distM: ["{m} מ'", '{m} m'],
   distKm: ['{km} ק"מ', '{km} km'],
 
   // ---- Elsewhere
@@ -366,15 +426,29 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   noDestStops: ['אין תחנה במרחק הליכה מהיעד.', 'No stop within walking distance of the destination.'],
 };
 
-function storedLang(): Lang { try { return (localStorage.getItem('wayli-lang') as Lang) || 'he'; } catch { return 'he'; } }
+function storedLang(): Lang {
+  try {
+    return (localStorage.getItem('wayli-lang') as Lang) || 'he';
+  } catch {
+    return 'he';
+  }
+}
 /** The current language. */
 export const lang = signal<Lang>(storedLang());
 /** Set and remember the language; callers re-render what they own. */
-export function storeLang(l: Lang): void { lang.value = l; try { localStorage.setItem('wayli-lang', l); } catch { /* private mode */ } }
+export function storeLang(l: Lang): void {
+  lang.value = l;
+  try {
+    localStorage.setItem('wayli-lang', l);
+  } catch {
+    /* private mode */
+  }
+}
 /** A string in the current language (Hebrew when the key is missing), with {vars} filled in. */
 export const t = (k: string, vars?: Record<string, string | number>): string => {
-  const e = STR[k], v = e ? e[lang.value === 'en' ? 1 : 0] : k;
-  if (Array.isArray(v)) return v as unknown as string;   // dayFmt: the weekday names; callers index it
+  const e = STR[k],
+    v = e ? e[lang.value === 'en' ? 1 : 0] : k;
+  if (Array.isArray(v)) return v as unknown as string; // dayFmt: the weekday names; callers index it
   let s = v;
   if (vars) for (const [a, b] of Object.entries(vars)) s = s.split(`{${a}}`).join(String(b));
   return s;

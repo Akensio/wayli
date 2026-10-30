@@ -16,9 +16,13 @@ export function Floating() {
     <div class="floating">
       <div class={`status${st && st.error ? ' error' : ''}`} id="status" hidden={!st || st.hidden}>
         <span id="statusText">{st ? st.text : ''}</span>
-        <div class="bar" id="statusBar" hidden={!st || st.frac == null}><div style={{ width: st && st.frac != null ? `${Math.round(st.frac * 100)}%` : '0%' }} /></div>
+        <div class="bar" id="statusBar" hidden={!st || st.frac == null}>
+          <div style={{ width: st && st.frac != null ? `${Math.round(st.frac * 100)}%` : '0%' }} />
+        </div>
       </div>
-      <span class="offline" id="offline" hidden={app.online.value}>{t('offline')}</span>
+      <span class="offline" id="offline" hidden={app.online.value}>
+        {t('offline')}
+      </span>
       <ResumeBar />
     </div>
   );
@@ -27,7 +31,15 @@ export function PickBar() {
   void lang.value;
   return (
     <div class="pickbar" id="pickbar" hidden={!nav.picking.value}>
-      <div class="row"><span class="muted" id="pickHint">{t('pickHint')}</span><span class="spacer" style="flex:1" /><button type="button" class="ghost" id="pickCancel" onClick={app.hooks.pickCancel}>{t('cancel')}</button></div>
+      <div class="row">
+        <span class="muted" id="pickHint">
+          {t('pickHint')}
+        </span>
+        <span class="spacer" style="flex:1" />
+        <button type="button" class="ghost" id="pickCancel" onClick={app.hooks.pickCancel}>
+          {t('cancel')}
+        </button>
+      </div>
     </div>
   );
 }
@@ -37,16 +49,26 @@ export const Menus = () => <SortPopover />;
  *  corner: a tap opens it and another folds it (it folds by itself after a while); late live data colours the button. */
 export function LiveNote() {
   void lang.value;
-  const note = app.liveNote.value, lag = app.liveLag.value, open = useSignal(false), timer = useRef(0);
+  const note = app.liveNote.value,
+    lag = app.liveLag.value,
+    open = useSignal(false),
+    timer = useRef(0);
   const toggle = () => {
     open.value = !open.value;
     clearTimeout(timer.current);
-    if (open.value) timer.current = window.setTimeout(() => { open.value = false; }, 8000);
+    if (open.value)
+      timer.current = window.setTimeout(() => {
+        open.value = false;
+      }, 8000);
   };
   return (
     <div class={`livenote${lag ? ' lag' : ''}${open.value ? ' open' : ''}`} id="liveNote" hidden={!note}>
-      <button type="button" class="lnbtn" aria-label={t('liveInfo')} aria-expanded={open.value} onClick={toggle}><Icon name="info" /></button>
-      <span class="lntext" id="liveNoteText" onClick={toggle}>{note}</span>
+      <button type="button" class="lnbtn" aria-label={t('liveInfo')} aria-expanded={open.value} onClick={toggle}>
+        <Icon name="info" />
+      </button>
+      <span class="lntext" id="liveNoteText" onClick={toggle}>
+        {note}
+      </span>
     </div>
   );
 }

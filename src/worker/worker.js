@@ -21,7 +21,17 @@ import { coursesOps } from './courses.js';
 import { vehiclesOps } from './vehicles.js';
 import { trafficOps } from './traffic.js';
 
-const ops = { ...dataOps, ...searchOps, ...planOps, ...stopsOps, ...linesOps, ...tripsOps, ...coursesOps, ...vehiclesOps, ...trafficOps };
+const ops = {
+  ...dataOps,
+  ...searchOps,
+  ...planOps,
+  ...stopsOps,
+  ...linesOps,
+  ...tripsOps,
+  ...coursesOps,
+  ...vehiclesOps,
+  ...trafficOps,
+};
 
 // live vehicles and place names do not wait for the timetable (the map asks for vehicles before it is in, and a
 // refusal sent it to Hasadna's database, 15 minutes behind at rush hour)

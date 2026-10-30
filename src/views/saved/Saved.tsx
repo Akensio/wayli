@@ -17,55 +17,136 @@ import { LineChip } from '../../widgets/LineChip';
 import type { LineMode } from '../../widgets/LineChip';
 import { agencyName } from '../../journey/agencies';
 
-
 export function Saved() {
-  void lang.value; void stored.value;
+  void lang.value;
+  void stored.value;
   const sp = savedPlaces.get() as { home: Place | null; work: Place | null; more: Place[] };
-  const trips = favs.get('trips') as Record<string, SavedTrip>, stops = favs.get('stops') as Record<string, Stop>, lines = favs.get('lines') as Record<string, View>;
-  const choose = async (slot: 'home' | 'work') => { const c = await saved.hooks.choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork')); if (c) { savedPlaces.set(slot, c); } };
+  const trips = favs.get('trips') as Record<string, SavedTrip>,
+    stops = favs.get('stops') as Record<string, Stop>,
+    lines = favs.get('lines') as Record<string, View>;
+  const choose = async (slot: 'home' | 'work') => {
+    const c = await saved.hooks.choosePlace(t(slot === 'home' ? 'chooseHome' : 'chooseWork'));
+    if (c) {
+      savedPlaces.set(slot, c);
+    }
+  };
   return (
     <>
       <h2 class="sec">{t('savedPlaces')}</h2>
       <div id="savedPlaces" class="stops-list">
-        {(['home', 'work'] as const).map((slot) => { const p = sp[slot]; return (
-          <div class="saved-row" key={slot}>
-            <span class="ic"><Icon name={slot === 'home' ? 'home' : 'work'} /></span>
-            <span class="txt" onClick={() => (p ? saved.hooks.planTo(named(p)) : choose(slot))}><span class={`name${p ? '' : ' unset'}`}>{p ? placeName(p) : t('notSet')}</span><small>{t(slot)}</small></span>
-            <button type="button" class="ghost" onClick={() => choose(slot)}>{p ? t('change') : '+'}</button>
-          </div>
-        ); })}
+        {(['home', 'work'] as const).map((slot) => {
+          const p = sp[slot];
+          return (
+            <div class="saved-row" key={slot}>
+              <span class="ic">
+                <Icon name={slot === 'home' ? 'home' : 'work'} />
+              </span>
+              <span class="txt" onClick={() => (p ? saved.hooks.planTo(named(p)) : choose(slot))}>
+                <span class={`name${p ? '' : ' unset'}`}>{p ? placeName(p) : t('notSet')}</span>
+                <small>{t(slot)}</small>
+              </span>
+              <button type="button" class="ghost" onClick={() => choose(slot)}>
+                {p ? t('change') : '+'}
+              </button>
+            </div>
+          );
+        })}
         {sp.more.map((p) => (
           <div class="saved-row">
-            <span class="ic"><Icon name="star" /></span>
-            <span class="txt" onClick={() => saved.hooks.planTo(named(p))}><span class="name">{placeName(p)}</span></span>
-            <button type="button" class="ghost" onClick={() => { savedPlaces.remove(p); toast(t('removed')); }}><Icon name="close" /></button>
+            <span class="ic">
+              <Icon name="star" />
+            </span>
+            <span class="txt" onClick={() => saved.hooks.planTo(named(p))}>
+              <span class="name">{placeName(p)}</span>
+            </span>
+            <button
+              type="button"
+              class="ghost"
+              onClick={() => {
+                savedPlaces.remove(p);
+                toast(t('removed'));
+              }}
+            >
+              <Icon name="close" />
+            </button>
           </div>
         ))}
-        <button type="button" class="ghost" style="margin-bottom:8px" onClick={async () => { const c = await saved.hooks.choosePlace(t('choosePlace')); if (c) { savedPlaces.add(c); toast(t('saved')); } }}>{t('addPlace')}</button>
+        <button
+          type="button"
+          class="ghost"
+          style="margin-bottom:8px"
+          onClick={async () => {
+            const c = await saved.hooks.choosePlace(t('choosePlace'));
+            if (c) {
+              savedPlaces.add(c);
+              toast(t('saved'));
+            }
+          }}
+        >
+          {t('addPlace')}
+        </button>
       </div>
       <h2 class="sec">{t('favTrips')}</h2>
       <div id="favTrips">
         {!Object.keys(trips).length && <div class="empty">{t('favEmptyTrips')}</div>}
         {Object.values(trips).map((v) => (
-          <div class="journey" onClick={() => results.hooks.replan({ from: named(v.from), to: named(v.to), bike: v.bike, folding: !!v.folding, day: '', at: '', arriveBy: false })}>
-            <div class="top"><span class="times"><FromTo from={placeName(v.from)} to={placeName(v.to)} /></span></div>
-            <div class="sub">{v.bike !== 'none' && <><Icon name="bike" /> </>}{bikeText(v.bike)}</div>
+          <div
+            class="journey"
+            onClick={() =>
+              results.hooks.replan({
+                from: named(v.from),
+                to: named(v.to),
+                bike: v.bike,
+                folding: !!v.folding,
+                day: '',
+                at: '',
+                arriveBy: false,
+              })
+            }
+          >
+            <div class="top">
+              <span class="times">
+                <FromTo from={placeName(v.from)} to={placeName(v.to)} />
+              </span>
+            </div>
+            <div class="sub">
+              {v.bike !== 'none' && (
+                <>
+                  <Icon name="bike" />{' '}
+                </>
+              )}
+              {bikeText(v.bike)}
+            </div>
           </div>
         ))}
       </div>
-      {Object.keys(lines).length > 0 && <>
-        <h2 class="sec">{t('favLines')}</h2>
-        <div id="favLines">
-          {(Object.values(lines) as Extract<View, { type: 'line' }>[]).map((v) => (
-            <div class="recent" onClick={() => results.hooks.openView(v)}>
-              <LineChip line={v.line} routeType={v.routeType} agency={v.agency} mode={v.mode as LineMode | undefined} />
-              <span class="txt"><span class="name"><bdi>{t('toward', { headsign: v.headsign })}</bdi></span><small>{agencyName(v.agency)}</small></span>
-            </div>
-          ))}
-        </div>
-      </>}
+      {Object.keys(lines).length > 0 && (
+        <>
+          <h2 class="sec">{t('favLines')}</h2>
+          <div id="favLines">
+            {(Object.values(lines) as Extract<View, { type: 'line' }>[]).map((v) => (
+              <div class="recent" onClick={() => results.hooks.openView(v)}>
+                <LineChip
+                  line={v.line}
+                  routeType={v.routeType}
+                  agency={v.agency}
+                  mode={v.mode as LineMode | undefined}
+                />
+                <span class="txt">
+                  <span class="name">
+                    <bdi>{t('toward', { headsign: v.headsign })}</bdi>
+                  </span>
+                  <small>{agencyName(v.agency)}</small>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <h2 class="sec">{t('favStops')}</h2>
-      <div id="favStops" class="stops-list"><StopList stops={Object.values(stops)} onStop={saved.hooks.openStop} onLine={saved.hooks.openLine} /></div>
+      <div id="favStops" class="stops-list">
+        <StopList stops={Object.values(stops)} onStop={saved.hooks.openStop} onLine={saved.hooks.openLine} />
+      </div>
     </>
   );
 }

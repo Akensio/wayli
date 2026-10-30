@@ -21,15 +21,38 @@ import type { Journey, Query } from '../../journey/types';
 const plan = () => results.hooks.plan();
 
 function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
-  const note = q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
+  const note =
+    q.bike === 'along' ? (q.folding ? t('foldingNote') : t('withBikeOnBoard')) : q.bike === 'park' ? t('parkNote') : '';
   return (
     <div class="results-head muted">
       <span>
-        {at ? t('resultsFrom', { time: timeOf(at) }) + ' · ' : ''}{t('found', { n })}{note}{q.arriveBy ? ' · ' + t('arriveByNote', { time: fmt(secOf(q.at)) }) : ''}
-        {q.liveTried && <> · <span class={`live${q.liveAsOf ? ' ok' : ''}`}>{q.liveAsOf ? t('livePlanned', { time: timeOf(q.liveAsOf) }) : t('schedOnly')}</span></>}
+        {at ? t('resultsFrom', { time: timeOf(at) }) + ' · ' : ''}
+        {t('found', { n })}
+        {note}
+        {q.arriveBy ? ' · ' + t('arriveByNote', { time: fmt(secOf(q.at)) }) : ''}
+        {q.liveTried && (
+          <>
+            {' '}
+            ·{' '}
+            <span class={`live${q.liveAsOf ? ' ok' : ''}`}>
+              {q.liveAsOf ? t('livePlanned', { time: timeOf(q.liveAsOf) }) : t('schedOnly')}
+            </span>
+          </>
+        )}
       </span>
       <span class="spacer" />
-      {at && <button type="button" class="linkbtn" onClick={() => { search.resetNow(); plan(); }}>{t('planAgain')}</button>}
+      {at && (
+        <button
+          type="button"
+          class="linkbtn"
+          onClick={() => {
+            search.resetNow();
+            plan();
+          }}
+        >
+          {t('planAgain')}
+        </button>
+      )}
     </div>
   );
 }
@@ -37,7 +60,14 @@ function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
 function Filters() {
   const f = results.filters.value;
   const Chip = ({ label, on, icon, onClick }: { label: string; on: boolean; icon?: IconName; onClick: () => void }) => (
-    <button type="button" class={`chipbtn${on ? ' on' : ''}`} onClick={onClick}>{icon && <><Icon name={icon} /> </>}{label}</button>
+    <button type="button" class={`chipbtn${on ? ' on' : ''}`} onClick={onClick}>
+      {icon && (
+        <>
+          <Icon name={icon} />{' '}
+        </>
+      )}
+      {label}
+    </button>
   );
   return (
     <div class="filters">
@@ -50,13 +80,30 @@ function Filters() {
 
 /** A quiet line that opens on a tap to a few compact ways, each with a word on where it stands and a button (the ways
  *  in reach if the rider hurries, and the rides that just left, share it). `fixed` shows the rows under a plain title. */
-function Strip({ cls, hint, fixed, children }: { cls: string; hint: string; fixed?: boolean; children: ComponentChildren }) {
+function Strip({
+  cls,
+  hint,
+  fixed,
+  children,
+}: {
+  cls: string;
+  hint: string;
+  fixed?: boolean;
+  children: ComponentChildren;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div class={`strip ${cls}`}>
-      {fixed ? <div class="muted">{hint}</div>
-        : <Fold class="strip-hint" open={open} onClick={() => setOpen(!open)}>{hint}</Fold>}
-      <div class="strip-rows" hidden={!fixed && !open}>{children}</div>
+      {fixed ? (
+        <div class="muted">{hint}</div>
+      ) : (
+        <Fold class="strip-hint" open={open} onClick={() => setOpen(!open)}>
+          {hint}
+        </Fold>
+      )}
+      <div class="strip-rows" hidden={!fixed && !open}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -66,10 +113,21 @@ function StripRow({ j, q, note, act }: { j: Journey; q: Query; note: VNode; act:
     <div class="strip-row">
       <div class="txt" onClick={() => results.hooks.openDetail(j, q)}>
         <TimeRange from={j.depart} to={j.arrive} />
-        <span class="chips"><LegChips legs={j.legs.filter((l) => l.type === 'ride')} /></span>
+        <span class="chips">
+          <LegChips legs={j.legs.filter((l) => l.type === 'ride')} />
+        </span>
         {note}
       </div>
-      <button type="button" class="ghost" onClick={(e) => { e.stopPropagation(); results.hooks.startTrip(j, q); }}><Icon name="play" /> {act}</button>
+      <button
+        type="button"
+        class="ghost"
+        onClick={(e) => {
+          e.stopPropagation();
+          results.hooks.startTrip(j, q);
+        }}
+      >
+        <Icon name="play" /> {act}
+      </button>
     </div>
   );
 }
@@ -80,8 +138,16 @@ function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
   return (
     <Strip cls="hurry" hint={hurry.length === 1 ? t('hurryHint1') : t('hurryHint', { n: hurry.length })}>
       {hurry.slice(0, 4).map((j) => (
-        <StripRow j={j} q={q} act={t('startTrip')}
-          note={<span class="late">{t('hurryLate', { time: fmt(j.depart), n: Math.max(1, Math.round((nowSec - j.depart) / 60)) })}</span>} />
+        <StripRow
+          j={j}
+          q={q}
+          act={t('startTrip')}
+          note={
+            <span class="late">
+              {t('hurryLate', { time: fmt(j.depart), n: Math.max(1, Math.round((nowSec - j.depart) / 60)) })}
+            </span>
+          }
+        />
       ))}
     </Strip>
   );
@@ -91,11 +157,33 @@ function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
 function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored: boolean }) {
   const nowSec = clock.nowOn(q.day);
   return (
-    <Strip cls="gone" fixed={restored} hint={restored ? t('goneTitle') : gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length })}>
-      {gone.slice().sort((a, b) => b.depart - a.depart).slice(0, 4).map((j) => {   // the four most recent: the one the rider is on is among them
-        const left = nowSec - results.rideDep(j);   // a ride out of reach may not have left yet
-        return <StripRow j={j} q={q} act={t('aboard')} note={<span class="muted">{left > 0 ? t('leftAgo', { n: Math.max(1, Math.round(left / 60)) }) : t('leavesIn', { n: Math.max(0, Math.round(-left / 60)) })}</span>} />;
-      })}
+    <Strip
+      cls="gone"
+      fixed={restored}
+      hint={restored ? t('goneTitle') : gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length })}
+    >
+      {gone
+        .slice()
+        .sort((a, b) => b.depart - a.depart)
+        .slice(0, 4)
+        .map((j) => {
+          // the four most recent: the one the rider is on is among them
+          const left = nowSec - results.rideDep(j); // a ride out of reach may not have left yet
+          return (
+            <StripRow
+              j={j}
+              q={q}
+              act={t('aboard')}
+              note={
+                <span class="muted">
+                  {left > 0
+                    ? t('leftAgo', { n: Math.max(1, Math.round(left / 60)) })
+                    : t('leavesIn', { n: Math.max(0, Math.round(-left / 60)) })}
+                </span>
+              }
+            />
+          );
+        })}
     </Strip>
   );
 }
@@ -104,17 +192,61 @@ function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored:
  *  "nothing before 20:23" and a button that plans from then; with nothing more that day, "no more ways today" (on a
  *  Friday, that they resume after Shabbat) and a button for the next day the data has; a stop too far, the walk setting. */
 function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Query }) {
-  const days = search.days.value, next = days[days.indexOf(q.day) + 1];
+  const days = search.days.value,
+    next = days[days.indexOf(q.day) + 1];
   const friday = new Date(+q.day.slice(0, 4), +q.day.slice(4, 6) - 1, +q.day.slice(6, 8)).getDay() === 5;
   const noMore = !r.reason && r.nextAt == null;
   return (
     <>
-      <div class="empty">{r.reason ? t(r.reason) : r.nextAt != null ? t('nothingBefore', { time: fmt(r.nextAt) }) : t('noMoreToday') + (friday ? ' ' + t('afterShabbat') : '')}</div>
+      <div class="empty">
+        {r.reason
+          ? t(r.reason)
+          : r.nextAt != null
+            ? t('nothingBefore', { time: fmt(r.nextAt) })
+            : t('noMoreToday') + (friday ? ' ' + t('afterShabbat') : '')}
+      </div>
       <div class="results-foot">
-        {r.nextAt != null && <button type="button" class="ghost" onClick={() => { search.setAt(r.nextAt!); plan(); }}>{t('planFrom', { time: fmt(r.nextAt) })}</button>}
-        {noMore && next && <button type="button" class="ghost" onClick={() => { search.setDayAt(next, 5 * 3600); plan(); }}>{t('tomorrow')}</button>}
-        {r.reason && <button type="button" class="ghost" onClick={() => { search.setAt(search.atSeconds() + 3600); plan(); }}>{t('tryLater')}</button>}
-        {r.reason && (q.maxWalk || 0) < 30 && <button type="button" class="ghost" onClick={() => results.hooks.plan({ maxWalk: 30 })}>{t('tryMoreWalk')}</button>}
+        {r.nextAt != null && (
+          <button
+            type="button"
+            class="ghost"
+            onClick={() => {
+              search.setAt(r.nextAt!);
+              plan();
+            }}
+          >
+            {t('planFrom', { time: fmt(r.nextAt) })}
+          </button>
+        )}
+        {noMore && next && (
+          <button
+            type="button"
+            class="ghost"
+            onClick={() => {
+              search.setDayAt(next, 5 * 3600);
+              plan();
+            }}
+          >
+            {t('tomorrow')}
+          </button>
+        )}
+        {r.reason && (
+          <button
+            type="button"
+            class="ghost"
+            onClick={() => {
+              search.setAt(search.atSeconds() + 3600);
+              plan();
+            }}
+          >
+            {t('tryLater')}
+          </button>
+        )}
+        {r.reason && (q.maxWalk || 0) < 30 && (
+          <button type="button" class="ghost" onClick={() => results.hooks.plan({ maxWalk: 30 })}>
+            {t('tryMoreWalk')}
+          </button>
+        )}
       </div>
     </>
   );
@@ -122,8 +254,16 @@ function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Q
 
 export function Results() {
   void lang.value;
-  const st = results.status.value, r = results.result.value, q = results.query.value, at = results.resultsAt.value;
-  if (st !== 'idle') return <div id="results"><div class="empty">{t(st)}</div></div>;
+  const st = results.status.value,
+    r = results.result.value,
+    q = results.query.value,
+    at = results.resultsAt.value;
+  if (st !== 'idle')
+    return (
+      <div id="results">
+        <div class="empty">{t(st)}</div>
+      </div>
+    );
   if (!r || !q) return <div id="results" />;
   const { cards, hurry, gone, filteredOut } = results.list.value;
   const bikeOnly = r.bikeOnly;
@@ -133,22 +273,74 @@ export function Results() {
       {gone.length > 0 && <GoneStrip gone={gone} q={q} restored={!!at} />}
       {hurry.length > 0 && <HurryStrip hurry={hurry} q={q} />}
       {bikeOnly ? (
-        <div class="journey" onClick={() => results.hooks.openDetail({ depart: 0, arrive: bikeOnly.seconds, transfers: 0, legs: [{ type: 'access', mode: 'bike', seconds: bikeOnly.seconds, path: bikeOnly.path, to: { name: describePlace(q.to) } }] }, q, true)}>
-          <div class="top"><span class="times"><span class="chip bike"><Icon name="bike" /></span> {t('bikeOnly', { min: Math.round(bikeOnly.seconds / 60), km: (bikeOnly.metres / 1000).toFixed(1) })}</span></div>
+        <div
+          class="journey"
+          onClick={() =>
+            results.hooks.openDetail(
+              {
+                depart: 0,
+                arrive: bikeOnly.seconds,
+                transfers: 0,
+                legs: [
+                  {
+                    type: 'access',
+                    mode: 'bike',
+                    seconds: bikeOnly.seconds,
+                    path: bikeOnly.path,
+                    to: { name: describePlace(q.to) },
+                  },
+                ],
+              },
+              q,
+              true,
+            )
+          }
+        >
+          <div class="top">
+            <span class="times">
+              <span class="chip bike">
+                <Icon name="bike" />
+              </span>{' '}
+              {t('bikeOnly', { min: Math.round(bikeOnly.seconds / 60), km: (bikeOnly.metres / 1000).toFixed(1) })}
+            </span>
+          </div>
         </div>
-      ) : q.bike !== 'none' && r.streets && !q.from.stops && !q.to.stops ? <div class="muted">{t('noBikeOnly')}</div> : null}
-      {!r.journeys.length ? <NoWays r={r} q={q} /> : (
+      ) : q.bike !== 'none' && r.streets && !q.from.stops && !q.to.stops ? (
+        <div class="muted">{t('noBikeOnly')}</div>
+      ) : null}
+      {!r.journeys.length ? (
+        <NoWays r={r} q={q} />
+      ) : (
         <>
           <Filters />
           {filteredOut && <div class="empty">{t('filterNone')}</div>}
-          {cards.map((c) => <JourneyCard key={c.idx} card={c} />)}
+          {cards.map((c) => (
+            <JourneyCard key={c.idx} card={c} />
+          ))}
           <div class="results-foot">
-            <button type="button" class="ghost" onClick={() => { search.setAt(Math.max(0, search.atSeconds() - 3600)); plan(); }}>{t('earlier')}</button>
-            <button type="button" class="ghost" onClick={() => { search.setAt(search.atSeconds() + 3600); plan(); }}>{t('later')}</button>
+            <button
+              type="button"
+              class="ghost"
+              onClick={() => {
+                search.setAt(Math.max(0, search.atSeconds() - 3600));
+                plan();
+              }}
+            >
+              {t('earlier')}
+            </button>
+            <button
+              type="button"
+              class="ghost"
+              onClick={() => {
+                search.setAt(search.atSeconds() + 3600);
+                plan();
+              }}
+            >
+              {t('later')}
+            </button>
           </div>
         </>
       )}
     </div>
   );
 }
-

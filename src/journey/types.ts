@@ -7,16 +7,29 @@ export type Leg = {
   type: 'ride' | 'walk' | 'transfer' | 'access' | 'egress' | string;
   mode?: 'walk' | 'bike' | string;
   seconds: number;
-  depart?: number; arrive?: number;
-  line?: string; headsign?: string; agency?: string; route?: number | string; routeType?: number;
-  from?: { name: string; [k: string]: unknown }; to?: { name: string; [k: string]: unknown };
+  depart?: number;
+  arrive?: number;
+  line?: string;
+  headsign?: string;
+  agency?: string;
+  route?: number | string;
+  routeType?: number;
+  from?: { name: string; [k: string]: unknown };
+  to?: { name: string; [k: string]: unknown };
   path?: LatLon[];
-  pathKind?: 'shape' | 'stops' | string;   // a ride: along its course, or its stops joined straight (drawn dashed); a walk: 'street' or 'straight'
+  pathKind?: 'shape' | 'stops' | string; // a ride: along its course, or its stops joined straight (drawn dashed); a walk: 'street' or 'straight'
   live?: LiveInfo | null;
   // a ride's place in the timetable: its trip and pattern, where it boards and alights, the line's id for live data
-  trip?: number; pattern?: number | null; boardPos?: number; alightPos?: number; routeId?: number | string | null; firstDep?: number;
-  estimated?: boolean;   // a line with estimated times (the weekend lines no feed carries, pipeline/weekend.py)
-  stops?: number; stopsAlong?: { stop: number; name: string; lat: number; lon: number; arr: number }[]; schedDepart?: number;
+  trip?: number;
+  pattern?: number | null;
+  boardPos?: number;
+  alightPos?: number;
+  routeId?: number | string | null;
+  firstDep?: number;
+  estimated?: boolean; // a line with estimated times (the weekend lines no feed carries, pipeline/weekend.py)
+  stops?: number;
+  stopsAlong?: { stop: number; name: string; lat: number; lon: number; arr: number }[];
+  schedDepart?: number;
   [k: string]: unknown;
 };
 export type Journey = { depart: number; arrive: number; transfers: number; legs: Leg[]; [k: string]: unknown };
@@ -25,16 +38,24 @@ export type PlanResult = {
   journeys: Journey[];
   groups?: Group[];
   reason?: string;
-  nextAt?: number | null;   // no journey in the window: when the next way leaves, or null for none more on that day
+  nextAt?: number | null; // no journey in the window: when the next way leaves, or null for none more on that day
   streets?: boolean;
   bikeOnly?: { seconds: number; metres: number; path: LatLon[] } | null;
   [k: string]: unknown;
 };
 /** A plan as it was asked: the places, the service day, the options, and what live data went in. */
 export type Query = {
-  from: Place; to: Place; day: string; at: string;
-  bike: 'none' | 'park' | 'along' | string; folding: boolean; arriveBy: boolean; isNow?: boolean; maxWalk?: number;
-  liveAsOf?: number | null; liveTried?: boolean;
+  from: Place;
+  to: Place;
+  day: string;
+  at: string;
+  bike: 'none' | 'park' | 'along' | string;
+  folding: boolean;
+  arriveBy: boolean;
+  isNow?: boolean;
+  maxWalk?: number;
+  liveAsOf?: number | null;
+  liveTried?: boolean;
 };
 /** A trip saved with its star: the places and the bicycle choice, planned again from now when chosen. */
 export type SavedTrip = { from: Place; to: Place; bike: string; folding?: boolean };

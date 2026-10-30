@@ -15,23 +15,58 @@ function canon(word) {
 }
 const words = (s) => norm(s).split(' ').filter(Boolean).map(canon).filter(Boolean);
 /** Everyday names for cities the feed spells in full. */
-const CITY_ALIASES = { 'תל אביב': 'תל אביב יפו', 'ת א': 'תל אביב יפו', 'תא': 'תל אביב יפו', 'ב ש': 'באר שבע', 'בש': 'באר שבע',
-  'ראשל צ': 'ראשון לציון', 'ראשלצ': 'ראשון לציון', 'פ ת': 'פתח תקווה', 'פת': 'פתח תקווה', 'כ ס': 'כפר סבא', 'ר ג': 'רמת גן', 'רג': 'רמת גן',
-  'י ם': 'ירושלים', 'ים': 'ירושלים', 'מודיעין': 'מודיעין מכבים רעות', 'נוף הגליל': 'נוף הגליל', 'נצרת עילית': 'נוף הגליל' };
-const IMPORTANT = new Set(['amenity=hospital', 'healthcare=hospital', 'amenity=university', 'amenity=college', 'shop=mall', 'railway=station',
-  'amenity=bus_station', 'aeroway=aerodrome', 'aeroway=terminal', 'tourism=museum', 'leisure=stadium', 'amenity=townhall']);
+const CITY_ALIASES = {
+  'תל אביב': 'תל אביב יפו',
+  'ת א': 'תל אביב יפו',
+  תא: 'תל אביב יפו',
+  'ב ש': 'באר שבע',
+  בש: 'באר שבע',
+  'ראשל צ': 'ראשון לציון',
+  ראשלצ: 'ראשון לציון',
+  'פ ת': 'פתח תקווה',
+  פת: 'פתח תקווה',
+  'כ ס': 'כפר סבא',
+  'ר ג': 'רמת גן',
+  רג: 'רמת גן',
+  'י ם': 'ירושלים',
+  ים: 'ירושלים',
+  מודיעין: 'מודיעין מכבים רעות',
+  'נוף הגליל': 'נוף הגליל',
+  'נצרת עילית': 'נוף הגליל',
+};
+const IMPORTANT = new Set([
+  'amenity=hospital',
+  'healthcare=hospital',
+  'amenity=university',
+  'amenity=college',
+  'shop=mall',
+  'railway=station',
+  'amenity=bus_station',
+  'aeroway=aerodrome',
+  'aeroway=terminal',
+  'tourism=museum',
+  'leisure=stadium',
+  'amenity=townhall',
+]);
 /** Up to +3 for places within a few km of `near`, fading out by 30 km. */
 function proximity(near, lat, lon) {
   if (!near) return 0;
   const km = haversine(near.lat, near.lon, lat, lon) / 1000;
-  return km <= 3 ? 3 - km * 0.05 : km >= 30 ? 0 : 2.85 * (30 - km) / 27;   // nearer first, even among places close by
+  return km <= 3 ? 3 - km * 0.05 : km >= 30 ? 0 : (2.85 * (30 - km)) / 27; // nearer first, even among places close by
 }
 
 export function parsePlaces(ab) {
-  const pl = readContainer(ab), header = pl.header;
-  Object.assign(pl, { streets: header.streets, cities: header.cities, pois: header.pois, addrSuffix: header.addrSuffix || {} });
+  const pl = readContainer(ab),
+    header = pl.header;
+  Object.assign(pl, {
+    streets: header.streets,
+    cities: header.cities,
+    pois: header.pois,
+    addrSuffix: header.addrSuffix || {},
+  });
   // address ranges per street (addresses are sorted by street, then number)
-  const S = pl.streets.length, A = pl.addrStreet.length;
+  const S = pl.streets.length,
+    A = pl.addrStreet.length;
   const off = new Int32Array(S + 1);
   for (let i = 0; i < A; i++) off[pl.addrStreet[i] + 1]++;
   for (let s = 0; s < S; s++) off[s + 1] += off[s];
@@ -48,31 +83,101 @@ export function parsePlaces(ab) {
 
 /** Landmarks: the kinds the search ranks above streets (pipeline/places.py POI_TAGS). */
 const LANDMARK_HE = {
-  'amenity=hospital': 'בית חולים', 'healthcare=hospital': 'בית חולים', 'amenity=clinic': 'מרפאה', 'amenity=university': 'אוניברסיטה',
-  'amenity=college': 'מכללה', 'amenity=library': 'ספרייה', 'amenity=townhall': 'עירייה', 'amenity=cinema': 'קולנוע',
-  'amenity=theatre': 'תיאטרון', 'amenity=courthouse': 'בית משפט', 'amenity=police': 'משטרה', 'amenity=community_centre': 'מתנ"ס',
-  'amenity=marketplace': 'שוק', 'amenity=bus_station': 'תחנה מרכזית', 'amenity=ferry_terminal': 'נמל', 'amenity=conference_centre': 'מרכז כנסים',
-  'shop=mall': 'קניון', 'shop=department_store': 'חנות כלבו', 'shop=supermarket': 'סופרמרקט', 'leisure=park': 'פארק', 'leisure=stadium': 'אצטדיון',
-  'leisure=sports_centre': 'מרכז ספורט', 'leisure=beach_resort': 'חוף', 'leisure=nature_reserve': 'שמורת טבע', 'leisure=water_park': 'פארק מים',
-  'tourism=attraction': 'אתר', 'tourism=museum': 'מוזיאון', 'tourism=zoo': 'גן חיות', 'tourism=theme_park': 'פארק שעשועים', 'tourism=viewpoint': 'תצפית',
-  'tourism=aquarium': 'אקווריום', 'railway=station': 'תחנת רכבת', 'public_transport=station': 'תחנה', 'aeroway=aerodrome': 'שדה תעופה',
-  'aeroway=terminal': 'טרמינל', 'natural=beach': 'חוף', 'historic=archaeological_site': 'אתר עתיקות', 'historic=castle': 'מבצר',
-  'historic=monument': 'אנדרטה', 'office=government': 'משרד ממשלתי',
+  'amenity=hospital': 'בית חולים',
+  'healthcare=hospital': 'בית חולים',
+  'amenity=clinic': 'מרפאה',
+  'amenity=university': 'אוניברסיטה',
+  'amenity=college': 'מכללה',
+  'amenity=library': 'ספרייה',
+  'amenity=townhall': 'עירייה',
+  'amenity=cinema': 'קולנוע',
+  'amenity=theatre': 'תיאטרון',
+  'amenity=courthouse': 'בית משפט',
+  'amenity=police': 'משטרה',
+  'amenity=community_centre': 'מתנ"ס',
+  'amenity=marketplace': 'שוק',
+  'amenity=bus_station': 'תחנה מרכזית',
+  'amenity=ferry_terminal': 'נמל',
+  'amenity=conference_centre': 'מרכז כנסים',
+  'shop=mall': 'קניון',
+  'shop=department_store': 'חנות כלבו',
+  'shop=supermarket': 'סופרמרקט',
+  'leisure=park': 'פארק',
+  'leisure=stadium': 'אצטדיון',
+  'leisure=sports_centre': 'מרכז ספורט',
+  'leisure=beach_resort': 'חוף',
+  'leisure=nature_reserve': 'שמורת טבע',
+  'leisure=water_park': 'פארק מים',
+  'tourism=attraction': 'אתר',
+  'tourism=museum': 'מוזיאון',
+  'tourism=zoo': 'גן חיות',
+  'tourism=theme_park': 'פארק שעשועים',
+  'tourism=viewpoint': 'תצפית',
+  'tourism=aquarium': 'אקווריום',
+  'railway=station': 'תחנת רכבת',
+  'public_transport=station': 'תחנה',
+  'aeroway=aerodrome': 'שדה תעופה',
+  'aeroway=terminal': 'טרמינל',
+  'natural=beach': 'חוף',
+  'historic=archaeological_site': 'אתר עתיקות',
+  'historic=castle': 'מבצר',
+  'historic=monument': 'אנדרטה',
+  'office=government': 'משרד ממשלתי',
 };
 /** Everyday places (pipeline/places.py EVERYDAY_TAGS), ranked level with streets; shops and offices not named here get a general label. */
 const EVERYDAY_HE = {
-  'amenity=restaurant': 'מסעדה', 'amenity=cafe': 'בית קפה', 'amenity=fast_food': 'מזון מהיר', 'amenity=bar': 'בר', 'amenity=pub': 'פאב',
-  'amenity=ice_cream': 'גלידריה', 'amenity=food_court': 'מתחם אוכל', 'amenity=nightclub': 'מועדון', 'amenity=pharmacy': 'בית מרקחת',
-  'amenity=bank': 'בנק', 'amenity=post_office': 'דואר', 'amenity=school': 'בית ספר', 'amenity=kindergarten': 'גן ילדים',
-  'amenity=place_of_worship': 'בית תפילה', 'amenity=arts_centre': 'מרכז אמנויות', 'amenity=events_venue': 'אולם אירועים',
-  'amenity=dentist': 'מרפאת שיניים', 'amenity=doctors': 'רופא', 'amenity=veterinary': 'וטרינר', 'amenity=bicycle_rental': 'השכרת אופניים',
-  'amenity=car_rental': 'השכרת רכב', 'tourism=hotel': 'מלון', 'tourism=hostel': 'אכסניה', 'tourism=guest_house': 'צימר',
-  'tourism=gallery': 'גלריה', 'leisure=fitness_centre': 'חדר כושר', 'leisure=swimming_pool': 'בריכה', 'leisure=garden': 'גן',
-  'shop=bakery': 'מאפייה', 'shop=convenience': 'מכולת', 'shop=clothes': 'חנות בגדים', 'shop=books': 'חנות ספרים', 'shop=florist': 'חנות פרחים',
-  'shop=bicycle': 'חנות אופניים', 'shop=hairdresser': 'מספרה', 'shop=greengrocer': 'ירקן', 'shop=butcher': 'אטליז', 'shop=optician': 'אופטיקה',
-  'shop=electronics': 'אלקטרוניקה', 'shop=mobile_phone': 'טלפונים', 'shop=furniture': 'רהיטים', 'shop=hardware': 'כלי עבודה',
-  'shop=doityourself': 'עשה זאת בעצמך', 'shop=kiosk': 'קיוסק', 'shop=alcohol': 'משקאות', 'shop=beauty': 'קוסמטיקה', 'shop=jewelry': 'תכשיטים',
-  'shop=shoes': 'נעליים', 'shop=toys': 'צעצועים', 'shop=pet': 'חיות מחמד', 'shop=deli': 'מעדנייה', 'shop=pastry': 'קונדיטוריה',
+  'amenity=restaurant': 'מסעדה',
+  'amenity=cafe': 'בית קפה',
+  'amenity=fast_food': 'מזון מהיר',
+  'amenity=bar': 'בר',
+  'amenity=pub': 'פאב',
+  'amenity=ice_cream': 'גלידריה',
+  'amenity=food_court': 'מתחם אוכל',
+  'amenity=nightclub': 'מועדון',
+  'amenity=pharmacy': 'בית מרקחת',
+  'amenity=bank': 'בנק',
+  'amenity=post_office': 'דואר',
+  'amenity=school': 'בית ספר',
+  'amenity=kindergarten': 'גן ילדים',
+  'amenity=place_of_worship': 'בית תפילה',
+  'amenity=arts_centre': 'מרכז אמנויות',
+  'amenity=events_venue': 'אולם אירועים',
+  'amenity=dentist': 'מרפאת שיניים',
+  'amenity=doctors': 'רופא',
+  'amenity=veterinary': 'וטרינר',
+  'amenity=bicycle_rental': 'השכרת אופניים',
+  'amenity=car_rental': 'השכרת רכב',
+  'tourism=hotel': 'מלון',
+  'tourism=hostel': 'אכסניה',
+  'tourism=guest_house': 'צימר',
+  'tourism=gallery': 'גלריה',
+  'leisure=fitness_centre': 'חדר כושר',
+  'leisure=swimming_pool': 'בריכה',
+  'leisure=garden': 'גן',
+  'shop=bakery': 'מאפייה',
+  'shop=convenience': 'מכולת',
+  'shop=clothes': 'חנות בגדים',
+  'shop=books': 'חנות ספרים',
+  'shop=florist': 'חנות פרחים',
+  'shop=bicycle': 'חנות אופניים',
+  'shop=hairdresser': 'מספרה',
+  'shop=greengrocer': 'ירקן',
+  'shop=butcher': 'אטליז',
+  'shop=optician': 'אופטיקה',
+  'shop=electronics': 'אלקטרוניקה',
+  'shop=mobile_phone': 'טלפונים',
+  'shop=furniture': 'רהיטים',
+  'shop=hardware': 'כלי עבודה',
+  'shop=doityourself': 'עשה זאת בעצמך',
+  'shop=kiosk': 'קיוסק',
+  'shop=alcohol': 'משקאות',
+  'shop=beauty': 'קוסמטיקה',
+  'shop=jewelry': 'תכשיטים',
+  'shop=shoes': 'נעליים',
+  'shop=toys': 'צעצועים',
+  'shop=pet': 'חיות מחמד',
+  'shop=deli': 'מעדנייה',
+  'shop=pastry': 'קונדיטוריה',
 };
 const KIND_HE = { ...LANDMARK_HE, ...EVERYDAY_HE };
 const LANDMARK = new Set(Object.keys(LANDMARK_HE));
@@ -82,18 +187,67 @@ export function kindLabel(kind, lang = 'he') {
   return KIND_HE[kind] || (kind.startsWith('shop=') ? 'חנות' : kind.startsWith('office=') ? 'משרד' : 'מקום');
 }
 
-
 // ---------------------------------------------------------------- names typed in Latin letters
 // Streets and places carry OpenStreetMap's English name beside the Hebrew; cities the feed's. Where there is
 // none, or the rider spells it their own way (Havradim, HaVradim, Ha-Vradim), both scripts reduce to a
 // consonant skeleton: vowels dropped, letters that sound alike merged, doubled letters collapsed.
-const LATIN_STOP = new Set(['street', 'st', 'road', 'rd', 'boulevard', 'blvd', 'avenue', 'ave', 'alley', 'lane', 'way', 'square', 'sq',
-  'rehov', 'rechov', 'sderot', 'sd', 'derech', 'derekh', 'kikar', 'simtat', 'the']);
+const LATIN_STOP = new Set([
+  'street',
+  'st',
+  'road',
+  'rd',
+  'boulevard',
+  'blvd',
+  'avenue',
+  'ave',
+  'alley',
+  'lane',
+  'way',
+  'square',
+  'sq',
+  'rehov',
+  'rechov',
+  'sderot',
+  'sd',
+  'derech',
+  'derekh',
+  'kikar',
+  'simtat',
+  'the',
+]);
 const isLatin = (w) => /[a-z]/.test(w);
 /** The words of an English name, lower case, without the street-type words. */
-function wordsEn(s) { return norm(s).split(' ').filter((w) => w && !LATIN_STOP.has(w)); }
-const HEB_SK = { 'ב': 'v', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'V', 'ז': 'z', 'ח': 'X', 'ט': 't', 'כ': 'K', 'ך': 'K', 'ל': 'l', 'מ': 'm', 'ם': 'm',
-  'נ': 'n', 'ן': 'n', 'ס': 's', 'פ': 'p', 'ף': 'p', 'צ': 'z', 'ץ': 'z', 'ק': 'k', 'ר': 'r', 'ש': 's', 'ת': 't' };   // א ע י: dropped
+function wordsEn(s) {
+  return norm(s)
+    .split(' ')
+    .filter((w) => w && !LATIN_STOP.has(w));
+}
+const HEB_SK = {
+  ב: 'v',
+  ג: 'g',
+  ד: 'd',
+  ה: 'h',
+  ו: 'V',
+  ז: 'z',
+  ח: 'X',
+  ט: 't',
+  כ: 'K',
+  ך: 'K',
+  ל: 'l',
+  מ: 'm',
+  ם: 'm',
+  נ: 'n',
+  ן: 'n',
+  ס: 's',
+  פ: 'p',
+  ף: 'p',
+  צ: 'z',
+  ץ: 'z',
+  ק: 'k',
+  ר: 'r',
+  ש: 's',
+  ת: 't',
+}; // א ע י: dropped
 const squash = (s) => s.replace(/(.)\1+/g, '$1');
 /** 'hVrdm' -> ['hvrdm', 'hrdm'] (V: ו, a consonant or a vowel); K: כ, written k or kh/ch (x); X: ח, written h or kh/ch. */
 function expand(s) {
@@ -110,25 +264,37 @@ function skelHe(word) {
   const chars = [...word];
   let s = '';
   chars.forEach((c, i) => {
-    if (c === 'ה' && i === chars.length - 1 && chars.length > 1) return;   // a final ה is a vowel
+    if (c === 'ה' && i === chars.length - 1 && chars.length > 1) return; // a final ה is a vowel
     s += HEB_SK[c] ?? (/\d/.test(c) ? c : '');
   });
   return expand(s);
 }
 function skelLatin(word) {
   const w = word.toLowerCase();
-  let s = w.replace(/sch/g, 's').replace(/sh/g, 's').replace(/tch/g, 'z').replace(/ch|kh/g, 'x').replace(/ts|tz/g, 'z').replace(/th/g, 't')
-    .replace(/ph/g, 'p').replace(/ck/g, 'k').replace(/[qc]/g, 'k').replace(/[bw]/g, 'v').replace(/f/g, 'p').replace(/j/g, 'J');   // x: a guttural (ח or כ)
+  let s = w
+    .replace(/sch/g, 's')
+    .replace(/sh/g, 's')
+    .replace(/tch/g, 'z')
+    .replace(/ch|kh/g, 'x')
+    .replace(/ts|tz/g, 'z')
+    .replace(/th/g, 't')
+    .replace(/ph/g, 'p')
+    .replace(/ck/g, 'k')
+    .replace(/[qc]/g, 'k')
+    .replace(/[bw]/g, 'v')
+    .replace(/f/g, 'p')
+    .replace(/j/g, 'J'); // x: a guttural (ח or כ)
   const bases = [];
-  const vowelH = /[aeiouy]h$/.test(w);   // "Tikvah": a bare final h after a vowel is a vowel (ה) or a consonant (ח); "Petach" is ח
+  const vowelH = /[aeiouy]h$/.test(w); // "Tikvah": a bare final h after a vowel is a vowel (ה) or a consonant (ח); "Petach" is ח
   for (const b of vowelH ? [s, s.slice(0, -1)] : [s]) {
-    const c = b.replace(/[aeiouy]/g, '').replace(/[^a-z0-9J]/g, '');   // x stays: the guttural
-    if (c.includes('J')) bases.push(c.replace(/J/g, 'z'), c.replace(/J/g, 'g')); else bases.push(c);   // ז' and ג' are both j
+    const c = b.replace(/[aeiouy]/g, '').replace(/[^a-z0-9J]/g, ''); // x stays: the guttural
+    if (c.includes('J')) bases.push(c.replace(/J/g, 'z'), c.replace(/J/g, 'g'));
+    else bases.push(c); // ז' and ג' are both j
   }
   const out = [];
   for (const b of bases) {
     out.push(squash(b));
-    if (w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1)));   // "HaVradim": the article, which Hebrew matching drops
+    if (w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1))); // "HaVradim": the article, which Hebrew matching drops
   }
   return [...new Set(out)].filter(Boolean);
 }
@@ -153,10 +319,12 @@ function wordScore(q, w, i, firstWordNames) {
 }
 function skelScore(qv, wv, i, firstWordNames) {
   let best = 0;
-  for (const a of qv) for (const b of wv) {
-    if (a === b) best = Math.max(best, a.length < 3 ? 1.5 : firstWordNames && i === 0 ? 4.5 : 2.9);   // two consonants say little ("hs": Hish, Yehoash); only a street's first word counts as exact
-    else if (a.length >= 2 && b.startsWith(a)) best = Math.max(best, i === 0 ? 2.2 : 1.8);
-  }
+  for (const a of qv)
+    for (const b of wv) {
+      if (a === b)
+        best = Math.max(best, a.length < 3 ? 1.5 : firstWordNames && i === 0 ? 4.5 : 2.9); // two consonants say little ("hs": Hish, Yehoash); only a street's first word counts as exact
+      else if (a.length >= 2 && b.startsWith(a)) best = Math.max(best, i === 0 ? 2.2 : 1.8);
+    }
   return best;
 }
 /**
@@ -166,11 +334,14 @@ function skelScore(qv, wv, i, firstWordNames) {
  * Hebrew one (a little lower, so a spelled-out English name wins over a sound-alike).
  */
 function matchEntry(qs, he, en, sk, firstWordNames = true) {
-  let score = 0, exact = 0, latin = false;
+  let score = 0,
+    exact = 0,
+    latin = false;
   for (const q of qs) {
     let best = 0;
-    if (!q.latin) { for (let i = 0; i < he.length; i++) best = Math.max(best, wordScore(q.w, he[i], i, firstWordNames)); }
-    else {
+    if (!q.latin) {
+      for (let i = 0; i < he.length; i++) best = Math.max(best, wordScore(q.w, he[i], i, firstWordNames));
+    } else {
       latin = true;
       if (en) for (let i = 0; i < en.length; i++) best = Math.max(best, wordScore(q.w, en[i], i, firstWordNames));
       if (sk) for (let i = 0; i < sk.length; i++) best = Math.max(best, skelScore(q.sk, sk[i], i, firstWordNames));
@@ -184,28 +355,40 @@ function matchEntry(qs, he, en, sk, firstWordNames = true) {
   return score - n * 0.05;
 }
 const sameSkel = (a, b) => a.length === b.length && a.every((qa, i) => qa.some((x) => b[i].includes(x)));
-const prefixSkel = (a, b) => a.length <= b.length && a.every((qa, i) => qa.some((x) => b[i].includes(x)));   // "tel aviv" for תל אביב יפו
+const prefixSkel = (a, b) => a.length <= b.length && a.every((qa, i) => qa.some((x) => b[i].includes(x))); // "tel aviv" for תל אביב יפו
 
 /**
  * Parse free text: words, an optional house number, an optional city (after a comma, or trailing words naming a city).
  */
 function parseQuery(pl, text) {
-  const parts = String(text || '').split(',').map(norm).filter(Boolean);   // the city after a comma (norm makes a comma a space)
-  let main = parts[0] || '', cityText = parts.slice(1).join(' ');
+  const parts = String(text || '')
+    .split(',')
+    .map(norm)
+    .filter(Boolean); // the city after a comma (norm makes a comma a space)
+  let main = parts[0] || '',
+    cityText = parts.slice(1).join(' ');
   const toks = main.split(' ').filter(Boolean);
-  let number = null, suffix = '';
+  let number = null,
+    suffix = '';
   const rest = [];
   for (const t of toks) {
     const m = t.match(/^(\d{1,5})([א-תa-z]?)$/);
-    if (m && number === null) { number = Number(m[1]); suffix = m[2]; } else rest.push(t);
+    if (m && number === null) {
+      number = Number(m[1]);
+      suffix = m[2];
+    } else rest.push(t);
   }
   if (isLatin(main) || isLatin(cityText)) ensureLatin(pl);
   const findCity = (text) => {
     const t = CITY_ALIASES[text] || text;
     let ci = pl.cityNorm.indexOf(t);
     if (ci < 0) ci = pl.cityEnNorm.indexOf(t);
-    if (ci < 0 && t.length >= 3) ci = pl.cityNorm.findIndex((c, i) => c.startsWith(t + ' ') || pl.cityEnNorm[i].startsWith(t + ' '));
-    if (ci < 0 && isLatin(t)) { const sk = t.split(' ').map(skelLatin); ci = pl.citySk.findIndex((cs) => prefixSkel(sk, cs)); }   // Givatayim, Petach Tikvah
+    if (ci < 0 && t.length >= 3)
+      ci = pl.cityNorm.findIndex((c, i) => c.startsWith(t + ' ') || pl.cityEnNorm[i].startsWith(t + ' '));
+    if (ci < 0 && isLatin(t)) {
+      const sk = t.split(' ').map(skelLatin);
+      ci = pl.citySk.findIndex((cs) => prefixSkel(sk, cs));
+    } // Givatayim, Petach Tikvah
     return ci;
   };
   let cityIdx = -1;
@@ -218,11 +401,16 @@ function parseQuery(pl, text) {
   if (!cityText && rest.length >= 2) {
     for (let k = Math.min(3, rest.length - 1); k >= 1; k--) {
       const ci = findCity(rest.slice(-k).join(' '));
-      if (ci >= 0) { cityIdx = ci; rest.splice(-k, k); break; }
+      if (ci >= 0) {
+        cityIdx = ci;
+        rest.splice(-k, k);
+        break;
+      }
     }
   } else if (cityText) {
     cityIdx = findCity(cityText);
-    if (cityIdx < 0) cityIdx = pl.cityNorm.findIndex((c, i) => c.startsWith(cityText) || pl.cityEnNorm[i].startsWith(cityText));
+    if (cityIdx < 0)
+      cityIdx = pl.cityNorm.findIndex((c, i) => c.startsWith(cityText) || pl.cityEnNorm[i].startsWith(cityText));
   }
   return { words: rest.map(canon).filter(Boolean), number, suffix, cityIdx, cityText };
 }
@@ -234,28 +422,57 @@ const cityOf = (pl, he, lang) => (lang === 'en' && he && pl.cityEnByHe.get(he)) 
 
 /** What is at (lat, lon): the nearest house number within 120 m, else a notable place within 150 m, else the nearest street within 400 m. */
 export function reverseGeocode(pl, lat, lon, lang = 'he') {
-  let best = null, bd = 120;
+  let best = null,
+    bd = 120;
   const { kx, ky } = scaleAt(lat);
   for (let i = 0; i < pl.addrLat.length; i++) {
     const d = Math.hypot((pl.addrLon[i] - lon) * kx, (pl.addrLat[i] - lat) * ky);
-    if (d < bd) { bd = d; best = i; }
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
   }
   if (best !== null) {
     const s = pl.addrStreet[best];
-    return { kind: 'address', name: `${streetName(pl, s, lang)} ${pl.addrNumber[best]}${pl.addrSuffix[best] || ''}`, city: cityOf(pl, pl.streets[s][1], lang), distance: Math.round(bd) };
+    return {
+      kind: 'address',
+      name: `${streetName(pl, s, lang)} ${pl.addrNumber[best]}${pl.addrSuffix[best] || ''}`,
+      city: cityOf(pl, pl.streets[s][1], lang),
+      distance: Math.round(bd),
+    };
   }
-  let bp = null; bd = 150;
+  let bp = null;
+  bd = 150;
   for (let p = 0; p < pl.pois.length; p++) {
     const d = haversine(lat, lon, pl.pois[p][3], pl.pois[p][4]);
-    if (d < bd) { bd = d; bp = p; }
+    if (d < bd) {
+      bd = d;
+      bp = p;
+    }
   }
-  if (bp !== null) return { kind: 'poi', name: poiName(pl, bp, lang), city: cityOf(pl, pl.pois[bp][2], lang), distance: Math.round(bd) };
-  let bs = null; bd = 400;
+  if (bp !== null)
+    return {
+      kind: 'poi',
+      name: poiName(pl, bp, lang),
+      city: cityOf(pl, pl.pois[bp][2], lang),
+      distance: Math.round(bd),
+    };
+  let bs = null;
+  bd = 400;
   for (let s = 0; s < pl.streets.length; s++) {
     const d = haversine(lat, lon, pl.streets[s][2], pl.streets[s][3]);
-    if (d < bd) { bd = d; bs = s; }
+    if (d < bd) {
+      bd = d;
+      bs = s;
+    }
   }
-  if (bs !== null) return { kind: 'street', name: streetName(pl, bs, lang), city: cityOf(pl, pl.streets[bs][1], lang), distance: Math.round(bd) };
+  if (bs !== null)
+    return {
+      kind: 'street',
+      name: streetName(pl, bs, lang),
+      city: cityOf(pl, pl.streets[bs][1], lang),
+      distance: Math.round(bd),
+    };
   return null;
 }
 
@@ -268,23 +485,38 @@ export function reverseGeocode(pl, lat, lon, lang = 'he') {
 export function placeAt(pl, lat, lon, lang, name) {
   const at = (a, b) => Math.abs(a - lat) < 2e-6 && Math.abs(b - lon) < 2e-6;
   const withCity = (n, city) => (city ? `${n}, ${city}` : n);
-  const both = (f) => { const he = f('he'), en = f('en'); return he === name || en === name ? (lang === 'en' ? en : he) : null; };
+  const both = (f) => {
+    const he = f('he'),
+      en = f('en');
+    return he === name || en === name ? (lang === 'en' ? en : he) : null;
+  };
   let hit = null;
   for (let i = 0; i < pl.addrLat.length && !hit; i++) {
     if (!at(pl.addrLat[i], pl.addrLon[i])) continue;
     const st = pl.addrStreet[i];
-    hit = both((L) => withCity(`${streetName(pl, st, L)} ${pl.addrNumber[i]}${pl.addrSuffix[i] || ''}`, cityOf(pl, pl.streets[st][1], L)));
+    hit = both((L) =>
+      withCity(
+        `${streetName(pl, st, L)} ${pl.addrNumber[i]}${pl.addrSuffix[i] || ''}`,
+        cityOf(pl, pl.streets[st][1], L),
+      ),
+    );
     // a number the map lacks was placed at the street's nearest one: same street and city, the number as typed
     for (const L of ['he', 'en']) {
       if (hit) break;
-      const head = streetName(pl, st, L) + ' ', city = cityOf(pl, pl.streets[st][1], L), tail = city ? ', ' + city : '';
+      const head = streetName(pl, st, L) + ' ',
+        city = cityOf(pl, pl.streets[st][1], L),
+        tail = city ? ', ' + city : '';
       if (!name.startsWith(head) || !name.endsWith(tail)) continue;
       const num = name.slice(head.length, name.length - tail.length);
-      if (/^\d+\S{0,3}$/.test(num)) hit = withCity(`${streetName(pl, st, lang)} ${num}`, cityOf(pl, pl.streets[st][1], lang));
+      if (/^\d+\S{0,3}$/.test(num))
+        hit = withCity(`${streetName(pl, st, lang)} ${num}`, cityOf(pl, pl.streets[st][1], lang));
     }
   }
-  for (let p = 0; p < pl.pois.length && !hit; p++) if (at(pl.pois[p][3], pl.pois[p][4])) hit = both((L) => withCity(poiName(pl, p, L), cityOf(pl, pl.pois[p][2], L)));
-  for (let st = 0; st < pl.streets.length && !hit; st++) if (at(pl.streets[st][2], pl.streets[st][3])) hit = both((L) => withCity(streetName(pl, st, L), cityOf(pl, pl.streets[st][1], L)));
+  for (let p = 0; p < pl.pois.length && !hit; p++)
+    if (at(pl.pois[p][3], pl.pois[p][4])) hit = both((L) => withCity(poiName(pl, p, L), cityOf(pl, pl.pois[p][2], L)));
+  for (let st = 0; st < pl.streets.length && !hit; st++)
+    if (at(pl.streets[st][2], pl.streets[st][3]))
+      hit = both((L) => withCity(streetName(pl, st, L), cityOf(pl, pl.streets[st][1], L)));
   for (const c of pl.cities) if (!hit && at(c[1], c[2])) hit = both((L) => (L === 'en' && c[3]) || c[0]);
   return hit;
 }
@@ -293,13 +525,16 @@ export function placeAt(pl, lat, lon, lang, name) {
 export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
   const q = parseQuery(pl, text);
   const out = [];
-  const cityName = q.cityIdx >= 0 ? pl.cityNorm[q.cityIdx] : (q.cityText || '');
+  const cityName = q.cityIdx >= 0 ? pl.cityNorm[q.cityIdx] : q.cityText || '';
   const qs = queryWords(q.words);
   const latin = qs.some((w) => w.latin);
   if (latin) ensureLatin(pl);
 
-  const cityRow = (i, score) => { const c = pl.cities[i]; return { kind: 'city', name: (lang === 'en' && c[3]) || c[0], city: '', lat: c[1], lon: c[2], score }; };
-  if (!q.words.length && q.cityIdx >= 0) return [cityRow(q.cityIdx, 15)];   // the whole text named a city
+  const cityRow = (i, score) => {
+    const c = pl.cities[i];
+    return { kind: 'city', name: (lang === 'en' && c[3]) || c[0], city: '', lat: c[1], lon: c[2], score };
+  };
+  if (!q.words.length && q.cityIdx >= 0) return [cityRow(q.cityIdx, 15)]; // the whole text named a city
   // a city by itself
   if (q.words.length && q.number === null) {
     const whole = q.words.join(' ');
@@ -308,9 +543,12 @@ export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
       const cw = latin ? pl.cityEnWords[i].join(' ') : words(c[0]).join(' ');
       const alias = CITY_ALIASES[whole] === norm(c[0]);
       if (cw === whole || alias) out.push(cityRow(i, 15));
-      else if (cw && whole.length >= 3 && cw.startsWith(whole + ' ')) out.push(cityRow(i, 14 + proximity(near, c[1], c[2]) / 3));
-      else if (wsk && sameSkel(wsk, pl.citySk[i])) out.push(cityRow(i, 7 + proximity(near, c[1], c[2]) / 3));   // sounds like it: below a name that is it
-      else if (cw && whole.length >= 2 && cw.startsWith(whole)) out.push(cityRow(i, 2 + proximity(near, c[1], c[2]) / 3));
+      else if (cw && whole.length >= 3 && cw.startsWith(whole + ' '))
+        out.push(cityRow(i, 14 + proximity(near, c[1], c[2]) / 3));
+      else if (wsk && sameSkel(wsk, pl.citySk[i]))
+        out.push(cityRow(i, 7 + proximity(near, c[1], c[2]) / 3)); // sounds like it: below a name that is it
+      else if (cw && whole.length >= 2 && cw.startsWith(whole))
+        out.push(cityRow(i, 2 + proximity(near, c[1], c[2]) / 3));
     });
   }
   if (qs.length) {
@@ -320,22 +558,42 @@ export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
       if (!score) continue;
       const st = pl.streets[s];
       const sc = pl.streetCity[s];
-      if (cityName) { if (sc === cityName || (sc && sc.startsWith(cityName))) score += 3; else score -= 2.5; }
+      if (cityName) {
+        if (sc === cityName || (sc && sc.startsWith(cityName))) score += 3;
+        else score -= 2.5;
+      }
       score += proximity(near, st[2], st[3]);
-      const name = streetName(pl, s, lang), city = cityOf(pl, st[1], lang);
+      const name = streetName(pl, s, lang),
+        city = cityOf(pl, st[1], lang);
       if (q.number !== null) {
-        const a0 = pl.addrOff[s], a1 = pl.addrOff[s + 1];
+        const a0 = pl.addrOff[s],
+          a1 = pl.addrOff[s + 1];
         if (a1 > a0) {
-          let exact = -1, nearest = -1, nd = Infinity;
+          let exact = -1,
+            nearest = -1,
+            nd = Infinity;
           for (let i = a0; i < a1; i++) {
             const n = pl.addrNumber[i];
-            if (n === q.number && (!q.suffix || (pl.addrSuffix[i] || '') === q.suffix)) { exact = i; break; }
+            if (n === q.number && (!q.suffix || (pl.addrSuffix[i] || '') === q.suffix)) {
+              exact = i;
+              break;
+            }
             const d = Math.abs(n - q.number);
-            if (d < nd) { nd = d; nearest = i; }
+            if (d < nd) {
+              nd = d;
+              nearest = i;
+            }
           }
           const i = exact >= 0 ? exact : nearest;
-          out.push({ kind: 'address', name: `${name} ${q.number}${q.suffix}`, city, lat: pl.addrLat[i], lon: pl.addrLon[i],
-                     score: score + (exact >= 0 ? 5 : 3), approx: exact < 0 ? pl.addrNumber[i] : null });
+          out.push({
+            kind: 'address',
+            name: `${name} ${q.number}${q.suffix}`,
+            city,
+            lat: pl.addrLat[i],
+            lon: pl.addrLon[i],
+            score: score + (exact >= 0 ? 5 : 3),
+            approx: exact < 0 ? pl.addrNumber[i] : null,
+          });
         } else {
           out.push({ kind: 'street', name, city, lat: st[2], lon: st[3], score: score + 0.5, noNumbers: true });
         }
@@ -347,10 +605,21 @@ export function searchPlaces(pl, text, limit = 8, near = null, lang = 'he') {
     for (let p = 0; p < pl.pois.length; p++) {
       let score = matchEntry(qs, pl.poiWords[p], latin ? pl.poiEn[p] : null, latin ? pl.poiSk[p] : null, false);
       if (!score) continue;
-      if (cityName) { if (pl.poiCity[p] === cityName) score += 3; else score -= 1.5; }
+      if (cityName) {
+        if (pl.poiCity[p] === cityName) score += 3;
+        else score -= 1.5;
+      }
       const poi = pl.pois[p];
       score += (LANDMARK.has(poi[1]) ? 1 : 0) + (IMPORTANT.has(poi[1]) ? 1.5 : 0) + proximity(near, poi[3], poi[4]);
-      out.push({ kind: 'poi', name: poiName(pl, p, lang), poiKind: poi[1], city: cityOf(pl, poi[2], lang), lat: poi[3], lon: poi[4], score });
+      out.push({
+        kind: 'poi',
+        name: poiName(pl, p, lang),
+        poiKind: poi[1],
+        city: cityOf(pl, poi[2], lang),
+        lat: poi[3],
+        lon: poi[4],
+        score,
+      });
     }
   }
   out.sort(byScore);

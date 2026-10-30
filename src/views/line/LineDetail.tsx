@@ -23,51 +23,139 @@ export function LineDetail() {
   const info = line.info.value;
   // the timetable starts folded, and folds again for another line (Gadi, 2026-10-28)
   const [ttOpen, setTtOpen] = useState(false);
-  useEffect(() => { setTtOpen(false); }, [info]);
+  useEffect(() => {
+    setTtOpen(false);
+  }, [info]);
   if (!info) return null;
   const lv = line.liveText.value;
   void stored.value;
   // saved by the line's number in the feed (its route id), as the history keeps it: a timetable's route index changes daily
-  const key = info.ref ? 'line:' + info.ref : '', on = !!key && favs.has('lines', key);
-  const toggleFav = () => { if (!key) return; favs.toggle('lines', key, { type: 'line', ref: info.ref, line: info.line, routeType: info.routeType, agency: info.agency, headsign: info.headsign, mode: info.mode }); };
+  const key = info.ref ? 'line:' + info.ref : '',
+    on = !!key && favs.has('lines', key);
+  const toggleFav = () => {
+    if (!key) return;
+    favs.toggle('lines', key, {
+      type: 'line',
+      ref: info.ref,
+      line: info.line,
+      routeType: info.routeType,
+      agency: info.agency,
+      headsign: info.headsign,
+      mode: info.mode,
+    });
+  };
   // the chosen trip's time at each stop: live when its vehicle is seen (the time a trip with that ride shows too)
-  const ai = line.anchor.value, a = info.stops[ai], times = line.times.value, sel = line.selTimes.value, live = line.selLive.value;
-  const when = (i: number) => { const l = live[i]; return l && !l.passed ? l.time : sel[i] ?? null; };
+  const ai = line.anchor.value,
+    a = info.stops[ai],
+    times = line.times.value,
+    sel = line.selTimes.value,
+    live = line.selLive.value;
+  const when = (i: number) => {
+    const l = live[i];
+    return l && !l.passed ? l.time : (sel[i] ?? null);
+  };
   const base = when(ai);
   return (
     <>
       <div class="bar">
         <LineChip line={info.line} routeType={info.routeType} agency={info.agency} mode={info.mode} big />
-        <span class={`livebadge ${line.liveOk.value ? 'ok' : ''}`} id="lineLive" hidden={!lv}>{lv}</span>
+        <span class={`livebadge ${line.liveOk.value ? 'ok' : ''}`} id="lineLive" hidden={!lv}>
+          {lv}
+        </span>
         {key && <StarButton id="lineStar" on={on} onClick={toggleFav} />}
       </div>
       <div class="legs">
-        <h2 id="lineTitle"><bdi>{info.mode === 'rail' && info.ends ? t('lineEnds', { a: info.ends[0], b: info.ends[1] }) : t('toward', { headsign: info.headsign })}</bdi></h2>
-        <div class="muted" id="lineMeta"><bdi>{agencyName(info.agency || '')}</bdi> · {t('tripsToday', { n: info.trips })} · <span dir="ltr">{fmtPlus(info.first)}–{fmtPlus(info.last)}</span> · {t('stopsN', { n: info.stops.length })}</div>
+        <h2 id="lineTitle">
+          <bdi>
+            {info.mode === 'rail' && info.ends
+              ? t('lineEnds', { a: info.ends[0], b: info.ends[1] })
+              : t('toward', { headsign: info.headsign })}
+          </bdi>
+        </h2>
+        <div class="muted" id="lineMeta">
+          <bdi>{agencyName(info.agency || '')}</bdi> · {t('tripsToday', { n: info.trips })} ·{' '}
+          <span dir="ltr">
+            {fmtPlus(info.first)}–{fmtPlus(info.last)}
+          </span>{' '}
+          · {t('stopsN', { n: info.stops.length })}
+        </div>
         {info.estimated && <div class="muted est">{t('estNote')}</div>}
         <div class="chips" id="lineDirs" style="margin:8px 0">
-          {info.others.map((o) => <button type="button" class="chipbtn" onClick={() => line.hooks.openLine(o.route)}><Icon name="arrowsLR" /> {t('toward', { headsign: o.headsign })}</button>)}
+          {info.others.map((o) => (
+            <button type="button" class="chipbtn" onClick={() => line.hooks.openLine(o.route)}>
+              <Icon name="arrowsLR" /> {t('toward', { headsign: o.headsign })}
+            </button>
+          ))}
         </div>
-        {a && <>
-          <Fold class="sec" id="lineTtFold" open={ttOpen} onClick={() => setTtOpen(!ttOpen)}>{t('timesAtStop', { name: a.name })}</Fold>
-          {ttOpen && <>
-            <div class="muted small">{t('pickStopHint')}</div>
-            {times === null ? <div class="empty">{t('loading')}</div>
-              : !times.length ? <div class="empty">{t('noTimesHere')}</div>
-              : <Timetable rows={times} now={line.now.value} sel={line.sel.value} onPick={line.hooks.pick} dim={line.loading.value} />}
-          </>}
-        </>}
+        {a && (
+          <>
+            <Fold class="sec" id="lineTtFold" open={ttOpen} onClick={() => setTtOpen(!ttOpen)}>
+              {t('timesAtStop', { name: a.name })}
+            </Fold>
+            {ttOpen && (
+              <>
+                <div class="muted small">{t('pickStopHint')}</div>
+                {times === null ? (
+                  <div class="empty">{t('loading')}</div>
+                ) : !times.length ? (
+                  <div class="empty">{t('noTimesHere')}</div>
+                ) : (
+                  <Timetable
+                    rows={times}
+                    now={line.now.value}
+                    sel={line.sel.value}
+                    onPick={line.hooks.pick}
+                    dim={line.loading.value}
+                  />
+                )}
+              </>
+            )}
+          </>
+        )}
         <div id="lineStops">
           {info.stops.map((st, i) => {
-            const at = when(i), rel = at != null && base != null ? Math.round((at - base) / 60) : null, l = live[i];
+            const at = when(i),
+              rel = at != null && base != null ? Math.round((at - base) / 60) : null,
+              l = live[i];
             const late = l && !l.passed && l.delay > 0 && sel[i] != null;
             return (
-              <div class={`linerow${i === ai ? ' anchor' : ''}${i < ai ? ' before' : ''}`} data-i={i} key={i} onClick={() => line.hooks.setAnchor(i)}>
+              <div
+                class={`linerow${i === ai ? ' anchor' : ''}${i < ai ? ' before' : ''}`}
+                data-i={i}
+                key={i}
+                onClick={() => line.hooks.setAnchor(i)}
+              >
                 <span class="idx">{i + 1}</span>
-                <span class="name">{st.name}<small class="muted"> {st.city || ''}</small>{i === ai && <small class="tag">{t('yourStop')}</small>}
-                  {i === ai && l && !l.passed && <> <LiveMark delayMin={delays.delayMinutes(l.delay)} stale={l.stale} /></>}</span>
-                {i === ai ? <button type="button" class="ghost slim" onClick={(e) => { e.stopPropagation(); line.hooks.openStop(st.stop); }}>{t('stopDetails')}</button>
-                  : rel != null && <span class="rel">{rel > 0 ? '+' : rel < 0 ? '−' : ''}{Math.abs(rel)}′</span>}
+                <span class="name">
+                  {st.name}
+                  <small class="muted"> {st.city || ''}</small>
+                  {i === ai && <small class="tag">{t('yourStop')}</small>}
+                  {i === ai && l && !l.passed && (
+                    <>
+                      {' '}
+                      <LiveMark delayMin={delays.delayMinutes(l.delay)} stale={l.stale} />
+                    </>
+                  )}
+                </span>
+                {i === ai ? (
+                  <button
+                    type="button"
+                    class="ghost slim"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      line.hooks.openStop(st.stop);
+                    }}
+                  >
+                    {t('stopDetails')}
+                  </button>
+                ) : (
+                  rel != null && (
+                    <span class="rel">
+                      {rel > 0 ? '+' : rel < 0 ? '−' : ''}
+                      {Math.abs(rel)}′
+                    </span>
+                  )
+                )}
                 {at != null && <ShownTime planned={late ? sel[i]! : at} live={late ? at : null} class="at" />}
               </div>
             );

@@ -17,12 +17,16 @@ const manifest = (): Manifest => data.manifest.value!;
 // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
 feed.snapshot.query = (filter: object) => call('liveQuery', { urls: feed.RELAY_URLS, filter });
 // stored places shown in the other language are named again by the worker (state/names.ts)
-const WORDS = { he: { near: String(STR.nearName[0]), point: String(STR.pointName[0]) }, en: { near: String(STR.nearName[1]), point: String(STR.pointName[1]) } };
+const WORDS = {
+  he: { near: String(STR.nearName[0]), point: String(STR.pointName[0]) },
+  en: { near: String(STR.nearName[1]), point: String(STR.pointName[1]) },
+};
 names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });
 /** A data file's address, with its version in the query, so each version is fetched once and then served from the
  *  service worker's cache: the content hash (a rebuilt file with nothing changed is not fetched again), or the build
  *  time of files without one (the learned times, which change nightly anyway). */
-const fileUrl = (f: DataFile): string => `${DATA_URL}${f.file}?v=${encodeURIComponent(f.hash || f.built || manifest().built || '')}`;
+const fileUrl = (f: DataFile): string =>
+  `${DATA_URL}${f.file}?v=${encodeURIComponent(f.hash || f.built || manifest().built || '')}`;
 
 export async function loadManifest(): Promise<void> {
   const m: Manifest = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();
@@ -37,7 +41,8 @@ export async function loadManifest(): Promise<void> {
 export function renderDays(): void {
   if (!data.manifest.value) return;
   search.days.value = manifest().days.map((d) => d.date);
-  if (!search.days.value.includes(search.day.value)) search.day.value = data.dayInfo.value ? data.dayInfo.value.date : manifest().days[0].date;
+  if (!search.days.value.includes(search.day.value))
+    search.day.value = data.dayInfo.value ? data.dayInfo.value.date : manifest().days[0].date;
 }
 /** The best service day to plan on right now: tonight's until 03:00, else today. */
 export function startDay(): string {
@@ -51,11 +56,18 @@ export async function loadDay(date: string): Promise<void> {
   const d = manifest().days.find((x) => x.date === date) || manifest().days[0];
   data.ttReady.value = false;
   search.busy.value = true;
-  call('setLang', { lang: lang.value });   // names come back in the rider's language where the timetable carries them
-  const info: { date: string; counts: { trips: number } } = await call('loadTimetable', { url: fileUrl(d), bytes: d.bytes });
-  data.dayInfo.value = info; data.ttReady.value = true; resetCaches(); map.resetLive();
+  call('setLang', { lang: lang.value }); // names come back in the rider's language where the timetable carries them
+  const info: { date: string; counts: { trips: number } } = await call('loadTimetable', {
+    url: fileUrl(d),
+    bytes: d.bytes,
+  });
+  data.dayInfo.value = info;
+  data.ttReady.value = true;
+  resetCaches();
+  map.resetLive();
   search.busy.value = false;
-  map.loadStopsGeo(); map.refreshLiveMap();
+  map.loadStopsGeo();
+  map.refreshLiveMap();
   setStatus(t('ready', { trips: info.counts.trips.toLocaleString(), date: dayLabel(info.date) }));
   renderDays();
 }
@@ -65,15 +77,27 @@ export async function loadDay(date: string): Promise<void> {
  * after that at the next time it does; the error shows only once the retries are spent.
  */
 const RETRY_MS = [5000, 20000, 60000];
-const backOnline = (ms: number): Promise<void> => new Promise((res) => {
-  const done = (): void => { clearTimeout(timer); window.removeEventListener('online', done); res(); };
-  const timer = window.setTimeout(done, ms);
-  window.addEventListener('online', done);
-});
+const backOnline = (ms: number): Promise<void> =>
+  new Promise((res) => {
+    const done = (): void => {
+      clearTimeout(timer);
+      window.removeEventListener('online', done);
+      res();
+    };
+    const timer = window.setTimeout(done, ms);
+    window.addEventListener('online', done);
+  });
 async function retrying(load: () => Promise<void>, again: () => void): Promise<void> {
   for (let i = 0; ; i++) {
-    try { await load(); return; } catch (e) {
-      if (i >= RETRY_MS.length) { loadFailed(e); window.addEventListener('online', again, { once: true }); return; }
+    try {
+      await load();
+      return;
+    } catch (e) {
+      if (i >= RETRY_MS.length) {
+        loadFailed(e);
+        window.addEventListener('online', again, { once: true });
+        return;
+      }
       await backOnline(RETRY_MS[i]);
     }
   }
@@ -81,18 +105,34 @@ async function retrying(load: () => Promise<void>, again: () => void): Promise<v
 export async function loadPlaces(): Promise<void> {
   const f = manifest().places;
   if (data.plReady.value || !f) return;
-  await retrying(async () => {
-    await call('loadPlaces', { url: fileUrl(f), bytes: f.bytes });
-    data.plReady.value = true;
-    // a box with text in it searches again, now with addresses
-    for (const side of ['from', 'to'] as const) if (!search.sides[side].value && search.texts[side].value.trim().length >= 2) document.getElementById(side + 'Q')?.dispatchEvent(new Event('input', { bubbles: true }));
-  }, () => { loadPlaces(); });
+  await retrying(
+    async () => {
+      await call('loadPlaces', { url: fileUrl(f), bytes: f.bytes });
+      data.plReady.value = true;
+      // a box with text in it searches again, now with addresses
+      for (const side of ['from', 'to'] as const)
+        if (!search.sides[side].value && search.texts[side].value.trim().length >= 2)
+          document.getElementById(side + 'Q')?.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+    () => {
+      loadPlaces();
+    },
+  );
 }
 export async function loadShapes(): Promise<void> {
   const f = manifest().shapes;
   if (data.shReady.value || !f) return;
   // until then rides are drawn dashed from stop to stop and a stop's page shows no lines; the redraw puts both right
-  await retrying(async () => { await call('loadShapes', { url: fileUrl(f), bytes: f.bytes }); data.shReady.value = true; map.redrawMap(true); }, () => { loadShapes(); });
+  await retrying(
+    async () => {
+      await call('loadShapes', { url: fileUrl(f), bytes: f.bytes });
+      data.shReady.value = true;
+      map.redrawMap(true);
+    },
+    () => {
+      loadShapes();
+    },
+  );
 }
 /** The learned running times of rail sections: train delays from where a train is, in the data worker (where every estimate is made). */
 export async function loadRailTimes(): Promise<void> {
@@ -101,24 +141,39 @@ export async function loadRailTimes(): Promise<void> {
   try {
     const m = await (await fetch(fileUrl(f))).json();
     await call('setRailTimes', { m });
-  } catch { /* the timetable's own section times then */ }
+  } catch {
+    /* the timetable's own section times then */
+  }
 }
 /** The learned running times of bus sections: bus delays at each stop ahead, in the data worker (where every estimate is made). */
 export async function loadBusTimes(): Promise<void> {
   const f = manifest().bustimes;
   if (!f) return;
-  try { await call('loadBusTimes', { url: fileUrl(f), bytes: f.bytes }); } catch { /* the timetable's own section times then */ }
+  try {
+    await call('loadBusTimes', { url: fileUrl(f), bytes: f.bytes });
+  } catch {
+    /* the timetable's own section times then */
+  }
 }
 export async function loadStreets(): Promise<void> {
   const f = manifest().streets;
   if (data.stReady.value || !f) return;
-  await retrying(async () => {
-    await call('loadStreets', { url: fileUrl(f), bytes: f.bytes });
-    data.stReady.value = true; setStatus(t('readyStreets'));
-    map.redrawMap(true);   // walks drawn straight until now follow the streets
-  }, () => { loadStreets(); });
+  await retrying(
+    async () => {
+      await call('loadStreets', { url: fileUrl(f), bytes: f.bytes });
+      data.stReady.value = true;
+      setStatus(t('readyStreets'));
+      map.redrawMap(true); // walks drawn straight until now follow the streets
+    },
+    () => {
+      loadStreets();
+    },
+  );
 }
 // the bar's day pills ask for the day's timetable
 // a time the rider set stays (the wheels set day and time in either order); otherwise the new day starts at its default
-search.hooks.dayChanged = (d) => { loadDay(d).catch(loadFailed); if (!search.timeTouched.value) search.setDefaultTime(); };
+search.hooks.dayChanged = (d) => {
+  loadDay(d).catch(loadFailed);
+  if (!search.timeTouched.value) search.setDefaultTime();
+};
 search.hooks.startDay = () => (data.manifest.value ? startDay() : '');

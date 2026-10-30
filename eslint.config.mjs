@@ -7,11 +7,15 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   { ignores: ['dist/**', 'node_modules/**', 'src/public/**', 'site/**', 'data/**'] },
   js.configs.recommended,
-  { files: ['src/sw.template.js'], languageOptions: { globals: { __SHELL_FILES__: 'readonly' } } },   // filled in at build time
+  { files: ['src/sw.template.js'], languageOptions: { globals: { __SHELL_FILES__: 'readonly' } } }, // filled in at build time
   ...tseslint.configs.recommended,
   {
     files: ['src/**/*.{js,ts,tsx}', 'tools/**/*.mjs', 'vite.config.ts'],
-    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly' } },
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly' },
+    },
     rules: {
       'no-undef': 'error',
       'no-unused-vars': 'off',
@@ -24,7 +28,11 @@ export default tseslint.config(
     },
   },
   // the relay runs on Cloudflare Workers (fetch, Response, URL: the service-worker globals)
-  { files: ['relay/**/*.js'], languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.serviceworker } }, rules: { 'no-undef': 'error' } },
+  {
+    files: ['relay/**/*.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.serviceworker } },
+    rules: { 'no-undef': 'error' },
+  },
   // TypeScript itself rejects undeclared names, and knows type-only names (GeoJSON, DOM types) that this rule does not
   { files: ['src/**/*.{ts,tsx}', 'vite.config.ts'], rules: { 'no-undef': 'off' } },
 );

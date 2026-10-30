@@ -12,29 +12,89 @@ import type { IconName } from '../../widgets/icons';
 export function Drawer() {
   void lang.value;
   const open = app.drawerOpen.value;
-  const Row = ({ icon, label, onClick, screen }: { icon: IconName; label: string; onClick: () => void; screen?: string }) => (
-    <button type="button" data-screen={screen} onClick={onClick}><span class="ic"><Icon name={icon} /></span><span>{label}</span></button>
+  const Row = ({
+    icon,
+    label,
+    onClick,
+    screen,
+  }: {
+    icon: IconName;
+    label: string;
+    onClick: () => void;
+    screen?: string;
+  }) => (
+    <button type="button" data-screen={screen} onClick={onClick}>
+      <span class="ic">
+        <Icon name={icon} />
+      </span>
+      <span>{label}</span>
+    </button>
   );
-  const navRef = useRef<HTMLElement>(null), dropRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null),
+    dropRef = useRef<HTMLDivElement>(null);
   // swiped back towards its edge (left in English, right in Hebrew), on the drawer or on the dimmed map beside it
-  const swipe = useSwipeClose({ layer: navRef, fade: dropRef, dir: () => (document.documentElement.dir === 'rtl' ? 1 : -1), onClose: () => app.hooks.closeDrawer() });
+  const swipe = useSwipeClose({
+    layer: navRef,
+    fade: dropRef,
+    dir: () => (document.documentElement.dir === 'rtl' ? 1 : -1),
+    onClose: () => app.hooks.closeDrawer(),
+  });
   return (
     <>
-      <div ref={dropRef} class={`backdrop${open ? ' open' : ''}`} id="backdrop" onClick={app.hooks.closeDrawer} {...swipe} />
+      <div
+        ref={dropRef}
+        class={`backdrop${open ? ' open' : ''}`}
+        id="backdrop"
+        onClick={app.hooks.closeDrawer}
+        {...swipe}
+      />
       <nav ref={navRef} class={`drawer${open ? ' open' : ''}`} id="menu" aria-label={t('menu')} {...swipe}>
         <div class="head">
-          <div class="who"><span class="avatar"><Logo /></span><div class="txt"><div class="brand">Wayli</div><div class="sub">{t('menuNote')}</div></div></div>
-          <button type="button" class="iconbtn flat" id="menuClose" aria-label={t('close')} onClick={app.hooks.closeDrawer}><Icon name="close" /></button>
+          <div class="who">
+            <span class="avatar">
+              <Logo />
+            </span>
+            <div class="txt">
+              <div class="brand">Wayli</div>
+              <div class="sub">{t('menuNote')}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="iconbtn flat"
+            id="menuClose"
+            aria-label={t('close')}
+            onClick={app.hooks.closeDrawer}
+          >
+            <Icon name="close" />
+          </button>
         </div>
         <Row icon="route" label={t('tabPlan')} screen="plan" onClick={() => app.hooks.go('plan')} />
-        <button type="button" id="menuLines" onClick={app.hooks.lineSearch}><span class="ic"><Icon name="bus" /></span><span>{t('lineSearch')}</span></button>
-        <button type="button" id="menuStops" onClick={app.hooks.stopSearch}><span class="ic"><Icon name="pin" /></span><span>{t('stopSearch')}</span></button>
+        <button type="button" id="menuLines" onClick={app.hooks.lineSearch}>
+          <span class="ic">
+            <Icon name="bus" />
+          </span>
+          <span>{t('lineSearch')}</span>
+        </button>
+        <button type="button" id="menuStops" onClick={app.hooks.stopSearch}>
+          <span class="ic">
+            <Icon name="pin" />
+          </span>
+          <span>{t('stopSearch')}</span>
+        </button>
         {/* the three searches above, the pages below */}
         <hr class="msep" />
         <Row icon="star" label={t('savedTitle')} screen="saved" onClick={() => app.hooks.go('saved')} />
         <Row icon="sliders" label={t('tabMore')} screen="more" onClick={app.hooks.openSettings} />
-        <button type="button" id="menuReload" onClick={() => location.reload()}><span class="ic"><Icon name="refresh" /></span><span>{t('reload')}</span></button>
-        <div class="foot muted" id="drawerVer">{app.version.value}</div>
+        <button type="button" id="menuReload" onClick={() => location.reload()}>
+          <span class="ic">
+            <Icon name="refresh" />
+          </span>
+          <span>{t('reload')}</span>
+        </button>
+        <div class="foot muted" id="drawerVer">
+          {app.version.value}
+        </div>
       </nav>
     </>
   );

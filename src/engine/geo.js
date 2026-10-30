@@ -5,21 +5,26 @@
 // and, on the same flat approximation, where a point falls on a segment and along a sequence of stops.
 
 export function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371000, p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
-  const a = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((lon2 - lon1) * Math.PI / 360) ** 2;
+  const R = 6371000,
+    p1 = (lat1 * Math.PI) / 180,
+    p2 = (lat2 * Math.PI) / 180;
+  const a = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(((lon2 - lon1) * Math.PI) / 360) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 export function metres(lat1, lon1, lat2, lon2) {
-  const kx = 111320 * Math.cos((lat1 + lat2) / 2 * Math.PI / 180), ky = 110540;
-  const dx = (lon2 - lon1) * kx, dy = (lat2 - lat1) * ky;
+  const kx = 111320 * Math.cos((((lat1 + lat2) / 2) * Math.PI) / 180),
+    ky = 110540;
+  const dx = (lon2 - lon1) * kx,
+    dy = (lat2 - lat1) * ky;
   return Math.sqrt(dx * dx + dy * dy);
 }
 /** The flat approximation's scale near a latitude: metres per degree of longitude (kx) and of latitude (ky). */
-export const scaleAt = (lat) => ({ kx: 111320 * Math.cos(lat * Math.PI / 180), ky: 110540 });
+export const scaleAt = (lat) => ({ kx: 111320 * Math.cos((lat * Math.PI) / 180), ky: 110540 });
 /** The point of a segment nearest to the origin, the segment starting at (ax, ay) and running (dx, dy), in metres:
  *  how far along it (f, 0 to 1) and how far from the origin (d). */
 export function nearestOnSegment(ax, ay, dx, dy) {
-  const l2 = dx * dx + dy * dy, f = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+  const l2 = dx * dx + dy * dy,
+    f = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
   return { f, d: Math.hypot(ax + f * dx, ay + f * dy) };
 }
 /** Where along a sequence of stops ({lat, lon}) a point is, from stop `from` on: the stretch from stop `index` to the
@@ -28,7 +33,8 @@ export function projectOnStops(lat, lon, stops, from = 0) {
   const { kx, ky } = scaleAt(lat);
   let best = { index: from, frac: 0, metres: Infinity };
   for (let i = from; i < stops.length - 1; i++) {
-    const ax = (stops[i].lon - lon) * kx, ay = (stops[i].lat - lat) * ky;
+    const ax = (stops[i].lon - lon) * kx,
+      ay = (stops[i].lat - lat) * ky;
     const p = nearestOnSegment(ax, ay, (stops[i + 1].lon - stops[i].lon) * kx, (stops[i + 1].lat - stops[i].lat) * ky);
     if (p.d < best.metres) best = { index: i, frac: p.f, metres: p.d };
   }

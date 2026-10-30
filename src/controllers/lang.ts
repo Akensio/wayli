@@ -17,10 +17,12 @@ export function setLang(l: 'he' | 'en'): void {
   applyLang();
   if (map.mapState.main) map.setBasemapLang(map.mapState.main);
   // stop names, headsigns and map labels come from the worker: ask again in the new language
-  call('setLang', { lang: l }).then(() => {
-    map.resetLive(); map.loadStopsGeo();
-    const located = (p: Place | null) => !!p && !(p.transient && p.lat == null);   // never a location prompt for a language switch
-    if (results.result.value && located(search.from.value) && located(search.to.value)) plan();
-  }).catch(() => {});
+  call('setLang', { lang: l })
+    .then(() => {
+      map.resetLive();
+      map.loadStopsGeo();
+      const located = (p: Place | null) => !!p && !(p.transient && p.lat == null); // never a location prompt for a language switch
+      if (results.result.value && located(search.from.value) && located(search.to.value)) plan();
+    })
+    .catch(() => {});
 }
-

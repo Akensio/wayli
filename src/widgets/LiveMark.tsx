@@ -3,5 +3,10 @@
 import { signed } from '../journey/format';
 
 export function LiveMark({ delayMin, stale }: { delayMin?: number | null; stale?: boolean }) {
-  return <span class={`live ${stale ? 'unsure' : 'ok'}`}>⦿{delayMin ? ` ${signed(delayMin)}` : ''}{stale ? '?' : ''}</span>;
+  return (
+    <span class={`live ${stale ? 'unsure' : 'ok'}`}>
+      ⦿{delayMin ? ` ${signed(delayMin)}` : ''}
+      {stale ? '?' : ''}
+    </span>
+  );
 }

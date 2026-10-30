@@ -9,10 +9,25 @@ import { calToday, hm, secOf, calendarOf } from '../lib/time';
 import * as settings from './settings';
 import type { View } from './results';
 
-export type Place = { name: string; lat?: number | null; lon?: number | null; stops?: number[]; platforms?: number; code?: string; kind?: string; transient?: boolean; auto?: boolean };
+export type Place = {
+  name: string;
+  lat?: number | null;
+  lon?: number | null;
+  stops?: number[];
+  platforms?: number;
+  code?: string;
+  kind?: string;
+  transient?: boolean;
+  auto?: boolean;
+};
 /** A stop as a place to plan from or to; a station is all its platforms. */
-export const stopPlace = (s: { name: string; stop: number; stops?: number[] | null; lat: number; lon: number }): Place =>
-  ({ name: s.name, stops: s.stops && s.stops.length ? s.stops : [s.stop], lat: s.lat, lon: s.lon });
+export const stopPlace = (s: {
+  name: string;
+  stop: number;
+  stops?: number[] | null;
+  lat: number;
+  lon: number;
+}): Place => ({ name: s.name, stops: s.stops && s.stops.length ? s.stops : [s.stop], lat: s.lat, lon: s.lon });
 export type Side = 'from' | 'to';
 type OptPanel = '' | 'time' | 'bike';
 
@@ -26,15 +41,15 @@ export const sides = { from, to } as const;
 export const texts = { from: fromText, to: toText } as const;
 
 // ---- the bar
-export const barOpen = signal(false);   // editing: both rows and the options show
-export const typing = signal('');       // the bar's box with the keyboard (its id), for back
-export const listing = signal('');      // the bar's box with its list open
+export const barOpen = signal(false); // editing: both rows and the options show
+export const typing = signal(''); // the bar's box with the keyboard (its id), for back
+export const listing = signal(''); // the bar's box with its list open
 /** What back does to a bar box: let go of its focus (the keyboard goes), close its list. */
 export const boxes = new Map<string, { blur: () => void; closeList: () => void }>();
-export const leaving = signal(false);   // the moment after editing ends: the rows play out before they go
-export const settling = signal(false);  // then the pill's icons pop back in
+export const leaving = signal(false); // the moment after editing ends: the rows play out before they go
+export const settling = signal(false); // then the pill's icons pop back in
 export const optOpen = signal<OptPanel>('');
-export const optDirty = signal(false);  // an option changed while its popover was open: re-plan on close
+export const optDirty = signal(false); // an option changed while its popover was open: re-plan on close
 /** What the bar searches for: a trip to a place (the two boxes, time, bike), a line by its number, or a stop. */
 export type LineFilter = 'all' | 'bus' | 'rail' | 'lrt' | 'cable';
 export type StopFilter = 'all' | 'bus' | 'rail' | 'lrt';
@@ -43,41 +58,63 @@ export const kind = signal<Kind>('trip');
 export const lineFilter = signal<LineFilter>('all');
 export const stopFilter = signal<StopFilter>('all');
 export const toPlaceholder = computed<'goQ' | 'lineNumber' | 'stationQ' | 'stopQ'>(() =>
-  (kind.value === 'line' ? (lineFilter.value === 'rail' ? 'stationQ' : 'lineNumber') : kind.value === 'stop' ? (stopFilter.value === 'rail' || stopFilter.value === 'lrt' ? 'stationQ' : 'stopQ') : 'goQ'));
+  kind.value === 'line'
+    ? lineFilter.value === 'rail'
+      ? 'stationQ'
+      : 'lineNumber'
+    : kind.value === 'stop'
+      ? stopFilter.value === 'rail' || stopFilter.value === 'lrt'
+        ? 'stationQ'
+        : 'stopQ'
+      : 'goQ',
+);
 // the full keyboard everywhere: line numbers carry letters ("4א"), and words narrow them ("274 תל אביב")
 export const toInputMode = computed<'' | 'numeric'>(() => '');
 // The train timetable (the stop search for trains, and for the light rail): two stations at the top, as riders who plan
 // their own trips from the schedule use it; the sheet answers with where trains from the first go, or those between the two.
-export const railPair = computed(() => kind.value === 'stop' && (stopFilter.value === 'rail' || stopFilter.value === 'lrt'));
+export const railPair = computed(
+  () => kind.value === 'stop' && (stopFilter.value === 'rail' || stopFilter.value === 'lrt'),
+);
 export const pairMode = computed<'rail' | 'lrt'>(() => (stopFilter.value === 'lrt' ? 'lrt' : 'rail'));
 export const stFrom = signal<Place | null>(null);
 export const stFromText = signal('');
 export const stTo = signal<Place | null>(null);
 export const stToText = signal('');
-export const busy = signal(true);       // the planner is not ready, or planning
+export const busy = signal(true); // the planner is not ready, or planning
 
 // ---- when and how
 export const timeMode = signal<'depart' | 'arrive'>('depart');
-export const day = signal('');          // YYYYMMDD, one of `days`
-export const at = signal('08:00');      // HH:MM on that day, past 24:00 for its night ("25:10")
+export const day = signal(''); // YYYYMMDD, one of `days`
+export const at = signal('08:00'); // HH:MM on that day, past 24:00 for its night ("25:10")
 export const bike = signal<'none' | 'park' | 'along'>('none');
 export const folding = signal(false);
-export const timeTouched = signal(false);   // the rider set a day, a time or "arrive by"; until then every plan is from now
-export const days = signal<string[]>([]);   // the service days the data covers
+export const timeTouched = signal(false); // the rider set a day, a time or "arrive by"; until then every plan is from now
+export const days = signal<string[]>([]); // the service days the data covers
 
 // Leaving search mode, the rows play out (`leaving`) before they go. Set in the same moment the bar closes:
 // set a frame later (after a render), the rows vanished for that frame and came back to play out.
-let wasOpen = false, leaveTimer = 0, settleTimer = 0;
+let wasOpen = false,
+  leaveTimer = 0,
+  settleTimer = 0;
 effect(() => {
   const open = barOpen.value;
   if (wasOpen && !open && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     leaving.value = true;
-    clearTimeout(leaveTimer); clearTimeout(settleTimer);
+    clearTimeout(leaveTimer);
+    clearTimeout(settleTimer);
     leaveTimer = window.setTimeout(() => {
-      leaving.value = false; settling.value = true;
-      settleTimer = window.setTimeout(() => { settling.value = false; }, 420);
+      leaving.value = false;
+      settling.value = true;
+      settleTimer = window.setTimeout(() => {
+        settling.value = false;
+      }, 420);
     }, 480);
-  } else if (open) { clearTimeout(leaveTimer); clearTimeout(settleTimer); leaving.value = false; settling.value = false; }
+  } else if (open) {
+    clearTimeout(leaveTimer);
+    clearTimeout(settleTimer);
+    leaving.value = false;
+    settling.value = false;
+  }
   wasOpen = open;
 });
 
@@ -85,7 +122,10 @@ effect(() => {
  *  two stations, once both are set). */
 export const mode = computed<'rest' | 'edit' | 'summary'>(() => {
   // the line and stop searches rest as a pill, but for the two stations of a train timetable
-  const has = kind.value === 'trip' ? !!(to.value || (from.value && !from.value.auto)) : railPair.value && !!stFrom.value && !!stTo.value;
+  const has =
+    kind.value === 'trip'
+      ? !!(to.value || (from.value && !from.value.auto))
+      : railPair.value && !!stFrom.value && !!stTo.value;
   if (barOpen.value || leaving.value) return 'edit';
   return has ? 'summary' : 'rest';
 });
@@ -97,7 +137,10 @@ export const hooks = {
   clearPlan: () => {},
   hasResults: () => false,
   lastQuery: (): { from: Place; to: Place } | null => null,
-  search: async (_q: string): Promise<{ results: any[]; placesLoaded: boolean }> => ({ results: [], placesLoaded: false }),
+  search: async (_q: string): Promise<{ results: any[]; placesLoaded: boolean }> => ({
+    results: [],
+    placesLoaded: false,
+  }),
   lineGroups: async (_q: string, _mode: LineFilter, _limit?: number): Promise<LineGroup[]> => [],
   stopGroups: async (_q: string, _mode: StopFilter, _from?: number[]): Promise<StopGroup[]> => [],
   openStopGroup: (_g: StopGroup) => {},
@@ -105,9 +148,11 @@ export const hooks = {
   swapStations: () => {},
   openLine: (_r: any) => {},
   openRecent: (_v: View) => {},
-  endStations: () => {},          // the X of the two stations' summary: back to the trip pill   // a recent line, stop or station from the list under the box
-  kindChanged: (_k: Kind) => {},   // the line and stop searches are a step back can undo
-  getPosition: async (): Promise<{ lat: number; lon: number }> => { throw new Error('no location'); },
+  endStations: () => {}, // the X of the two stations' summary: back to the trip pill   // a recent line, stop or station from the list under the box
+  kindChanged: (_k: Kind) => {}, // the line and stop searches are a step back can undo
+  getPosition: async (): Promise<{ lat: number; lon: number }> => {
+    throw new Error('no location');
+  },
   pickOnMap: async (_start: Place | null): Promise<Place | null> => null,
   openMenu: () => {},
   dayChanged: (_d: string) => {},
@@ -119,45 +164,75 @@ export const hooks = {
 };
 
 // ---- actions
-export const myLocation = (pos: { lat: number; lon: number }): Place => ({ name: t('myLoc'), lat: pos.lat, lon: pos.lon, transient: true });
-export function setPlace(side: Side, p: Place | null): void { sides[side].value = p; texts[side].value = p ? p.name : ''; }
+export const myLocation = (pos: { lat: number; lon: number }): Place => ({
+  name: t('myLoc'),
+  lat: pos.lat,
+  lon: pos.lon,
+  transient: true,
+});
+export function setPlace(side: Side, p: Place | null): void {
+  sides[side].value = p;
+  texts[side].value = p ? p.name : '';
+}
 /** Focus one of the boxes once the bar has rendered its new shape (the signals render a moment later). */
-export function focusBox(id: 'toQ' | 'fromQ'): void { setTimeout(() => (document.getElementById(id) as HTMLInputElement | null)?.focus(), 60); }
+export function focusBox(id: 'toQ' | 'fromQ'): void {
+  setTimeout(() => (document.getElementById(id) as HTMLInputElement | null)?.focus(), 60);
+}
 export function openBar(): void {
   if (barOpen.value) return;
   barOpen.value = true;
   // the origin starts as "my location" (resolved when the plan is made); typing or the menu replaces it
   if (!from.value) setPlace('from', { name: t('myLoc'), transient: true, auto: true });
 }
-export function foldBar(): void { barOpen.value = false; }
-export function clearPlaces(): void { tripTo = null; leaveLineMode(); from.value = null; to.value = null; fromText.value = ''; toText.value = ''; barOpen.value = false; }
+export function foldBar(): void {
+  barOpen.value = false;
+}
+export function clearPlaces(): void {
+  tripTo = null;
+  leaveLineMode();
+  from.value = null;
+  to.value = null;
+  fromText.value = '';
+  toText.value = '';
+  barOpen.value = false;
+}
 export function swapPlaces(): void {
-  const f = from.value, tt = to.value;
-  setPlace('from', tt); setPlace('to', f);   // Go plans; a swap by itself changes nothing else
+  const f = from.value,
+    tt = to.value;
+  setPlace('from', tt);
+  setPlace('to', f); // Go plans; a swap by itself changes nothing else
 }
 /** Back from editing ends a trip search, like the summary's X: no places, no results, the plain pill. The line and stop
  *  searches fold to their own pill instead (a step back from there is the trip pill). (A tap on the map folds the rows
  *  back to the summary or the pill.) */
 export function back(): void {
   for (const id of ['toQ', 'fromQ']) (document.getElementById(id) as HTMLInputElement | null)?.blur();
-  if (kind.value !== 'trip') foldBar(); else hooks.clearPlan();
+  if (kind.value !== 'trip') foldBar();
+  else hooks.clearPlan();
 }
 /** Plan with what is set: the places (where you are now, for "my location"), the time and the bicycle. */
 function planSet(): void {
   const f = from.value;
-  if (!f || f.transient) setPlace('from', { name: t('myLoc'), transient: true, auto: !f || f.auto });   // located afresh
+  if (!f || f.transient) setPlace('from', { name: t('myLoc'), transient: true, auto: !f || f.auto }); // located afresh
   hooks.plan();
 }
 /** The Go button: plan with what is set, an open popover's choice included, or ask for a destination. */
 export function go(): void {
   setOpt('', false);
-  if (!to.value) { (document.getElementById('toQ') as HTMLInputElement | null)?.focus(); return; }
+  if (!to.value) {
+    (document.getElementById('toQ') as HTMLInputElement | null)?.focus();
+    return;
+  }
   planSet();
 }
 /** A destination chosen in the To box: plans at once, from the origin set or from where you are, at the time set
  *  (from now unless the rider chose one). */
 export function chooseTo(p: Place): void {
-  if (from.value && !from.value.transient) { setPlace('to', p); if (!timeTouched.value) resetNow(); hooks.plan(); } else hooks.planTo(p);
+  if (from.value && !from.value.transient) {
+    setPlace('to', p);
+    if (!timeTouched.value) resetNow();
+    hooks.plan();
+  } else hooks.planTo(p);
 }
 /**
  * Open an option popover, or close it (''). The time popover works on a draft: closing it in any way (Done, a tap
@@ -165,69 +240,143 @@ export function chooseTo(p: Place): void {
  * to set a time); closed untouched, it stays "now". Closing after a change plans again when there is a destination.
  */
 export const whenDraft = signal<When | null>(null);
-let whenOpened: When | null = null;   // the draft as the popover opened, to tell a change from none
+let whenOpened: When | null = null; // the draft as the popover opened, to tell a change from none
 export function setOpt(which: OptPanel, replan = true): void {
   const was = optOpen.value;
   if (was === which) return;
   if (was === 'time' && whenDraft.value) {
     const d = whenDraft.value;
-    if (JSON.stringify(d) !== JSON.stringify(whenOpened)) { setWhen(d); optDirty.value = true; }
-    whenDraft.value = null; whenOpened = null;
+    if (JSON.stringify(d) !== JSON.stringify(whenOpened)) {
+      setWhen(d);
+      optDirty.value = true;
+    }
+    whenDraft.value = null;
+    whenOpened = null;
   }
-  if (which === 'time') { const w = whenNow(); whenDraft.value = whenOpened = w.mode === 'now' ? { ...w, mode: 'depart' } : w; }
+  if (which === 'time') {
+    const w = whenNow();
+    whenDraft.value = whenOpened = w.mode === 'now' ? { ...w, mode: 'depart' } : w;
+  }
   optOpen.value = which;
-  if (!which && optDirty.value) { optDirty.value = false; if (replan && to.value) planSet(); }
+  if (!which && optDirty.value) {
+    optDirty.value = false;
+    if (replan && to.value) planSet();
+  }
 }
-export function chooseFrom(p: Place): void { setPlace('from', p); if (to.value) hooks.plan(); }
+export function chooseFrom(p: Place): void {
+  setPlace('from', p);
+  if (to.value) hooks.plan();
+}
 /** A line as the line search lists it: its chip, where it runs, its directions (worker `lineGroups`). */
-export type LineGroup = { estimated?: boolean; key: string; mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex'; line: string; agency: string; routeType: number; trips: number; area: string[]; dirs: { route: number; headsign: string; trips: number }[]; dist: number | null };
+export type LineGroup = {
+  estimated?: boolean;
+  key: string;
+  mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex';
+  line: string;
+  agency: string;
+  routeType: number;
+  trips: number;
+  area: string[];
+  dirs: { route: number; headsign: string; trips: number }[];
+  dist: number | null;
+};
 /** A stop as the stop search lists it (worker `stopGroups`): a station is one entry with its platforms. */
-export type StopGroup = { key: string; name: string; city?: string; code?: string; stops: number[]; lat: number; lon: number; mode: 'bus' | 'rail' | 'lrt'; dist: number | null; lines: { label: string; type: number; agency: string; route: number }[] };
+export type StopGroup = {
+  key: string;
+  name: string;
+  city?: string;
+  code?: string;
+  stops: number[];
+  lat: number;
+  lon: number;
+  mode: 'bus' | 'rail' | 'lrt';
+  dist: number | null;
+  lines: { label: string; type: number; agency: string; route: number }[];
+};
 // The destination set before switching to the line or stop search, given back when switching to a trip again.
 let tripTo: { to: Place | null; text: string } | null = null;
 /** Switch what the bar searches for. The line and stop searches keep the To box for what they search. */
 /** The drawer's history follows the bar's kind (state/results recentTab; set from there, to keep this module free of it). */
 let tabHook = (_k: Kind): void => {};
-export const onKind = (f: (k: Kind) => void): void => { tabHook = f; };
+export const onKind = (f: (k: Kind) => void): void => {
+  tabHook = f;
+};
 export function setKind(k: Kind): void {
   if (kind.value === k) return;
-  if (kind.value === 'trip') { tripTo = { to: to.value, text: toText.value }; to.value = null; optOpen.value = ''; }
+  if (kind.value === 'trip') {
+    tripTo = { to: to.value, text: toText.value };
+    to.value = null;
+    optOpen.value = '';
+  }
   toText.value = '';
   // the stop search opens on the rider's usual kind of stop (settings: many look only for trains)
-  if (k === 'stop') { const f = settings.get().stopFilter; stopFilter.value = f === 'bus' || f === 'rail' || f === 'lrt' ? f : 'all'; clearStations(); }
+  if (k === 'stop') {
+    const f = settings.get().stopFilter;
+    stopFilter.value = f === 'bus' || f === 'rail' || f === 'lrt' ? f : 'all';
+    clearStations();
+  }
   if (k === 'trip') {
-    if (tripTo) { to.value = tripTo.to; toText.value = tripTo.text; tripTo = null; }
-    else toText.value = to.value ? to.value.name : '';
+    if (tripTo) {
+      to.value = tripTo.to;
+      toText.value = tripTo.text;
+      tripTo = null;
+    } else toText.value = to.value ? to.value.name : '';
   }
   kind.value = k;
   tabHook(k);
   hooks.kindChanged(k);
 }
 /** Search a line by number: the bar opens on the line search. */
-export function lineMode(): void { barOpen.value = true; setKind('line'); focusBox('toQ'); }
+export function lineMode(): void {
+  barOpen.value = true;
+  setKind('line');
+  focusBox('toQ');
+}
 /** Back to trips (what the To box held before is given back). */
-export function leaveLineMode(): void { setKind('trip'); lineFilter.value = 'all'; stopFilter.value = 'all'; clearStations(); }
-export function clearStations(): void { stFrom.value = null; stFromText.value = ''; stTo.value = null; stToText.value = ''; }
+export function leaveLineMode(): void {
+  setKind('trip');
+  lineFilter.value = 'all';
+  stopFilter.value = 'all';
+  clearStations();
+}
+export function clearStations(): void {
+  stFrom.value = null;
+  stFromText.value = '';
+  stTo.value = null;
+  stToText.value = '';
+}
 /** Search a stop: the bar opens on the stop search. */
-export function stopMode(): void { barOpen.value = true; setKind('stop'); focusBox('toQ'); }
+export function stopMode(): void {
+  barOpen.value = true;
+  setKind('stop');
+  focusBox('toQ');
+}
 
 // ---- when
 /** The time as seconds on the selected service day. */
 export const atSeconds = (): number => secOf(at.value);
-export function setAt(sec: number): void { at.value = hm(Math.max(0, Math.min(sec, 86400 * 2 - 60))); timeTouched.value = true; }
+export function setAt(sec: number): void {
+  at.value = hm(Math.max(0, Math.min(sec, 86400 * 2 - 60)));
+  timeTouched.value = true;
+}
 /** The time now on the selected day ("25:10" on the night's day, "01:10" on a day that starts now), else 08:00. */
-export function setDefaultTime(): void { const n = clock.nowOn(day.value); at.value = n >= 0 && n < 86400 * 2 ? hm(n) : '08:00'; }
+export function setDefaultTime(): void {
+  const n = clock.nowOn(day.value);
+  at.value = n >= 0 && n < 86400 * 2 ? hm(n) : '08:00';
+}
 
 /** What the time popover shows and sets: the calendar day and the clock, never the service day behind them. */
 export type When = { mode: 'now' | 'depart' | 'arrive'; cal: string; hh: string; mm: string };
 function whenNow(): When {
-  const { cal, time } = calendarOf(day.value || calToday(), atSeconds()), [hh, mm] = time.split(':');
+  const { cal, time } = calendarOf(day.value || calToday(), atSeconds()),
+    [hh, mm] = time.split(':');
   return { mode: timeTouched.value ? timeMode.value : 'now', cal, hh, mm };
 }
 /** The calendar days the wheel offers: those the data covers from today on (today also after midnight, when the night
  *  is still in yesterday's timetable). */
 export const calDays = computed(() => {
-  const today = calToday(), svc = clock.serviceDay();
+  const today = calToday(),
+    svc = clock.serviceDay();
   const s = new Set(days.value.filter((d) => d >= today));
   if (svc.lateNight && days.value.includes(svc.day)) s.add(today);
   return s.size ? [...s].sort() : days.value;
@@ -237,37 +386,71 @@ export const calDays = computed(() => {
  * the night after it, the next day's early trips included); otherwise the day itself, or the nearest day the data has.
  */
 function setWhen(w: When): void {
-  if (w.mode === 'now') { resetNow(); return; }
-  let sec = Number(w.hh) * 3600 + Number(w.mm) * 60, d = w.cal;
+  if (w.mode === 'now') {
+    resetNow();
+    return;
+  }
+  let sec = Number(w.hh) * 3600 + Number(w.mm) * 60,
+    d = w.cal;
   const eve = clock.shiftDay(w.cal, -1);
-  if (sec < 3 * 3600 && days.value.includes(eve)) { d = eve; sec += 86400; }
-  else if (!days.value.includes(d)) d = days.value.find((x) => x >= d) || days.value[days.value.length - 1] || d;
+  if (sec < 3 * 3600 && days.value.includes(eve)) {
+    d = eve;
+    sec += 86400;
+  } else if (!days.value.includes(d)) d = days.value.find((x) => x >= d) || days.value[days.value.length - 1] || d;
   timeMode.value = w.mode;
-  at.value = hm(sec); timeTouched.value = true;
-  if (d !== day.value) { day.value = d; hooks.dayChanged(d); }
+  at.value = hm(sec);
+  timeTouched.value = true;
+  if (d !== day.value) {
+    day.value = d;
+    hooks.dayChanged(d);
+  }
 }
 /** A service day the data has and a time on it, departing (the results' "plan from 20:23" and "tomorrow"). */
 export function setDayAt(d: string, sec: number): void {
   if (!days.value.includes(d)) return;
-  timeMode.value = 'depart'; setAt(sec);
-  if (d !== day.value) { day.value = d; hooks.dayChanged(d); }
+  timeMode.value = 'depart';
+  setAt(sec);
+  if (d !== day.value) {
+    day.value = d;
+    hooks.dayChanged(d);
+  }
 }
 /** Back to "now": the current service day, its time, departing. */
 export function resetNow(): void {
   const d = hooks.startDay();
   const changed = d && d !== day.value;
   if (d) day.value = d;
-  setDefaultTime(); timeMode.value = 'depart'; timeTouched.value = false;
+  setDefaultTime();
+  timeMode.value = 'depart';
+  timeTouched.value = false;
   if (changed) hooks.dayChanged(day.value);
 }
 /** Apply a query's places and options (a shared link, a recent trip, the last search). */
-export function applyQuery(q: { from: Place; to: Place; bike?: string; folding?: boolean; day?: string; at?: string; arriveBy?: boolean }): void {
-  setPlace('from', q.from); setPlace('to', q.to);
-  bike.value = (q.bike as typeof bike.value) || 'none'; folding.value = !!q.folding;
+export function applyQuery(q: {
+  from: Place;
+  to: Place;
+  bike?: string;
+  folding?: boolean;
+  day?: string;
+  at?: string;
+  arriveBy?: boolean;
+}): void {
+  setPlace('from', q.from);
+  setPlace('to', q.to);
+  bike.value = (q.bike as typeof bike.value) || 'none';
+  folding.value = !!q.folding;
   if (q.day && days.value.includes(q.day)) day.value = q.day;
   if (q.at) at.value = q.at;
   timeMode.value = q.arriveBy ? 'arrive' : 'depart';
   timeTouched.value = !!(q.at || q.arriveBy);
 }
 /** The current options as the planner takes them. */
-export const options = () => ({ day: day.value, at: at.value, timeMode: timeMode.value, bike: bike.value, folding: folding.value, timeTouched: timeTouched.value, arriveBy: timeMode.value === 'arrive' });
+export const options = () => ({
+  day: day.value,
+  at: at.value,
+  timeMode: timeMode.value,
+  bike: bike.value,
+  folding: folding.value,
+  timeTouched: timeTouched.value,
+  arriveBy: timeMode.value === 'arrive',
+});

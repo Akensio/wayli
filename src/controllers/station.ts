@@ -15,31 +15,54 @@ import { liveRides } from './liverides';
 import { openTrip } from './line';
 import { recentViews } from '../lib/store.js';
 
-let seq = 0, timer = 0;
+let seq = 0,
+  timer = 0;
 const when = () => {
-  const day = search.day.value, isNow = isNowDay(day);
+  const day = search.day.value,
+    isNow = isNowDay(day);
   return { day, isNow, from: isNow ? clock.nowOn(day) - 60 : search.atSeconds() };
 };
 
 /** A station: the one stop view, for all its platforms (its departures, and where its trains go). */
-export function openStation(s: Station): void { if (s.stops.length) openStop(s.stops[0], { stops: s.stops }); }
+export function openStation(s: Station): void {
+  if (s.stops.length) openStop(s.stops[0], { stops: s.stops });
+}
 
 /** The direct trains between two stations, from now (or the bar's time on another day). */
-export async function openTrains(from: Station, to: Station, mode: 'rail' | 'lrt' = search.railPair.value ? search.pairMode.value : 'rail'): Promise<void> {
+export async function openTrains(
+  from: Station,
+  to: Station,
+  mode: 'rail' | 'lrt' = search.railPair.value ? search.pairMode.value : 'rail',
+): Promise<void> {
   const my = ++seq;
   const w = when();
-  recentViews.add({ type: 'trains', mode, from: { name: from.name, lat: from.lat, lon: from.lon }, to: { name: to.name, lat: to.lat, lon: to.lon } });
-  st.pair.value = { from, to }; st.trains.value = null; st.live.value = {}; st.liveNote.value = ''; st.day.value = w.day; st.isNow.value = w.isNow; st.mode.value = mode;
+  recentViews.add({
+    type: 'trains',
+    mode,
+    from: { name: from.name, lat: from.lat, lon: from.lon },
+    to: { name: to.name, lat: to.lat, lon: to.lon },
+  });
+  st.pair.value = { from, to };
+  st.trains.value = null;
+  st.live.value = {};
+  st.liveNote.value = '';
+  st.day.value = w.day;
+  st.isNow.value = w.isNow;
+  st.mode.value = mode;
   // the map draws both stations (map/render.ts)
-  if (!nav.isOpen('trainTimes')) nav.showOverlay('trainTimes'); else map.redrawMap(true);
+  if (!nav.isOpen('trainTimes')) nav.showOverlay('trainTimes');
+  else map.redrawMap(true);
   const rows = await call<TrainRow[]>('trainsBetween', { from: from.stops, to: to.stops, fromTime: w.from });
   if (my !== seq) return;
   st.trains.value = rows;
-  map.redrawMap(true);   // their courses and vehicles
+  map.redrawMap(true); // their courses and vehicles
   clearInterval(timer);
   if (w.isNow) timer = livePoll('trainTimes', st.liveNote, () => liveTrains(rows, w.day, my));
 }
-export function closeTrains(): void { clearInterval(timer); seq++; }
+export function closeTrains(): void {
+  clearInterval(timer);
+  seq++;
+}
 
 /** Live times of the trains between the two stations (controllers/liverides); the newest report, for the note. */
 async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<Date | null | undefined> {
@@ -52,29 +75,52 @@ async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<Da
 /** A station chosen in one of the two boxes at the top: the trains between the two once both are set, else where
  *  trains from the first go (the To box waits for its station then). */
 export function chooseStation(side: search.Side, g: Station): void {
-  if (side === 'to' && !search.stFrom.value) { search.stToText.value = ''; side = 'from'; }   // the first station is where the ride starts
-  const box = side === 'from' ? search.stFrom : search.stTo, text = side === 'from' ? search.stFromText : search.stToText;
-  box.value = { name: g.name, stops: g.stops, lat: g.lat, lon: g.lon }; text.value = g.name;
-  const f = search.stFrom.value, to = search.stTo.value;
-  if (f && to) { search.foldBar(); openTrains(asStation(f), asStation(to)); return; }   // the bar folds to its summary
-  if (f) { openStation(asStation(f)); search.focusBox('toQ'); } else search.focusBox('fromQ');
+  if (side === 'to' && !search.stFrom.value) {
+    search.stToText.value = '';
+    side = 'from';
+  } // the first station is where the ride starts
+  const box = side === 'from' ? search.stFrom : search.stTo,
+    text = side === 'from' ? search.stFromText : search.stToText;
+  box.value = { name: g.name, stops: g.stops, lat: g.lat, lon: g.lon };
+  text.value = g.name;
+  const f = search.stFrom.value,
+    to = search.stTo.value;
+  if (f && to) {
+    search.foldBar();
+    openTrains(asStation(f), asStation(to));
+    return;
+  } // the bar folds to its summary
+  if (f) {
+    openStation(asStation(f));
+    search.focusBox('toQ');
+  } else search.focusBox('fromQ');
 }
 /** The two stations' summary closed: their timetable goes, and the bar is the trip pill again. */
 export function endStations(): void {
   closeTrains();
   for (const id of ['trainTimes', 'stopDetail']) if (nav.isOpen(id)) nav.close(id);
-  search.clearStations(); search.setKind('trip'); search.foldBar();
+  search.clearStations();
+  search.setKind('trip');
+  search.foldBar();
 }
 export function swapStations(): void {
-  const f = search.stFrom.value, ft = search.stFromText.value;
-  search.stFrom.value = search.stTo.value; search.stFromText.value = search.stToText.value;
-  search.stTo.value = f; search.stToText.value = ft;
-  const a = search.stFrom.value, b = search.stTo.value;
-  if (a && b) openTrains(asStation(a), asStation(b)); else if (a) openStation(asStation(a));
+  const f = search.stFrom.value,
+    ft = search.stFromText.value;
+  search.stFrom.value = search.stTo.value;
+  search.stFromText.value = search.stToText.value;
+  search.stTo.value = f;
+  search.stToText.value = ft;
+  const a = search.stFrom.value,
+    b = search.stTo.value;
+  if (a && b) openTrains(asStation(a), asStation(b));
+  else if (a) openStation(asStation(a));
 }
 
 Object.assign(st.hooks, {
   closeTrains: () => nav.close('trainTimes'),
   openTrip: (trip: number, stop: number) => openTrip(trip, stop),
-  refresh: () => { const p = st.pair.value; if (p) openTrains(p.from, p.to); },
+  refresh: () => {
+    const p = st.pair.value;
+    if (p) openTrains(p.from, p.to);
+  },
 } satisfies typeof st.hooks);

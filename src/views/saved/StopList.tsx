@@ -19,7 +19,19 @@ export function StopList({ stops, onStop, onLine }: Props) {
           </div>
           <div class="chips">
             {(s.lines || []).map((l) => (
-              <LineChip line={l.label} routeType={l.type} agency={l.agency} onClick={l.route != null ? (e) => { e.stopPropagation(); onLine(+l.route!); } : undefined} />
+              <LineChip
+                line={l.label}
+                routeType={l.type}
+                agency={l.agency}
+                onClick={
+                  l.route != null
+                    ? (e) => {
+                        e.stopPropagation();
+                        onLine(+l.route!);
+                      }
+                    : undefined
+                }
+              />
             ))}
           </div>
         </div>

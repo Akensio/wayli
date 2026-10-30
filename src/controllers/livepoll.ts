@@ -12,13 +12,21 @@ const EVERY = 45000;
 /** Starts polling for `panel` and returns its timer (cleared when the panel closes or is opened anew). */
 export function livePoll(panel: string, note: Signal<string>, ask: () => Promise<Date | null | undefined>): number {
   const once = async (): Promise<void> => {
-    if (!map.liveOn()) { note.value = t('liveOff'); return; }
+    if (!map.liveOn()) {
+      note.value = t('liveOff');
+      return;
+    }
     try {
       const newest = await ask();
       if (newest !== undefined) note.value = newest ? t('liveUpdated', { time: timeOf(newest) }) : t('liveNoVehicle');
-    } catch { note.value = t('liveFail'); }
+    } catch {
+      note.value = t('liveFail');
+    }
   };
   void once();
-  const timer = window.setInterval(() => { if (!nav.isOpen(panel)) clearInterval(timer); else void once(); }, EVERY);
+  const timer = window.setInterval(() => {
+    if (!nav.isOpen(panel)) clearInterval(timer);
+    else void once();
+  }, EVERY);
   return timer;
 }

@@ -13,11 +13,35 @@ export function SettingsPage() {
   const open = app.settingsOpen.value;
   const ref = useRef<HTMLElement>(null);
   // it came in from the right in English (from the left in Hebrew): swiped back that way, it closes
-  const swipe = useSwipeClose({ layer: ref, dir: () => (document.documentElement.dir === 'rtl' ? -1 : 1), onClose: () => app.hooks.closeSettings() });
+  const swipe = useSwipeClose({
+    layer: ref,
+    dir: () => (document.documentElement.dir === 'rtl' ? -1 : 1),
+    onClose: () => app.hooks.closeSettings(),
+  });
   return (
-    <section ref={ref} class={`pagelayer${open ? ' open' : ''}`} id="settingsPage" aria-hidden={!open} aria-label={t('settings')} {...swipe}>
-      <div class="pagehead"><button type="button" class="iconbtn flat" id="settingsBack" aria-label={t('back')} onClick={app.hooks.closeSettings}><Icon name="back" class="chev" /></button><h2>{t('settings')}</h2></div>
-      <div class="pagebody" id="screen-more"><Settings /></div>
+    <section
+      ref={ref}
+      class={`pagelayer${open ? ' open' : ''}`}
+      id="settingsPage"
+      aria-hidden={!open}
+      aria-label={t('settings')}
+      {...swipe}
+    >
+      <div class="pagehead">
+        <button
+          type="button"
+          class="iconbtn flat"
+          id="settingsBack"
+          aria-label={t('back')}
+          onClick={app.hooks.closeSettings}
+        >
+          <Icon name="back" class="chev" />
+        </button>
+        <h2>{t('settings')}</h2>
+      </div>
+      <div class="pagebody" id="screen-more">
+        <Settings />
+      </div>
     </section>
   );
 }

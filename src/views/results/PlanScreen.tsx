@@ -8,7 +8,9 @@ export function PlanScreen() {
   return (
     <>
       <PeekLine />
-      <div class="error-box" id="planError" hidden={!results.error.value}>{results.error.value}</div>
+      <div class="error-box" id="planError" hidden={!results.error.value}>
+        {results.error.value}
+      </div>
       <Results />
       <Recent />
     </>

@@ -28,38 +28,78 @@ import { layoutTop } from './shell';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
 
-function showPlanError(msg: string): void { results.error.value = msg; if (msg && sheet.state.value === 'peek') sheet.set('half'); }
+function showPlanError(msg: string): void {
+  results.error.value = msg;
+  if (msg && sheet.state.value === 'peek') sheet.set('half');
+}
 
 /** A shared link's plan: from and to as "lat,lon,name", the day, the time, the bicycle, arrive-by. */
 export function parseShared(params: URLSearchParams): Shared | null {
-  const pt = (s: string | null): Place | null => { if (!s) return null; const [lat, lon, ...rest] = s.split(','); const name = decodeURIComponent(rest.join(',')) || `${lat}, ${lon}`; return Number.isNaN(+lat) ? null : { name, lat: +lat, lon: +lon }; };
-  const from = pt(params.get('from')), to = pt(params.get('to'));
+  const pt = (s: string | null): Place | null => {
+    if (!s) return null;
+    const [lat, lon, ...rest] = s.split(',');
+    const name = decodeURIComponent(rest.join(',')) || `${lat}, ${lon}`;
+    return Number.isNaN(+lat) ? null : { name, lat: +lat, lon: +lon };
+  };
+  const from = pt(params.get('from')),
+    to = pt(params.get('to'));
   if (!from || !to) return null;
-  return { from, to, day: params.get('day') || '', at: params.get('at') || '', bike: params.get('bike') || 'none', folding: params.get('folding') === '1', arriveBy: params.get('mode') === 'arrive' };
+  return {
+    from,
+    to,
+    day: params.get('day') || '',
+    at: params.get('at') || '',
+    bike: params.get('bike') || 'none',
+    folding: params.get('folding') === '1',
+    arriveBy: params.get('mode') === 'arrive',
+  };
 }
 
 let waiting = false;
-effect(() => { if (data.ttReady.value && waiting) plan(); });
+effect(() => {
+  if (data.ttReady.value && waiting) plan();
+});
 export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   showPlanError('');
-  if (!search.from.value || !search.to.value) { showPlanError(t('pickBoth')); return; }
-  if (!data.ttReady.value) { waiting = true; return; }   // a new day's timetable is loading: planned once it is in
+  if (!search.from.value || !search.to.value) {
+    showPlanError(t('pickBoth'));
+    return;
+  }
+  if (!data.ttReady.value) {
+    waiting = true;
+    return;
+  } // a new day's timetable is loading: planned once it is in
   waiting = false;
-  for (const side of ['from', 'to'] as const) {   // "my location" is resolved now, not when it was chosen
+  for (const side of ['from', 'to'] as const) {
+    // "my location" is resolved now, not when it was chosen
     const p = search.sides[side].value!;
     if (p.transient && p.lat == null) {
       search.texts[side].value = t('locating');
-      try { search.setPlace(side, search.myLocation(await getPosition())); } catch { search.texts[side].value = t('myLoc'); showPlanError(t('noLocation')); return; }
+      try {
+        search.setPlace(side, search.myLocation(await getPosition()));
+      } catch {
+        search.texts[side].value = t('myLoc');
+        showPlanError(t('noLocation'));
+        return;
+      }
     }
   }
-  if (!search.timeTouched.value) { search.setDefaultTime(); if (data.manifest.value && search.day.value !== startDay()) search.day.value = startDay(); }
-  if (!nav.stack.value.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' });   // the back button clears the plan
-  const from = search.from.value!, to = search.to.value!, day = search.day.value;
+  if (!search.timeTouched.value) {
+    search.setDefaultTime();
+    if (data.manifest.value && search.day.value !== startDay()) search.day.value = startDay();
+  }
+  if (!nav.stack.value.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' }); // the back button clears the plan
+  const from = search.from.value!,
+    to = search.to.value!,
+    day = search.day.value;
   const weekday = dateOf(day).getDay() <= 4;
-  const bike = search.bike.value, folding = search.folding.value, arriveBy = search.timeMode.value === 'arrive';
+  const bike = search.bike.value,
+    folding = search.folding.value,
+    arriveBy = search.timeMode.value === 'arrive';
   const at = search.atSeconds();
-  const isNow = !search.timeTouched.value && !arriveBy;   // a plan from now looks ten minutes back too: a ride just boarded can still be followed
-  const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at, toTime = arriveBy ? at : at + 3600;
+  const isNow = !search.timeTouched.value && !arriveBy; // a plan from now looks ten minutes back too: a ride just boarded can still be followed
+  const fromTime = arriveBy ? Math.max(0, at - 7200) : isNow ? Math.max(0, at - 600) : at,
+    toTime = arriveBy ? at : at + 3600;
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   search.busy.value = true;
   results.status.value = 'planning';
@@ -68,17 +108,41 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   // a plan from now takes the delays of the vehicles on the road into account
   const svc = clock.serviceDay();
   const liveTried = map.liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200;
-  let vehicles: unknown[] | null = null, liveAsOf: Date | null = null;
+  let vehicles: unknown[] | null = null,
+    liveAsOf: Date | null = null;
   if (liveTried && from.lat != null) {
-    try { vehicles = await feed.vehiclesForPlanning(from.lat, from.lon, { timeoutMs: 8000 }); liveAsOf = feed.newest(vehicles); } catch { vehicles = null; }
+    try {
+      vehicles = await feed.vehiclesForPlanning(from.lat, from.lon, { timeoutMs: 8000 });
+      liveAsOf = feed.newest(vehicles);
+    } catch {
+      vehicles = null;
+    }
   }
-  q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null; q.liveTried = liveTried;
+  q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null;
+  q.liveTried = liveTried;
   try {
-    const r = await call<PlanResult>('plan', { from, to, fromTime, toTime, bike, folding, weekday, maxWalk, arriveBy, vehicles });
-    recentTrips.add(q); recentPlaces.add(from); recentPlaces.add(to);
+    const r = await call<PlanResult>('plan', {
+      from,
+      to,
+      fromTime,
+      toTime,
+      bike,
+      folding,
+      weekday,
+      maxWalk,
+      arriveBy,
+      vehicles,
+    });
+    recentTrips.add(q);
+    recentPlaces.add(from);
+    recentPlaces.add(to);
     lastSearch.set({ q, result: r, at: Date.now() });
     results.setResults(r, q);
-  } catch (e) { showPlanError(e instanceof Error ? e.message : String(e)); results.result.value = null; results.status.value = 'idle'; }
+  } catch (e) {
+    showPlanError(e instanceof Error ? e.message : String(e));
+    results.result.value = null;
+    results.status.value = 'idle';
+  }
   search.busy.value = false;
 }
 
@@ -90,36 +154,65 @@ export async function planTo(p: Place): Promise<void> {
   results.status.value = 'locating';
   sheet.set('half');
   search.fromText.value = t('locating');
-  try { search.setPlace('from', search.myLocation(await getPosition())); }
-  catch { const f = search.from.value; if (!f || f.transient) search.setPlace('from', null); else search.fromText.value = f.name; }
-  if (!search.timeTouched.value) search.resetNow();   // from now, unless the rider set a time
-  if (search.from.value) plan(); else { results.status.value = 'idle'; showPlanError(t('noLocation')); search.focusBox('toQ'); }
+  try {
+    search.setPlace('from', search.myLocation(await getPosition()));
+  } catch {
+    const f = search.from.value;
+    if (!f || f.transient) search.setPlace('from', null);
+    else search.fromText.value = f.name;
+  }
+  if (!search.timeTouched.value) search.resetNow(); // from now, unless the rider set a time
+  if (search.from.value) plan();
+  else {
+    results.status.value = 'idle';
+    showPlanError(t('noLocation'));
+    search.focusBox('toQ');
+  }
 }
 /** An origin chosen anywhere: in the From box, the bar open for the destination. */
-export function planFrom(p: Place): void { nav.closeAll(); search.setPlace('from', p); nav.showScreen('plan'); search.barOpen.value = true; search.focusBox('toQ'); }
+export function planFrom(p: Place): void {
+  nav.closeAll();
+  search.setPlace('from', p);
+  nav.showScreen('plan');
+  search.barOpen.value = true;
+  search.focusBox('toQ');
+}
 
 /** Back to a clean bar: no places, no results, the sheet down to its strip. */
 export function clearPlan(): void {
   search.clearPlaces();
   results.clear();
-  const l = lastSearch.get(); if (l) lastSearch.set({ ...l, dismissed: true });
+  const l = lastSearch.get();
+  if (l) lastSearch.set({ ...l, dismissed: true });
   showPlanError('');
-  search.optOpen.value = ''; search.resetNow();
-  map.applyLiveShow(); nav.renderPanels(); map.redrawMap(true);
+  search.optOpen.value = '';
+  search.resetNow();
+  map.applyLiveShow();
+  nav.renderPanels();
+  map.redrawMap(true);
 }
 
 // What the bar needs: planning, searching, the map, the menu.
 Object.assign(search.hooks, {
-  plan: () => { nav.closeAll(); nav.showScreen('plan'); plan(); },
+  plan: () => {
+    nav.closeAll();
+    nav.showScreen('plan');
+    plan();
+  },
   planTo: (p: Place) => planTo(p),
-  clearPlan: () => { if (nav.stack.value.some((e) => e.kind === 'plan')) nav.close('plan'); else clearPlan(); },
+  clearPlan: () => {
+    if (nav.stack.value.some((e) => e.kind === 'plan')) nav.close('plan');
+    else clearPlan();
+  },
   hasResults: () => !!(results.result.value && results.query.value),
   lastQuery: () => results.query.value,
   search: (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos }),
-  lineGroups: (q: string, mode: search.LineFilter, limit = 30) => call<search.LineGroup[]>('lineGroups', { q, mode, near: lastPos, limit }),
-  stopGroups: (q: string, mode: search.StopFilter, from?: number[]) => call<search.StopGroup[]>('stopGroups', { q, mode, near: lastPos, limit: 60, from }),
+  lineGroups: (q: string, mode: search.LineFilter, limit = 30) =>
+    call<search.LineGroup[]>('lineGroups', { q, mode, near: lastPos, limit }),
+  stopGroups: (q: string, mode: search.StopFilter, from?: number[]) =>
+    call<search.StopGroup[]>('stopGroups', { q, mode, near: lastPos, limit: 60, from }),
   // a station picked among all stops: the train timetable opens with it as the From station
-  openStopGroup: (g: search.StopGroup) => openStop(g.stops[0], { stops: g.stops }),   // a station too: the one stop view (the train chip is the timetable of two stations)
+  openStopGroup: (g: search.StopGroup) => openStop(g.stops[0], { stops: g.stops }), // a station too: the one stop view (the train chip is the timetable of two stations)
   chooseStation: (side: search.Side, g: search.StopGroup) => chooseStation(side, g),
   openRecent: (v: results.View) => openRecent(v),
   endStations: () => endStations(),
@@ -139,44 +232,96 @@ async function openView(v: results.View): Promise<void> {
   if (!data.ttReady.value) return;
   const gone = () => toast(t('notInDay'));
   if (v.type === 'trip') {
-    const same = data.dayInfo.value?.date === v.q.day && v.built === data.manifest.value?.built && v.j.arrive > clock.nowOn(v.q.day);
-    if (same) { nav.closeAll(); nav.showScreen('plan'); openDetail(v.j, v.q); } else results.hooks.replan(v.q);
+    const same =
+      data.dayInfo.value?.date === v.q.day &&
+      v.built === data.manifest.value?.built &&
+      v.j.arrive > clock.nowOn(v.q.day);
+    if (same) {
+      nav.closeAll();
+      nav.showScreen('plan');
+      openDetail(v.j, v.q);
+    } else results.hooks.replan(v.q);
     return;
   }
-  if (v.type === 'line') { const r = await call<number>('findRecent', { kind: 'line', ref: v.ref }); if (r >= 0) openLine(r); else gone(); return; }
-  if (v.type === 'stop') { const s = await call<number>('findRecent', { kind: 'stop', code: v.code, lat: v.lat, lon: v.lon }); if (s >= 0) openStop(s); else gone(); return; }
+  if (v.type === 'line') {
+    const r = await call<number>('findRecent', { kind: 'line', ref: v.ref });
+    if (r >= 0) openLine(r);
+    else gone();
+    return;
+  }
+  if (v.type === 'stop') {
+    const s = await call<number>('findRecent', { kind: 'stop', code: v.code, lat: v.lat, lon: v.lon });
+    if (s >= 0) openStop(s);
+    else gone();
+    return;
+  }
   const mode = v.mode === 'lrt' ? 'lrt' : 'rail';
-  if (v.type === 'station') { const s = await findStation(v, mode); if (s) openStation(s); else gone(); return; }
+  if (v.type === 'station') {
+    const s = await findStation(v, mode);
+    if (s) openStation(s);
+    else gone();
+    return;
+  }
   const [a, b] = await Promise.all([findStation(v.from, mode), findStation(v.to, mode)]);
-  if (a && b) openTrains(a, b, mode); else gone();
+  if (a && b) openTrains(a, b, mode);
+  else gone();
 }
 /** A station of the history, found in the day loaded now by where it is. */
 async function findStation(a: { name: string; lat: number; lon: number }, mode: 'rail' | 'lrt') {
-  const f = await call<{ name: string; stops: number[]; lat: number; lon: number } | null>('findRecent', { kind: 'station', lat: a.lat, lon: a.lon, mode });
+  const f = await call<{ name: string; stops: number[]; lat: number; lon: number } | null>('findRecent', {
+    kind: 'station',
+    lat: a.lat,
+    lon: a.lon,
+    mode,
+  });
   return f ? { ...f, key: f.name, name: a.name } : null;
 }
 /** A recent line, stop or station picked in the list under the box. In the train timetable (two stations at the top) a
  *  station is the From one and a pair fills both; otherwise it opens as from the drawer and the bar folds. */
 async function openRecent(v: results.View): Promise<void> {
-  if (!search.railPair.value || (v.type !== 'station' && v.type !== 'trains')) { await openView(v); search.foldBar(); return; }
+  if (!search.railPair.value || (v.type !== 'station' && v.type !== 'trains')) {
+    await openView(v);
+    search.foldBar();
+    return;
+  }
   const mode = search.pairMode.value;
-  if (v.type === 'station') { const s = await findStation(v, mode); if (s) chooseStation('from', s); else toast(t('notInDay')); return; }
+  if (v.type === 'station') {
+    const s = await findStation(v, mode);
+    if (s) chooseStation('from', s);
+    else toast(t('notInDay'));
+    return;
+  }
   const [a, b] = await Promise.all([findStation(v.from, mode), findStation(v.to, mode)]);
-  if (!a || !b) { toast(t('notInDay')); return; }
-  search.stFrom.value = { name: a.name, stops: a.stops, lat: a.lat, lon: a.lon }; search.stFromText.value = a.name;
-  search.stTo.value = { name: b.name, stops: b.stops, lat: b.lat, lon: b.lon }; search.stToText.value = b.name;
-  search.foldBar(); openTrains(a, b, mode);
+  if (!a || !b) {
+    toast(t('notInDay'));
+    return;
+  }
+  search.stFrom.value = { name: a.name, stops: a.stops, lat: a.lat, lon: a.lon };
+  search.stFromText.value = a.name;
+  search.stTo.value = { name: b.name, stops: b.stops, lat: b.lat, lon: b.lon };
+  search.stToText.value = b.name;
+  search.foldBar();
+  openTrains(a, b, mode);
 }
 /** Bring a way's card into view in the sheet's list, with a flash so the eye finds it; a collapsed sheet opens first
  *  when asked (otherwise the peek line already says which way it is). */
 export function revealCard(idx: number, open: boolean): void {
-  if (sheet.state.value === 'peek') { if (open) sheet.set('half'); return; }   // opening brings the highlighted card itself (shell.ts)
-  setTimeout(() => {   // after the sheet's own scroll reset, once it has its size
-    const body = document.getElementById('sheetBody'), el = document.querySelector<HTMLElement>(`.journey[data-idx="${idx}"]`);
+  if (sheet.state.value === 'peek') {
+    if (open) sheet.set('half');
+    return;
+  } // opening brings the highlighted card itself (shell.ts)
+  setTimeout(() => {
+    // after the sheet's own scroll reset, once it has its size
+    const body = document.getElementById('sheetBody'),
+      el = document.querySelector<HTMLElement>(`.journey[data-idx="${idx}"]`);
     if (!body || !el || sheet.state.value === 'peek') return;
-    const top = el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop, seen = body.clientHeight;
-    if (top < body.scrollTop + 8 || top + el.offsetHeight > body.scrollTop + seen - 8) body.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
-    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    const top = el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop,
+      seen = body.clientHeight;
+    if (top < body.scrollTop + 8 || top + el.offsetHeight > body.scrollTop + seen - 8)
+      body.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
   }, 60);
 }
 // What the results need: the detail and follow screens, planning again, the sheet and the map.
@@ -184,15 +329,25 @@ Object.assign(results.hooks, {
   openDetail: (j, q, bikeOnly) => openDetail(j, q, bikeOnly),
   startTrip: (j, q) => startTrip(j, q),
   plan: (opts) => plan(opts),
-  replan: (q) => { search.applyQuery(q); search.resetNow(); nav.closeAll(); nav.showScreen('plan'); plan(); },
+  replan: (q) => {
+    search.applyQuery(q);
+    search.resetNow();
+    nav.closeAll();
+    nav.showScreen('plan');
+    plan();
+  },
   openView: (v) => openView(v),
   afterResults: () => {
-    const body = document.getElementById('sheetBody'); if (body) body.scrollTop = 0;
+    const body = document.getElementById('sheetBody');
+    if (body) body.scrollTop = 0;
     if (!nav.topPanel() && nav.screen.value === 'plan' && sheet.state.value === 'peek') sheet.set('half');
-    map.applyLiveShow(); map.redrawMap(true);
+    map.applyLiveShow();
+    map.redrawMap(true);
   },
   redraw: () => map.redrawMap(true),
-  peekChanged: () => { if (sheet.state.value === 'peek') sheet.set('peek'); },
+  peekChanged: () => {
+    if (sheet.state.value === 'peek') sheet.set('peek');
+  },
   peekTap: () => sheet.set('half'),
   revealCard: (idx, open) => revealCard(idx, open),
 } satisfies typeof results.hooks);

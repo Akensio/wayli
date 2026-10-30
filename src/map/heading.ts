@@ -8,11 +8,16 @@
 // came. `window.wayliDebug.compass` counts the readings, to tell a phone without a compass from a drawing problem.
 import type { Map as MLMap } from 'maplibre-gl';
 
-let heading: number | null = null, seenAt = 0, shown: number | null = null, frame = 0, listening = false, readings = 0;
-let permission: 'none' | 'asking' | 'granted' | 'denied' | 'failed' = 'none';   // 'none': the browser has none to ask
-const KEEP_MS = 30000;   // a still phone may send nothing: the last direction holds this long
-const GLIDE_MS = 90;     // how quickly the cone catches up with the heading (time constant)
-let glide = (): void => {};   // a new reading: the cone moves (set once the map is there)
+let heading: number | null = null,
+  seenAt = 0,
+  shown: number | null = null,
+  frame = 0,
+  listening = false,
+  readings = 0;
+let permission: 'none' | 'asking' | 'granted' | 'denied' | 'failed' = 'none'; // 'none': the browser has none to ask
+const KEEP_MS = 30000; // a still phone may send nothing: the last direction holds this long
+const GLIDE_MS = 90; // how quickly the cone catches up with the heading (time constant)
+let glide = (): void => {}; // a new reading: the cone moves (set once the map is there)
 
 /** A compass reading in degrees clockwise from north, corrected for the screen being turned. */
 function onReading(deg: number): void {
@@ -23,42 +28,75 @@ function onReading(deg: number): void {
   seenAt = performance.now();
   readings++;
   glide();
-  try { (window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug = { ...((window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug || {}), compass: { readings, heading: Math.round(heading) } }; } catch { /* debugging only */ }
+  try {
+    (window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug = {
+      ...((window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug || {}),
+      compass: { readings, heading: Math.round(heading) },
+    };
+  } catch {
+    /* debugging only */
+  }
 }
 // what arrives, for the line in Settings that tells a phone without a compass from a drawing problem
 const seen = { abs: 0, absNull: 0, plainAbs: 0, plainRel: 0, ios: 0 };
-function absolute(e: DeviceOrientationEvent): void { if (e.alpha != null) { seen.abs++; onReading(360 - e.alpha); } else seen.absNull++; }
+function absolute(e: DeviceOrientationEvent): void {
+  if (e.alpha != null) {
+    seen.abs++;
+    onReading(360 - e.alpha);
+  } else seen.absNull++;
+}
 /** The plain event, when the browser says it is relative to north (Firefox and others on Android). */
 function plain(e: DeviceOrientationEvent): void {
-  const c = (e as unknown as { webkitCompassHeading?: number }).webkitCompassHeading;   // an iPhone's
-  if (c != null && !Number.isNaN(c)) { seen.ios++; onReading(c); return; }
-  if (e.absolute) seen.plainAbs++; else seen.plainRel++;
+  const c = (e as unknown as { webkitCompassHeading?: number }).webkitCompassHeading; // an iPhone's
+  if (c != null && !Number.isNaN(c)) {
+    seen.ios++;
+    onReading(c);
+    return;
+  }
+  if (e.absolute) seen.plainAbs++;
+  else seen.plainRel++;
   if (e.absolute && e.alpha != null && performance.now() - seenAt > 500) onReading(360 - e.alpha);
 }
 /** One line on what the compass sends and what the cone does: readings by kind, the heading, the dot and the cone. */
 export function compassReport(): string {
-  const dot = document.querySelector<HTMLElement>('.maplibregl-user-location-dot, .wayli-me'), cone = dot?.querySelector<HTMLElement>('.wayli-cone');
+  const dot = document.querySelector<HTMLElement>('.maplibregl-user-location-dot, .wayli-me'),
+    cone = dot?.querySelector<HTMLElement>('.wayli-cone');
   const age = seenAt ? Math.round((performance.now() - seenAt) / 1000) : null;
-  return [`listening ${listening ? 'yes' : 'no'}`, `permission ${permission}`, `absolute ${'ondeviceorientationabsolute' in window ? seen.abs : 'n/a'}${seen.absNull ? ` (+${seen.absNull} empty)` : ''}`,
-    `plain ${seen.plainAbs}/${seen.plainRel} abs/rel`, `ios ${seen.ios}`, `heading ${heading == null ? '-' : Math.round(heading) + '°'}${age != null ? ` ${age}s ago` : ''}`,
-    `dot ${dot ? (dot.className.includes('stale') ? 'stale' : 'yes') : 'no'}`, `cone ${cone ? (cone.classList.contains('on') ? `on ${cone.style.getPropertyValue('--heading')}` : 'off') : 'none'}`].join(' · ');
+  return [
+    `listening ${listening ? 'yes' : 'no'}`,
+    `permission ${permission}`,
+    `absolute ${'ondeviceorientationabsolute' in window ? seen.abs : 'n/a'}${seen.absNull ? ` (+${seen.absNull} empty)` : ''}`,
+    `plain ${seen.plainAbs}/${seen.plainRel} abs/rel`,
+    `ios ${seen.ios}`,
+    `heading ${heading == null ? '-' : Math.round(heading) + '°'}${age != null ? ` ${age}s ago` : ''}`,
+    `dot ${dot ? (dot.className.includes('stale') ? 'stale' : 'yes') : 'no'}`,
+    `cone ${cone ? (cone.classList.contains('on') ? `on ${cone.style.getPropertyValue('--heading')}` : 'off') : 'none'}`,
+  ].join(' · ');
 }
 
 /** Listen to the compass, and ask for it where the browser has a permission for it (only from a tap; called again
  *  from the taps that may ask). */
 export function startHeading(): void {
-  const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }).DeviceOrientationEvent;
+  const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } })
+    .DeviceOrientationEvent;
   if (!D) return;
   if (!listening) {
     listening = true;
-    if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', absolute as EventListener);
+    if ('ondeviceorientationabsolute' in window)
+      window.addEventListener('deviceorientationabsolute', absolute as EventListener);
     window.addEventListener('deviceorientation', plain);
   }
   if (typeof D.requestPermission !== 'function' || permission === 'granted' || permission === 'asking') return;
   const act = (navigator as unknown as { userActivation?: { isActive: boolean } }).userActivation;
-  if (act && !act.isActive) return;   // not from a tap: it would only be refused
+  if (act && !act.isActive) return; // not from a tap: it would only be refused
   permission = 'asking';
-  D.requestPermission().then((r) => { permission = r === 'granted' ? 'granted' : 'denied'; }).catch(() => { permission = 'failed'; });
+  D.requestPermission()
+    .then((r) => {
+      permission = r === 'granted' ? 'granted' : 'denied';
+    })
+    .catch(() => {
+      permission = 'failed';
+    });
 }
 
 /** Keep the cone on the dot turned to the heading, on the map as it is rotated. It glides: every frame it turns part
@@ -68,7 +106,7 @@ export function attachHeading(m: MLMap): void {
   let last = 0;
   const step = () => {
     frame = 0;
-    const now = performance.now();   // (not the frame's own time stamp: it can be older than the readings')
+    const now = performance.now(); // (not the frame's own time stamp: it can be older than the readings')
     // the map's position dot, and the one the follow screen draws
     const dots = document.querySelectorAll<HTMLElement>('.maplibregl-user-location-dot, .wayli-me');
     const fresh = heading != null && now - seenAt < KEEP_MS;
@@ -83,22 +121,34 @@ export function attachHeading(m: MLMap): void {
       }
     }
     last = now;
-    const pitch = `${m.getPitch().toFixed(1)}deg`;   // the beam lies on the ground: tilted with the map
+    const pitch = `${m.getPitch().toFixed(1)}deg`; // the beam lies on the ground: tilted with the map
     for (const dot of dots) {
-      let cone = dot.querySelector<HTMLElement>('.wayli-cone');   // its own element: the dot's ::after is its white ring
-      if (!cone) { cone = document.createElement('div'); cone.className = 'wayli-cone'; dot.appendChild(cone); }
+      let cone = dot.querySelector<HTMLElement>('.wayli-cone'); // its own element: the dot's ::after is its white ring
+      if (!cone) {
+        cone = document.createElement('div');
+        cone.className = 'wayli-cone';
+        dot.appendChild(cone);
+      }
       if (cone.classList.contains('on') !== fresh) cone.classList.toggle('on', fresh);
       if (shown != null) cone.style.setProperty('--heading', `${shown.toFixed(1)}deg`);
       if (cone.style.getPropertyValue('--pitch') !== pitch) cone.style.setProperty('--pitch', pitch);
     }
     if (fresh && (Math.abs(gap) > 0.2 || now - seenAt < 300)) frame = requestAnimationFrame(step);
   };
-  glide = () => { if (!frame) { last = performance.now(); frame = requestAnimationFrame(step); } };
-  window.setInterval(glide, 500);   // the dot may be drawn anew, or the readings stop: looked at now and then
-  m.on('rotate', glide); m.on('pitch', glide);
+  glide = () => {
+    if (!frame) {
+      last = performance.now();
+      frame = requestAnimationFrame(step);
+    }
+  };
+  window.setInterval(glide, 500); // the dot may be drawn anew, or the readings stop: looked at now and then
+  m.on('rotate', glide);
+  m.on('pitch', glide);
   // where the browser asks (an iPhone, Chrome on a Pixel), it asks from a tap: the first on the map does (a refusal asks
   // again on the locate button only)
   const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: unknown } }).DeviceOrientationEvent;
   // (touchend: the map's touch handling may leave no click, and Safari takes touchend as a tap that may ask)
-  if (D && typeof D.requestPermission === 'function') for (const ev of ['touchend', 'click']) m.getCanvasContainer().addEventListener(ev, () => startHeading(), { once: true });
+  if (D && typeof D.requestPermission === 'function')
+    for (const ev of ['touchend', 'click'])
+      m.getCanvasContainer().addEventListener(ev, () => startHeading(), { once: true });
 }

@@ -18,19 +18,29 @@ export function call<T = any>(op: string, args?: unknown): Promise<T> {
 }
 worker.onmessage = (ev) => {
   const m = ev.data;
-  if (m.type === 'progress') { hooks.progress(m); return; }
+  if (m.type === 'progress') {
+    hooks.progress(m);
+    return;
+  }
   const p = pending.get(m.id);
   if (!p) return;
   pending.delete(m.id);
-  if (m.error) p.reject(new Error(m.error)); else p.resolve(m.result);
+  if (m.error) p.reject(new Error(m.error));
+  else p.resolve(m.result);
 };
 worker.onerror = (e) => hooks.failed(e.message || 'worker');
 
 // a trip's stops are asked for once per loaded day
 const tsCache = new Map<number, Promise<any>>();
-export const tripStopsCached = (trip: number): Promise<any> => { if (!tsCache.has(trip)) tsCache.set(trip, call('tripStops', { trip })); return tsCache.get(trip)!; };
-export const resetCaches = (): void => { tsCache.clear(); };
+export const tripStopsCached = (trip: number): Promise<any> => {
+  if (!tsCache.has(trip)) tsCache.set(trip, call('tripStops', { trip }));
+  return tsCache.get(trip)!;
+};
+export const resetCaches = (): void => {
+  tsCache.clear();
+};
 /** A vehicle's delay and its time at each stop ahead, made in the worker where the learned section times are
  *  (delays.js estimateDelay); null when it cannot be told. */
 type Estimate = ReturnType<typeof estimateDelay>;
-export const estimate = (vehicle: any, stops: any[], day: string): Promise<Estimate> => call<Estimate>('estimate', { vehicle: { ...vehicle }, stops, day }).catch(() => null);
+export const estimate = (vehicle: any, stops: any[], day: string): Promise<Estimate> =>
+  call<Estimate>('estimate', { vehicle: { ...vehicle }, stops, day }).catch(() => null);

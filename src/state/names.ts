@@ -16,14 +16,23 @@ let flushing = 0;
 const keyOf = (p: Place, L: string) => `${L}|${p.code ?? ''}|${p.lat ?? ''},${p.lon ?? ''}|${p.name}`;
 
 async function flush(L: string): Promise<void> {
-  const batch = [...asked.entries()]; asked.clear();
+  const batch = [...asked.entries()];
+  asked.clear();
   try {
-    const names = await hooks.localize(batch.map(([, p]) => p), L);
+    const names = await hooks.localize(
+      batch.map(([, p]) => p),
+      L,
+    );
     const m = new Map(known.value);
     // only real answers are kept: a lookup not wired yet, or data still loading, is asked again on the next render
-    batch.forEach(([k], i) => { const n = names[i]; if (n === null || typeof n === 'string') m.set(k, n); });
+    batch.forEach(([k], i) => {
+      const n = names[i];
+      if (n === null || typeof n === 'string') m.set(k, n);
+    });
     known.value = m;
-  } catch { /* the stored names stay */ }
+  } catch {
+    /* the stored names stay */
+  }
 }
 
 /** A stored place's name in the interface's language. */
@@ -31,10 +40,16 @@ export function placeName(p: Place | null | undefined): string {
   if (!p) return '';
   if (p.transient) return t('myLoc');
   const L = lang.value;
-  void data.plReady.value; void data.ttReady.value;   // asked again once the address book and the timetable are in
-  const k = keyOf(p, L), m = known.value;
+  void data.plReady.value;
+  void data.ttReady.value; // asked again once the address book and the timetable are in
+  const k = keyOf(p, L),
+    m = known.value;
   if (m.has(k)) return m.get(k) || p.name;
-  if (!asked.has(k)) { asked.set(k, p); clearTimeout(flushing); flushing = window.setTimeout(() => flush(L), 0); }
+  if (!asked.has(k)) {
+    asked.set(k, p);
+    clearTimeout(flushing);
+    flushing = window.setTimeout(() => flush(L), 0);
+  }
   return p.name;
 }
 /** The place as it should be used now: named in the interface's language. */

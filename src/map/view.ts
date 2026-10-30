@@ -5,12 +5,12 @@
 
 /** What is drawn. */
 export type Draw =
-  | 'nothing'   // the map itself, the rider's dot
-  | 'ways'      // the results: the ways switched on, one highlighted, each ride with its line's chip
-  | 'journey'   // one way, its stops; with `context`, the whole lines of its rides faint around it
-  | 'line'      // a line's course and every stop of it
-  | 'stop'      // a stop's pin; with `context`, the courses of the lines calling there, faint
-  | 'pair';     // the trains between two stations: the next one's course with its stations, other courses faint
+  | 'nothing' // the map itself, the rider's dot
+  | 'ways' // the results: the ways switched on, one highlighted, each ride with its line's chip
+  | 'journey' // one way, its stops; with `context`, the whole lines of its rides faint around it
+  | 'line' // a line's course and every stop of it
+  | 'stop' // a stop's pin; with `context`, the courses of the lines calling there, faint
+  | 'pair'; // the trains between two stations: the next one's course with its stations, other courses faint
 /** Where the camera goes: stays, fits what is drawn (or the focused ride), or centres on a point. */
 type Camera = 'keep' | 'fit' | 'focus' | 'point';
 /** Which live vehicles the map's own layer shows: every one (the lines near the rider in front), only those of the
@@ -24,14 +24,28 @@ const REST: View = { draw: 'nothing', context: false, camera: 'keep', maxZoom: 1
 
 export function viewFor(s: Sheet): View {
   switch (s.key) {
-    case 'screen-plan': return s.results ? { draw: 'ways', context: false, camera: 'fit', maxZoom: 15, live: 'results' } : REST;
-    case 'detail': return { draw: 'journey', context: true, camera: s.focus != null && s.focus >= 0 ? 'focus' : 'fit', maxZoom: 16, live: 'own' };
-    case 'follow': return { draw: 'journey', context: false, camera: 'fit', maxZoom: 16, live: 'own' };
-    case 'lineDetail': return { draw: 'line', context: false, camera: 'fit', maxZoom: 15, live: 'own' };
-    case 'stopDetail': return { draw: 'stop', context: true, camera: 'point', maxZoom: 15, live: 'stop' };
-    case 'trainTimes': return { draw: 'pair', context: false, camera: 'fit', maxZoom: 13, live: 'stop' };
-    case 'picker': return { ...REST, live: 'none' };   // choosing a point: the map alone
-    default: return REST;                              // pages over everything, the place chooser
+    case 'screen-plan':
+      return s.results ? { draw: 'ways', context: false, camera: 'fit', maxZoom: 15, live: 'results' } : REST;
+    case 'detail':
+      return {
+        draw: 'journey',
+        context: true,
+        camera: s.focus != null && s.focus >= 0 ? 'focus' : 'fit',
+        maxZoom: 16,
+        live: 'own',
+      };
+    case 'follow':
+      return { draw: 'journey', context: false, camera: 'fit', maxZoom: 16, live: 'own' };
+    case 'lineDetail':
+      return { draw: 'line', context: false, camera: 'fit', maxZoom: 15, live: 'own' };
+    case 'stopDetail':
+      return { draw: 'stop', context: true, camera: 'point', maxZoom: 15, live: 'stop' };
+    case 'trainTimes':
+      return { draw: 'pair', context: false, camera: 'fit', maxZoom: 13, live: 'stop' };
+    case 'picker':
+      return { ...REST, live: 'none' }; // choosing a point: the map alone
+    default:
+      return REST; // pages over everything, the place chooser
   }
 }
 

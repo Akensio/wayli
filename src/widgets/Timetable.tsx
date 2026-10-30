@@ -12,13 +12,14 @@ import { two } from '../lib/time';
 type TimeRow = { trip: number; dep: number; arr?: number | null; estimated?: boolean };
 type Props = { rows: TimeRow[]; now: number | null; sel: number | null; onPick: (r: TimeRow) => void; dim?: boolean };
 
-
 export function Timetable({ rows, now, sel, onPick, dim = false }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [full, setFull] = useState(false);
   // closed again for every new set of times (another stop, line or ride): the same component stays mounted, and kept the
   // whole day open across them
-  useLayoutEffect(() => { setFull(false); }, [rows]);
+  useLayoutEffect(() => {
+    setFull(false);
+  }, [rows]);
   const next = now == null ? null : rows.find((r) => r.dep >= now - 30) || null;
   // the hours of the day in order (a night's 24:10 is the next day's 00, after 23)
   const hours: { h: number; rows: TimeRow[] }[] = [];
@@ -28,27 +29,42 @@ export function Timetable({ rows, now, sel, onPick, dim = false }: Props) {
     hours[hours.length - 1].rows.push(r);
   }
   useLayoutEffect(() => {
-    const el = box.current, at = el?.querySelector<HTMLElement>('.tt-m.next, .tt-m.sel');
-    if (el && at && !full) el.scrollTop = Math.max(0, (at.parentElement!.parentElement as HTMLElement).offsetTop - el.offsetTop - 4);
+    const el = box.current,
+      at = el?.querySelector<HTMLElement>('.tt-m.next, .tt-m.sel');
+    if (el && at && !full)
+      el.scrollTop = Math.max(0, (at.parentElement!.parentElement as HTMLElement).offsetTop - el.offsetTop - 4);
   }, [rows, next?.trip, full]);
   return (
     <>
-    {hours.length > 3 && <div class="tt-bar"><Fold pill open={full} onClick={() => setFull(!full)}>{t(full ? 'ttLess' : 'ttAll')}</Fold></div>}
-    <div class={`timetable${full ? ' full' : ''}${dim ? ' dim' : ''}`} ref={box}>
-      {hours.map(({ h, rows: rs }) => (
-        <div class="tt-row" key={h}>
-          <span class="tt-h">{two(h % 24)}</span>
-          <span class="tt-mins">
-            {rs.map((r, i) => (
-              <span key={r.trip}><button type="button" onClick={() => onPick(r)}
-                class={`tt-m${now != null && r.dep < now - 30 ? ' past' : ''}${next && r.trip === next.trip ? ' next' : ''}${r.trip === sel ? ' sel' : ''}`}>
-                {r.estimated ? '~' : ''}{two(Math.floor(r.dep / 60) % 60)}
-              </button>{i < rs.length - 1 ? <span class="tt-sep">,</span> : null}</span>
-            ))}
-          </span>
+      {hours.length > 3 && (
+        <div class="tt-bar">
+          <Fold pill open={full} onClick={() => setFull(!full)}>
+            {t(full ? 'ttLess' : 'ttAll')}
+          </Fold>
         </div>
-      ))}
-    </div>
+      )}
+      <div class={`timetable${full ? ' full' : ''}${dim ? ' dim' : ''}`} ref={box}>
+        {hours.map(({ h, rows: rs }) => (
+          <div class="tt-row" key={h}>
+            <span class="tt-h">{two(h % 24)}</span>
+            <span class="tt-mins">
+              {rs.map((r, i) => (
+                <span key={r.trip}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(r)}
+                    class={`tt-m${now != null && r.dep < now - 30 ? ' past' : ''}${next && r.trip === next.trip ? ' next' : ''}${r.trip === sel ? ' sel' : ''}`}
+                  >
+                    {r.estimated ? '~' : ''}
+                    {two(Math.floor(r.dep / 60) % 60)}
+                  </button>
+                  {i < rs.length - 1 ? <span class="tt-sep">,</span> : null}
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
     </>
   );
 }

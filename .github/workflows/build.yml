@@ -2,12 +2,12 @@
 name: Build and deploy
 on:
   schedule:
-    - cron: "30 2 * * *"   # 02:30 UTC, after the Ministry's nightly feed update
+    - cron: '30 2 * * *' # 02:30 UTC, after the Ministry's nightly feed update
   push:
     branches: [main]
   workflow_dispatch:
-  workflow_run:   # new train and bus section times go out as soon as they are learned
-    workflows: ["Train section times", "Bus section times"]
+  workflow_run: # new train and bus section times go out as soon as they are learned
+    workflows: ['Train section times', 'Bus section times']
     types: [completed]
 permissions:
   contents: read
@@ -27,15 +27,15 @@ jobs:
           enablement: true
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: '22'
           cache: npm
       - run: npm ci
       - name: Lint and type-check, then build the app with Vite into dist/
         run: npm run check && npm run build
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - run: pip install numpy osmium pillow   # pillow (HPND): the elevation tiles' PNGs
+          python-version: '3.12'
+      - run: pip install numpy osmium pillow # pillow (HPND): the elevation tiles' PNGs
       - name: The first service day (until 03:00 the night belongs to the previous date)
         id: day
         run: echo "start=$(TZ=Asia/Jerusalem date -d '-3 hours' +%Y%m%d)" >> "$GITHUB_OUTPUT"

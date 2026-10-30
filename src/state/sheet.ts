@@ -7,7 +7,7 @@ import * as results from './results';
 export type SheetState = 'peek' | 'half' | 'full';
 export const ORDER: SheetState[] = ['peek', 'half', 'full'];
 export const state = signal<SheetState>('peek');
-let dragH: number | null = null;   // the visible height while a finger drags it, else null
+let dragH: number | null = null; // the visible height while a finger drags it, else null
 
 /** What the app does when the sheet changes size (the map's live layer, the list's scroll). */
 export const hooks = { changed: (_prev: SheetState, _st: SheetState) => {} };
@@ -16,7 +16,10 @@ const sheetEl = () => document.getElementById('sheet')!;
 const bodyEl = () => document.getElementById('sheetBody')!;
 const sab = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0;
 /** Where the map's controls start: under the top bar. */
-export const topPad = (): number => { const bar = document.getElementById('topbar'); return Math.round((bar ? bar.getBoundingClientRect().bottom : 0) + 12); };
+export const topPad = (): number => {
+  const bar = document.getElementById('topbar');
+  return Math.round((bar ? bar.getBoundingClientRect().bottom : 0) + 12);
+};
 /** The full size: the screen under the bar. */
 export const fullPx = (): number => Math.max(200, innerHeight - topPad() + 4);
 /**
@@ -37,7 +40,11 @@ export function drag(h: number): void {
   sheetEl().style.transform = `translateY(${Math.round(boxPx() - h)}px)`;
   bodyEl().style.height = `${Math.max(0, h - 36)}px`;
 }
-export function dragEnd(): void { dragH = null; sheetEl().style.transform = ''; bodyEl().style.height = ''; }
+export function dragEnd(): void {
+  dragH = null;
+  sheetEl().style.transform = '';
+  bodyEl().style.height = '';
+}
 export function set(st: SheetState): void {
   const prev = state.value;
   state.value = st;

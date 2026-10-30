@@ -2,4 +2,6 @@
 import { signal } from '@preact/signals';
 
 export const now = signal(Date.now());
-setInterval(() => { now.value = Date.now(); }, 20000);
+setInterval(() => {
+  now.value = Date.now();
+}, 20000);

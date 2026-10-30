@@ -12,8 +12,15 @@ export const cName = (c) => cityName(tt, c, lang);
 /** A stop's name, or its station's where it is part of one. */
 export const ssName = (s) => stopOrStationName(tt, s, lang);
 export function stopOut(s) {
-  return { stop: s, name: sName(s), city: cName(tt.stops[s][3]), code: tt.stops[s][2], lat: tt.stopLat[s], lon: tt.stopLon[s] };
+  return {
+    stop: s,
+    name: sName(s),
+    city: cName(tt.stops[s][3]),
+    code: tt.stops[s][2],
+    lat: tt.stopLat[s],
+    lon: tt.stopLon[s],
+  };
 }
 /** A route's id in the real-time feed: its GTFS route id, or null for a line with estimated times (pipeline/weekend.py),
  *  which no live feed carries. */
-export const liveId = (r) => (r[6] ? null : r[4] ?? null);
+export const liveId = (r) => (r[6] ? null : (r[4] ?? null));

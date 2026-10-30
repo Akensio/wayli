@@ -1,0 +1,11 @@
+# generated and downloaded
+dist/
+site/
+data/
+node_modules/
+src/public/
+package-lock.json
+# prose keeps its own line breaks
+*.md
+# one rule per line reads better than Prettier's one declaration per line
+src/styles/

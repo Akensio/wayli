@@ -4,9 +4,9 @@
 name: Bus section times
 on:
   schedule:
-    - cron: "10 1 * * *"   # 04:10 in Israel in summer (03:10 in winter): the service day is over
+    - cron: '10 1 * * *' # 04:10 in Israel in summer (03:10 in winter): the service day is over
   workflow_dispatch:
-  push:   # a change to the learning runs it at once
+  push: # a change to the learning runs it at once
     branches: [main]
     paths: [pipeline/bustimes.py, pipeline/common.py, .github/workflows/bustimes.yml]
 permissions:
@@ -17,13 +17,13 @@ concurrency:
 jobs:
   learn:
     runs-on: ubuntu-latest
-    timeout-minutes: 180   # a day's minutes take about 15 minutes to read; the first runs fetch three days each
+    timeout-minutes: 180 # a day's minutes take about 15 minutes to read; the first runs fetch three days each
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-      - run: pip install brotli==1.1.0   # MIT; Hasadna's snapshots are brotli-compressed
+          python-version: '3.12'
+      - run: pip install brotli==1.1.0 # MIT; Hasadna's snapshots are brotli-compressed
       - name: The passage logs so far (a day per file)
         uses: actions/cache@v4
         with:

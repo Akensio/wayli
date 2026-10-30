@@ -10,7 +10,13 @@ export function ResumeBar() {
   const ride = a && a.journey.legs.find((l) => l.type === 'ride');
   return (
     <button type="button" class="resume" id="resumeBar" hidden={!a} onClick={follow.hooks.resume}>
-      <span class="ic"><Icon name="bus" /></span><span class="txt" id="resumeText">{a ? `${ride ? lineText(ride.line) + ' · ' : ''}${a.q.to.name}` : ''}</span><span class="go">{t('resume')}</span>
+      <span class="ic">
+        <Icon name="bus" />
+      </span>
+      <span class="txt" id="resumeText">
+        {a ? `${ride ? lineText(ride.line) + ' · ' : ''}${a.q.to.name}` : ''}
+      </span>
+      <span class="go">{t('resume')}</span>
     </button>
   );
 }

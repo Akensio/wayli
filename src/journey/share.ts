@@ -7,20 +7,34 @@ import { dur, lineText, legMinutes } from './format';
 import type { Journey, Query } from './types';
 
 export function shareJourney(j: Journey, q: Query, bikeOnly = false): void {
-  const lines = [`${placeName(q.from)} → ${placeName(q.to)}`, `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`];
+  const lines = [
+    `${placeName(q.from)} → ${placeName(q.to)}`,
+    `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`,
+  ];
   for (const l of j.legs) {
     const mins = legMinutes(l.seconds);
-    if (l.type === 'ride') lines.push(`${fmt(l.depart!)} ${lineText(l.line)} ${l.from!.name} → ${l.to!.name} ${fmt(l.arrive!)}`);
+    if (l.type === 'ride')
+      lines.push(`${fmt(l.depart!)} ${lineText(l.line)} ${l.from!.name} → ${l.to!.name} ${fmt(l.arrive!)}`);
     else lines.push(`${l.mode === 'bike' ? '🚲' : '🚶'} ${mins} ${t('min')}`);
   }
-  const u = new URL(location.href); u.search = ''; u.hash = '';
-  const pt = (p: { lat?: number | null; lon?: number | null; name: string }) => `${(+p.lat!).toFixed(5)},${(+p.lon!).toFixed(5)},${encodeURIComponent(p.name)}`;
+  const u = new URL(location.href);
+  u.search = '';
+  u.hash = '';
+  const pt = (p: { lat?: number | null; lon?: number | null; name: string }) =>
+    `${(+p.lat!).toFixed(5)},${(+p.lon!).toFixed(5)},${encodeURIComponent(p.name)}`;
   if (q.from.lat != null && q.to.lat != null && !bikeOnly) {
-    u.searchParams.set('from', pt(q.from)); u.searchParams.set('to', pt(q.to)); u.searchParams.set('day', q.day); u.searchParams.set('at', hm(j.depart));   // past 24:00 for the night, as the planner keeps it
+    u.searchParams.set('from', pt(q.from));
+    u.searchParams.set('to', pt(q.to));
+    u.searchParams.set('day', q.day);
+    u.searchParams.set('at', hm(j.depart)); // past 24:00 for the night, as the planner keeps it
     if (q.bike !== 'none') u.searchParams.set('bike', q.bike);
     if (q.folding) u.searchParams.set('folding', '1');
   }
   const text = lines.join('\n');
   if (navigator.share) navigator.share({ title: 'Wayli', text, url: u.toString() }).catch(() => {});
-  else if (navigator.clipboard) navigator.clipboard.writeText(`${text}\n${u}`).then(() => toast(t('copied'))).catch(() => {});
+  else if (navigator.clipboard)
+    navigator.clipboard
+      .writeText(`${text}\n${u}`)
+      .then(() => toast(t('copied')))
+      .catch(() => {});
 }

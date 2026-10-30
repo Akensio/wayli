@@ -7,5 +7,11 @@ type Props = { planned: number; live?: number | null; class?: string; prefix?: s
 
 export function ShownTime({ planned, live, class: cls = '', prefix = '' }: Props) {
   const shifted = live != null && Math.abs(live - planned) >= 60;
-  return <span class={`shown${cls ? ' ' + cls : ''}`}>{shifted && <s>{fmt(planned)}</s>}{prefix}{fmt(live ?? planned)}</span>;
+  return (
+    <span class={`shown${cls ? ' ' + cls : ''}`}>
+      {shifted && <s>{fmt(planned)}</s>}
+      {prefix}
+      {fmt(live ?? planned)}
+    </span>
+  );
 }

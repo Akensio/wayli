@@ -11,7 +11,8 @@ const fail = (status, text) => new Response(text, { status, headers: { ...CORS, 
 
 export default {
   async fetch(req) {
-    if (req.method === 'OPTIONS') return new Response(null, { headers: { ...CORS, 'access-control-allow-methods': 'GET' } });
+    if (req.method === 'OPTIONS')
+      return new Response(null, { headers: { ...CORS, 'access-control-allow-methods': 'GET' } });
     const url = new URL(req.url);
     if (req.method !== 'GET' || url.pathname !== '/siri/latest') return fail(404, 'not found');
     const ago = Math.max(0, Math.min(10, parseInt(url.searchParams.get('ago') || '0', 10) || 0));
@@ -21,14 +22,21 @@ export default {
     const last = (await st.json()).last_snapshot_id;
     const m = /^(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)\/(\d\d)$/.exec(last || '');
     if (!m) return fail(502, 'unexpected status');
-    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - ago * 60e3), p = (n) => String(n).padStart(2, '0');
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - ago * 60e3),
+      p = (n) => String(n).padStart(2, '0');
     const id = `${d.getUTCFullYear()}/${p(d.getUTCMonth() + 1)}/${p(d.getUTCDate())}/${p(d.getUTCHours())}/${p(d.getUTCMinutes())}`;
     // a minute's file never changes once written, so the edge may keep it
     const snap = await fetch(`${BASE}/${id}.br`, { cf: { cacheTtl: 3600, cacheEverything: true } });
     if (!snap.ok) return fail(502, 'snapshot unavailable');
     return new Response(snap.body, {
       encodeBody: 'manual',
-      headers: { ...CORS, 'content-type': 'application/json', 'content-encoding': 'br', 'cache-control': 'public, max-age=15', 'x-snapshot': id },
+      headers: {
+        ...CORS,
+        'content-type': 'application/json',
+        'content-encoding': 'br',
+        'cache-control': 'public, max-age=15',
+        'x-snapshot': id,
+      },
     });
   },
 };

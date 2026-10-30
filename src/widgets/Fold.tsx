@@ -4,12 +4,26 @@
 import type { ComponentChildren } from 'preact';
 import { Icon } from './Icon';
 
-type Props = { open: boolean; onClick: () => void; children: ComponentChildren; pill?: boolean; class?: string; id?: string };
+type Props = {
+  open: boolean;
+  onClick: () => void;
+  children: ComponentChildren;
+  pill?: boolean;
+  class?: string;
+  id?: string;
+};
 
 export function Fold({ open, onClick, children, pill, class: cls = '', id }: Props) {
   return (
-    <button type="button" id={id} class={`fold${pill ? ' pill' : ''}${open ? ' open' : ''}${cls ? ' ' + cls : ''}`} aria-expanded={open} onClick={onClick}>
-      <span>{children}</span><Icon name="chevronDown" />
+    <button
+      type="button"
+      id={id}
+      class={`fold${pill ? ' pill' : ''}${open ? ' open' : ''}${cls ? ' ' + cls : ''}`}
+      aria-expanded={open}
+      onClick={onClick}
+    >
+      <span>{children}</span>
+      <Icon name="chevronDown" />
     </button>
   );
 }

@@ -4,9 +4,9 @@
 name: Train section times
 on:
   schedule:
-    - cron: "40 1 * * *"   # 04:40 in Israel in summer (03:40 in winter): the service day is over
+    - cron: '40 1 * * *' # 04:40 in Israel in summer (03:40 in winter): the service day is over
   workflow_dispatch:
-  push:   # a change to the learning runs it at once
+  push: # a change to the learning runs it at once
     branches: [main]
     paths: [pipeline/railtimes.py, pipeline/common.py, .github/workflows/railtimes.yml]
 permissions:
@@ -17,12 +17,12 @@ concurrency:
 jobs:
   learn:
     runs-on: ubuntu-latest
-    timeout-minutes: 150   # the first run fetches 7 days (about 150 hours at two at a time); later ones one day
+    timeout-minutes: 150 # the first run fetches 7 days (about 150 hours at two at a time); later ones one day
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
       - name: The train history so far (an hour per file)
         uses: actions/cache@v4
         with:

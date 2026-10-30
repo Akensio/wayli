@@ -3,5 +3,9 @@
 import { lang } from '../lib/i18n';
 
 export const FromTo = ({ from, to }: { from: string; to: string }) => (
-  <span class="fromto"><bdi>{from}</bdi><span class="arrow">{lang.value === 'he' ? '←' : '→'}</span><bdi>{to}</bdi></span>
+  <span class="fromto">
+    <bdi>{from}</bdi>
+    <span class="arrow">{lang.value === 'he' ? '←' : '→'}</span>
+    <bdi>{to}</bdi>
+  </span>
 );

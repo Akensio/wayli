@@ -8,7 +8,8 @@ const TYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float
 export function readContainer(ab) {
   const headerLen = new DataView(ab).getUint32(0, true);
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 4, headerLen)));
-  const base = 4 + headerLen, out = { header };
+  const base = 4 + headerLen,
+    out = { header };
   for (const s of header.sections) out[s.name] = new TYPES[s.dtype](ab, base + s.offset, s.length);
   return out;
 }

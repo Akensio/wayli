@@ -8,13 +8,15 @@ export const ICONS = {
   close: 'M6 6l12 12M18 6L6 18',
   swap: 'M8 4v16M5 17l3 3 3-3M16 20V4M13 7l3-3 3 3',
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20.5 20.5L16 16',
-  locate: 'M12 2v3M12 19v3M2 12h3M19 12h3M12 17.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM12 13.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z',
+  locate:
+    'M12 2v3M12 19v3M2 12h3M19 12h3M12 17.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11zM12 13.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z',
   pin: 'M12 21.5c-4.3-4.6-6.5-8.3-6.5-11.5a6.5 6.5 0 1 1 13 0c0 3.2-2.2 6.9-6.5 11.5zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   star: 'M12 3.2l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17.1 6.6 20l1.1-6.1-4.5-4.3 6.1-.8z',
   sliders: 'M4 6h8M16 6h4M4 12h3M11 12h9M4 18h11M19 18h1M14 4v4M9 10v4M17 16v4',
   route: 'M6 21a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 19h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6',
   bus: 'M6 4h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM4 10.5h16M7 18v2.5M17 18v2.5M8 14.5h.5M15.5 14.5h.5',
-  train: 'M7 3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM4 10h16M8.5 14h.5M15 14h.5M8 21l1.5-3M16 21l-1.5-3',
+  train:
+    'M7 3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM4 10h16M8.5 14h.5M15 14h.5M8 21l1.5-3M16 21l-1.5-3',
   cable: 'M3 5.5l18-3M12 4v4M7 8h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM5 13h14M12 8v5',
   taxi: 'M5 17v-4.5L7 7h10l2 5.5V17M3.5 17h17v2.5h-17zM7.5 19.5V21M16.5 19.5V21M10 4.5h4V7h-4zM7.5 14.5h.5M16 14.5h.5',
   tram: 'M7 6h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3zM4 12h16M8.5 15.5h.5M15 15.5h.5M9 2l3 2 3-2M12 4v2M8 21l1.5-3M16 21l-1.5-3',
@@ -52,14 +54,21 @@ const FILLED_ICONS = new Set(['play']);
 export type IconName = keyof typeof ICONS;
 
 /** An inline icon from the sprite as an HTML string; `cls` adds classes (e.g. `chev` for a chevron that flips in RTL). */
-export const ic = (name: IconName | string, cls = ''): string => `<svg class="i${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+export const ic = (name: IconName | string, cls = ''): string =>
+  `<svg class="i${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 /** Put the sprite into the document once, so every `<use href="#i-...">` resolves. */
 export function installSprite(): void {
   if (document.getElementById('wayli-sprite')) return;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.id = 'wayli-sprite';
-  svg.setAttribute('style', 'display:none'); svg.setAttribute('aria-hidden', 'true');
-  svg.innerHTML = Object.entries(ICONS).map(([k, d]) => `<symbol id="i-${k}" viewBox="0 0 24 24"><path d="${d}"${FILLED_ICONS.has(k) ? ' fill="currentColor" stroke="none"' : ''}/></symbol>`).join('');
+  svg.setAttribute('style', 'display:none');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = Object.entries(ICONS)
+    .map(
+      ([k, d]) =>
+        `<symbol id="i-${k}" viewBox="0 0 24 24"><path d="${d}"${FILLED_ICONS.has(k) ? ' fill="currentColor" stroke="none"' : ''}/></symbol>`,
+    )
+    .join('');
   document.body.prepend(svg);
 }
