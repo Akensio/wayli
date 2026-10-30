@@ -246,7 +246,7 @@ async function followLive(): Promise<void> {
       const vs = await feed.vehiclesByLine(leg.routeId!);
       if (!fol) return;
       if (first) {
-        const statuses: any[] = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
+        const statuses = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
         if (!fol) return;
         for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
         const m = map.mapState.main;
@@ -360,7 +360,7 @@ async function replanCheck(force = false): Promise<void> {
     }
     if (fol !== f) return;
     const q = a.q;
-    const r = await call<PlanResult>('plan', {
+    const r = await call('plan', {
       from: origin.from,
       to: q.to,
       fromTime: origin.fromTime,

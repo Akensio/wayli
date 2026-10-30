@@ -60,13 +60,13 @@ export function drawMe(pos: { lat: number; lon: number }): void {
  *  is left out rather than drawn as a straight ray across the city (the redraw when the courses arrive adds it). */
 async function stopCourses(m: MLMap, seq: number, stop: number, stops: number[]): Promise<void> {
   try {
-    const routes = await call<{ pattern: number; ref: number | null; type: number; agency: string }[]>('stopRoutes', {
+    const routes = await call('stopRoutes', {
       stop,
       stops,
     });
     if (stale(seq)) return;
     setStopLines(routes.filter((r) => r.ref != null).map((r) => String(r.ref)));
-    const courses = await call<{ path: [number, number][]; course: boolean }[]>('patternCourse', {
+    const courses = await call('patternCourse', {
       patterns: routes.map((r) => r.pattern),
     });
     if (stale(seq)) return;
@@ -237,7 +237,7 @@ const RECIPES: Record<View['draw'], Recipe> = {
     const legs = [...ways.values()];
     let courses: { path: [number, number][]; stops: { lat: number; lon: number; stop: number }[] }[] = [];
     if (legs.length)
-      courses = await call<typeof courses>('rideCourses', {
+      courses = await call('rideCourses', {
         legs: legs.map((r) => ({ pattern: r.pattern, boardPos: r.boardPos, alightPos: r.alightPos })),
       }).catch(() => []);
     if (stale(seq)) return null;

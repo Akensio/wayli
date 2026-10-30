@@ -62,7 +62,7 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
       try {
         const vs = await feed.vehiclesByLine(l.routeId);
         if (my !== seq) return;
-        const statuses: any[] = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
+        const statuses = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
         if (my !== seq) return;
         const m = map.mapState.main;
         if (m && map.mapState.drawnFor === 'detail')

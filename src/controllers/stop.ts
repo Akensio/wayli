@@ -24,7 +24,7 @@ let current: StopInfo | null = null,
 
 export async function openStop(stop: number, where: { station?: number; stops?: number[] } = {}): Promise<void> {
   const my = ++seq;
-  const info = await call<StopInfo>('stopInfo', { stop, station: where.station ?? -1, stops: where.stops || null });
+  const info = await call('stopInfo', { stop, station: where.station ?? -1, stops: where.stops || null });
   if (my !== seq) return;
   current = info;
   const members = info.stops && info.stops.length ? info.stops : [stop];
@@ -41,14 +41,14 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
   const from = isNow ? clock.nowOn(day) - 120 : search.atSeconds();
   // a station's trains: where they go without a change, the next one there and how long it takes
   if (info.reach)
-    call<Dest[]>('stationReach', { stops: members, fromTime: from + 120, mode: info.reach })
+    call('stationReach', { stops: members, fromTime: from + 120, mode: info.reach })
       .then((d) => {
         if (my === seq) stopPage.dests.value = d;
       })
       .catch(() => {
         if (my === seq) stopPage.dests.value = [];
       });
-  const deps = await call<Departure[]>('departures', { stop, stops: members, fromTime: from, limit: 40 });
+  const deps = await call('departures', { stop, stops: members, fromTime: from, limit: 40 });
   if (my !== seq) return;
   stopPage.deps.value = deps;
   clearInterval(timer);

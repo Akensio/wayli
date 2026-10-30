@@ -415,6 +415,7 @@ export const planOps = {
    * Journeys between two places in a departure window; with arriveBy, the window ends at toTime and
    * only journeys arriving by then are kept. maxWalk (s) bounds the walk to the first and from the last stop.
    */
+  /** @param {import('./ops').Ops['plan']['args']} args */
   plan({
     from,
     to,

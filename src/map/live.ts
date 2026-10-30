@@ -171,7 +171,7 @@ export async function refreshLiveMap(): Promise<void> {
     if (my < lm.applied || !state.main || !state.styled) return;
     const need = Array.from(new Set(vs.map((v) => String(v.lineRef)).filter((id) => !lm.labels.has(id))));
     if (need.length && data.ttReady.value) {
-      const labels: Record<string, any> = await call('routeLabels', { ids: need });
+      const labels = await call('routeLabels', { ids: need });
       for (const id of need) lm.labels.set(id, labels[id] || null);
       if (my < lm.applied || !state.main || !state.styled) return;
     }

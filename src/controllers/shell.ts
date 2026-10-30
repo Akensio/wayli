@@ -169,7 +169,7 @@ Object.assign(chooser.hooks, {
   locate: async (): Promise<Place | null> => {
     try {
       const pos = await getPosition();
-      const r = await call<{ name: string }>('reverse', pos);
+      const r = await call('reverse', pos);
       return { name: r.name, lat: pos.lat, lon: pos.lon };
     } catch {
       toast(t('noLocation'));

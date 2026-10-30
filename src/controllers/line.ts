@@ -32,7 +32,7 @@ export async function openLine(
   const my = ++seq;
   let info: LineInfo;
   try {
-    info = await call<LineInfo>('lineInfo', { route });
+    info = await call('lineInfo', { route });
   } catch {
     toast(t('liveFail'));
     return;
@@ -94,7 +94,7 @@ async function setAnchor(i: number, my = seq, trip?: number): Promise<void> {
   const now = today ? clock.nowOn(day) : null;
   linePage.now.value = now;
   try {
-    const rows = await call<LineTime[]>('lineTimes', { route: info.route, from: [info.stops[i].stop] });
+    const rows = await call('lineTimes', { route: info.route, from: [info.stops[i].stop] });
     if (my !== seq || linePage.anchor.value !== i) return;
     linePage.times.value = rows;
     linePage.loading.value = false;
@@ -196,7 +196,7 @@ async function lineLive(): Promise<void> {
         ? (await feed.trains()).filter((v: { lineRef: unknown }) => ids.includes(Number(v.lineRef)))
         : await feed.vehiclesByLine(ids[0]);
     if (my !== seq) return;
-    const st: any[] = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
+    const st = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
     if (my !== seq) return;
     for (const mk of map.markers.lineVeh.splice(0)) mk.remove();
     const m = map.mapState.main;

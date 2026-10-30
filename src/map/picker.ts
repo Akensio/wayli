@@ -52,7 +52,7 @@ export async function pickAt(
   );
   if (stopHit) return;
   try {
-    const r: any = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
+    const r = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
     picked = {
       ...picked,
       name: reverseName(r),

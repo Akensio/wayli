@@ -190,7 +190,9 @@ async function drawContext(m: MLMap, j: Journey, focus = -1): Promise<void> {
   const rides = j.legs.filter((l, i) => l.type === 'ride' && l.pattern != null && (focus < 0 || i === focus));
   if (!rides.length || !data.ttReady.value) return;
   try {
-    const courses: any[] = await call('patternCourse', { patterns: rides.map((l) => l.pattern) });
+    const courses = await call('patternCourse', {
+      patterns: rides.flatMap((l) => (l.pattern == null ? [] : [l.pattern])),
+    });
     if (!m.getSource('context')) return;
     const lines: GeoJSON.Feature[] = [],
       dots: GeoJSON.Feature[] = [];
@@ -277,8 +279,12 @@ async function withRideCourses(j: Journey): Promise<void> {
   const rides = j.legs.filter((l) => l.type === 'ride' && l.pathKind !== 'shape' && l.pattern != null);
   if (!rides.length) return;
   try {
-    const paths: any[] = await call('ridePaths', {
-      legs: rides.map((l) => ({ pattern: l.pattern, boardPos: l.boardPos, alightPos: l.alightPos })),
+    const paths = await call('ridePaths', {
+      legs: rides.map((l) => ({
+        pattern: l.pattern as number,
+        boardPos: l.boardPos as number,
+        alightPos: l.alightPos as number,
+      })),
     });
     rides.forEach((l, i) => {
       if (paths[i]) {

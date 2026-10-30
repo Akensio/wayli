@@ -211,7 +211,7 @@ export async function placeBubble(
   if (poi) return;
   const mine = popupState.current;
   try {
-    const g: any = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
+    const g = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
     p = {
       ...p,
       name: reverseName(g),

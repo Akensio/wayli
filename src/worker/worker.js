@@ -1,3 +1,4 @@
+// @ts-check
 // Wayli's data worker: it holds the day's timetable, the street graph, the address book and the courses, and answers
 // every question of the app off the main thread, so the screen never waits. The page asks by name (worker/client.ts:
 // call(op, args)); each part of the worker answers its own:
@@ -21,6 +22,7 @@ import { coursesOps } from './courses.js';
 import { vehiclesOps } from './vehicles.js';
 import { trafficOps } from './traffic.js';
 
+/** @type {import('./ops').OpsImpl} */
 const ops = {
   ...dataOps,
   ...searchOps,
@@ -39,10 +41,11 @@ const NO_TIMETABLE = new Set(['loadTimetable', 'setLang', 'liveQuery', 'localize
 self.onmessage = async (ev) => {
   const { id, op, args } = ev.data;
   try {
-    if (!ops[op]) throw new Error('unknown op ' + op);
+    const run = ops[/** @type {keyof typeof ops} */ (op)];
+    if (!run) throw new Error('unknown op ' + op);
     if (!tt && !NO_TIMETABLE.has(op)) throw new Error('timetable not loaded');
-    post({ id, result: await ops[op](args || {}) });
+    post({ id, result: await run(args || {}) });
   } catch (e) {
-    post({ id, error: e && e.message ? e.message : String(e) });
+    post({ id, error: e instanceof Error ? e.message : String(e) });
   }
 };

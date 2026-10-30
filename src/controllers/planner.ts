@@ -123,7 +123,7 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null;
   q.liveTried = liveTried;
   try {
-    const r = await call<PlanResult>('plan', {
+    const r = await call('plan', {
       from,
       to,
       fromTime,
@@ -209,10 +209,9 @@ Object.assign(search.hooks, {
   hasResults: () => !!(results.result.value && results.query.value),
   lastQuery: () => results.query.value,
   search: (q: string) => call('search', { q, limit: 10, lang: lang.value, near: lastPos }),
-  lineGroups: (q: string, mode: search.LineFilter, limit = 30) =>
-    call<search.LineGroup[]>('lineGroups', { q, mode, near: lastPos, limit }),
+  lineGroups: (q: string, mode: search.LineFilter, limit = 30) => call('lineGroups', { q, mode, near: lastPos, limit }),
   stopGroups: (q: string, mode: search.StopFilter, from?: number[]) =>
-    call<search.StopGroup[]>('stopGroups', { q, mode, near: lastPos, limit: 60, from }),
+    call('stopGroups', { q, mode, near: lastPos, limit: 60, from }),
   // a station picked among all stops: the train timetable opens with it as the From station
   openStopGroup: (g: search.StopGroup) => openStop(g.stops[0], { stops: g.stops }), // a station too: the one stop view (the train chip is the timetable of two stations)
   chooseStation: (side: search.Side, g: search.StopGroup) => chooseStation(side, g),
@@ -246,14 +245,14 @@ async function openView(v: results.View): Promise<void> {
     return;
   }
   if (v.type === 'line') {
-    const r = await call<number>('findRecent', { kind: 'line', ref: v.ref });
-    if (r >= 0) openLine(r);
+    const r = await call('findRecent', { kind: 'line', ref: v.ref });
+    if (typeof r === 'number' && r >= 0) openLine(r);
     else gone();
     return;
   }
   if (v.type === 'stop') {
-    const s = await call<number>('findRecent', { kind: 'stop', code: v.code, lat: v.lat, lon: v.lon });
-    if (s >= 0) openStop(s);
+    const s = await call('findRecent', { kind: 'stop', code: v.code, lat: v.lat, lon: v.lon });
+    if (typeof s === 'number' && s >= 0) openStop(s);
     else gone();
     return;
   }
@@ -270,13 +269,13 @@ async function openView(v: results.View): Promise<void> {
 }
 /** A station of the history, found in the day loaded now by where it is. */
 async function findStation(a: { name: string; lat: number; lon: number }, mode: 'rail' | 'lrt') {
-  const f = await call<{ name: string; stops: number[]; lat: number; lon: number } | null>('findRecent', {
+  const f = await call('findRecent', {
     kind: 'station',
     lat: a.lat,
     lon: a.lon,
     mode,
   });
-  return f ? { ...f, key: f.name, name: a.name } : null;
+  return f && typeof f !== 'number' ? { ...f, key: f.name, name: a.name } : null;
 }
 /** A recent line, stop or station picked in the list under the box. In the train timetable (two stations at the top) a
  *  station is the From one and a pair fills both; otherwise it opens as from the drawer and the bar folds. */
