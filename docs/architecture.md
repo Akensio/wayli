@@ -870,7 +870,20 @@ station's platforms into one result.
   evening). A stop goes with the direction travelling the way the feed's
   own buses leave it, else the one passing it on the right; of 1,377 stops
   12 land in both directions (ends), 51 in neither. The app shows their
-  times with "~" and says they are estimates with no live position. The
+  times with "~" and says they are estimates with no live position. Live
+  positions do exist (researched 2026-10-30): Tel Aviv's shuttle tender
+  280/2023, technical annex §3, requires every weekend bus to carry a fleet
+  tracker (Ituran or Pointer class) and a dedicated phone "broadcasting the
+  vehicle's position in real time to the municipality and to the riders",
+  and its event codes include a Moovit device fault, so the positions reach
+  Moovit, and by the municipality's own page also Bus Nearby and Rav-Pass
+  (both HopOn). None of that is published: the buses are absent from the
+  national SIRI (Hasadna's archive has no vehicle on the 716's route on a
+  Saturday), Bus Nearby's API sits behind a bot wall with no terms allowing
+  reuse, and no GTFS-RT or open-data copy exists. The way in is an
+  agreement with the municipality's transport authority or Noa Tanua, who
+  already hand developers the routes; the fallback we control is riders'
+  own positions, opt-in and anonymous, while they follow a weekend trip. The
   server's last answer is kept in the Actions cache for when it times out.
 - Nightly GitHub Action: fetch, validate, compile, publish static files plus
   a manifest (feed date, format version, checksums). The app reads the
