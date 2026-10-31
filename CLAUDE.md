@@ -100,6 +100,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/bustimes.py`, `.github/workflows/bustimes.yml` | Bus section times by hour and kind of day, learned nightly from 14 days of passage logs read from Hasadna's minute snapshots (`bustimes.bin.gz`), for bus delays, the live correction and traffic on the map; `--score DAY` measures against a held-out day. |
 | `pipeline/railtimes.py`, `.github/workflows/railtimes.yml` | Train section times learned nightly from the last week of Hasadna's train positions (`railtimes.json`), for train delays; `--score DAY` measures against a held-out day. |
 | `pipeline/test_projection.py` | The compiler's own check (the stop-on-course rule), run by the workflow after numpy is installed: `python3 -I pipeline/test_projection.py`. |
+| `pipeline/test_places.py` | The address book's own check (which street an address joins), run by the workflow: `python3 -I pipeline/test_places.py`. |
 | `pipeline/container.py`, `pipeline/common.py` | What the scripts share: the data files' container (read in the app by `src/engine/container.ts`); the log line, GTFS reading, Israel's UTC offset, distances. |
 | `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |

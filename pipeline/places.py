@@ -26,7 +26,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import container
 from common import log, member, haversine
 
-FORMAT_VERSION = 3   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...)
+FORMAT_VERSION = 4   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
+                     # 4: an address joins a street of its name only in its city or nearby (street_for)
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {
@@ -82,6 +83,48 @@ def read_city_translations(zf):
             if (r.get("lang") or "").strip().upper() == "EN" and r.get("trans_id") and r.get("translation"):
                 out[r["trans_id"].strip()] = r["translation"].strip()
     return out
+
+
+# An address joins a street of its name only in its own city, or close by: the same name in another city is another
+# street. (Before 2026-10-31 an address whose name matched a single street anywhere joined it: Tel Aviv's Begin Road
+# numbers, whose ways are mapped without "Derech", joined Tiberias's Derech Menachem Begin, 106 km away; 2,770
+# addresses on 213 streets sat over 10 km from their street, and were named and found under the wrong city.)
+NEAR_M = 5000
+
+
+def place_key(city, lat, lon):
+    """What groups the ways and addresses of one street besides its name: its city, or where no city is known (no
+    stop with one within 1.5 km: much of Gaza and the West Bank) a square of about 5 km, so that same-named streets
+    far apart stay apart (they had been one street with its middle averaged across the region)."""
+    return city or f"@{round(lat * 20)},{round(lon * 20)}"
+
+
+def city_of_key(k):
+    """The city a street is shown with: its key's city, none for a square."""
+    return "" if k.startswith("@") else k
+
+
+def street_for(name, name_norm, city, lat, lon, by_name, street_list, street_index, city_near):
+    """The index in street_list of the street an address at (lat, lon) on `name` belongs to: one of that name in the
+    address's city (the city its point is in, as streets get theirs, or its own addr:city), else the nearest one of
+    that name within NEAR_M of its middle, else a new street of that name in that city, made at this address (the
+    next address of it then joins it). Where no city is known, the address's square (place_key) stands for it.
+    by_name and street_index are kept up to date."""
+    c = place_key(city_near(lat, lon) or city, lat, lon)
+    cands = by_name.get(name_norm, [])
+    same = [i for cc, i in cands if cc in (c, city or c)]
+    if same:
+        return same[0]
+    near = [(haversine(lat, lon, street_list[i][2], street_list[i][3]), i) for _, i in cands]
+    near = [x for x in near if x[0] <= NEAR_M]
+    if near:
+        return min(near)[1]
+    key = (name_norm, c)
+    if key not in street_index:
+        street_index[key] = len(street_list)
+        street_list.append([name, city_of_key(c), round(lat, 6), round(lon, 6), ""])
+        by_name[name_norm].append((c, street_index[key]))
+    return street_index[key]
 
 
 def format_of(path):
@@ -245,8 +288,7 @@ def main():
     display = {}
     display_en = {}
     for name, lat, lon, en in h.streets:
-        city = city_near(lat, lon)
-        key = (norm(name), city)
+        key = (norm(name), place_key(city_near(lat, lon), lat, lon))
         groups[key].append((lat, lon))
         display.setdefault(key, name)
         if en:
@@ -255,40 +297,20 @@ def main():
     street_index = {}
     for key, pts in sorted(groups.items()):
         street_index[key] = len(street_list)
-        street_list.append([display[key], key[1], round(sum(p[0] for p in pts) / len(pts), 6), round(sum(p[1] for p in pts) / len(pts), 6), display_en.get(key, "")])
+        street_list.append([display[key], city_of_key(key[1]), round(sum(p[0] for p in pts) / len(pts), 6), round(sum(p[1] for p in pts) / len(pts), 6), display_en.get(key, "")])
     log(f"{sum(1 for s in street_list if s[4])} of {len(street_list)} streets have an English name")
     log(f"{len(street_list)} streets after grouping")
 
-    # addresses: attach to a street (same name; same city when known, else nearest street of that name)
+    # addresses: each to its street (street_for)
     by_name = defaultdict(list)
     for (n, c), i in street_index.items():
         by_name[n].append((c, i))
     addr = []
-    missing = 0
     for st, num, suffix, city, lat, lon in h.addresses:
-        n = norm(st)
-        cands = by_name.get(n)
-        if not cands:
-            # a street with addresses but no mapped way: create it from the addresses
-            c = city or city_near(lat, lon)
-            key = (n, c)
-            if key not in street_index:
-                street_index[key] = len(street_list)
-                street_list.append([st, c, round(lat, 6), round(lon, 6), ""])
-                by_name[n].append((c, street_index[key]))
-            cands = by_name[n]
-        if len(cands) == 1:
-            si = cands[0][1]
-        else:
-            c = city or city_near(lat, lon)
-            same = [i for cc, i in cands if cc == c]
-            if same:
-                si = same[0]
-            else:
-                si = min(cands, key=lambda ci: haversine(lat, lon, street_list[ci[1]][2], street_list[ci[1]][3]))[1]
+        si = street_for(st, norm(st), city, lat, lon, by_name, street_list, street_index, city_near)
         addr.append((si, num, suffix, lat, lon))
     addr.sort()
-    log(f"{len(addr)} addresses attached, {missing} unmatched")
+    log(f"{len(addr)} addresses attached, {len(street_list)} streets with them")
 
     # places
     poi_list = []
