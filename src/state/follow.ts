@@ -5,15 +5,10 @@
 import { signal } from '@preact/signals';
 import type { Journey, Query } from '../journey/types';
 import type { Badge } from '../journey/format';
+import type { FollowState, Position as EnginePosition, Connection, ReplanOrigin } from '../engine/follow.ts';
 
-export type FollowState = {
-  step: number;
-  onBoard: boolean;
-  rideIdx: number;
-  done: boolean;
-  hold?: number;
-  [k: string]: unknown;
-};
+// the state machine's own types, from the engine; the screen adds when a position was taken
+export type { FollowState, Connection };
 export type ActiveTrip = {
   journey: Journey;
   q: Pick<Query, 'from' | 'to' | 'bike' | 'folding'>;
@@ -23,10 +18,10 @@ export type ActiveTrip = {
   startedAt?: number;
   replanned?: number;
 };
-export type Position = { lat: number; lon: number; acc?: number; at: number };
+export type Position = EnginePosition & { at: number };
 export type Alt = {
   journey: Journey;
-  origin: { kind: string; offAt?: { name: string }; [k: string]: unknown };
+  origin: ReplanOrigin;
   key: string;
   gain: number;
 };
@@ -39,7 +34,7 @@ export const liveBadge = signal<Badge | null>(null); // the next ride's vehicle
  *  (seconds to spare, negative when missed; with the times), and its stops at their shown times, passed ones marked. */
 export type LegLive = {
   badge: Badge | null;
-  change: { sec: number; arr: number; dep: number } | null;
+  change: Connection | null;
   stops: { time: number; passed: boolean }[] | null;
 };
 export const legLive = signal<Record<number, LegLive>>({});

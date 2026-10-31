@@ -1,7 +1,8 @@
 // Loading the data: the manifest (which days, which files), a day's timetable, then the address book, the
 // street graph and the courses in the background. The worker downloads and unpacks; the pill shows how far.
 import * as clock from '../engine/clock.ts';
-import * as feed from '../engine/feed.js';
+import * as feed from '../engine/feed.ts';
+import type { Vehicle, SnapshotFilter } from '../engine/feed.ts';
 import { t, lang, STR } from '../lib/i18n';
 import { calToday, dayLabel, two } from '../lib/time';
 import { call, DATA_URL, resetCaches } from '../worker/client';
@@ -15,7 +16,8 @@ import { setStatus, loadFailed } from './status';
 
 const manifest = (): Manifest => data.manifest.value!;
 // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
-feed.snapshot.query = (filter: object) => call('liveQuery', { urls: feed.RELAY_URLS, filter });
+feed.snapshot.query = (filter: SnapshotFilter) =>
+  call('liveQuery', { urls: feed.RELAY_URLS, filter }) as Promise<Vehicle[]>; // ops.ts names the worker's copy of Vehicle
 // stored places shown in the other language are named again by the worker (state/names.ts)
 const WORDS = {
   he: { near: String(STR.nearName[0]), point: String(STR.pointName[0]) },

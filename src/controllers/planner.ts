@@ -3,7 +3,8 @@
 // anywhere (a bubble, a saved place) planned from where you are, the last search shown again, the plan cleared.
 import { effect } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
-import * as feed from '../engine/feed.js';
+import * as feed from '../engine/feed.ts';
+import type { Vehicle } from '../engine/feed.ts';
 import { settings, recentPlaces, recentTrips, lastSearch } from '../lib/store.ts';
 import { t, lang } from '../lib/i18n';
 import { dateOf } from '../lib/time';
@@ -108,9 +109,9 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   // a plan from now takes the delays of the vehicles on the road into account
   const svc = clock.serviceDay();
   const liveTried = map.liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200;
-  let vehicles: unknown[] | null = null,
+  let vehicles: Vehicle[] | null = null,
     liveAsOf: Date | null = null;
-  if (liveTried && from.lat != null) {
+  if (liveTried && from.lat != null && from.lon != null) {
     try {
       vehicles = await feed.vehiclesForPlanning(from.lat, from.lon, { timeoutMs: 8000 });
       liveAsOf = feed.newest(vehicles);

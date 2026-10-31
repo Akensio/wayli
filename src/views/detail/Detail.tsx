@@ -27,7 +27,7 @@ const openRideLine = (l: RideLeg) => {
 /** A ride's live badge: the newest look at its vehicle, else the lateness the plan used at its boarding stop. */
 const rideBadge = (l: RideLeg) =>
   detail.badges.value[String(l.trip)] ||
-  (l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: l.live.stale }) : null);
+  (l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: !!l.live.stale }) : null);
 export function Detail() {
   void lang.value;
   void now.value;

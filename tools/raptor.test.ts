@@ -1,8 +1,8 @@
 // The router's rules (src/engine/raptor.js) on tiny timetables: which stop to get off at, which journeys to keep, and
 // the next way after an empty window.
 import { test, expect } from 'vitest';
-import { profile, plan } from '../src/engine/raptor.js';
-import { tinyTimetable, T } from './tinytt.mjs';
+import { profile, plan, type RawJourney, type RawRideLeg } from '../src/engine/raptor.ts';
+import { tinyTimetable, T } from './tinytt.ts';
 
 // a street with stops O, A, B, C every 400 m; the door is near B and C
 const stops = [
@@ -12,7 +12,8 @@ const stops = [
   { name: 'C', lat: 32.07, lon: 34.812 },
 ];
 const routes = [{ short: '60' }];
-const rideOf = (j) => j.legs.find((l) => l.type === 'ride');
+/** The journey's ride; the tests below assert there is one. */
+const rideOf = (j: RawJourney): RawRideLeg => j.legs.find((l): l is RawRideLeg => l.type === 'ride')!;
 
 test('getting off: within a minute of the earliest arrival at the door, the stop with the least walking', () => {
   // the 60 reaches C 70 s after B; the door is 171 s from B and 117 s from C (the 2026-10-29 case, Katznelson/Sirkin)
@@ -53,7 +54,7 @@ const changeStops = [
   { name: 'D', lat: 32.09, lon: 34.82 },
 ];
 const changeRoutes = [{ short: '1' }, { short: '2' }, { short: '3' }];
-const withChangeArriving = (arrive) =>
+const withChangeArriving = (arrive: number) =>
   tinyTimetable({
     stops: changeStops,
     routes: changeRoutes,

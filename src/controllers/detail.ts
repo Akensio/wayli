@@ -1,8 +1,8 @@
 // The journey detail: the journey on the map (one ride alone when focused), and for a journey happening around
 // now, a live badge on each ride and every vehicle of those lines on the map.
 import * as clock from '../engine/clock.ts';
-import * as delays from '../engine/delays.js';
-import * as feed from '../engine/feed.js';
+import * as delays from '../engine/delays.ts';
+import * as feed from '../engine/feed.ts';
 import * as search from '../state/search';
 import { t } from '../lib/i18n';
 import { call, tripStopsCached, estimate } from '../worker/client';
@@ -48,7 +48,10 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
   const rides = j.legs
     .filter((l, i) => focus < 0 || i === focus)
     .filter(isRide)
-    .filter((l) => l.routeId != null && l.depart - now < 5400 && now - l.arrive < 900)
+    .filter(
+      (l): l is RideLeg & { routeId: number | string; firstDep: number } =>
+        l.routeId != null && l.firstDep != null && l.depart - now < 5400 && now - l.arrive < 900,
+    )
     .slice(0, 4);
   await Promise.all(
     rides.map(async (l) => {

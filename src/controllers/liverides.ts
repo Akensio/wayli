@@ -3,8 +3,9 @@
 // the stop it is boarded at and the one it is left at. The vehicles come by line: from the relay that is a filter on
 // the minute's snapshot already in the worker; only without it is each line a request to Hasadna.
 import * as clock from '../engine/clock.ts';
-import * as delays from '../engine/delays.js';
-import * as feed from '../engine/feed.js';
+import * as delays from '../engine/delays.ts';
+import * as feed from '../engine/feed.ts';
+import type { Vehicle } from '../engine/feed.ts';
 import { tripStopsCached, estimate } from '../worker/client';
 import type { TrainRow, LiveTrain } from '../state/station';
 
@@ -13,12 +14,17 @@ export async function liveRides(
   day: string,
 ): Promise<{ live: Record<string, LiveTrain>; newest: Date | null }> {
   const now = clock.nowOn(day);
-  const soon = rows.filter((r) => r.routeId != null && r.dep - now < 7200 && r.dep - now > -600).slice(0, 12);
+  const soon = rows
+    .filter(
+      (r): r is TrainRow & { routeId: number | string; firstDep: number } =>
+        r.routeId != null && r.firstDep != null && r.dep - now < 7200 && r.dep - now > -600,
+    )
+    .slice(0, 12);
   const out: Record<string, LiveTrain> = {};
   if (!soon.length) return { live: out, newest: null };
   // trains: every train in the country is one request (each train is a line of its own in the feed); else by line
   const ids = [...new Set(soon.map((r) => r.routeId))].slice(0, 8);
-  const vs: any[] = soon.every((r) => r.routeType === 2)
+  const vs: Vehicle[] = soon.every((r) => r.routeType === 2)
     ? await feed.trains()
     : (await Promise.all(ids.map((id) => feed.vehiclesByLine(id).catch(() => [])))).flat();
   for (const r of soon) {

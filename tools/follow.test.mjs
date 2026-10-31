@@ -1,7 +1,7 @@
 // The trip-following state machine's manual steps: node tools/follow.test.mjs (exits 1 on a failure).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { initialState, advance, stepForward, stepBack, canStepBack, connections } from '../src/engine/follow.js';
+import { initialState, advance, stepForward, stepBack, canStepBack, connections } from '../src/engine/follow.ts';
 
 test('follow: the manual steps of a followed trip', () => {
   const T = (h, m) => h * 3600 + m * 60;

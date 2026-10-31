@@ -10,9 +10,9 @@
 // what the rider is shown (delays.js sureLate), against the timetable alone.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { gunzipSync, brotliDecompressSync } from 'node:zlib';
-import { parseTimetable } from '../src/engine/raptor.js';
+import { parseTimetable } from '../src/engine/raptor.ts';
 import * as clock from '../src/engine/clock.ts';
-import * as delays from '../src/engine/delays.js';
+import * as delays from '../src/engine/delays.ts';
 import { metres } from '../src/engine/geo.ts';
 
 const [day, from = '07:30', to = '10:30'] = process.argv

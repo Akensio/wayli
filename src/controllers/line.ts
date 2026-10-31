@@ -1,6 +1,6 @@
 // A line's page: its course and stops on the map, and its vehicles with their delays, every 20 s while open.
 import * as clock from '../engine/clock.ts';
-import * as feed from '../engine/feed.js';
+import * as feed from '../engine/feed.ts';
 import { t } from '../lib/i18n';
 import { toast } from '../widgets/toast';
 import { call } from '../worker/client';
@@ -12,7 +12,7 @@ import { recentViews } from '../lib/store.ts';
 import * as data from '../state/data';
 import { lastPos } from '../state/position';
 import { tripStopsCached, estimate } from '../worker/client';
-import * as delays from '../engine/delays.js';
+import * as delays from '../engine/delays.ts';
 import type { LineTime } from '../state/line';
 import { metres } from '../engine/geo.ts';
 import { timeOf } from '../lib/time';

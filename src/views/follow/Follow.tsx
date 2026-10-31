@@ -4,31 +4,15 @@ import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import * as clock from '../../engine/clock.ts';
-import { view as followView, canStepBack } from '../../engine/follow.js';
+import { view as followView, canStepBack } from '../../engine/follow.ts';
 import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
 import { lineText, inShort } from '../../journey/format';
 import { LegChips } from '../results/LegChips';
 import { LegRow } from '../detail/LegRow';
-import type { Leg, RideLeg, WalkLeg } from '../../journey/types';
 import { payLink } from '../../journey/pay';
 import { isRide, ridesOf } from '../../journey/types';
 import { switchJourney, dismissAlt, hideFollow, endTrip, backStep, skipStep } from '../../controllers/follow';
-
-type ViewBase = {
-  minutes: number;
-  departsIn: number;
-  stopsLeft: number;
-  alight: { name: string };
-  nextStop: { name: string };
-};
-/** The step the rider is at (engine/follow.js view): on foot with the ride it leads to, or at or on a ride. */
-type View = ViewBase &
-  (
-    | { kind: 'done'; leg: Leg; toRide?: RideLeg | null }
-    | { kind: 'walk' | 'final'; leg: WalkLeg; toRide?: RideLeg | null }
-    | { kind: 'wait' | 'ride'; leg: RideLeg; toRide?: RideLeg | null }
-  );
 
 /** The card proposing the alternative. */
 function AltCard({ alt }: { alt: follow.Alt }) {
@@ -81,7 +65,7 @@ export function Follow() {
   const j = a.journey,
     nowS = clock.nowOn(a.day),
     dest = a.q.to.name;
-  const v = followView(j, a.state, nowS) as unknown as View;
+  const v = followView(j, a.state, nowS);
   const badge = follow.liveBadge.value,
     liveLine = badge ? ` · ${badge.text}` : '';
   const pos = follow.pos.value,
@@ -99,7 +83,7 @@ export function Follow() {
     else if (l.mode === 'bike') big = t('bikeTo', { min: v.minutes, name: l.to!.name });
     else big = t('walkTo', { min: v.minutes, name: l.to!.name });
     small = v.toRide
-      ? `${lineText(v.toRide.line)} ${t('departsAt', { time: fmt(v.toRide.depart!) })}${inShort(v.departsIn)}${liveLine}`
+      ? `${lineText(v.toRide.line)} ${t('departsAt', { time: fmt(v.toRide.depart!) })}${inShort(v.departsIn ?? 0)}${liveLine}`
       : t('arrivesAt', { time: fmt(l.arrive!) });
   } else if (v.kind === 'wait') {
     const l = v.leg;

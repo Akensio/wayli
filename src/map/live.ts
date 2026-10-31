@@ -2,7 +2,7 @@
 // results, or none while a journey, line or trip draws its own; the stops of the loaded day; what the note
 // at the bottom says about freshness.
 import type { Map as MLMap } from 'maplibre-gl';
-import * as feed from '../engine/feed.js';
+import * as feed from '../engine/feed.ts';
 import { t } from '../lib/i18n';
 import { routeColor, textOn } from '../journey/colors';
 import { lineText } from '../journey/format';

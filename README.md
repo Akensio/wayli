@@ -102,8 +102,8 @@ curl -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transporta
 curl -o data/osm/israel-and-palestine-latest.osm.pbf https://download.openstreetmap.fr/extracts/asia/israel_and_palestine-latest.osm.pbf
 python3 -I pipeline/streets.py data/osm/israel-and-palestine-latest.osm.pbf   # ~3 min -> data/streets.bin.gz
 python3 -I pipeline/compile.py data/gtfs.zip --date 20261019 --streets data/streets.bin.gz   # ~80 s -> data/timetable.bin.gz
-node tools/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00 60
-node tools/bench.mjs data/timetable.bin.gz "32.0720,34.8100:bike" "ת. מרכזית ירושלים" 07:30 60
+node tools/bench.ts data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00 60
+node tools/bench.ts data/timetable.bin.gz "32.0720,34.8100:bike" "ת. מרכזית ירושלים" 07:30 60
 ```
 
 ## Run the app

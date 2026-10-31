@@ -2,8 +2,8 @@
 // lines, departures, from here, to here), a tapped place (to here, from here); and the vehicle markers of
 // a line with their delays.
 import type { Map as MLMap, Marker, LngLatLike } from 'maplibre-gl';
-import * as delays from '../engine/delays.js';
-import * as feed from '../engine/feed.js';
+import * as delays from '../engine/delays.ts';
+import * as feed from '../engine/feed.ts';
 import { esc } from '../widgets/html';
 import { t, lang } from '../lib/i18n';
 import { ic, vehicleIcon } from '../widgets/icons';

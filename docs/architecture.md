@@ -1380,7 +1380,7 @@ Reproduce:
 ```
 curl -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
 python3 -I pipeline/compile.py data/gtfs.zip --date 20261019
-node tools/bench.mjs data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
+node tools/bench.ts data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
 ```
 
 ## If on-device routing fails the test

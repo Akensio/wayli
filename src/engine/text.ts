@@ -12,6 +12,8 @@ export function norm(s: unknown): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+/** The languages the app speaks and the data names things in. */
+export type Lang = 'he' | 'en';
 /** A search hit as the two searches rank it: how well it matched, and the name shown. */
 export type Scored = { score: number; name: string };
 /** Best match first; of two as good, the shorter name (the plain "Haifa" before "Haifa Bay"). */

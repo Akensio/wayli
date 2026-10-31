@@ -1,10 +1,11 @@
 // Words for journeys: durations, transfers, line names, the countdown to a departure.
 import * as clock from '../engine/clock.ts';
-import * as delays from '../engine/delays.js';
+import * as delays from '../engine/delays.ts';
 import { t, lang } from '../lib/i18n';
 import { fmt } from '../lib/time';
 import { tripKey as storeTripKey } from '../lib/store.ts';
 import type { Place } from '../state/search';
+import type { LiveTime } from '../engine/delays.ts';
 
 /** A distance as the rider reads it: to the metre close by, by 50 m within a kilometre, then in km (one decimal under 10). */
 export function distText(m: number): string {
@@ -71,7 +72,7 @@ export const tripKey = (q: {
   bike?: string;
   folding?: boolean;
 }): string => 'trip:' + storeTripKey(q);
-type LiveAt = { time: number; delay: number; passed?: boolean; stale?: boolean } | null;
+type LiveAt = LiveTime | null;
 export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: number; delayText?: string }; // time: the live departure
 /** A live vehicle's standing as a badge: its time at the stop and how late, passed, or no vehicle found. */
 export function liveBadge(at: LiveAt): Badge {

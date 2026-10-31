@@ -1,6 +1,7 @@
 // A line in the sheet: its course, stops and other directions, its vehicles now, and its timetable at a stop.
 import { signal } from '@preact/signals';
 import type { LineMode } from '../widgets/LineChip';
+import type { LiveTime } from '../engine/delays.ts';
 
 type LineStop = { stop: number; name: string; city?: string; lat: number; lon: number };
 export type LineInfo = {
@@ -38,5 +39,5 @@ export const now = signal<number | null>(null); // seconds on the line's day, nu
 export const sel = signal<number | null>(null); // the trip chosen
 export const selTimes = signal<(number | null)[]>([]); // its time at each stop of the list
 /** Its live time at each stop of the list, from its vehicle (delays.js liveAt: the time the rider is shown), or null. */
-export type LiveTime = { time: number; delay: number; passed: boolean; stale: boolean };
+export type { LiveTime };
 export const selLive = signal<(LiveTime | null)[]>([]);

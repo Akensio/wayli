@@ -2,8 +2,9 @@
 // next departures (from now, or from the bar's time on another day) refreshed with live times every 45 s while it is
 // open, from here and to here; a station is all its platforms, and where its trains go without a change.
 import * as clock from '../engine/clock.ts';
-import * as delays from '../engine/delays.js';
-import * as feed from '../engine/feed.js';
+import * as delays from '../engine/delays.ts';
+import * as feed from '../engine/feed.ts';
+import type { Vehicle } from '../engine/feed.ts';
 import { isNowDay } from '../lib/time';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import { livePoll } from './livepoll';
@@ -68,9 +69,14 @@ async function liveForStop(
   my: number,
 ): Promise<Date | null | undefined> {
   const now = clock.nowOn(day);
-  const soon = deps.filter((d) => d.routeId != null && d.time - now < 3600 && d.time - now > -300).slice(0, 16);
+  const soon = deps
+    .filter(
+      (d): d is Departure & { routeId: number | string; firstDep: number } =>
+        d.routeId != null && d.firstDep != null && d.time - now < 3600 && d.time - now > -300,
+    )
+    .slice(0, 16);
   if (!soon.length) return undefined;
-  let vs: any[] = await feed.vehiclesNear(info.lat, info.lon, 8);
+  let vs: Vehicle[] = await feed.vehiclesNear(info.lat, info.lon, 8);
   if (my !== seq) return undefined;
   const unmatched = new Set(
     soon.filter((d) => !feed.matchTrip(vs, d.routeId, d.firstDep, day) && d.time - now < 1800).map((d) => d.routeId),

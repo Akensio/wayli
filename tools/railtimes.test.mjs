@@ -1,7 +1,7 @@
 // Train delays from learned section times (src/engine/delays.js, railAhead): node tools/railtimes.test.mjs (exits 1 on a failure).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { setRailTimes, estimateDelay, liveAt, sureLate } from '../src/engine/delays.js';
+import { setRailTimes, estimateDelay, liveAt, sureLate } from '../src/engine/delays.ts';
 
 test('railtimes: train delays from learned section times', () => {
   const T = (h, m, s = 0) => h * 3600 + m * 60 + s;

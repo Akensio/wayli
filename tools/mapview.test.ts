@@ -2,10 +2,10 @@
 // table the principle was agreed on, then the camera's visible part of the screen.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { viewFor, visibleArea, centreOffset } from '../src/map/view.ts';
+import { viewFor, visibleArea, centreOffset, type Sheet } from '../src/map/view.ts';
 
 test('mapview: the map follows the sheet', () => {
-  const v = (key, more = {}) => viewFor({ key, ...more });
+  const v = (key: string, more: Partial<Sheet> = {}) => viewFor({ key, ...more });
   // nothing searched: the rider's area, every vehicle with the lines near them in front, the camera left alone
   assert.deepEqual(v('screen-plan'), { draw: 'nothing', context: false, camera: 'keep', maxZoom: 16, live: 'near' });
   // results: the ways, fitted, only their lines' vehicles

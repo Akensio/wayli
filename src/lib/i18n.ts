@@ -3,7 +3,7 @@
 // signal: components re-render when it changes; `storeLang` remembers it.
 import { signal } from '@preact/signals';
 
-type Lang = 'he' | 'en';
+import type { Lang } from '../engine/text.ts';
 type Text = string | string[];
 /** Every string, Hebrew then English, by where the app uses it. */
 export const STR: Record<string, [he: Text, en: Text]> = {
