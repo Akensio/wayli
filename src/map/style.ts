@@ -264,7 +264,9 @@ export async function styledLiberty(mode: Shade = 'light', tint: Tint = 'teal'):
   const key = tint + ':' + mode;
   if (cache[key]) return cache[key];
   const pal = (PALETTES[tint] || TEAL)[mode] || TEAL.light;
-  const style = (await (await fetch(LIBERTY)).json()) as LibertyStyle;
+  const res = await fetch(LIBERTY, { signal: AbortSignal.timeout(20000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${LIBERTY}`);
+  const style = (await res.json()) as LibertyStyle;
   for (const layer of style.layers || []) {
     // an app for riders in Israel does not name "Palestinian Territories" on its map (Gadi, 2026-10-24): that country
     // label is left out, by its code and by its name in either language, whatever language the labels are shown in

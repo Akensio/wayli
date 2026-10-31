@@ -2,11 +2,16 @@
 // the two searches (everything, and trains only), and the journeys as the app shows them: legs with their courses,
 // the easiest place to change, walks merged, slower departures of the same way, and ways grouped.
 import {
-  profile,
-  plan as planFrom,
-  rank,
   journeySig,
+  patternLength,
+  patternStop,
+  plan as planFrom,
+  profile,
+  rank,
   routeLabel,
+  stopsBetween,
+  timesRow,
+  tripRange,
   type ProfileOptions,
   type RawAccessLeg,
   type RawEgressLeg,
@@ -14,6 +19,7 @@ import {
   type RawRideLeg,
   type RawWalkLeg,
   type StopAccess,
+  patternsAt,
 } from '../engine/raptor.ts';
 import { accessStops, route, type StreetMode } from '../engine/streets.ts';
 import { secondsOn } from '../engine/clock.ts';
@@ -131,12 +137,11 @@ function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips
   }
   // in order again: from the last trip back, none later at a stop than the one after it
   for (const p of touched) {
-    const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p],
-      t0 = tt!.patTripsOff[p],
-      t1 = tt!.patTripsOff[p + 1];
-    for (let t = t1 - 2; t >= t0; t--) {
-      const base = tt!.tripTimesOff[p] + (t - t0) * ns,
-        next = base + ns;
+    const ns = patternLength(tt!, p),
+      { first, end } = tripRange(tt!, p);
+    for (let t = end - 2; t >= first; t--) {
+      const base = timesRow(tt!, t),
+        next = base + ns; // the trip after it: the next row
       for (let i = 0; i < ns; i++) {
         const idx = base + i;
         if (tt!.dep[idx] <= tt!.dep[next + i] && tt!.arr[idx] <= tt!.arr[next + i]) continue;
@@ -161,11 +166,11 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
   const o = { type: l.type, depart: l.depart, arrive: l.arrive, seconds: l.seconds ?? l.arrive - l.depart };
   if (l.type === 'ride') {
     const p = l.pattern,
-      ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p];
-    const base = tt!.tripTimesOff[p] + (l.trip - tt!.patTripsOff[p]) * ns;
+      ns = patternLength(tt!, p);
+    const base = timesRow(tt!, l.trip);
     let bp = -1; // board position on the pattern; a pattern can pass a stop twice, so match the time too
     for (let i = 0; i < ns; i++)
-      if (tt!.patStops[tt!.patStopsOff[p] + i] === l.from && tt!.dep[base + i] === l.depart) {
+      if (patternStop(tt!, p, i) === l.from && tt!.dep[base + i] === l.depart) {
         bp = i;
         break;
       }
@@ -254,15 +259,13 @@ function easierTransfers(j: RawJourney): void {
   const pos = (l: RawRideLeg): { p: number; ns: number; base: number; bp: number } | null => {
     // the leg's boarding position on its pattern (a pattern can pass a stop twice: match the time)
     const p = l.pattern,
-      ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p],
-      base = tt!.tripTimesOff[p] + (l.trip - tt!.patTripsOff[p]) * ns;
+      ns = patternLength(tt!, p),
+      base = timesRow(tt!, l.trip);
     for (let i = 0; i < ns; i++)
-      if (tt!.patStops[tt!.patStopsOff[p] + i] === l.from && tt!.dep[base + i] === l.depart)
-        return { p, ns, base, bp: i };
+      if (patternStop(tt!, p, i) === l.from && tt!.dep[base + i] === l.depart) return { p, ns, base, bp: i };
     return null;
   };
-  const stopsOf = (p: number, a: number, b: number): number[] =>
-    Array.from(tt!.patStops.subarray(tt!.patStopsOff[p] + a, tt!.patStopsOff[p] + b + 1));
+  const stopsOf = (p: number, a: number, b: number): number[] => stopsBetween(tt!, p, a, b);
   for (let i = 0; i < L.length; i++) {
     const A = L[i];
     if (A.type !== 'ride') continue;
@@ -284,10 +287,10 @@ function easierTransfers(j: RawJourney): void {
       walk: w ? w.seconds : 0,
     };
     for (let ia = a.bp + 1; ia < a.ns; ia++) {
-      const sa = tt!.patStops[tt!.patStopsOff[a.p] + ia],
+      const sa = patternStop(tt!, a.p, ia),
         ta = tt!.arr[a.base + ia];
       for (let jb = 0; jb < apB; jb++) {
-        const sb = tt!.patStops[tt!.patStopsOff[b.p] + jb],
+        const sb = patternStop(tt!, b.p, jb),
           tb = tt!.dep[b.base + jb];
         let walk = -1;
         if (sa === sb) walk = 0;
@@ -305,8 +308,8 @@ function easierTransfers(j: RawJourney): void {
       }
     }
     if (best.ia === apA && best.jb === b.bp) continue;
-    const sa = tt!.patStops[tt!.patStopsOff[a.p] + best.ia],
-      sb = tt!.patStops[tt!.patStopsOff[b.p] + best.jb];
+    const sa = patternStop(tt!, a.p, best.ia),
+      sb = patternStop(tt!, b.p, best.jb);
     Object.assign(A, {
       to: sa,
       arrive: tt!.arr[a.base + best.ia],
@@ -380,20 +383,18 @@ function slowerSiblings(journeys: JourneyOut[], fromTime: number, q: Resolved): 
     seen.add(key);
     const lead = R.depart - j.depart; // from setting out to boarding
     const found: { p: number; t: number; pos: number; k: number; d: number; a: number }[] = [];
-    for (let i = tt!.stopPatsOff[B]; i < tt!.stopPatsOff[B + 1]; i++) {
-      const p = tt!.stopPats[2 * i],
-        pos = tt!.stopPats[2 * i + 1],
-        ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p];
+    for (const { p, pos } of patternsAt(tt!, B)) {
+      const ns = patternLength(tt!, p);
       let k = -1;
       for (let x = pos + 1; x < ns; x++)
-        if (tt!.patStops[tt!.patStopsOff[p] + x] === A) {
+        if (patternStop(tt!, p, x) === A) {
           k = x;
           break;
         }
       if (k < 0) continue;
-      const base = tt!.tripTimesOff[p];
-      for (let t = tt!.patTripsOff[p]; t < tt!.patTripsOff[p + 1]; t++) {
-        const o = base + (t - tt!.patTripsOff[p]) * ns,
+      const { first, end } = tripRange(tt!, p);
+      for (let t = first; t < end; t++) {
+        const o = timesRow(tt!, t),
           d = tt!.dep[o + pos],
           a = tt!.arr[o + k];
         if (d >= R.depart || d < fromTime + lead || a <= R.arrive || a > R.arrive + 1800) continue;
@@ -404,7 +405,7 @@ function slowerSiblings(journeys: JourneyOut[], fromTime: number, q: Resolved): 
     found.sort((x, y) => y.d - x.d);
     for (const f of found.slice(0, 2)) {
       const via: number[] = [];
-      for (let x = f.pos; x <= f.k; x++) via.push(tt!.patStops[tt!.patStopsOff[f.p] + x]);
+      for (let x = f.pos; x <= f.k; x++) via.push(patternStop(tt!, f.p, x));
       const ride = legOut(
         {
           type: 'ride',

@@ -3,6 +3,7 @@
 import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.ts';
 import type { Vehicle, SnapshotFilter } from '../engine/feed.ts';
+import type { RailTimes } from '../engine/delays.ts';
 import { t, lang, STR } from '../lib/i18n';
 import { calToday, dayLabel, two } from '../lib/time';
 import { call, DATA_URL, resetCaches } from '../worker/client';
@@ -28,8 +29,15 @@ const WORDS = {
 const fileUrl = (f: DataFile): string =>
   `${DATA_URL}${f.file}?v=${encodeURIComponent(f.hash || f.built || manifest().built || '')}`;
 
+/** A small JSON file: its status checked, given up after `ms` (a hung request fails and says so instead of waiting). */
+async function fetchJson<T>(url: string, init: RequestInit = {}, ms = 20000): Promise<T> {
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return (await res.json()) as T;
+}
+
 export async function loadManifest(): Promise<void> {
-  const m: Manifest = await (await fetch('data/manifest.json', { cache: 'no-cache' })).json();
+  const m = await fetchJson<Manifest>('data/manifest.json', { cache: 'no-cache' });
   data.manifest.value = m;
   app.feedInfo.value = m.feed ? { start: m.feed.start, end: m.feed.end, built: m.built } : null;
   if (m.built) {
@@ -135,10 +143,10 @@ export async function loadRailTimes(): Promise<void> {
   const f = manifest().railtimes;
   if (!f) return;
   try {
-    const m = await (await fetch(fileUrl(f))).json();
+    const m = await fetchJson<RailTimes>(fileUrl(f));
     await call('setRailTimes', { m });
-  } catch {
-    /* the timetable's own section times then */
+  } catch (e) {
+    console.warn('rail times', e); // the timetable's own section times then
   }
 }
 /** The learned running times of bus sections: bus delays at each stop ahead, in the data worker (where every estimate is made). */

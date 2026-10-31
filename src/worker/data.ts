@@ -50,6 +50,30 @@ function parseShapes(ab: ArrayBuffer): Shapes {
 /** A message to the page (an answer, or a download's progress). */
 export const post = (m: WorkerMessage): void => self.postMessage(m);
 /** The body of a response, streamed so the page sees the download move; `base` bytes were had before it. */
+/** How long a download may go without a byte before it is given up: a stalled connection then fails and says so (the
+ *  pieces already kept stay for the next try) instead of leaving the progress frozen for good. */
+const STALL_MS = 30000;
+/** `fetch`, given up when no answer starts within STALL_MS; the body's reads are watched by `readBody`. */
+async function fetchWatched(url: string, init: RequestInit = {}): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(new Error(`no answer in ${STALL_MS / 1000} s for ${url}`)), STALL_MS);
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+/** One read of a body, given up (and the body cancelled) when nothing came for STALL_MS. */
+function readOrStall(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<ReadableStreamReadResult<Uint8Array>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stall = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reader.cancel().catch(() => {});
+      reject(new Error(`download stalled for ${STALL_MS / 1000} s`));
+    }, STALL_MS);
+  });
+  return Promise.race([reader.read(), stall]).finally(() => clearTimeout(timer));
+}
 async function readBody(res: Response, label: string, base: number, total: number): Promise<Uint8Array<ArrayBuffer>> {
   if (!res.body || !res.body.getReader) {
     const u8 = new Uint8Array(await res.arrayBuffer());
@@ -60,7 +84,7 @@ async function readBody(res: Response, label: string, base: number, total: numbe
     chunks: Uint8Array[] = [];
   let got = 0;
   for (;;) {
-    const { done, value } = await reader.read();
+    const { done, value } = await readOrStall(reader);
     if (done) break;
     chunks.push(value);
     got += value.length;
@@ -76,7 +100,7 @@ async function readBody(res: Response, label: string, base: number, total: numbe
 }
 /** A whole file in one request (small files, and browsers without a cache for pieces). */
 async function fetchWhole(url: string, label: string): Promise<Uint8Array<ArrayBuffer>> {
-  const res = await fetch(url);
+  const res = await fetchWatched(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return readBody(res, label, 0, Number(res.headers.get('content-length')) || 0);
 }
@@ -131,7 +155,7 @@ async function fetchInPieces(url: string, label: string, total: number): Promise
     const hit = await cache.match(pieceKey(url, i));
     let piece = hit ? new Uint8Array(await hit.arrayBuffer()) : null;
     if (!piece || piece.length !== end - start + 1) {
-      const res = await fetch(url, { headers: { Range: `bytes=${start}-${end}` } });
+      const res = await fetchWatched(url, { headers: { Range: `bytes=${start}-${end}` } });
       if (res.status !== 206) {
         if (res.ok) return null;
         throw new Error(`HTTP ${res.status} for ${url}`);

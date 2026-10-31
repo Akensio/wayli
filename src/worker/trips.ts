@@ -1,6 +1,6 @@
 // Trips: a trip's stops and times (as scheduled, or as shifted by live data during a plan), the trip a reported
 // vehicle runs, and the direct trips between two places (the trains between two stations, a journey's ride options).
-import { routeLabel } from '../engine/raptor.ts';
+import { patternLength, patternStop, routeLabel, timesRow, tripRange, patternsAt } from '../engine/raptor.ts';
 import { secondsOn } from '../engine/clock.ts';
 import { haversine } from '../engine/geo.ts';
 import { tt } from './data.ts';
@@ -19,8 +19,8 @@ export type TripStopList = { p: number; ns: number; base: number; stops: TripSto
 
 /** A trip's scheduled times, untouched by any live shift: from the stored start and deltas. */
 export function rawTimes(p: number, t: number): { dep: Int32Array; arr: Int32Array } {
-  const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p],
-    base = tt!.tripTimesOff[p] + (t - tt!.patTripsOff[p]) * ns;
+  const ns = patternLength(tt!, p),
+    base = timesRow(tt!, t);
   const dep = new Int32Array(ns),
     arr = new Int32Array(ns);
   let cur = tt!.tripStart[t];
@@ -36,18 +36,19 @@ export function tripFor(routeId: number | string | null, start: number): number 
   if (!routeById) indexRoutes();
   const ri = routeById!.get(String(routeId));
   if (ri == null) return -1;
-  for (const p of routePats!.get(ri) || [])
-    for (let t = tt!.patTripsOff[p]; t < tt!.patTripsOff[p + 1]; t++)
-      if (Math.abs(tt!.tripStart[t] - start) <= 90) return t; // the schedule: plan.ts shifts dep for live delays
+  for (const p of routePats!.get(ri) || []) {
+    const { first, end } = tripRange(tt!, p);
+    for (let t = first; t < end; t++) if (Math.abs(tt!.tripStart[t] - start) <= 90) return t; // the schedule: plan.ts shifts dep for live delays
+  }
   return -1;
 }
 export function tripStopList(t: number): TripStopList {
   const p = tt!.tripPat[t],
-    ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p],
-    base = tt!.tripTimesOff[p] + (t - tt!.patTripsOff[p]) * ns;
+    ns = patternLength(tt!, p),
+    base = timesRow(tt!, t);
   const out: TripStopRow[] = [];
   for (let i = 0; i < ns; i++) {
-    const s = tt!.patStops[tt!.patStopsOff[p] + i];
+    const s = patternStop(tt!, p, i);
     out.push({
       lat: tt!.stopLat[s],
       lon: tt!.stopLon[s],
@@ -90,21 +91,19 @@ export const tripsOps = {
       out: TrainRow[] = [],
       seen = new Set<number>();
     for (const s of from) {
-      for (let i = tt!.stopPatsOff[s]; i < tt!.stopPatsOff[s + 1]; i++) {
-        const p = tt!.stopPats[2 * i],
-          pos = tt!.stopPats[2 * i + 1];
-        const o = tt!.patStopsOff[p],
-          ns = tt!.patStopsOff[p + 1] - o;
+      for (const { p, pos } of patternsAt(tt!, s)) {
+        const ns = patternLength(tt!, p);
         let j = -1;
         for (let k = pos + 1; k < ns; k++)
-          if (B.has(tt!.patStops[o + k])) {
+          if (B.has(patternStop(tt!, p, k))) {
             j = k;
             break;
           }
         if (j < 0) continue;
         const r = tt!.routes[tt!.patRoute[p]];
-        for (let t = tt!.patTripsOff[p]; t < tt!.patTripsOff[p + 1]; t++) {
-          const base = tt!.tripTimesOff[p] + (t - tt!.patTripsOff[p]) * ns,
+        const { first, end } = tripRange(tt!, p);
+        for (let t = first; t < end; t++) {
+          const base = timesRow(tt!, t),
             dep = tt!.dep[base + pos];
           if (dep < fromTime || seen.has(t)) continue;
           seen.add(t);
@@ -124,7 +123,7 @@ export const tripsOps = {
             headsign: headsign(tt!.patRoute[p]),
             firstDep: tt!.dep[base],
             fromStop: s,
-            toStop: tt!.patStops[o + j],
+            toStop: patternStop(tt!, p, j),
           });
         }
       }
@@ -139,12 +138,12 @@ export const tripsOps = {
   /** One trip's every stop with times, plus what identifies it in real-time data. */
   tripStops({ trip }) {
     const p = tt!.tripPat[trip],
-      ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p];
-    const base = tt!.tripTimesOff[p] + (trip - tt!.patTripsOff[p]) * ns;
+      ns = patternLength(tt!, p);
+    const base = timesRow(tt!, trip);
     const r = tt!.routes[tt!.patRoute[p]];
     const stops: TripStop[] = [];
     for (let i = 0; i < ns; i++) {
-      const s = tt!.patStops[tt!.patStopsOff[p] + i];
+      const s = patternStop(tt!, p, i);
       stops.push({ ...stopOut(s), arr: tt!.arr[base + i], dep: tt!.dep[base + i] });
     }
     return {

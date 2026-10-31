@@ -6,6 +6,7 @@ import type { PathPoint } from '../engine/geo.ts';
 import { sh, st, tt } from './data.ts';
 import { sName } from './names.ts';
 import type { OpsPart } from './ops.ts';
+import { patternLength, patternStop, patternIndex } from '../engine/raptor.ts';
 
 /** Does this pattern have a course: a feed shape (loaded) or a track from the rail pairs? */
 export const hasCourse = (p: number): boolean =>
@@ -13,7 +14,7 @@ export const hasCourse = (p: number): boolean =>
 /** The course of a ride between two stops of a pattern, along the road or the track; null without one. */
 export function ridePath(p: number, bp: number, ap: number): PathPoint[] | null {
   if (!tt!.patShape) return null;
-  const at = (i: number): number => tt!.patStopsOff[p] + i;
+  const at = (i: number): number => patternIndex(tt!, p, i);
   if (tt!.patShape[p] === -2) {
     // a train: the track, one stored piece per pair of consecutive stations
     if (!tt!.railPairOff) return null;
@@ -81,10 +82,9 @@ export const coursesOps = {
    *  whose trips name no shape) the path joins the stops straight, and the map must not draw it as a route. */
   rideCourses({ legs }) {
     return legs.map((l) => {
-      const o = tt!.patStopsOff[l.pattern],
-        stops: { lat: number; lon: number; stop: number }[] = [];
+      const stops: { lat: number; lon: number; stop: number }[] = [];
       for (let i = l.boardPos; i <= l.alightPos; i++) {
-        const st = tt!.patStops[o + i];
+        const st = patternStop(tt!, l.pattern, i);
         stops.push({ lat: tt!.stopLat[st], lon: tt!.stopLon[st], stop: st });
       }
       const path = ridePath(l.pattern, l.boardPos, l.alightPos);
@@ -95,10 +95,10 @@ export const coursesOps = {
    *  as in rideCourses. */
   patternCourse({ patterns }) {
     return patterns.map((p) => {
-      const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p];
+      const ns = patternLength(tt!, p);
       const stops: [number, number, string, number][] = [];
       for (let i = 0; i < ns; i++) {
-        const st = tt!.patStops[tt!.patStopsOff[p] + i];
+        const st = patternStop(tt!, p, i);
         stops.push([tt!.stopLat[st], tt!.stopLon[st], sName(st), st]);
       }
       const path = ns >= 2 ? ridePath(p, 0, ns - 1) : null;

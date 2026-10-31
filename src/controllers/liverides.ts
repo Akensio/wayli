@@ -8,6 +8,9 @@ import * as feed from '../engine/feed.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { tripStopsCached, estimate } from '../worker/client';
 import type { TrainRow, LiveTrain } from '../state/station';
+import type { RideLeg } from '../journey/types';
+import { call } from '../worker/client';
+import * as map from '../map/index';
 
 export async function liveRides(
   rows: TrainRow[],
@@ -44,4 +47,26 @@ export async function liveRides(
     };
   }
   return { live: out, newest: feed.newest(vs) };
+}
+
+/** What is seen of one ride: its line's vehicles (with their statuses for the map, when `withStatuses`), the ride's
+ *  own vehicle among them, and that vehicle's estimate along the trip's stops. Null when the live data could not be had
+ *  (the network, the worker): the one place the journey's and following's live parts expect a failure. */
+export async function seeRide(
+  leg: RideLeg & { routeId: number | string; firstDep: number },
+  day: string,
+  withStatuses: boolean,
+) {
+  try {
+    const vs = await feed.vehiclesByLine(leg.routeId);
+    const statuses =
+      withStatuses && vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
+    const v = feed.matchTrip(vs, leg.routeId, leg.firstDep, day);
+    const ts = v ? await tripStopsCached(leg.trip) : null;
+    const est = v && ts ? await estimate(v, ts.stops, day) : null;
+    return { vs, statuses, v, ts, est };
+  } catch (e) {
+    console.warn('live for a ride', e);
+    return null;
+  }
 }

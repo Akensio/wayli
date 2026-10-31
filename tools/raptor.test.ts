@@ -1,7 +1,20 @@
 // The router's rules (src/engine/raptor.js) on tiny timetables: which stop to get off at, which journeys to keep, and
 // the next way after an empty window.
 import { test, expect } from 'vitest';
-import { profile, plan, type RawJourney, type RawRideLeg } from '../src/engine/raptor.ts';
+import {
+  profile,
+  plan,
+  patternLength,
+  patternStop,
+  lastStop,
+  stopsBetween,
+  patternsAt,
+  tripCount,
+  tripRange,
+  timesRow,
+  type RawJourney,
+  type RawRideLeg,
+} from '../src/engine/raptor.ts';
 import { tinyTimetable, T } from './tinytt.ts';
 
 // a street with stops O, A, B, C every 400 m; the door is near B and C
@@ -97,4 +110,42 @@ test('route types: every GTFS type can be asked for, on-demand (715) and shared 
   expect(reach([715], 1)).toHaveLength(1);
   expect(reach([8], 2)).toHaveLength(1);
   expect(reach([715], 3)).toHaveLength(0); // the bus is not on demand
+});
+
+test("the layout's accessors: a pattern's stops, its trips, and where each trip's times are", () => {
+  const tt = tinyTimetable({
+    stops,
+    routes,
+    patterns: [
+      {
+        route: 0,
+        stops: [0, 1, 2],
+        trips: [
+          [T(8, 0), T(8, 5), T(8, 9)],
+          [T(9, 0), T(9, 6), T(9, 10)],
+        ],
+      },
+      { route: 0, stops: [3, 2, 1, 0], trips: [[T(7, 0), T(7, 2), T(7, 5), T(7, 9)]] },
+    ],
+  });
+  expect([0, 1].map((p) => patternLength(tt, p))).toEqual([3, 4]);
+  expect([patternStop(tt, 1, 0), lastStop(tt, 1)]).toEqual([3, 0]);
+  expect(stopsBetween(tt, 1, 1, 2)).toEqual([2, 1]);
+  expect(patternsAt(tt, 2).sort((a, b) => a.p - b.p)).toEqual([
+    { p: 0, pos: 2 },
+    { p: 1, pos: 1 },
+  ]);
+  // every trip's row holds its own times, stop by stop
+  const seen: number[][] = [];
+  for (const p of [0, 1]) {
+    expect(tripCount(tt, p)).toBe(p === 0 ? 2 : 1);
+    const { first, end } = tripRange(tt, p);
+    for (let t = first; t < end; t++)
+      seen.push(Array.from({ length: patternLength(tt, p) }, (_, i) => tt.dep[timesRow(tt, t) + i]));
+  }
+  expect(seen).toEqual([
+    [T(8, 0), T(8, 5), T(8, 9)],
+    [T(9, 0), T(9, 6), T(9, 10)],
+    [T(7, 0), T(7, 2), T(7, 5), T(7, 9)],
+  ]);
 });

@@ -169,8 +169,8 @@ async function selLive(my = session.current()): Promise<void> {
       byName.set(s.name, lt);
     });
     linePage.selLive.value = info.stops.map((s) => byStop.get(s.stop) ?? byName.get(s.name) ?? null);
-  } catch {
-    /* the timetable stays */
+  } catch (e) {
+    console.warn('line: live times of the trip chosen', e); // the timetable stays
   }
 }
 
@@ -204,8 +204,8 @@ async function lineLive(): Promise<void> {
     linePage.liveText.value =
       vs.length && nw ? `${t('vehiclesOnLine', { n: vs.length })} · ${timeOf(nw)}` : t('noLineVehicles');
     linePage.liveOk.value = vs.length > 0;
-  } catch {
-    /* the schedule stays */
+  } catch (e) {
+    console.warn('line: its vehicles', e); // the schedule stays
   }
 }
 

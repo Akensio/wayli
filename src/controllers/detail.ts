@@ -2,17 +2,16 @@
 // now, a live badge on each ride and every vehicle of those lines on the map.
 import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.ts';
-import * as feed from '../engine/feed.ts';
 import * as search from '../state/search';
 import { t } from '../lib/i18n';
-import { call, tripStopsCached, estimate } from '../worker/client';
+import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as detail from '../state/detail';
 import * as nav from '../state/nav';
 import * as map from '../map/index';
 import { liveBadge } from '../journey/format';
 import type { Journey, Query, RideLeg } from '../journey/types';
-import { liveRides } from './liverides';
+import { liveRides, seeRide } from './liverides';
 import type { TrainRow, LiveTrain } from '../state/station';
 import { recentViews } from '../state/store.ts';
 import { isRide } from '../journey/types';
@@ -48,31 +47,24 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
   await Promise.all(
     rides.map(async (l) => {
       const trip = l.trip;
-      try {
-        const vs = await feed.vehiclesByLine(l.routeId);
-        if (!session.isCurrent(my)) return;
-        const statuses = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
-        if (!session.isCurrent(my)) return;
-        map.showVehicles('detail', String(trip), {
-          vs,
-          statuses,
-          routeType: l.routeType,
-          mine: trip,
-          fallback: { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route },
-        });
-        const v = feed.matchTrip(vs, l.routeId, l.firstDep, day);
-        if (!v) {
-          detail.setBadge(trip, { text: t('liveNoVehicle'), cls: '' });
-          return;
-        }
-        const ts = await tripStopsCached(trip);
-        const est = await estimate(v, ts.stops, day);
-        const at = delays.liveAt(est, ts.stops, l.boardPos);
-        if (!session.isCurrent(my)) return;
-        detail.setBadge(trip, liveBadge(at));
-      } catch {
+      const seen = await seeRide(l, day, true);
+      if (!session.isCurrent(my)) return;
+      if (!seen) {
         detail.setBadge(trip, { text: t('liveFail'), cls: '' });
+        return;
       }
+      const { vs, statuses, v, ts, est } = seen;
+      map.showVehicles('detail', String(trip), {
+        vs,
+        statuses,
+        routeType: l.routeType,
+        mine: trip,
+        fallback: { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route },
+      });
+      detail.setBadge(
+        trip,
+        v && ts ? liveBadge(delays.liveAt(est, ts.stops, l.boardPos)) : { text: t('liveNoVehicle'), cls: '' },
+      );
     }),
   );
 }

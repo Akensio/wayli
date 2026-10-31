@@ -64,8 +64,8 @@ async function stopCourses(m: MLMap, seq: number, stop: number, stops: number[])
         });
     });
     setData(m, 'context', { type: 'FeatureCollection', features: lines });
-  } catch {
-    /* the pin and the departures stay */
+  } catch (e) {
+    console.warn("map: a stop's lines", e); // the pin and the departures stay
   }
 }
 

@@ -189,6 +189,39 @@ export type Timetable = {
   stationStops: Map<number, number[]>;
 };
 
+// ---- reading the layout: the router's own loops read the arrays above directly (they are the hot path); everything
+// else asks these, so the arithmetic of where a pattern's stops or a trip's times sit is written once.
+/** How many stops pattern p has. */
+export const patternLength = (tt: Timetable, p: number): number => tt.patStopsOff[p + 1] - tt.patStopsOff[p];
+/** Where position i of pattern p sits in the arrays kept per pattern stop (patStops, patShapeSeg, patShapeFrac). */
+export const patternIndex = (tt: Timetable, p: number, i: number): number => tt.patStopsOff[p] + i;
+/** The stop at position i of pattern p. */
+export const patternStop = (tt: Timetable, p: number, i: number): number => tt.patStops[patternIndex(tt, p, i)];
+/** Pattern p's last stop. */
+export const lastStop = (tt: Timetable, p: number): number => tt.patStops[tt.patStopsOff[p + 1] - 1];
+/** Pattern p's stops from position a to b, both included. */
+export const stopsBetween = (tt: Timetable, p: number, a: number, b: number): number[] =>
+  Array.from(tt.patStops.subarray(tt.patStopsOff[p] + a, tt.patStopsOff[p] + b + 1));
+/** Pattern p's trips, by departure: t from `first` up to (not including) `end`. */
+export const tripRange = (tt: Timetable, p: number): { first: number; end: number } => ({
+  first: tt.patTripsOff[p],
+  end: tt.patTripsOff[p + 1],
+});
+/** How many trips pattern p has. */
+export const tripCount = (tt: Timetable, p: number): number => tt.patTripsOff[p + 1] - tt.patTripsOff[p];
+/** The patterns calling at stop s, each with the stop's position on it. */
+export function patternsAt(tt: Timetable, s: number): { p: number; pos: number }[] {
+  const out: { p: number; pos: number }[] = [];
+  for (let i = tt.stopPatsOff[s]; i < tt.stopPatsOff[s + 1]; i++)
+    out.push({ p: tt.stopPats[2 * i], pos: tt.stopPats[2 * i + 1] });
+  return out;
+}
+/** Where trip t's times are: its i-th stop departs at dep[timesRow(tt, t) + i] and arrives at arr[timesRow(tt, t) + i]. */
+export function timesRow(tt: Timetable, t: number): number {
+  const p = tt.tripPat[t];
+  return tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * patternLength(tt, p);
+}
+
 /** Parse the decompressed timetable container into typed arrays. */
 export function parseTimetable(ab: ArrayBuffer): Timetable {
   const tt = readContainer<TimetableSection, TimetableHeader>(ab) as Timetable, // the rest is added below

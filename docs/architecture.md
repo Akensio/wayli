@@ -838,6 +838,13 @@ the app views in place:
   all zeros in this feed and deltas repeat across trips, which is why gzip
   gets 26 MB down to 2.8 MB.
 - `stopPats`: for each stop, the (pattern, position) pairs it appears in.
+- Reading the layout: the router's own loops read these arrays directly
+  (the hot path). Everything else asks the accessors beside the format in
+  `engine/raptor.ts`: `patternLength`, `patternStop`, `lastStop`,
+  `stopsBetween`, `patternIndex`, `tripRange`, `tripCount`, `timesRow`
+  (where a trip's times start in `dep` and `arr`) and `patternsAt` (a
+  stop's patterns), so where a pattern's stops or a trip's times sit is
+  written once.
 - footpaths: `trOff`/`trTo`/`trTime`: street-graph walking times within 10
   minutes (straight-line within 400 m when built without `--streets`), plus
   platform-to-platform inside stations. The feed has no `transfers.txt`.

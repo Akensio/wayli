@@ -122,7 +122,6 @@ export type SavedStop = {
 export type SavedTrip = { from: Place; to: Place; bike: string; folding?: boolean };
 
 /** Something opened, as the history keeps it (state/store.ts recentViews). */
-/** Something opened, as the history keeps it (store.js recentViews). */
 type At = { name: string; lat: number; lon: number };
 export type View = { at?: number } & (
   | { type: 'line'; ref: string; line: string; routeType: number; agency: string; headsign: string; mode?: string }

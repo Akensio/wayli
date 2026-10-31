@@ -1,7 +1,18 @@
 // Stops and stations: which stops trains and light rail call at, light rail stops grouped into stations (the feed
 // gives most a stop per direction and no parent), the station a stop belongs to, stops by the number on their sign,
 // the lines at a stop; and what the stop search, a stop's page and the train timetable ask about them.
-import { searchStops, routeLabel, centreOf, stationStopsOf } from '../engine/raptor.ts';
+import {
+  centreOf,
+  patternLength,
+  patternStop,
+  routeLabel,
+  searchStops,
+  stationStopsOf,
+  timesRow,
+  tripCount,
+  tripRange,
+  patternsAt,
+} from '../engine/raptor.ts';
 import { haversine } from '../engine/geo.ts';
 import type { StopGroup, Dest } from './ops.ts';
 import { lang, tt, onNewDay, onNewLang } from './data.ts';
@@ -21,8 +32,7 @@ type StopRow = Omit<StopGroup, 'lines'> & { mode: StopMode; score: number };
 /** Lines (route labels) serving a stop, deduplicated, with their vehicle type. */
 function linesAt(stop: number, limit = 12): LineAt[] {
   const seen = new Map<string, LineAt>();
-  for (let i = tt!.stopPatsOff[stop]; i < tt!.stopPatsOff[stop + 1]; i++) {
-    const p = tt!.stopPats[2 * i];
+  for (const { p } of patternsAt(tt!, stop)) {
     const r = tt!.routes[tt!.patRoute[p]];
     const label = lineLabel(r);
     if (!seen.has(label)) seen.set(label, { label, type: r[3], agency: r[2], route: tt!.patRoute[p] });
@@ -36,7 +46,7 @@ export function railStops(): Uint8Array {
   stopRail = new Uint8Array(tt!.stops.length);
   for (let p = 0; p < tt!.patRoute.length; p++)
     if (tt!.routes[tt!.patRoute[p]][3] === 2)
-      for (let i = tt!.patStopsOff[p]; i < tt!.patStopsOff[p + 1]; i++) stopRail[tt!.patStops[i]] = 1;
+      for (let i = 0; i < patternLength(tt!, p); i++) stopRail[patternStop(tt!, p, i)] = 1;
   return stopRail;
 }
 let stopLrt: Uint8Array | null = null;
@@ -45,7 +55,7 @@ function lrtStops(): Uint8Array {
   stopLrt = new Uint8Array(tt!.stops.length);
   for (let p = 0; p < tt!.patRoute.length; p++)
     if (tt!.routes[tt!.patRoute[p]][3] === 0)
-      for (let i = tt!.patStopsOff[p]; i < tt!.patStopsOff[p + 1]; i++) stopLrt[tt!.patStops[i]] = 1;
+      for (let i = 0; i < patternLength(tt!, p); i++) stopLrt[patternStop(tt!, p, i)] = 1;
   return stopLrt;
 }
 /** Light rail stops as stations: the feed gives most of them one stop per direction and no parent station, so the stops
@@ -183,14 +193,11 @@ export const stopsOps = {
       dests = new Map<string, Dest>(),
       type = mode === 'lrt' ? 0 : 2;
     for (const s of stops) {
-      for (let i = tt!.stopPatsOff[s]; i < tt!.stopPatsOff[s + 1]; i++) {
-        const p = tt!.stopPats[2 * i],
-          pos = tt!.stopPats[2 * i + 1];
+      for (const { p, pos } of patternsAt(tt!, s)) {
         if (tt!.routes[tt!.patRoute[p]][3] !== type) continue;
-        const o = tt!.patStopsOff[p],
-          ns = tt!.patStopsOff[p + 1] - o;
+        const ns = patternLength(tt!, p);
         for (let j = pos + 1; j < ns; j++) {
-          const b = tt!.patStops[o + j];
+          const b = patternStop(tt!, p, j);
           if (from.has(b)) continue;
           const st = stationOf(b),
             key = st.key;
@@ -209,8 +216,9 @@ export const stopsOps = {
                 ride: null,
               }),
             );
-          for (let t = tt!.patTripsOff[p]; t < tt!.patTripsOff[p + 1]; t++) {
-            const base = tt!.tripTimesOff[p] + (t - tt!.patTripsOff[p]) * ns,
+          const { first, end } = tripRange(tt!, p);
+          for (let t = first; t < end; t++) {
+            const base = timesRow(tt!, t),
               dep = tt!.dep[base + pos],
               arr = tt!.arr[base + j];
             d.trips++;
@@ -229,10 +237,9 @@ export const stopsOps = {
   stopRoutes({ stop, stops = null }) {
     const best = new Map<number, { p: number; n: number }>();
     for (const st of stops && stops.length ? stops : [stop])
-      for (let i = tt!.stopPatsOff[st]; i < tt!.stopPatsOff[st + 1]; i++) {
-        const p = tt!.stopPats[2 * i],
-          ri = tt!.patRoute[p],
-          n = tt!.patTripsOff[p + 1] - tt!.patTripsOff[p];
+      for (const { p } of patternsAt(tt!, st)) {
+        const ri = tt!.patRoute[p],
+          n = tripCount(tt!, p);
         const b = best.get(ri);
         if (!b || n > b.n) best.set(ri, { p, n });
       }
@@ -356,8 +363,8 @@ export const stopsOps = {
     const ids = new Set<string>();
     for (let s = 0; s < tt!.stops.length; s++) {
       if (haversine(lat, lon, tt!.stopLat[s], tt!.stopLon[s]) > radius) continue;
-      for (let i = tt!.stopPatsOff[s]; i < tt!.stopPatsOff[s + 1]; i++) {
-        const id = tt!.routes[tt!.patRoute[tt!.stopPats[2 * i]]][4];
+      for (const { p } of patternsAt(tt!, s)) {
+        const id = tt!.routes[tt!.patRoute[p]][4];
         if (id != null) ids.add(String(id));
       }
     }
@@ -366,17 +373,14 @@ export const stopsOps = {
   departures({ stop, stops = null, fromTime, limit = 40 }) {
     const out: Departure[] = [];
     for (const st of stops && stops.length ? stops : [stop])
-      for (let i = tt!.stopPatsOff[st]; i < tt!.stopPatsOff[st + 1]; i++) {
-        const p = tt!.stopPats[2 * i],
-          pos = tt!.stopPats[2 * i + 1];
-        const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p];
+      for (const { p, pos } of patternsAt(tt!, st)) {
+        const ns = patternLength(tt!, p);
         if (pos === ns - 1) continue; // a vehicle ending here is not a departure
         const r = tt!.routes[tt!.patRoute[p]];
-        const tFirst = tt!.patTripsOff[p],
-          tEnd = tt!.patTripsOff[p + 1],
-          base = tt!.tripTimesOff[p];
-        for (let t = tFirst; t < tEnd; t++) {
-          const d = tt!.dep[base + (t - tFirst) * ns + pos];
+        const { first, end } = tripRange(tt!, p);
+        for (let t = first; t < end; t++) {
+          const row = timesRow(tt!, t),
+            d = tt!.dep[row + pos];
           if (d >= fromTime)
             out.push({
               time: d,
@@ -387,7 +391,7 @@ export const stopsOps = {
               trip: t,
               routeId: liveId(r),
               estimated: !!r[6],
-              firstDep: tt!.dep[base + (t - tFirst) * ns],
+              firstDep: tt!.dep[row],
             });
         }
       }

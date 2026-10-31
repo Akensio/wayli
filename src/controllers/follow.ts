@@ -23,7 +23,7 @@ import { settings, activeTrip } from '../state/store.ts';
 import { t } from '../lib/i18n';
 import { dateOf } from '../lib/time';
 import { toast } from '../widgets/toast';
-import { call, tripStopsCached, estimate } from '../worker/client';
+import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as nav from '../state/nav';
 import * as follow from '../state/follow';
@@ -35,6 +35,7 @@ import type { ActiveTrip, Alt, Position, LegLive } from '../state/follow';
 import type { FollowView, ReplanOrigin } from '../journey/follow.ts';
 import type { LiveTime } from '../engine/delays.ts';
 import type { Vehicle } from '../engine/feed.ts';
+import { seeRide } from './liverides';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
 import { whyReplan, pickAlternative, REPLAN } from '../journey/replan.ts';
 import { statusLine } from '../journey/status.ts';
@@ -225,68 +226,63 @@ async function followLive(): Promise<void> {
   const polling = rides.length > 0 && !!data.dayInfo.value && data.dayInfo.value.date === a.day;
   if (!polling) fol.liveEst = null;
   else fol.liveChecked = true;
-  try {
-    const legLive: Record<number, LegLive> = {},
-      times: Record<number, { arrive?: number; depart?: number }> = {};
-    let first = true;
-    for (const { l: leg, i } of polling ? rides : []) {
-      const vs = await feed.vehiclesByLine(leg.routeId);
-      if (!fol) return;
-      if (first) {
-        const statuses = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
-        if (!fol) return;
-        map.showVehicles('follow', 'ride', {
-          vs,
-          statuses,
-          routeType: leg.routeType,
-          mine: leg.trip,
-          fallback: { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route },
-        });
-      }
-      const v = feed.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
-      const ts = v ? await tripStopsCached(leg.trip) : null;
-      if (!fol) return;
-      const est = v && ts ? await estimate(v, ts.stops, a.day) : null;
-      if (!fol) return;
-      const atBoard = est && ts ? delays.liveAt(est, ts.stops, leg.boardPos) : null;
-      const atAlight = est && ts ? delays.liveAt(est, ts.stops, leg.alightPos) : null;
-      if (first) {
-        // waiting: its time at the stop to board; on board: at the stop to get off at. The shift is how much that moved
-        // since the plan, against the planned time at the same stop (docs/architecture.md, "Live times, end to end", rule 6)
-        const aboard = a.state.onBoard,
-          at = aboard ? atAlight : atBoard;
-        fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive : leg.depart) } : null;
-        follow.liveBadge.value = v ? liveBadge(at) : null;
-      }
-      // the ride's stops at their shown times, the ones the vehicle has passed marked (the current ride's list opens)
-      const along = leg.stopsAlong || [];
-      const stops =
-        est && ts && along.length === leg.alightPos - leg.boardPos + 1
-          ? along.map((s, k) => {
-              const x = delays.liveAt(est, ts.stops, leg.boardPos + k);
-              return { time: x ? x.time : s.arr, passed: !!x && x.passed };
-            })
-          : null;
-      legLive[i] = { badge: liveBadge(atBoard), change: null, stops };
-      times[i] = {
-        depart: atBoard ? atBoard.time : undefined,
-        arrive: atAlight && !atAlight.passed ? atAlight.time : undefined,
-      };
+  const legLive: Record<number, LegLive> = {},
+    times: Record<number, { arrive?: number; depart?: number }> = {};
+  let first = true;
+  for (const { l: leg, i } of polling ? rides : []) {
+    const seen = await seeRide(leg, a.day, first);
+    if (!fol) return;
+    if (!seen) {
+      // the network or the worker failed for this ride: it keeps what it showed, and its change reads from the plan
+      if (fol.legLive[i]) legLive[i] = { ...fol.legLive[i], change: null };
       first = false;
+      continue;
     }
-    const ch = connections(legs, a.state.step, times) as Record<number, { sec: number; arr: number; dep: number }>;
-    for (const k of Object.keys(ch)) {
-      const i = +k;
-      if (legLive[i]) legLive[i].change = ch[i];
-      else legLive[i] = { badge: null, change: ch[i], stops: null };
+    const { vs, statuses, v, ts, est } = seen;
+    if (first)
+      map.showVehicles('follow', 'ride', {
+        vs,
+        statuses,
+        routeType: leg.routeType,
+        mine: leg.trip,
+        fallback: { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route },
+      });
+    const atBoard = est && ts ? delays.liveAt(est, ts.stops, leg.boardPos) : null;
+    const atAlight = est && ts ? delays.liveAt(est, ts.stops, leg.alightPos) : null;
+    if (first) {
+      // waiting: its time at the stop to board; on board: at the stop to get off at. The shift is how much that moved
+      // since the plan, against the planned time at the same stop (docs/architecture.md, "Live times, end to end", rule 6)
+      const aboard = a.state.onBoard,
+        at = aboard ? atAlight : atBoard;
+      fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive : leg.depart) } : null;
+      follow.liveBadge.value = v ? liveBadge(at) : null;
     }
-    fol.legLive = legLive;
-    follow.legLive.value = legLive;
-    publish();
-    if (polling) replanCheck();
-  } catch {
-    /* live is a bonus */
+    // the ride's stops at their shown times, the ones the vehicle has passed marked (the current ride's list opens)
+    const along = leg.stopsAlong || [];
+    const stops =
+      est && ts && along.length === leg.alightPos - leg.boardPos + 1
+        ? along.map((s, k) => {
+            const x = delays.liveAt(est, ts.stops, leg.boardPos + k);
+            return { time: x ? x.time : s.arr, passed: !!x && x.passed };
+          })
+        : null;
+    legLive[i] = { badge: liveBadge(atBoard), change: null, stops };
+    times[i] = {
+      depart: atBoard ? atBoard.time : undefined,
+      arrive: atAlight && !atAlight.passed ? atAlight.time : undefined,
+    };
+    first = false;
   }
+  const ch = connections(legs, a.state.step, times) as Record<number, { sec: number; arr: number; dep: number }>;
+  for (const k of Object.keys(ch)) {
+    const i = +k;
+    if (legLive[i]) legLive[i].change = ch[i];
+    else legLive[i] = { badge: null, change: ch[i], stops: null };
+  }
+  fol.legLive = legLive;
+  follow.legLive.value = legLive;
+  publish();
+  if (polling) replanCheck();
 }
 
 // ---- re-planning on the way: when delays make another way faster, say so and offer to switch

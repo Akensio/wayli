@@ -12,6 +12,7 @@ import { ridePath } from './courses.ts';
 import { tt, onNewDay } from './data.ts';
 import { tripFor, tripStopList } from './trips.ts';
 import type { OpsPart } from './ops.ts';
+import { patternLength, patternStop } from '../engine/raptor.ts';
 
 /** A bus followed across the snapshots: its ride's line ref and scheduled start (what finds its trip), and its fixes,
  *  oldest first. */
@@ -42,7 +43,7 @@ onNewDay(() => {
 });
 function sectionsOf(p: number): Section[] | null {
   if (courseSections.has(p)) return courseSections.get(p) ?? null; // null is kept for a pattern without a course
-  const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p],
+  const ns = patternLength(tt!, p),
     out: Section[] = [];
   for (let k = 0; k < ns - 1; k++) {
     const pts = ridePath(p, k, k + 1);
@@ -192,9 +193,8 @@ function trafficIn(box: Bounds): GeoJSON.FeatureCollection {
     const recent = v.filter((x) => x.t > newest - TRACK_MS);
     const { p, k } = recent.length ? recent[recent.length - 1] : { p: -1, k: 0 };
     if (p < 0) continue;
-    const at = tt.patStopsOff[p] + k,
-      s1 = tt.patStops[at],
-      s2 = tt.patStops[at + 1];
+    const s1 = patternStop(tt, p, k),
+      s2 = patternStop(tt, p, k + 1);
     // two buses in town; on a long section (a highway between interchanges, where each line has its own pair of stops
     // and two rarely share one in a quarter of an hour) one bus seen along it at least three times will do
     const rides = new Set(recent.map((x) => x.ride)).size;

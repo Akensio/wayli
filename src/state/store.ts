@@ -10,14 +10,56 @@ import type { ActiveTrip } from '../journey/follow.ts';
 /** Bumped on every write to the store. */
 export const stored = signal(0);
 
-function get<T>(k: string, d: T): T {
+// ---- reading back: what the phone holds was written by this app, but maybe by an older version of it, or cut short;
+// every record is checked for the shape the app reads before it is handed out, and one that fails reads as nothing
+// kept (a list keeps the items that pass). The checks look at what the readers rely on, not at every field.
+type Check<T> = (v: unknown) => v is T;
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v != null && !Array.isArray(v);
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const optNum = (v: unknown): boolean => v == null || isNum(v);
+const isPlace = (v: unknown): v is StoredPlace =>
+  isObj(v) &&
+  isStr(v.name) &&
+  optNum(v.lat) &&
+  optNum(v.lon) &&
+  (v.stops == null || (Array.isArray(v.stops) && v.stops.every(isNum)));
+const isAt = (v: unknown): boolean => isObj(v) && isStr(v.name) && isNum(v.lat) && isNum(v.lon);
+const isJourney = (v: unknown): boolean =>
+  isObj(v) &&
+  isNum(v.depart) &&
+  isNum(v.arrive) &&
+  Array.isArray(v.legs) &&
+  v.legs.every((l) => isObj(l) && isStr(l.type));
+const isQuery = (v: unknown): boolean => isObj(v) && isPlace(v.from) && isPlace(v.to) && isStr(v.day);
+const isView = (v: unknown): v is View => {
+  if (!isObj(v)) return false;
+  if (v.type === 'line') return isStr(v.ref) || isNum(v.ref);
+  if (v.type === 'stop') return isStr(v.name) && isNum(v.lat) && isNum(v.lon);
+  if (v.type === 'station') return isAt(v);
+  if (v.type === 'trains') return isAt(v.from) && isAt(v.to);
+  if (v.type === 'trip') return isQuery(v.q) && isJourney(v.j);
+  return false;
+};
+/** The items of a list that pass: one damaged entry does not cost the rider the rest. */
+const keepItems = <T>(l: T[], item: (v: unknown) => boolean): T[] => l.filter((x) => item(x));
+
+function get<T>(k: string, d: T, ok: Check<T>): T {
   try {
-    const v = localStorage.getItem(k);
-    return v == null ? d : (JSON.parse(v) as T);
+    const raw = localStorage.getItem(k);
+    if (raw == null) return d;
+    const v: unknown = JSON.parse(raw);
+    return ok(v) ? v : d;
   } catch {
     return d;
   }
 }
+/** A list kept under `k`, with only the items that pass. */
+const getList = <T>(k: string, item: (v: unknown) => boolean): T[] =>
+  keepItems(
+    get<T[]>(k, [], (v): v is T[] => Array.isArray(v)),
+    item,
+  );
 /** Write a record; `notify` false for one no page shows from the store (the trip in progress: its screen has signals
  *  of its own), so a write every few seconds does not redraw the saved and recent lists. */
 function set(k: string, v: unknown, notify = true): void {
@@ -67,7 +109,14 @@ const DEFAULTS: Settings = {
 };
 export const settings = {
   get(): Settings {
-    return { ...DEFAULTS, ...get<Partial<Settings>>('wayli-settings', {}) };
+    const kept = get<Record<string, unknown>>('wayli-settings', {}, isObj);
+    // each setting as kept only when it has the default's type (lang: a language or null)
+    const out: Record<string, unknown> = { ...DEFAULTS };
+    for (const [k, v] of Object.entries(kept)) {
+      const d = (DEFAULTS as Record<string, unknown>)[k];
+      if (k === 'lang' ? v === null || v === 'he' || v === 'en' : d === undefined || typeof v === typeof d) out[k] = v;
+    }
+    return out as Settings;
   },
   set(patch: Partial<Settings>): Settings {
     const s = { ...this.get(), ...patch };
@@ -108,9 +157,10 @@ const slim = (p: StoredPlace): StoredPlace => ({
 });
 
 export type RecentPlace = StoredPlace & { at: number };
+const isRecentPlace = (v: unknown): boolean => isPlace(v) && isNum((v as { at?: unknown }).at);
 export const recentPlaces = {
   list(): RecentPlace[] {
-    return get<RecentPlace[]>('wayli-recent-places', []);
+    return getList<RecentPlace>('wayli-recent-places', isRecentPlace);
   },
   add(p: PlaceIn | null | undefined): void {
     if (!p || p.transient) return;
@@ -141,6 +191,8 @@ export type RecentTrip = {
   time: string;
   arriveBy: boolean;
 };
+const isRecentTrip = (v: unknown): boolean =>
+  isObj(v) && isPlace(v.from) && isPlace(v.to) && isStr(v.day) && isStr(v.time) && isNum(v.at);
 /** What names a trip in the recent and saved lists (journey/types.ts). */
 export const tripKey = savedTripKey;
 // a trip from a place to the same place (my location to my location) is no trip to keep
@@ -148,7 +200,7 @@ const sameEnds = (x: { from?: { name: string } | null; to?: { name: string } | n
   !!(x.from && x.to && x.from.name === x.to.name);
 export const recentTrips = {
   list(): RecentTrip[] {
-    return get<RecentTrip[]>('wayli-recent-trips', []).filter((x) => !sameEnds(x));
+    return getList<RecentTrip>('wayli-recent-trips', isRecentTrip).filter((x) => !sameEnds(x));
   },
   add(q: Query): void {
     if (sameEnds(q)) return;
@@ -195,13 +247,13 @@ function capViews(l: View[]): View[] {
 /** The setting lowered: every list cut to it now. */
 export function trimRecents(): void {
   const n = recentKeep();
-  set('wayli-recent-places', get<RecentPlace[]>('wayli-recent-places', []).slice(0, n));
-  set('wayli-recent-trips', get<RecentTrip[]>('wayli-recent-trips', []).slice(0, n));
-  set('wayli-recent-views', capViews(get<View[]>('wayli-recent-views', [])));
+  set('wayli-recent-places', recentPlaces.list().slice(0, n));
+  set('wayli-recent-trips', getList<RecentTrip>('wayli-recent-trips', isRecentTrip).slice(0, n));
+  set('wayli-recent-views', capViews(recentViews.list()));
 }
 export const recentViews = {
   list(): View[] {
-    return get<View[]>('wayli-recent-views', []);
+    return getList<View>('wayli-recent-views', isView);
   },
   add(v: View): void {
     const k = viewKey(v);
@@ -219,7 +271,12 @@ export type SavedPlaces = { home: StoredPlace | null; work: StoredPlace | null; 
 export type SavedSlot = keyof SavedPlaces;
 export const savedPlaces = {
   get(): SavedPlaces {
-    return { home: null, work: null, more: [], ...get<Partial<SavedPlaces>>('wayli-saved-places', {}) };
+    const s = get<Record<string, unknown>>('wayli-saved-places', {}, isObj);
+    return {
+      home: isPlace(s.home) ? s.home : null,
+      work: isPlace(s.work) ? s.work : null,
+      more: Array.isArray(s.more) ? keepItems(s.more, isPlace) : [],
+    };
   },
   set(slot: 'home' | 'work', p: StoredPlace | null): void {
     const s = this.get();
@@ -257,9 +314,16 @@ export const savedPlaces = {
 /** What a star keeps, by kind: a trip, a line (as the view that reopens it), a stop (with its first lines). */
 export type FavValue = { trips: SavedTrip; lines: View; stops: SavedStop };
 export type FavKind = keyof FavValue;
+const FAV_CHECK: Record<FavKind, (v: unknown) => boolean> = {
+  trips: (v) => isObj(v) && isPlace(v.from) && isPlace(v.to),
+  lines: isView,
+  stops: (v) => isObj(v) && isNum(v.stop) && isStr(v.name) && isNum(v.lat) && isNum(v.lon),
+};
 export const favs = {
   get<K extends FavKind>(kind: K): Record<string, FavValue[K]> {
-    return get<Record<string, FavValue[K]>>('wayli-fav-' + kind, {});
+    const all = get<Record<string, unknown>>('wayli-fav-' + kind, {}, isObj);
+    const ok = FAV_CHECK[kind];
+    return Object.fromEntries(Object.entries(all).filter(([, v]) => ok(v))) as Record<string, FavValue[K]>;
   },
   toggle<K extends FavKind>(kind: K, key: string, value: FavValue[K]): boolean {
     const f = this.get(kind);
@@ -276,9 +340,14 @@ export const favs = {
 /** The last search and its answer, so reopening the app shows it again and can re-plan it; `dismissed` once the
  *  rider cleared it. */
 export type LastSearch = { q: Query; result?: PlanResult; at: number; dismissed?: boolean };
+const isLast = (v: unknown): v is LastSearch =>
+  isObj(v) &&
+  isQuery(v.q) &&
+  isNum(v.at) &&
+  (v.result == null || (isObj(v.result) && Array.isArray(v.result.journeys) && v.result.journeys.every(isJourney)));
 export const lastSearch = {
   get(): LastSearch | null {
-    return get<LastSearch | null>('wayli-last', null);
+    return get<LastSearch | null>('wayli-last', null, isLast);
   },
   set(v: LastSearch): void {
     set('wayli-last', v);
@@ -288,10 +357,20 @@ export const lastSearch = {
   },
 };
 
+const isActive = (v: unknown): v is ActiveTrip =>
+  isObj(v) &&
+  isJourney(v.journey) &&
+  isObj(v.q) &&
+  isPlace(v.q.from) &&
+  isPlace(v.q.to) &&
+  isStr(v.day) &&
+  isObj(v.state) &&
+  isNum(v.state.step) &&
+  isNum(v.state.rideIdx);
 /** The trip being followed: the journey, its query, the day and the follower's state. */
 export const activeTrip = {
   get(): ActiveTrip | null {
-    return get<ActiveTrip | null>('wayli-active', null);
+    return get<ActiveTrip | null>('wayli-active', null, isActive);
   },
   set(v: ActiveTrip): void {
     set('wayli-active', v, false);

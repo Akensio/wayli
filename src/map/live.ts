@@ -162,81 +162,91 @@ export async function refreshLiveMap(): Promise<void> {
   const my = ++lm.seq;
   if (!app.liveNote.value) app.liveNote.value = t('liveLoading');
   const b = m.getBounds();
+  const vs = await vehiclesIn(b, my);
+  if (!vs || my < lm.applied || !state.main || !state.styled) return;
+  if ((liveShow as Show | null) === 'none') return; // a journey or line drew its own while this was on its way
+  lm.applied = my;
+  const now = Date.now();
+  const nwAll = feed.newest(vs);
+  const feedLag = nwAll ? (now - nwAll.getTime()) / 60000 : 0; // minutes the whole feed is behind the clock
+  const features: GeoJSON.Feature[] = vs
+    .filter((v) => feed.isFresh(v, 300, nwAll))
+    .map((v) => {
+      // fresh against this area's own newest report
+      const lb = lm.labels.get(String(v.lineRef));
+      const age = nwAll ? (nwAll.getTime() - v.recordedAt.getTime()) / 1000 : 0; // behind the feed, not the clock
+      const color = routeColor(lb ? lb.type : 3, lb && lb.agency);
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
+        properties: {
+          line: lb ? lineText(lb.line) : '?',
+          type: lb ? lb.type : 3,
+          color,
+          ckey: color.slice(1),
+          tcol: textOn(color),
+          opacity: liveOpacity(feedLag, age),
+          bearing: heading(v),
+          headsign: lb ? lb.headsign : '',
+          agency: lb ? lb.agency : '',
+          lineRef: v.lineRef,
+          ref: String(v.lineRef),
+          start: v.scheduledStart.getTime(),
+          seen: v.recordedAt.getTime(),
+          velocity: v.velocity || 0,
+        },
+      };
+    });
+  for (const ck of new Set(features.map((f) => f.properties!.ckey as string)))
+    if (!m.hasImage('wayli-arrow-' + ck)) m.addImage('wayli-arrow-' + ck, arrowImage('#' + ck), { pixelRatio: 2 });
+  veh.setData({ type: 'FeatureCollection', features });
+  refreshTraffic(m, b);
+  const nw = feed.newest(vs);
+  const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
+  const near = nearOf(liveShow);
+  const shown = Array.isArray(liveShow)
+    ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length
+    : features.length;
+  const nNear = near ? features.filter((f) => near.includes(f.properties!.ref as string)).length : 0;
+  let scope = '';
+  if (Array.isArray(liveShow)) scope = t(viewFor(currentSheet()).live === 'stop' ? 'liveScopeStop' : 'liveScopeSearch');
+  else if (near) scope = t('liveNearOf', { n: nNear });
+  let age = '';
+  if (ageMin >= 4) age = t('liveAgeBehind', { n: ageMin });
+  else if (ageMin >= 3) age = t('liveAge', { n: ageMin });
+  // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
+  const via = feed.source.relay ? '' : t('liveViaDb', { why: feed.source.why });
+  app.liveNote.value =
+    (shown
+      ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: timeOf(nw!), age })
+      : t('liveMapNone', { scope })) + via;
+  app.liveLag.value = !!shown && ageMin >= 4;
+  debug('liveMapVehicles', features.length);
+}
+/** The vehicles in the map's area, with their lines' labels asked of the worker once each. Null when the live data or
+ *  the labels could not be had: the note says so, unless a newer request already answered. The one place the live
+ *  layer expects a failure. */
+async function vehiclesIn(
+  b: { getSouth(): number; getNorth(): number; getWest(): number; getEast(): number },
+  my: number,
+): Promise<feed.Vehicle[] | null> {
   try {
-    const vs: any[] = await feed.vehiclesInBounds({
+    const vs = await feed.vehiclesInBounds({
       south: b.getSouth(),
       north: b.getNorth(),
       west: b.getWest(),
       east: b.getEast(),
     });
-    if (my < lm.applied || !state.main || !state.styled) return;
     const need = Array.from(new Set(vs.map((v) => String(v.lineRef)).filter((id) => !lm.labels.has(id))));
     if (need.length && data.ttReady.value) {
       const labels = await call('routeLabels', { ids: need });
       for (const id of need) lm.labels.set(id, labels[id] || null);
-      if (my < lm.applied || !state.main || !state.styled) return;
     }
-    if ((liveShow as Show | null) === 'none') return; // a journey or line drew its own while this was on its way
-    lm.applied = my;
-    const now = Date.now();
-    const nwAll = feed.newest(vs);
-    const feedLag = nwAll ? (now - nwAll.getTime()) / 60000 : 0; // minutes the whole feed is behind the clock
-    const features: GeoJSON.Feature[] = vs
-      .filter((v) => feed.isFresh(v, 300, nwAll))
-      .map((v) => {
-        // fresh against this area's own newest report
-        const lb = lm.labels.get(String(v.lineRef));
-        const age = nwAll ? (nwAll.getTime() - v.recordedAt.getTime()) / 1000 : 0; // behind the feed, not the clock
-        const color = routeColor(lb ? lb.type : 3, lb && lb.agency);
-        return {
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
-          properties: {
-            line: lb ? lineText(lb.line) : '?',
-            type: lb ? lb.type : 3,
-            color,
-            ckey: color.slice(1),
-            tcol: textOn(color),
-            opacity: liveOpacity(feedLag, age),
-            bearing: heading(v),
-            headsign: lb ? lb.headsign : '',
-            agency: lb ? lb.agency : '',
-            lineRef: v.lineRef,
-            ref: String(v.lineRef),
-            start: v.scheduledStart.getTime(),
-            seen: v.recordedAt.getTime(),
-            velocity: v.velocity || 0,
-          },
-        };
-      });
-    for (const ck of new Set(features.map((f) => f.properties!.ckey as string)))
-      if (!m.hasImage('wayli-arrow-' + ck)) m.addImage('wayli-arrow-' + ck, arrowImage('#' + ck), { pixelRatio: 2 });
-    veh.setData({ type: 'FeatureCollection', features });
-    refreshTraffic(m, b);
-    const nw = feed.newest(vs);
-    const ageMin = nw ? Math.round((now - nw.getTime()) / 60000) : 0;
-    const near = nearOf(liveShow);
-    const shown = Array.isArray(liveShow)
-      ? features.filter((f) => (liveShow as string[]).includes(f.properties!.ref as string)).length
-      : features.length;
-    const nNear = near ? features.filter((f) => near.includes(f.properties!.ref as string)).length : 0;
-    let scope = '';
-    if (Array.isArray(liveShow))
-      scope = t(viewFor(currentSheet()).live === 'stop' ? 'liveScopeStop' : 'liveScopeSearch');
-    else if (near) scope = t('liveNearOf', { n: nNear });
-    let age = '';
-    if (ageMin >= 4) age = t('liveAgeBehind', { n: ageMin });
-    else if (ageMin >= 3) age = t('liveAge', { n: ageMin });
-    // when the relay could not answer, the note says so and why (Hasadna's database runs behind at rush hour)
-    const via = feed.source.relay ? '' : t('liveViaDb', { why: feed.source.why });
-    app.liveNote.value =
-      (shown
-        ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: timeOf(nw!), age })
-        : t('liveMapNone', { scope })) + via;
-    app.liveLag.value = !!shown && ageMin >= 4;
-    debug('liveMapVehicles', features.length);
-  } catch {
+    return vs;
+  } catch (e) {
+    console.warn('live map', e);
     if (my === lm.seq && my > lm.applied) app.liveNote.value = t('liveFail');
+    return null;
   }
 }
 /** Start (from initMap): the live layer brought up to date when the phone is looked at again. */

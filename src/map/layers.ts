@@ -215,8 +215,8 @@ async function drawContext(m: MLMap, j: Drawable, focus = -1): Promise<void> {
     });
     setData(m, 'context', { type: 'FeatureCollection', features: lines });
     setData(m, 'context-stops', { type: 'FeatureCollection', features: dots });
-  } catch {
-    /* the ride itself is still drawn */
+  } catch (e) {
+    console.warn("map: a ride's course and stops", e); // the ride itself is still drawn
   }
 }
 /** Draw a journey: casing, rides (dashed where drawn from stops), dotted walks, pins at boarding and alighting stops, dots at the stops between. Returns its bounds. */

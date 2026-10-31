@@ -1,7 +1,18 @@
 // Lines as riders know them: routes indexed by their live id and by pattern; lines grouped from routes (a number and
 // operator in an area, both directions and variants together; a train line is every train between two stations);
 // and what the line search and a line's page ask: the lines matching, a line's course and stops, its times at a stop.
-import { routeLabel, parseHeadsign, stationStopsOf } from '../engine/raptor.ts';
+import {
+  lastStop,
+  parseHeadsign,
+  patternLength,
+  patternStop,
+  routeLabel,
+  stationStopsOf,
+  timesRow,
+  tripCount,
+  tripRange,
+  patternsAt,
+} from '../engine/raptor.ts';
 import { haversine } from '../engine/geo.ts';
 import { modeOfType, type Mode } from '../engine/modes.ts';
 import type { PathPoint } from '../engine/geo.ts';
@@ -65,7 +76,7 @@ function mainPat(ri: number): number {
   let best = -1,
     most = -1;
   for (const p of routePats!.get(ri) || []) {
-    const n = tt!.patTripsOff[p + 1] - tt!.patTripsOff[p];
+    const n = tripCount(tt!, p);
     if (n > most) {
       most = n;
       best = p;
@@ -82,13 +93,13 @@ function lineSiblings(ri: number): number[] {
 }
 const tripsOf = (ri: number): number => {
   let n = 0;
-  for (const p of routePats!.get(ri) || []) n += tt!.patTripsOff[p + 1] - tt!.patTripsOff[p];
+  for (const p of routePats!.get(ri) || []) n += tripCount(tt!, p);
   return n;
 };
 /** A pattern's first and last stop by name (a train's stations). */
 function endNames(p: number): [string, string] | null {
   if (p < 0) return null;
-  return [ssName(tt!.patStops[tt!.patStopsOff[p]]), ssName(tt!.patStops[tt!.patStopsOff[p + 1] - 1])];
+  return [ssName(patternStop(tt!, p, 0)), ssName(lastStop(tt!, p))];
 }
 function indexLines(): void {
   if (!routePats) indexRoutes();
@@ -137,9 +148,7 @@ function placeText(g: LineIdx): string {
     for (const d of lineDirs(g)) {
       parts.push(d.headsign, parseHeadsign(tt!.routes[d.route][1]));
       const p = mainPat(d.route);
-      if (p >= 0)
-        for (const k of [tt!.patStopsOff[p], tt!.patStopsOff[p + 1] - 1])
-          parts.push(cName(tt!.stops[tt!.patStops[k]][3]));
+      if (p >= 0) for (const s of [patternStop(tt!, p, 0), lastStop(tt!, p)]) parts.push(cName(tt!.stops[s][3]));
     }
     for (const ri of g.routes) {
       const e = routeEnds(tt!.routes[ri][1]);
@@ -176,8 +185,8 @@ function groupOut(n: number, dist: number): LineGroup {
   let area: string[] = [];
   if (g.mode === 'rail') area = endNames(p) || [];
   else if (p >= 0) {
-    const a = cName(tt!.stops[tt!.patStops[tt!.patStopsOff[p]]][3]),
-      b = cName(tt!.stops[tt!.patStops[tt!.patStopsOff[p + 1] - 1]][3]);
+    const a = cName(tt!.stops[patternStop(tt!, p, 0)][3]),
+      b = cName(tt!.stops[lastStop(tt!, p)][3]);
     area = a === b ? [a] : [a, b];
   }
   return {
@@ -203,8 +212,8 @@ function linesNear(lat: number, lon: number, radius: number): Map<number, number
     if (Math.abs(tt!.stopLat[s] - lat) > dlat || Math.abs(tt!.stopLon[s] - lon) > dlon) continue;
     const d = haversine(lat, lon, tt!.stopLat[s], tt!.stopLon[s]);
     if (d > radius) continue;
-    for (let i = tt!.stopPatsOff[s]; i < tt!.stopPatsOff[s + 1]; i++) {
-      const n = lineIdx!.byRoute.get(tt!.patRoute[tt!.stopPats[2 * i]]);
+    for (const { p } of patternsAt(tt!, s)) {
+      const n = lineIdx!.byRoute.get(tt!.patRoute[p]);
       if (n != null && !((out.get(n) ?? Infinity) <= d)) out.set(n, d);
     }
   }
@@ -297,14 +306,13 @@ export const linesOps = {
     for (const ri of lineSiblings(route)) {
       const r = tt!.routes[ri];
       for (const p of routePats!.get(ri) || []) {
-        const o = tt!.patStopsOff[p],
-          ns = tt!.patStopsOff[p + 1] - o;
+        const ns = patternLength(tt!, p);
         let i = -1;
-        for (let k = 0; k < ns - 1 && i < 0; k++) if (fromSet.has(tt!.patStops[o + k])) i = k;
+        for (let k = 0; k < ns - 1 && i < 0; k++) if (fromSet.has(patternStop(tt!, p, k))) i = k;
         if (i < 0) continue;
-        const base = tt!.tripTimesOff[p];
-        for (let t = tt!.patTripsOff[p]; t < tt!.patTripsOff[p + 1]; t++) {
-          const row = base + (t - tt!.patTripsOff[p]) * ns;
+        const { first, end } = tripRange(tt!, p);
+        for (let t = first; t < end; t++) {
+          const row = timesRow(tt!, t);
           out.push({
             trip: t,
             dep: tt!.dep[row + i],
@@ -334,22 +342,21 @@ export const linesOps = {
       first = Infinity,
       last = -Infinity;
     for (const p of pats) {
-      const n = tt!.patTripsOff[p + 1] - tt!.patTripsOff[p];
+      const n = tripCount(tt!, p);
       trips += n;
       if (n > bestTrips) {
         bestTrips = n;
         best = p;
       }
-      const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p];
-      for (let t = tt!.patTripsOff[p]; t < tt!.patTripsOff[p + 1]; t++) {
-        const d = tt!.dep[tt!.tripTimesOff[p] + (t - tt!.patTripsOff[p]) * ns];
+      const { first: t0, end: t1 } = tripRange(tt!, p);
+      for (let t = t0; t < t1; t++) {
+        const d = tt!.dep[timesRow(tt!, t)];
         if (d < first) first = d;
         if (d > last) last = d;
       }
     }
     const stops: StopOut[] = [];
-    if (best >= 0)
-      for (let i = tt!.patStopsOff[best]; i < tt!.patStopsOff[best + 1]; i++) stops.push(stopOut(tt!.patStops[i]));
+    if (best >= 0) for (let i = 0; i < patternLength(tt!, best); i++) stops.push(stopOut(patternStop(tt!, best, i)));
     const ns = stops.length;
     // the main pattern's course, or its stops joined straight before the courses are loaded (pathKind says which;
     // the map asks for the course again once they are, by the pattern)
