@@ -1,5 +1,6 @@
 // Back, both ways it reaches the app: Android's close requests (CloseWatcher) and browser history elsewhere. Open a
-// way, its line, a stop; Back closes them newest first, then the plan; the menu and settings close the same way.
+// way, its line, a stop; Back closes them newest first, then the plan; the menu and settings close the same way; the
+// folded bar's X clears everything at once.
 import { start, check } from './harness.mjs';
 
 for (const android of [true, false]) {
@@ -47,6 +48,23 @@ for (const android of [true, false]) {
     `${mode}: Back closes settings, then the menu`,
     { s, m, none },
     s.settings && !m.settings && m.menu && !none.menu,
+  );
+  // the X on the folded bar starts over: every panel closes and the plan is cleared, whatever was opened from it
+  await planTo('Dizengoff Center');
+  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+  await click('.journey');
+  await wait(2500);
+  await click('#detail .leg [class*="chip"]');
+  await wait(3000);
+  const under = await where();
+  await page.tap('#sumClear');
+  await wait(1500);
+  const cleared = await where();
+  const sheet = await page.evaluate(() => document.getElementById('sheet')?.dataset.state);
+  check(
+    `${mode}: the folded bar's X over a line opened from a way clears everything`,
+    { under, cleared, sheet },
+    under.panel === 'lineDetail' && cleared.panel === 'screen-plan' && cleared.ways === 0 && sheet === 'peek',
   );
   await finish();
 }

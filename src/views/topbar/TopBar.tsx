@@ -19,7 +19,7 @@ import { useFlip } from '../../widgets/flip';
 import { watchLayout } from '../shell/layout';
 import { attachBarPull } from '../shell/pullRefresh';
 import { chooseStation, swapStations, endStations } from '../../controllers/station';
-import { cancelPlan, openStopGroup } from '../../controllers/planner';
+import { startOver, openStopGroup } from '../../controllers/planner';
 import { openLine } from '../../controllers/line';
 import { railWords } from '../../display/travel';
 
@@ -347,7 +347,7 @@ export function TopBar() {
             class="clearbtn"
             id="sumClear"
             aria-label={t('clearText')}
-            onClick={pair ? endStations : cancelPlan}
+            onClick={pair ? endStations : startOver}
           >
             <Icon name="close" />
           </button>

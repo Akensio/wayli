@@ -215,6 +215,14 @@ export function cancelPlan(): void {
   if (nav.stack.value.some((e) => e.kind === 'plan')) nav.close('plan');
   else clearPlan();
 }
+/** The summary's X: start over. Every panel closes (a way's detail, a line or a stop opened from the plan; a trip being
+ *  followed goes to its resume bar, it is not ended), the plan is cleared (places, results, the time and options) and
+ *  the sheet folds to its handle. Back while editing the bar keeps its own, smaller step (cancelPlan). */
+export function startOver(): void {
+  nav.closeAll();
+  nav.showScreen('plan', false);
+  clearPlan(); // the sheet folds with it: nothing planned, nothing open
+}
 /** A recent or saved trip planned again: the bar filled from its query, from now. */
 export function replan(q: Query): void {
   search.applyQuery(q);
