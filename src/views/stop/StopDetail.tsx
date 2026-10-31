@@ -6,14 +6,16 @@ import { Icon } from '../../widgets/Icon';
 import { StarButton } from '../../widgets/StarButton';
 import { t, lang } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
-import { favs, stored } from '../../lib/store.ts';
+import { favs, stored } from '../../state/store.ts';
 import * as stop from '../../state/stop';
 import { now } from '../../state/clock';
 import { dur, liveClass } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
 import { InCell } from '../../widgets/LiveMark';
-import { refreshStop, openLineAtStop, openDestination, fromHere, toHere } from '../../controllers/stop';
+import { refreshStop, openLineAtStop } from '../../controllers/stop';
+import { fromHere, toHere } from '../../controllers/planner';
+import { openDestination } from '../../controllers/station';
 import { openTrip } from '../../controllers/line';
 
 export function StopDetail() {

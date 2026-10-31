@@ -1,6 +1,6 @@
 // Where the rider is: the last position known, from the map's locate button, the follow mode's watch or a
 // request; `getPosition` asks the device only when the last one is older than 20 s.
-export type Position = { lat: number; lon: number }; // (journey/types LatLon is a [lat, lon] pair on a path)
+export type Position = { lat: number; lon: number };
 export let lastPos: Position | null = null;
 let lastPosAt = 0;
 export const hooks = { moved: () => {} }; // the lines around the rider follow the position

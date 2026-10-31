@@ -14,7 +14,7 @@ import { liveBadge } from '../journey/format';
 import type { Journey, Query, RideLeg } from '../journey/types';
 import { liveRides } from './liverides';
 import type { TrainRow, LiveTrain } from '../state/station';
-import { recentViews } from '../lib/store.ts';
+import { recentViews } from '../state/store.ts';
 import { isRide } from '../journey/types';
 
 let seq = 0; // the journey shown; a live answer for an older one is dropped

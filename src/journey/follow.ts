@@ -6,9 +6,9 @@
 // egress (from a stop to the destination). The state points at the current leg and, on a ride, whether
 // the rider is still waiting for the vehicle or on it.
 
-import { metres, projectOnStops } from './geo.ts';
-import { legMinutes } from './clock.ts';
-import type { Journey, Leg, RideLeg, WalkLeg, StopAlong } from '../journey/types.ts';
+import { metres, projectOnStops } from '../engine/geo.ts';
+import { legMinutes } from '../engine/clock.ts';
+import type { Journey, Leg, Query, RideLeg, WalkLeg, StopAlong } from './types';
 
 const AT_STOP = 60; // m: close enough to count as being at a stop or the destination
 
@@ -22,6 +22,17 @@ export type FollowState = {
   done: boolean; // arrived
   hold: number; // a step the rider chose by hand: the clock does not leave it, a position still can; -1 when none
   startedAt: number; // when following began, ms since the epoch
+};
+/** The trip being followed, as the phone keeps it: the journey, the places it was asked for, the service day, the
+ *  machine's state, whether its screen is up, and when following began and how often it was re-planned. */
+export type ActiveTrip = {
+  journey: Journey;
+  q: Pick<Query, 'from' | 'to' | 'bike' | 'folding'>;
+  day: string;
+  state: FollowState;
+  view: 'follow' | 'hidden';
+  startedAt?: number;
+  replanned?: number;
 };
 /** The rider's position: degrees, and the fix's accuracy in metres when known. */
 export type Position = { lat: number; lon: number; acc?: number };

@@ -14,7 +14,7 @@ import {
   trimRecents,
   RECENT_CHOICES,
   stored,
-} from '../../lib/store.ts';
+} from '../../state/store.ts';
 import * as settings from '../../state/settings';
 import * as app from '../../state/app';
 import * as data from '../../state/data';

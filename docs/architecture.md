@@ -157,8 +157,7 @@ the app).
 - `engine/`: the logic with no screen, run in the data worker and in Node:
   `raptor.ts` and `streets.ts` (the router and the street graph),
   `places.ts` (the address book), `clock.ts` (Israel time), `feed.ts` (the
-  live vehicles), `delays.ts` (delay estimates), `follow.ts` (the
-  trip-following state machine), `geo.ts` (distances, and where a point is
+  live vehicles), `delays.ts` (delay estimates), `geo.ts` (distances, and where a point is
   along a trip), `modes.ts` (what runs a line), `container.ts` (reading the
   data files) and `text.ts` (how the searches compare names).
 - `worker/`: the data worker (it holds the data and answers every query, so
@@ -215,12 +214,20 @@ the app).
   stops, the note), `popups` (bubbles for a vehicle and a tapped place; a
   line's vehicle markers), `picker` (a point on the map), `shared` (the
   map, its markers).
-- `journey/`: types, line colours, the words for journeys, operators'
+- `journey/`: the domain: places, a plan as asked, journeys and their legs,
+  the records kept on the phone (`types.ts`), following a trip (`follow.ts`,
+  the pure state machine), line colours, the words for journeys, operators'
   English names, sharing, the pay link.
 - `lib/`: used everywhere: `i18n.ts` (every string in Hebrew and English),
-  `time.ts`, `store.ts` (settings, history, saved places and the trip in
-  progress, all in localStorage; every write bumps its `stored` signal, which
-  the pages showing what it keeps read).
+  `time.ts`.
+- The on-device store is `state/store.ts` (settings, history, saved places
+  and the trip in progress, all in localStorage; every write bumps its
+  `stored` signal, which the pages showing what it keeps read).
+- Imports point one way, each layer using only those below it: engine,
+  worker, lib, journey, state, widgets, map, controllers, views, and the
+  entry files at the top. `tools/imports.test.ts` fails the build on an
+  import against that order or any import cycle, type-only imports
+  included.
 - `types/` (global declarations), `public/` (manifest, icons).
 
 Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap

@@ -8,7 +8,6 @@ import { dur } from '../journey/format';
 import { chipColors, routeColor } from '../journey/colors';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
-import * as sheet from '../state/sheet';
 import * as results from '../state/results';
 import * as detail from '../state/detail';
 import * as follow from '../state/follow';
@@ -17,19 +16,12 @@ import * as stopPage from '../state/stop';
 import * as station from '../state/station';
 import type { Journey, Drawable } from '../journey/types';
 import type { TrainRow } from '../state/station';
-import { state, markers, EMPTY, stale, stopKindProp } from './shared';
+import { state, markers, EMPTY, stale, stopKindProp, currentSheet, cameraPadding } from './shared';
 import { ensureJourneyLayers, drawJourney, withCourses, boundsOf, legProps } from './layers';
 import { applyLiveShow, setStopLines } from './live';
-import { viewFor, visibleArea, centreOffset } from './view';
-import type { View, Sheet, Padding } from './view';
+import { viewFor, centreOffset } from './view';
+import type { View } from './view';
 import { lineNameHtml } from '../widgets/RailLogo';
-
-/** What the sheet holds, as the decision takes it. */
-export function currentSheet(key = nav.key.value): Sheet {
-  return { key, results: results.showing.value && results.list.value.cards.length > 0, focus: detail.focus.value };
-}
-/** The part of the screen the map shows, as camera padding (also the locate button's, map/index.ts). */
-export const cameraPadding = (): Padding => visibleArea(innerHeight, sheet.topPad() - 12, sheet.px(sheet.state.value));
 
 /** A panel's live vehicles, put on once the map has drawn it (the panels fill this in). */
 export const afterDraw: Record<string, () => void> = {};

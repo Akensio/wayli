@@ -7,26 +7,11 @@ import * as clock from '../engine/clock.ts';
 import { t } from '../lib/i18n';
 import { calToday, hm, secOf, calendarOf } from '../lib/time';
 import * as settings from './settings';
+import type { Place } from '../journey/types';
 
-export type Place = {
-  name: string;
-  lat?: number | null;
-  lon?: number | null;
-  stops?: number[];
-  platforms?: number;
-  code?: string;
-  kind?: string;
-  transient?: boolean;
-  auto?: boolean;
-};
-/** A stop as a place to plan from or to; a station is all its platforms. */
-export const stopPlace = (s: {
-  name: string;
-  stop: number;
-  stops?: number[] | null;
-  lat: number;
-  lon: number;
-}): Place => ({ name: s.name, stops: s.stops && s.stops.length ? s.stops : [s.stop], lat: s.lat, lon: s.lon });
+export type { LineGroup, StopGroup } from '../worker/ops.ts';
+export type { Place } from '../journey/types';
+export { stopPlace } from '../journey/types';
 export type Side = 'from' | 'to';
 type OptPanel = '' | 'time' | 'bike';
 
@@ -238,32 +223,6 @@ export function chooseFrom(p: Place): void {
   setPlace('from', p);
   if (to.value) hooks.plan();
 }
-/** A line as the line search lists it: its chip, where it runs, its directions (worker `lineGroups`). */
-export type LineGroup = {
-  estimated?: boolean;
-  key: string;
-  mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex';
-  line: string;
-  agency: string;
-  routeType: number;
-  trips: number;
-  area: string[];
-  dirs: { route: number; headsign: string; trips: number }[];
-  dist: number | null;
-};
-/** A stop as the stop search lists it (worker `stopGroups`): a station is one entry with its platforms. */
-export type StopGroup = {
-  key: string;
-  name: string;
-  city?: string;
-  code?: string;
-  stops: number[];
-  lat: number;
-  lon: number;
-  mode: 'bus' | 'rail' | 'lrt';
-  dist: number | null;
-  lines: { label: string; type: number; agency: string; route: number }[];
-};
 // The destination set before switching to the line or stop search, given back when switching to a trip again.
 let tripTo: { to: Place | null; text: string } | null = null;
 /** Switch what the bar searches for. The line and stop searches keep the To box for what they search. */

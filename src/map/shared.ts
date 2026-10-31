@@ -1,7 +1,12 @@
 // What the map modules share: the one map under everything, its markers, the stops that are stations, and
 // what the map needs from the rest of the app.
 import type { Map as MLMap, Marker, Popup } from 'maplibre-gl';
-import type { Place } from '../state/search';
+import type { Place } from '../journey/types';
+import * as nav from '../state/nav';
+import * as sheet from '../state/sheet';
+import * as results from '../state/results';
+import * as detail from '../state/detail';
+import { visibleArea, type Sheet, type Padding } from './view';
 
 export const state = {
   main: null as MLMap | null,
@@ -51,3 +56,10 @@ export const hooks = {
   timeAt: (_stop: number): number | null => null, // when what the sheet holds passes that stop (the ride, the trip chosen)
   lineAt: (_stop: number): boolean => false, // the line in the sheet as a timetable at that stop, if it calls there
 };
+
+/** What the sheet holds, as the decision takes it. */
+export function currentSheet(key = nav.key.value): Sheet {
+  return { key, results: results.showing.value && results.list.value.cards.length > 0, focus: detail.focus.value };
+}
+/** The part of the screen the map shows, as camera padding (also the locate button's, map/index.ts). */
+export const cameraPadding = (): Padding => visibleArea(innerHeight, sheet.topPad() - 12, sheet.px(sheet.state.value));

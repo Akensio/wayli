@@ -1,7 +1,7 @@
 // Wayli: compact street graph for the first and last mile, on foot or by bike.
 // Loads the container from pipeline/streets.py; bounded Dijkstra from a point
 // to every transit stop nearby, and point-to-point routes for bike-only trips.
-import { haversine, scaleAt, nearestOnSegment } from './geo.ts';
+import { haversine, scaleAt, nearestOnSegment, type PathPoint } from './geo.ts';
 import { readContainer, type ContainerHeader } from './container.ts';
 import type { StopAccess } from './raptor.ts';
 
@@ -415,7 +415,7 @@ export function accessStops(
 }
 
 /** A way along the streets: how long, how far, and the path from the first point to the last ([lat, lon] each). */
-export type StreetRoute = { seconds: number; metres: number; path: [number, number][] };
+export type StreetRoute = { seconds: number; metres: number; path: PathPoint[] };
 
 /**
  * Point-to-point route by mode: { seconds, metres, path: [[lat, lon], ...] } or null. Both ends snap to the

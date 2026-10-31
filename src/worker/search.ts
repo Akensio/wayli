@@ -3,10 +3,10 @@
 import { searchStops, stopName, stopOrStationName } from '../engine/raptor.ts';
 import { searchPlaces, kindLabel, reverseGeocode, placeAt, type Lang } from '../engine/places.ts';
 import { haversine } from '../engine/geo.ts';
-import type { Place } from '../state/search';
 import { lang, pl, tt } from './data.ts';
 import { codeIndex } from './stops.ts';
 import type { OpsPart, ReverseHit, SearchPlaceHit, SearchStopHit } from './ops.ts';
+import type { PlanPlace } from './ops.ts';
 
 /** What is at (lat, lon), named in `L`: the nearest address, place or street, else the nearest stop, else the point. */
 function reverseIn(lat: number, lon: number, L: Lang): ReverseHit {
@@ -40,7 +40,7 @@ export const searchOps = {
    */
   localize({ places, lang: L, words }) {
     // a point picked on the map was named by reverseIn at that point ("near X" from 40 m): name it again the same way
-    const picked = (p: Place): string | null => {
+    const picked = (p: PlanPlace): string | null => {
       const named: Record<Lang, string> = { he: '', en: '' };
       for (const W of ['he', 'en'] as const) {
         const r = reverseIn(p.lat!, p.lon!, W);

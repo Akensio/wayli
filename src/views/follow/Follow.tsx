@@ -4,7 +4,7 @@ import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import * as clock from '../../engine/clock.ts';
-import { view as followView, canStepBack } from '../../engine/follow.ts';
+import { view as followView, canStepBack } from '../../journey/follow.ts';
 import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
 import { lineText, inShort } from '../../journey/format';

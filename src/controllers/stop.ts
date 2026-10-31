@@ -9,15 +9,11 @@ import { isNowDay } from '../lib/time';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import { livePoll } from './livepoll';
 import * as search from '../state/search';
-import * as sheet from '../state/sheet';
 import * as nav from '../state/nav';
 import * as stopPage from '../state/stop';
 import type { StopInfo, Departure } from '../state/stop';
-import { planTo, planFrom } from './planner';
-import { recentViews } from '../lib/store.ts';
-import { openTrains, chooseStation } from './station';
+import { recentViews } from '../state/store.ts';
 import { openLine } from './line';
-import { asStation, type Dest } from '../state/station';
 
 let current: StopInfo | null = null,
   seq = 0,
@@ -119,23 +115,6 @@ export function refreshStop(): void {
 export function openLineAtStop(route: number): void {
   const c = current;
   void openLine(route, c ? { stop: c.stop, near: c } : {});
-}
-/** A destination of a station: the trains between the two; in the train timetable (the two boxes at the top), as its To. */
-export function openDestination(d: Dest): void {
-  const c = current;
-  if (!c) return;
-  if (search.railPair.value && search.stFrom.value) chooseStation('to', d);
-  else openTrains(asStation({ ...c, stops: c.stops || [c.stop] }), d);
-}
-/** Plan from this stop, or to it. */
-export function fromHere(): void {
-  if (current) {
-    planFrom(search.stopPlace(current));
-    sheet.set('half');
-  }
-}
-export function toHere(): void {
-  if (current) planTo(search.stopPlace(current));
 }
 // What the page's own flow needs back from here: the panel's history entry.
 Object.assign(stopPage.hooks, { show: () => nav.showOverlay('stopDetail') });

@@ -20,14 +20,14 @@ import { secondsOn } from '../engine/clock.ts';
 import { estimateDelay, liveAt } from '../engine/delays.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { haversine, type LatLon as Point } from '../engine/geo.ts';
-import type { LatLon } from '../journey/types';
-import type { Place } from '../state/search';
+import type { PathPoint } from '../engine/geo.ts';
 import { hasCourse, pathTo, ridePath, streetPath } from './courses.ts';
 import { st, tt } from './data.ts';
 import { headsign, liveId, sName, stopOut } from './names.ts';
 import type { JourneyOut, LegOut, OpsPart, PlanGroup, PlanOut, RideLegOut, WalkLegOut } from './ops.ts';
 import { railStops } from './stops.ts';
 import { rawTimes, tripFor, tripStopList } from './trips.ts';
+import type { PlanPlace } from './ops.ts';
 
 /** A stop the planner may start or end at: the router's StopAccess, with how the rider gets there when the streets
  *  (or the straight-line fallback) said; a stop of a chosen station carries no mode. */
@@ -45,7 +45,7 @@ type Rest<T> = Omit<T, 'type' | 'depart' | 'arrive' | 'seconds'>;
 
 /** A place as the planner takes it: the stops it reaches (on foot or by bike, along the streets when the graph is in,
  *  else in a straight line with a detour factor) and the point itself. A stop or station is its own stops. */
-function resolvePlace(place: Place, mode: StreetMode, maxSeconds: number): ResolvedPlace {
+function resolvePlace(place: PlanPlace, mode: StreetMode, maxSeconds: number): ResolvedPlace {
   if (place.stops)
     return {
       places: place.stops.map((s) => ({ stop: s, walk: 0 })),
@@ -173,7 +173,7 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
       schedArrive: bp >= 0 ? raw.arr[bp + l.stops] : l.arrive,
       pattern: p,
       alightPos: bp + l.stops,
-      path: ridePath(p, bp, bp + l.stops) || l.via.map((s): LatLon => [tt!.stopLat[s], tt!.stopLon[s]]),
+      path: ridePath(p, bp, bp + l.stops) || l.via.map((s): PathPoint => [tt!.stopLat[s], tt!.stopLon[s]]),
       pathKind: hasCourse(p) ? 'shape' : 'stops',
       // every stop of the leg with its times, for "get off in N stops" and the expandable stop list
       stopsAlong: l.via.map((s, i) => ({
@@ -310,7 +310,8 @@ function easierTransfers(j: RawJourney): void {
  *  lines (2026-10-22); likewise a walk to another stop and on from it to the destination. */
 function mergeWalks(legs: LegOut[]): LegOut[] {
   const out: LegOut[] = [];
-  const join = (a: LatLon[] | undefined, b: LatLon[] | undefined): LatLon[] => (a || []).concat((b || []).slice(1));
+  const join = (a: PathPoint[] | undefined, b: PathPoint[] | undefined): PathPoint[] =>
+    (a || []).concat((b || []).slice(1));
   for (const l of legs) {
     const p = out[out.length - 1];
     if (p && l.type === 'walk' && (p.type === 'access' || p.type === 'walk')) {

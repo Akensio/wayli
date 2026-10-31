@@ -2,20 +2,70 @@
 // (client.ts) takes its argument and answer types from it; each worker module types its ops object with OpsPart and
 // the message loop (worker.ts) the merged table, so a missing, misnamed or mistyped operation is a compile error. The
 // shapes are the ones the worker modules build (named after them below): a change there is a change here, and the
-// compiler then finds every reader on the page. Where the page keeps a looser type of its own for a shape (a
-// state/*.ts type with an optional field the worker always sets), that type is the page's reading of this one.
-import type { LatLon } from '../journey/types';
-import type { Place, LineGroup, StopGroup } from '../state/search';
-import type { StopInfo } from '../state/stop';
-import type { Dest } from '../state/station';
+// compiler then finds every reader on the page. The page re-exports these (state/stop, state/station, state/line,
+// state/search) rather than keeping copies of its own.
+import type { PathPoint } from '../engine/geo.ts';
 import type { TimetableHeader } from '../engine/raptor.ts';
 import type { StreetMode } from '../engine/streets.ts';
 import type { Lang, PlaceKind, PlacesHeader } from '../engine/places.ts';
 import type { Vehicle, Bounds, SnapshotFilter } from '../engine/feed.ts';
 import type { DelayEstimate, RailTimes, VehicleReport } from '../engine/delays.ts';
 import type { Mode } from '../engine/modes.ts';
-import type { ShapesHeader } from './data.ts';
 
+/** A place as the worker takes it to plan from or to, or to name: its name, the point when it has one, a stop's or a
+ *  station's stops, and what kind of place it is (the page's Place, journey/types.ts, adds what only the page uses). */
+export type PlanPlace = {
+  name: string;
+  lat?: number | null;
+  lon?: number | null;
+  stops?: number[];
+  platforms?: number;
+  code?: string;
+  kind?: string;
+};
+/** A line calling at a stop, as a stop's page and the stop search list it. */
+export type StopLine = { type: number; route?: number | null; agency?: string; label: string };
+export type StopInfo = {
+  stop: number;
+  name: string;
+  city?: string;
+  code?: string;
+  lat: number;
+  lon: number;
+  lines: StopLine[];
+  station?: number;
+  stops?: number[];
+  rail?: boolean;
+  reach?: 'rail' | 'lrt' | null;
+};
+export type Station = { key: string; name: string; stops: number[]; lat: number; lon: number };
+export type Dest = Station & { trips: number; next: number | null; ride: number | null };
+/** A line as the line search lists it: its chip, where it runs, its directions (worker `lineGroups`). */
+export type LineGroup = {
+  estimated?: boolean;
+  key: string;
+  mode: 'bus' | 'rail' | 'lrt' | 'cable' | 'taxi' | 'flex';
+  line: string;
+  agency: string;
+  routeType: number;
+  trips: number;
+  area: string[];
+  dirs: { route: number; headsign: string; trips: number }[];
+  dist: number | null;
+};
+/** A stop as the stop search lists it (worker `stopGroups`): a station is one entry with its platforms. */
+export type StopGroup = {
+  key: string;
+  name: string;
+  city?: string;
+  code?: string;
+  stops: number[];
+  lat: number;
+  lon: number;
+  mode: 'bus' | 'rail' | 'lrt';
+  dist: number | null;
+  lines: { label: string; type: number; agency: string; route: number }[];
+};
 /** A reported vehicle (engine/feed.ts), as liveQuery hands them out; client.ts estimate takes one. */
 export type { Vehicle } from '../engine/feed.ts';
 /** A delay estimate for one vehicle (engine/delays.ts estimateDelay), null when it cannot be told. */
@@ -59,9 +109,9 @@ export type VehicleStatus =
     };
 /** A ride's course between two of its stops with the stops along it (courses.ts rideCourses); `course` says the
  *  path follows the road or the track, else it joins the stops straight and must not be drawn as a route. */
-export type RideCourse = { path: LatLon[]; course: boolean; stops: { lat: number; lon: number; stop: number }[] };
+export type RideCourse = { path: PathPoint[]; course: boolean; stops: { lat: number; lon: number; stop: number }[] };
 /** A whole pattern's course with every stop as [lat, lon, name, stop] (courses.ts patternCourse). */
-export type PatternCourse = { path: LatLon[]; course: boolean; stops: [number, number, string, number][] };
+export type PatternCourse = { path: PathPoint[]; course: boolean; stops: [number, number, string, number][] };
 /** What a point on the map is (search.ts reverse): the nearest address, place or street from the address book, else
  *  the nearest stop within 600 m, else the bare point; `distance` in metres from the point asked about. */
 export type ReverseHit = { name: string; kind: 'address' | 'poi' | 'street' | 'stop' | 'point'; distance: number };
@@ -166,7 +216,7 @@ export type LineInfo = {
   headsign: string;
   ends: [string, string] | null;
   stops: StopOut[];
-  path: LatLon[];
+  path: PathPoint[];
   pathKind: 'shape' | 'stops';
   pattern: number | null;
   trips: number;
@@ -205,7 +255,7 @@ export type RideLegOut = {
   schedArrive: number;
   pattern: number;
   alightPos: number;
-  path: LatLon[];
+  path: PathPoint[];
   pathKind: 'shape' | 'stops';
   stopsAlong: StopAlongOut[];
 };
@@ -215,7 +265,7 @@ export type WalkLegOut = {
   depart: number;
   arrive: number;
   seconds: number;
-  path: LatLon[];
+  path: PathPoint[];
   pathKind: 'street' | 'straight';
 } & (
   | { type: 'walk'; from: StopOut; to: StopOut }
@@ -243,7 +293,7 @@ export type PlanOut = {
   groups: PlanGroup[];
   reason?: 'noOriginStops' | 'noDestStops';
   nextAt?: number | null;
-  bikeOnly?: { seconds: number; metres: number; path: LatLon[] } | null;
+  bikeOnly?: { seconds: number; metres: number; path: PathPoint[] } | null;
   candidates?: number;
   streets?: boolean;
   live: { matched: number; vehicles: number } | null;
@@ -264,7 +314,7 @@ export type Ops = {
     };
   };
   loadStreets: { args: DataFileArgs; result: { nodes: number } };
-  loadShapes: { args: DataFileArgs; result: ShapesHeader['counts'] };
+  loadShapes: { args: DataFileArgs; result: { shapes: number; points: number } };
   loadPlaces: { args: DataFileArgs; result: PlacesHeader['counts'] };
   loadBusTimes: { args: DataFileArgs; result: { sections: number; built?: string } };
   setRailTimes: { args: { m: RailTimes | null | undefined }; result: true };
@@ -275,12 +325,12 @@ export type Ops = {
     result: { results: SearchHit[]; placesLoaded: boolean };
   };
   reverse: { args: { lat: number; lon: number }; result: ReverseHit };
-  localize: { args: { places: Place[]; lang: Lang; words: LocalizeWords }; result: (string | null | false)[] };
+  localize: { args: { places: PlanPlace[]; lang: Lang; words: LocalizeWords }; result: (string | null | false)[] };
   // plan.ts: journeys
   plan: {
     args: {
-      from: Place;
-      to: Place;
+      from: PlanPlace;
+      to: PlanPlace;
       fromTime: number;
       toTime: number;
       bike?: string;
@@ -332,10 +382,13 @@ export type Ops = {
   tripFor: { args: { routeId: number | string | null; scheduledStart: string | number }; result: number };
   tripStops: { args: { trip: number }; result: TripStops };
   // courses.ts: where rides and walks run on the map
-  streetPaths: { args: { legs: { from: LatLon; to: LatLon; mode: StreetMode }[] }; result: (LatLon[] | null)[] };
+  streetPaths: {
+    args: { legs: { from: PathPoint; to: PathPoint; mode: StreetMode }[] };
+    result: (PathPoint[] | null)[];
+  };
   ridePaths: {
     args: { legs: { pattern: number; boardPos: number; alightPos: number }[] };
-    result: (LatLon[] | null)[];
+    result: (PathPoint[] | null)[];
   };
   rideCourses: { args: { legs: { pattern: number; boardPos: number; alightPos: number }[] }; result: RideCourse[] };
   patternCourse: { args: { patterns: number[] }; result: PatternCourse[] };

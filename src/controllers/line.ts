@@ -8,7 +8,7 @@ import * as nav from '../state/nav';
 import * as linePage from '../state/line';
 import * as map from '../map/index';
 import type { LineInfo } from '../state/line';
-import { recentViews } from '../lib/store.ts';
+import { recentViews } from '../state/store.ts';
 import * as data from '../state/data';
 import { lastPos } from '../state/position';
 import { tripStopsCached, estimate } from '../worker/client';

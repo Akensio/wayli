@@ -3,11 +3,12 @@
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
-import { settings } from '../lib/store.ts';
+import { settings } from './store.ts';
 import { lang } from '../lib/i18n';
 import * as search from './search';
 import { now } from './clock';
 import type { Journey, PlanResult, Query } from '../journey/types';
+export type { View } from '../journey/types';
 
 type Status = 'idle' | 'planning' | 'locating';
 export type Sort = 'depart' | 'arrive' | 'fast' | 'changes';
@@ -126,16 +127,6 @@ export const highlighted = computed<Card | null>(
   () => list.value.cards.find((c) => c.idx === altSel.value && altShown.value.has(c.idx)) || null,
 );
 
-/** What the results need from the rest of the app. Filled in by the app at start. */
-/** Something opened, as the history keeps it (store.js recentViews). */
-type At = { name: string; lat: number; lon: number };
-export type View = { at?: number } & (
-  | { type: 'line'; ref: string; line: string; routeType: number; agency: string; headsign: string; mode?: string }
-  | { type: 'stop'; code: string; name: string; city?: string; lat: number; lon: number }
-  | ({ type: 'station'; mode?: 'rail' | 'lrt' } & At)
-  | { type: 'trains'; from: At; to: At; mode?: 'rail' | 'lrt' }
-  | { type: 'trip'; q: Query; j: Journey; built?: string }
-);
 /** What the results' own flows need from the controllers: the sheet and the map after results come, a way's card
  *  brought into view. */
 export const hooks = {

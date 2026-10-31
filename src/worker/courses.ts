@@ -2,7 +2,7 @@
 // train), a walk along the streets.
 import { route, type StreetMode } from '../engine/streets.ts';
 import type { LatLon as Point } from '../engine/geo.ts';
-import type { LatLon } from '../journey/types';
+import type { PathPoint } from '../engine/geo.ts';
 import { sh, st, tt } from './data.ts';
 import { sName } from './names.ts';
 import type { OpsPart } from './ops.ts';
@@ -11,13 +11,13 @@ import type { OpsPart } from './ops.ts';
 export const hasCourse = (p: number): boolean =>
   !!tt!.patShape && (tt!.patShape[p] === -2 ? !!tt!.railPairOff : tt!.patShape[p] >= 0 && !!sh);
 /** The course of a ride between two stops of a pattern, along the road or the track; null without one. */
-export function ridePath(p: number, bp: number, ap: number): LatLon[] | null {
+export function ridePath(p: number, bp: number, ap: number): PathPoint[] | null {
   if (!tt!.patShape) return null;
   const at = (i: number): number => tt!.patStopsOff[p] + i;
   if (tt!.patShape[p] === -2) {
     // a train: the track, one stored piece per pair of consecutive stations
     if (!tt!.railPairOff) return null;
-    const path: LatLon[] = [];
+    const path: PathPoint[] = [];
     for (let i = bp; i < ap; i++) {
       const k = tt!.patShapeSeg![at(i)],
         o = tt!.railPairOff[k],
@@ -36,8 +36,8 @@ export function ridePath(p: number, bp: number, ap: number): LatLon[] | null {
     seg1 = tt!.patShapeSeg![at(ap)],
     f1 = tt!.patShapeFrac![at(ap)] / 65535;
   if (seg1 < seg0 || seg1 + 1 >= n) return null;
-  const pt = (i: number): LatLon => [sh!.ptLat[off + i] / 1e5, sh!.ptLon[off + i] / 1e5];
-  const lerp = (seg: number, f: number): LatLon => {
+  const pt = (i: number): PathPoint => [sh!.ptLat[off + i] / 1e5, sh!.ptLon[off + i] / 1e5];
+  const lerp = (seg: number, f: number): PathPoint => {
     const a = pt(seg),
       b = pt(seg + 1);
     return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
@@ -48,16 +48,21 @@ export function ridePath(p: number, bp: number, ap: number): LatLon[] | null {
   return path;
 }
 /** The way along the streets from a to b ([lat, lon] each), both ends included, or null without the street graph. */
-export function streetPath(a: LatLon, b: LatLon, mode: StreetMode | undefined): LatLon[] | null {
+export function streetPath(a: PathPoint, b: PathPoint, mode: StreetMode | undefined): PathPoint[] | null {
   if (!st) return null;
   const r = route(st, a[0], a[1], b[0], b[1], mode === 'bike' ? 'bike' : 'walk', 3600);
   return r && r.path.length ? [a, ...r.path, b] : null;
 }
 /** The way from a point to a stop along the streets, or the two joined straight; reversed for the way back from it. */
-export function pathTo(point: Point | null, stop: number, mode: StreetMode | undefined, reverse?: boolean): LatLon[] {
+export function pathTo(
+  point: Point | null,
+  stop: number,
+  mode: StreetMode | undefined,
+  reverse?: boolean,
+): PathPoint[] {
   if (!point) return [];
-  const a: LatLon = [point.lat, point.lon],
-    b: LatLon = [tt!.stopLat[stop], tt!.stopLon[stop]];
+  const a: PathPoint = [point.lat, point.lon],
+    b: PathPoint = [tt!.stopLat[stop], tt!.stopLon[stop]];
   const path = streetPath(a, b, mode) || [a, b];
   return reverse ? path.reverse() : path;
 }
@@ -83,7 +88,7 @@ export const coursesOps = {
         stops.push({ lat: tt!.stopLat[st], lon: tt!.stopLon[st], stop: st });
       }
       const path = ridePath(l.pattern, l.boardPos, l.alightPos);
-      return { path: path || stops.map((x): LatLon => [x.lat, x.lon]), course: !!path, stops };
+      return { path: path || stops.map((x): PathPoint => [x.lat, x.lon]), course: !!path, stops };
     });
   },
   /** The whole course of each pattern and all its stops, for drawing a line around a ride or through a stop; `course`
@@ -97,7 +102,7 @@ export const coursesOps = {
         stops.push([tt!.stopLat[st], tt!.stopLon[st], sName(st), st]);
       }
       const path = ns >= 2 ? ridePath(p, 0, ns - 1) : null;
-      return { path: path || stops.map((x): LatLon => [x[0], x[1]]), course: !!path, stops };
+      return { path: path || stops.map((x): PathPoint => [x[0], x[1]]), course: !!path, stops };
     });
   },
 } satisfies OpsPart<'streetPaths' | 'ridePaths' | 'rideCourses' | 'patternCourse'>;

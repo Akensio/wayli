@@ -4,10 +4,8 @@
 // The records are typed here, where they are written; the imports of the app's shapes are type-only, so at run
 // time the store depends on nothing of the app.
 import { signal } from '@preact/signals';
-import type { PlanResult, Query, SavedTrip } from '../journey/types';
-import type { View } from '../state/results';
-import type { ActiveTrip } from '../state/follow';
-import type { Stop } from '../state/stop';
+import { savedTripKey, type PlanResult, type Query, type SavedTrip, type SavedStop, type View } from '../journey/types';
+import type { ActiveTrip } from '../journey/follow.ts';
 
 /** Bumped on every write to the store. */
 export const stored = signal(0);
@@ -141,13 +139,8 @@ export type RecentTrip = {
   time: string;
   arriveBy: boolean;
 };
-/** What names a trip in the recent and saved lists: the two places and the bicycle choice. */
-export const tripKey = (x: {
-  from: { name: string };
-  to: { name: string };
-  bike?: string;
-  folding?: boolean;
-}): string => `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
+/** What names a trip in the recent and saved lists (journey/types.ts). */
+export const tripKey = savedTripKey;
 // a trip from a place to the same place (my location to my location) is no trip to keep
 const sameEnds = (x: { from?: { name: string } | null; to?: { name: string } | null }): boolean =>
   !!(x.from && x.to && x.from.name === x.to.name);
@@ -260,7 +253,7 @@ export const savedPlaces = {
 };
 
 /** What a star keeps, by kind: a trip, a line (as the view that reopens it), a stop (with its first lines). */
-export type FavValue = { trips: SavedTrip; lines: View; stops: Stop };
+export type FavValue = { trips: SavedTrip; lines: View; stops: SavedStop };
 export type FavKind = keyof FavValue;
 export const favs = {
   get<K extends FavKind>(kind: K): Record<string, FavValue[K]> {

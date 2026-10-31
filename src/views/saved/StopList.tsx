@@ -1,7 +1,7 @@
 // Stops as rows: name, city and code, their lines as chips.
 // A tap opens the stop; a tap on a chip opens that line.
 import { t } from '../../lib/i18n';
-import type { Stop } from '../../state/stop';
+import type { SavedStop as Stop } from '../../journey/types';
 import { LineChip } from '../../widgets/LineChip';
 
 type Props = { stops: Stop[]; onStop: (stop: number) => void; onLine: (route: number) => void };

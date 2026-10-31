@@ -4,8 +4,8 @@
 import { routeLabel, parseHeadsign, stationStopsOf } from '../engine/raptor.ts';
 import { haversine } from '../engine/geo.ts';
 import { modeOfType, type Mode } from '../engine/modes.ts';
-import type { LatLon } from '../journey/types';
-import type { LineGroup } from '../state/search';
+import type { PathPoint } from '../engine/geo.ts';
+import type { LineGroup } from './ops.ts';
 import { hasCourse, ridePath } from './courses.ts';
 import { tt, onNewDay, onNewLang } from './data.ts';
 import { cName, headsign, lineLabel, liveId, ssName, stopOut } from './names.ts';
@@ -353,7 +353,7 @@ export const linesOps = {
     const ns = stops.length;
     // the main pattern's course, or its stops joined straight before the courses are loaded (pathKind says which;
     // the map asks for the course again once they are, by the pattern)
-    const path = best >= 0 && ns >= 2 ? ridePath(best, 0, ns - 1) || stops.map((s): LatLon => [s.lat, s.lon]) : [];
+    const path = best >= 0 && ns >= 2 ? ridePath(best, 0, ns - 1) || stops.map((s): PathPoint => [s.lat, s.lon]) : [];
     // the other directions of the same line (same number and operator in the same area; for trains, the same two stations)
     const own = parseHeadsign(r[1]);
     const others = g

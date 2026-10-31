@@ -1,16 +1,18 @@
 // Sharing a journey: its legs as text and a link that opens the same plan.
 import { t } from '../lib/i18n';
-import { placeName } from '../state/names';
 import { fmt, hm } from '../lib/time';
-import { toast } from '../widgets/toast';
 import { dur, lineText, legMinutes } from './format';
 import type { Journey, Query } from './types';
 
-export function shareJourney(j: Journey, q: Query, bikeOnly = false): void {
-  const lines = [
-    `${placeName(q.from)} → ${placeName(q.to)}`,
-    `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`,
-  ];
+/** Share a journey through the phone's share sheet, or copy it where there is none. `names` are the two places as the
+ *  rider reads them (state/names). Answers what happened: shared, copied, or nothing (cancelled or not possible). */
+export async function shareJourney(
+  j: Journey,
+  q: Query,
+  names: { from: string; to: string },
+  bikeOnly = false,
+): Promise<'shared' | 'copied' | 'none'> {
+  const lines = [`${names.from} → ${names.to}`, `${fmt(j.depart)} → ${fmt(j.arrive)} (${dur(j.arrive - j.depart)})`];
   for (const l of j.legs) {
     const mins = legMinutes(l.seconds);
     if (l.type === 'ride')
@@ -31,10 +33,17 @@ export function shareJourney(j: Journey, q: Query, bikeOnly = false): void {
     if (q.folding) u.searchParams.set('folding', '1');
   }
   const text = lines.join('\n');
-  if (navigator.share) navigator.share({ title: 'Wayli', text, url: u.toString() }).catch(() => {});
-  else if (navigator.clipboard)
-    navigator.clipboard
-      .writeText(`${text}\n${u}`)
-      .then(() => toast(t('copied')))
-      .catch(() => {});
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'Wayli', text, url: u.toString() });
+      return 'shared';
+    }
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(`${text}\n${u}`);
+      return 'copied';
+    }
+  } catch {
+    /* the rider cancelled the share sheet, or the clipboard is not allowed */
+  }
+  return 'none';
 }

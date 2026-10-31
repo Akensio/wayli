@@ -11,7 +11,7 @@ import { t, lang } from '../../lib/i18n';
 import { ic, modeIcon } from '../../widgets/icons';
 import { Icon } from '../../widgets/Icon';
 import type { IconName } from '../../widgets/icons';
-import { savedPlaces, recentPlaces, recentViews } from '../../lib/store.ts';
+import { savedPlaces, recentPlaces, recentViews } from '../../state/store.ts';
 import * as search from '../../state/search';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
 import { LineChip } from '../../widgets/LineChip';

@@ -31,8 +31,10 @@ export { lineVehicleMarkers, vehiclesForWorker, closePopup } from './popups';
 export { refreshLiveMap, applyLiveShow, loadStopsGeo, updateNearRoutes, liveOn, resetLive, setStopLines } from './live';
 export { pickOnMap, closePicker } from './picker';
 export { hooks } from './shared';
-export { redrawMap, drawMe, afterDraw, cameraPadding } from './render';
-import { redrawMap, cameraPadding } from './render';
+export { redrawMap, drawMe, afterDraw } from './render';
+export { cameraPadding } from './shared';
+import { redrawMap } from './render';
+import { cameraPadding } from './shared';
 import { centreOffset } from './view';
 let geoCtl: GeolocateControl | null = null;
 

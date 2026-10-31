@@ -7,12 +7,11 @@ import { secondsOn } from '../engine/clock.ts';
 import { hasBusTimes, setRoadsNow, usualRun, freeRun, median, type RoadRun, type TimedStop } from '../engine/delays.ts';
 import type { Bounds, Fix } from '../engine/feed.ts';
 import { metres, scaleAt, nearestOnSegment, projectOnStops, type LatLon, type Projection } from '../engine/geo.ts';
-import type { LatLon as PathPoint } from '../journey/types';
+import type { PathPoint } from '../engine/geo.ts';
 import { ridePath } from './courses.ts';
 import { tt, onNewDay } from './data.ts';
 import { tripFor, tripStopList } from './trips.ts';
 import type { OpsPart } from './ops.ts';
-import type { SnapVehicle } from './vehicles.ts';
 
 /** A bus followed across the snapshots: its ride's line ref and scheduled start (what finds its trip), and its fixes,
  *  oldest first. */
@@ -103,7 +102,19 @@ function projectOnCourse(lat: number, lon: number, p: number, stops: readonly La
   });
   return best.metres === Infinity ? projectOnStops(lat, lon, stops) : best;
 }
-export function noteRoads(vehicles: SnapVehicle[]): void {
+/** What the road model reads of a reported bus (vehicles.ts hands it the snapshot's): which ride, on which line from
+ *  which scheduled start, where and when, and whether it stands at a stop or belongs to the trains' operator. */
+export type RoadReport = {
+  rideId: string;
+  lineRef: string;
+  scheduledStart: Date;
+  recordedAt: Date;
+  lat: number;
+  lon: number;
+  operator: number;
+  atStop: boolean;
+};
+export function noteRoads(vehicles: RoadReport[]): void {
   if (!tt || !hasBusTimes()) return; // without the learned times there is nothing to compare with
   let newest = 0;
   for (const v of vehicles) {

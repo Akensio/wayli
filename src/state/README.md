@@ -14,8 +14,9 @@ directly.
 | `search` | The top bar: places, time, bicycle, which search (trip, line, stop), the two stations of the train search. |
 | `results` | A plan's results: cards, filters, sorting, which ways are drawn; the drawer's history tabs. |
 | `detail`, `follow` | The journey shown; the trip being followed. |
-| `stop`, `line`, `station` | A stop's page, a line's page, the trains between two stations. |
+| `stop`, `line`, `station` | A stop's page, a line's page, the trains between two stations. The worker's answers they hold are typed by the worker's contract (`worker/ops.ts`), re-exported here. |
 | `nav` | The stack of panels and screens, with their history entries (Back). |
 | `sheet` | The bottom sheet's height. |
-| `chooser`, `names` | Choosing home, work or a saved place; names in the current language. (The saved places, trips and stops themselves live in the store, `lib/store.js`.) |
+| `chooser`, `names` | Choosing home, work or a saved place; names in the current language. |
+| `store` | The on-device store (localStorage): settings, history, saved places, trips and stops, the trip in progress. Nothing in it leaves the phone. Every write bumps its `stored` signal, which the pages showing what it keeps read. The records' types are the domain's (`journey/types.ts`). |
 | `settings`, `app`, `data`, `position`, `clock` | Settings; the app itself (version, install, menu); what data is loaded; the last position; a 20-second tick for countdowns. |

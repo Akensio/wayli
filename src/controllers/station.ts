@@ -9,10 +9,11 @@ import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as st from '../state/station';
 import * as map from '../map/index';
-import { asStation, type Station, type TrainRow } from '../state/station';
+import { asStation, type Station, type TrainRow, type Dest } from '../state/station';
+import * as stopPage from '../state/stop';
 import { openStop } from './stop';
 import { liveRides } from './liverides';
-import { recentViews } from '../lib/store.ts';
+import { recentViews } from '../state/store.ts';
 
 let seq = 0,
   timer = 0;
@@ -113,4 +114,13 @@ export function swapStations(): void {
     b = search.stTo.value;
   if (a && b) openTrains(asStation(a), asStation(b));
   else if (a) openStation(asStation(a));
+}
+
+/** A destination of the station in the stop's page: the trains between the two; in the train timetable (the two boxes
+ *  at the top), as its To. */
+export function openDestination(d: Dest): void {
+  const c = stopPage.info.value;
+  if (!c) return;
+  if (search.railPair.value && search.stFrom.value) chooseStation('to', d);
+  else openTrains(asStation({ ...c, stops: c.stops || [c.stop] }), d);
 }

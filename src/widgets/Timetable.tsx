@@ -9,10 +9,17 @@ import { Fold } from './Fold';
 import { t } from '../lib/i18n';
 import { two } from '../lib/time';
 
-type TimeRow = { trip: number; dep: number; arr?: number | null; estimated?: boolean };
-type Props = { rows: TimeRow[]; now: number | null; sel: number | null; onPick: (r: TimeRow) => void; dim?: boolean };
+/** What the timetable shows of a trip: when it leaves the stop, and whether that is an estimate. */
+type TimeRow = { trip: number; dep: number; estimated?: boolean };
+type Props<R extends TimeRow> = {
+  rows: R[];
+  now: number | null;
+  sel: number | null;
+  onPick: (r: R) => void;
+  dim?: boolean;
+};
 
-export function Timetable({ rows, now, sel, onPick, dim = false }: Props) {
+export function Timetable<R extends TimeRow>({ rows, now, sel, onPick, dim = false }: Props<R>) {
   const box = useRef<HTMLDivElement>(null);
   const [full, setFull] = useState(false);
   // closed again for every new set of times (another stop, line or ride): the same component stays mounted, and kept the
@@ -22,7 +29,7 @@ export function Timetable({ rows, now, sel, onPick, dim = false }: Props) {
   }, [rows]);
   const next = now == null ? null : rows.find((r) => r.dep >= now - 30) || null;
   // the hours of the day in order (a night's 24:10 is the next day's 00, after 23)
-  const hours: { h: number; rows: TimeRow[] }[] = [];
+  const hours: { h: number; rows: R[] }[] = [];
   for (const r of rows) {
     const h = Math.floor(r.dep / 3600);
     if (!hours.length || hours[hours.length - 1].h !== h) hours.push({ h, rows: [] });

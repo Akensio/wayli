@@ -18,7 +18,7 @@ import { state, EMPTY, stopKinds } from './shared';
 import { arrowImage } from './images';
 import { heading, vehiclePopup } from './popups';
 import { viewFor } from './view';
-import { currentSheet } from './render';
+import { currentSheet } from './shared';
 import { metres } from '../engine/geo.ts';
 import { timeOf } from '../lib/time';
 

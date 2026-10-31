@@ -3,8 +3,7 @@
 // the lines at a stop; and what the stop search, a stop's page and the train timetable ask about them.
 import { searchStops, routeLabel, centreOf, stationStopsOf } from '../engine/raptor.ts';
 import { haversine } from '../engine/geo.ts';
-import type { StopGroup } from '../state/search';
-import type { Dest } from '../state/station';
+import type { StopGroup, Dest } from './ops.ts';
 import { lang, tt, onNewDay, onNewLang } from './data.ts';
 import { cName, headsign, lineLabel, liveId, sName, stName, stopOut } from './names.ts';
 import type { Departure, OpsPart, RecentStation } from './ops.ts';

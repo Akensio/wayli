@@ -14,7 +14,7 @@ import { Fold } from '../../widgets/Fold';
 import { ShownTime } from '../../widgets/ShownTime';
 import { useEffect, useState } from 'preact/hooks';
 import { LineChip } from '../../widgets/LineChip';
-import { favs, stored } from '../../lib/store.ts';
+import { favs, stored } from '../../state/store.ts';
 import { LiveMark } from '../../widgets/LiveMark';
 import * as delays from '../../engine/delays.ts';
 import { openOtherDirection, chooseTime, chooseAnchor } from '../../controllers/line';

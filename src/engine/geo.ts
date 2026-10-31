@@ -6,6 +6,8 @@
 
 /** A point on the ground, as the whole app passes one around. */
 export type LatLon = { lat: number; lon: number };
+/** A point of a drawn path, as the courses, the streets and the map keep them: [lat, lon] in degrees. */
+export type PathPoint = [lat: number, lon: number];
 
 export function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000,

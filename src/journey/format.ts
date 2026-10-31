@@ -3,8 +3,7 @@ import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.ts';
 import { t, lang } from '../lib/i18n';
 import { fmt } from '../lib/time';
-import { tripKey as storeTripKey } from '../lib/store.ts';
-import type { Place } from '../state/search';
+import { savedTripKey, type Place } from './types';
 import type { LiveTime } from '../engine/delays.ts';
 
 /** A distance as the rider reads it: to the metre close by, by 50 m within a kilometre, then in km (one decimal under 10). */
@@ -71,7 +70,7 @@ export const tripKey = (q: {
   to: { name: string };
   bike?: string;
   folding?: boolean;
-}): string => 'trip:' + storeTripKey(q);
+}): string => 'trip:' + savedTripKey(q);
 type LiveAt = LiveTime | null;
 export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: number; delayText?: string }; // time: the live departure
 /** A live vehicle's standing as a badge: its time at the stop and how late, passed, or no vehicle found. */

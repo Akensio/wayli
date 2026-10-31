@@ -12,7 +12,7 @@ import type { LineMode } from '../../widgets/LineChip';
 import { t, lang } from '../../lib/i18n';
 import { bikeText } from '../../journey/format';
 import { dayLabel, calToday, calendarOf, secOf } from '../../lib/time';
-import { recentTrips, recentViews, favs, recentKeep, stored, type RecentTrip } from '../../lib/store.ts';
+import { recentTrips, recentViews, favs, recentKeep, stored, type RecentTrip } from '../../state/store.ts';
 import * as results from '../../state/results';
 import * as search from '../../state/search';
 import * as nav from '../../state/nav';

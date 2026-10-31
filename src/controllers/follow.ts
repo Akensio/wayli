@@ -18,8 +18,8 @@ import {
   stepForward,
   stepBack,
   connections,
-} from '../engine/follow.ts';
-import { settings, activeTrip } from '../lib/store.ts';
+} from '../journey/follow.ts';
+import { settings, activeTrip } from '../state/store.ts';
 import { t } from '../lib/i18n';
 import { dateOf, fmt } from '../lib/time';
 import { toast } from '../widgets/toast';
@@ -32,7 +32,7 @@ import * as map from '../map/index';
 import { lineText, liveBadge } from '../journey/format';
 import type { Journey, Query, RideLeg } from '../journey/types';
 import type { ActiveTrip, Alt, Position, LegLive } from '../state/follow';
-import type { FollowView, ReplanOrigin } from '../engine/follow.ts';
+import type { FollowView, ReplanOrigin } from '../journey/follow.ts';
 import type { LiveTime } from '../engine/delays.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';

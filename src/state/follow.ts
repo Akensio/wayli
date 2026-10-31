@@ -3,21 +3,19 @@
 // found. The controller (timers, the position watch, the live polls, the re-planning) is controllers/follow.ts
 // and publishes here; the screen renders from these and asks through `hooks`.
 import { signal } from '@preact/signals';
-import type { Journey, Query } from '../journey/types';
+import type { Journey } from '../journey/types';
 import type { Badge } from '../journey/format';
-import type { FollowState, Position as EnginePosition, Connection, ReplanOrigin } from '../engine/follow.ts';
+import type {
+  FollowState,
+  Position as EnginePosition,
+  Connection,
+  ReplanOrigin,
+  ActiveTrip,
+} from '../journey/follow.ts';
+export type { ActiveTrip };
 
 // the state machine's own types, from the engine; the screen adds when a position was taken
 export type { FollowState, Connection };
-export type ActiveTrip = {
-  journey: Journey;
-  q: Pick<Query, 'from' | 'to' | 'bike' | 'folding'>;
-  day: string;
-  state: FollowState;
-  view: 'follow' | 'hidden';
-  startedAt?: number;
-  replanned?: number;
-};
 export type Position = EnginePosition & { at: number };
 export type Alt = {
   journey: Journey;

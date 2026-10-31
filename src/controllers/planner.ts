@@ -5,7 +5,7 @@ import { effect } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.ts';
 import type { Vehicle } from '../engine/feed.ts';
-import { settings, recentPlaces, recentTrips, lastSearch } from '../lib/store.ts';
+import { settings, recentPlaces, recentTrips, lastSearch } from '../state/store.ts';
 import { t, lang } from '../lib/i18n';
 import { dateOf } from '../lib/time';
 import { call } from '../worker/client';
@@ -23,6 +23,7 @@ import { startDay } from './loading';
 import { openLine } from './line';
 import { openStop } from './stop';
 import { chooseStation, openStation, openTrains } from './station';
+import * as stopPage from '../state/stop';
 import { openDetail } from './detail';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
@@ -339,3 +340,16 @@ Object.assign(results.hooks, {
   redraw: () => map.redrawMap(true),
   revealCard,
 } satisfies typeof results.hooks);
+
+/** Plan from the stop in the sheet, or to it. */
+export function fromHere(): void {
+  const s = stopPage.info.value;
+  if (s) {
+    planFrom(search.stopPlace(s));
+    sheet.set('half');
+  }
+}
+export function toHere(): void {
+  const s = stopPage.info.value;
+  if (s) planTo(search.stopPlace(s));
+}

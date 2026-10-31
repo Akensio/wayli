@@ -7,7 +7,7 @@ import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as search from '../state/search';
 import { lastPos } from '../state/position';
-import type { Place } from '../state/search';
+import type { Place } from '../journey/types';
 import { mapReady, pick } from './shared';
 import { openPopup, closePopup, setPopupTitle } from './popups';
 import { reverseName } from '../journey/format';

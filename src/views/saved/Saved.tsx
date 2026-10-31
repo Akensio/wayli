@@ -5,7 +5,7 @@ import { FromTo } from '../../widgets/FromTo';
 import { t, lang } from '../../lib/i18n';
 import { bikeText } from '../../journey/format';
 import { toast } from '../../widgets/toast';
-import { savedPlaces, favs, stored } from '../../lib/store.ts';
+import { savedPlaces, favs, stored } from '../../state/store.ts';
 import { StopList } from './StopList';
 import type { Place } from '../../state/search';
 import type { View } from '../../state/results';

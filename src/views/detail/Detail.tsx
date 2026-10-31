@@ -5,7 +5,7 @@ import { StarButton } from '../../widgets/StarButton';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t, lang } from '../../lib/i18n';
 import * as clock from '../../engine/clock.ts';
-import { favs, stored } from '../../lib/store.ts';
+import { favs, stored } from '../../state/store.ts';
 import * as detail from '../../state/detail';
 import { now } from '../../state/clock';
 import { dur, tripKey, liveBadge } from '../../journey/format';
@@ -17,6 +17,8 @@ import type { RideLeg } from '../../journey/types';
 import { rideOptions, rideLive } from '../../controllers/detail';
 import { openLine, openTrip } from '../../controllers/line';
 import { startTrip } from '../../controllers/follow';
+import { placeName } from '../../state/names';
+import { toast } from '../../widgets/toast';
 
 /** The ride's line, as a timetable at its boarding stop. */
 const openRideLine = (l: RideLeg) => {
@@ -69,7 +71,16 @@ export function Detail() {
         >
           <Icon name="play" /> <span>{t('startTrip')}</span>
         </button>
-        <button type="button" class="ghost" id="detailShare" onClick={() => shareJourney(j, q, bikeOnly)}>
+        <button
+          type="button"
+          class="ghost"
+          id="detailShare"
+          onClick={() =>
+            shareJourney(j, q, { from: placeName(q.from), to: placeName(q.to) }, bikeOnly).then(
+              (r) => r === 'copied' && toast(t('copied')),
+            )
+          }
+        >
           <Icon name="share" /> <span>{t('share')}</span>
         </button>
         {!bikeOnly && (
