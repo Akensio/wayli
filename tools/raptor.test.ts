@@ -79,3 +79,22 @@ test('a window with no departures still answers with the first ride after it, ho
   expect(profile(tt, 0, 2, T(7, 0), T(8, 0)).journeys.map((j) => j.depart)).toEqual([T(10, 0)]);
   expect(plan(tt, 0, 2, T(8, 0)).journeys.map((j) => j.depart)).toEqual([T(10, 0)]);
 });
+
+test('route types: every GTFS type can be asked for, on-demand (715) and shared taxis (8) too', () => {
+  // the route types used to sit in an Int8Array and a lookup of 8 slots: 715 wrapped to -53 and 8 fell off the end, so
+  // asking for either found nothing (2026-10-31)
+  const tt = tinyTimetable({
+    stops,
+    routes: [{ short: 'F1', type: 715 }, { short: '4', type: 8 }, { short: '60' }],
+    patterns: [
+      { route: 0, stops: [0, 1], trips: [[T(10, 0), T(10, 5)]] },
+      { route: 1, stops: [0, 2], trips: [[T(10, 1), T(10, 9)]] },
+      { route: 2, stops: [0, 3], trips: [[T(10, 2), T(10, 12)]] },
+    ],
+  });
+  const reach = (types: number[], to: number) =>
+    profile(tt, [{ stop: 0, walk: 0 }], [{ stop: to, walk: 0 }], T(9, 55), T(10, 5), { routeTypes: types }).journeys;
+  expect(reach([715], 1)).toHaveLength(1);
+  expect(reach([8], 2)).toHaveLength(1);
+  expect(reach([715], 3)).toHaveLength(0); // the bus is not on demand
+});

@@ -36,11 +36,9 @@ export function tripFor(routeId: number | string | null, start: number): number 
   if (!routeById) indexRoutes();
   const ri = routeById!.get(String(routeId));
   if (ri == null) return -1;
-  for (const p of routePats!.get(ri) || []) {
-    const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p];
+  for (const p of routePats!.get(ri) || [])
     for (let t = tt!.patTripsOff[p]; t < tt!.patTripsOff[p + 1]; t++)
-      if (Math.abs(tt!.dep[tt!.tripTimesOff[p] + (t - tt!.patTripsOff[p]) * ns] - start) <= 90) return t;
-  }
+      if (Math.abs(tt!.tripStart[t] - start) <= 90) return t; // the schedule: plan.ts shifts dep for live delays
   return -1;
 }
 export function tripStopList(t: number): TripStopList {

@@ -80,13 +80,12 @@ function norm(v: StrideRow): Vehicle {
     fromStart: v.distance_from_journey_start,
   };
 }
-let newestSeen = 0; // ms: the newest report any query returned; "fresh" is measured against it, not the clock
 /** A vehicle whose last report is within five minutes of the newest report of its own set (`ref`, a Date or ms;
  *  by default the newest seen anywhere). The feed lags unevenly, area by area and operator by operator (measured
  *  2026-10-19 15:34: Tel Aviv 20 min behind, the country 6), so a set is judged against its own newest report. */
-export function isFresh(v: Vehicle, windowSec = 300, ref: Date | number | null = null): boolean {
-  let r = newestSeen || Date.now();
-  if (ref) r = ref instanceof Date ? ref.getTime() : ref;
+export function isFresh(v: Vehicle, windowSec: number, ref: Date | number | null): boolean {
+  if (ref == null) return true; // no set to judge against
+  const r = ref instanceof Date ? ref.getTime() : ref;
   return r - v.recordedAt.getTime() <= windowSec * 1000;
 }
 /** Latest position per ride (a few rows carry impossible future times; they are dropped). The answer is what the
@@ -102,14 +101,13 @@ function latest(json: unknown): Vehicle[] {
     const o = by.get(v.rideId);
     if (!o || v.recordedAt > o.recordedAt) by.set(v.rideId, v);
   }
-  for (const v of by.values()) if (v.recordedAt.getTime() > newestSeen) newestSeen = v.recordedAt.getTime();
   return Array.from(by.values());
 }
 // The sort order decides whether the database answers in a few seconds or times out: with a closed
 // recorded_at_time window, "recorded_at_time desc" answers in 1-3 s for line, area and operator queries
 // (measured 2026-10-17/18). "id desc" was fast too but ids follow ingestion order, and the ingestion
 // backfills old snapshots, so its first rows were not the newest positions.
-const window = (sinceSec: number): { recorded_at_time_from: string; recorded_at_time_to: string } => ({
+const recordedSince = (sinceSec: number): { recorded_at_time_from: string; recorded_at_time_to: string } => ({
   recorded_at_time_from: iso(new Date(Date.now() - sinceSec * 1000)),
   recorded_at_time_to: iso(new Date(Date.now() + 60e3)),
 });
@@ -139,7 +137,6 @@ async function fromSnapshot(filter: SnapshotFilter): Promise<Vehicle[] | null> {
   }
   try {
     const vs = await snapshot.query(filter);
-    for (const v of vs) if (v.recordedAt.getTime() > newestSeen) newestSeen = v.recordedAt.getTime();
     source.relay = true;
     source.why = '';
     return vs;
@@ -160,7 +157,7 @@ export async function vehiclesByLine(
   if (s) return s;
   const rows = await get(
     '/siri_vehicle_locations/list',
-    { siri_routes__line_ref: routeId, ...window(sinceSec), order_by: 'recorded_at_time desc', limit },
+    { siri_routes__line_ref: routeId, ...recordedSince(sinceSec), order_by: 'recorded_at_time desc', limit },
     timeoutMs,
   );
   return latest(rows);
@@ -175,7 +172,7 @@ export async function vehiclesInBounds(
   const rows = await get(
     '/siri_vehicle_locations/list',
     {
-      ...window(sinceSec),
+      ...recordedSince(sinceSec),
       order_by: 'recorded_at_time desc',
       limit,
       lat__greater_or_equal: b.south.toFixed(4),
@@ -199,7 +196,7 @@ export async function trains({ sinceSec = 1800, limit = 500, timeoutMs }: QueryO
   if (s) return s;
   const rows = await get(
     '/siri_vehicle_locations/list',
-    { siri_routes__operator_ref: 2, ...window(sinceSec), order_by: 'recorded_at_time desc', limit },
+    { siri_routes__operator_ref: 2, ...recordedSince(sinceSec), order_by: 'recorded_at_time desc', limit },
     timeoutMs,
   );
   return latest(rows);

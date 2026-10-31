@@ -179,7 +179,7 @@ export type Timetable = {
   /** Trip -> its pattern. */
   tripPat: Int32Array;
   /** Pattern -> its route's GTFS route type. */
-  patType: Int8Array;
+  patType: Int16Array; // GTFS route types reach 715 (on demand)
   /** Per stop: its name and its city normalised for the search (text.ts norm), in Hebrew. */
   stopName: string[];
   stopCity: string[];
@@ -234,7 +234,7 @@ function expandTimes(tt: Timetable): void {
   tt.arr = arr;
   tt.tripPat = tripPat;
   // GTFS route_type per pattern (0 light rail, 2 rail, 3 bus), for "bike on board" filtering
-  const patType = new Int8Array(P);
+  const patType = new Int16Array(P);
   for (let p = 0; p < P; p++) patType[p] = tt.routes[tt.patRoute[p]][3];
   tt.patType = patType;
 }
@@ -250,7 +250,6 @@ const BIKE_RULES = {
     [6 * 3600, 9 * 3600],
     [15 * 3600, 19 * 3600],
   ],
-  peakDays: [0, 1, 2, 3, 4], // JS getDay(): Sunday..Thursday
 };
 function bikeAllowed(tt: Timetable, p: number, depTime: number, folding: boolean, weekday = true): boolean {
   if (folding) return true;
@@ -542,15 +541,14 @@ export function profile(
   const maxTransfers = opts.maxTransfers ?? 3;
   const slack = opts.slack ?? tt.slack;
   // optional restriction to vehicle types (GTFS route_type), and the bike-on-board rules
-  let allowed: Uint8Array | null = null;
+  let allowed: Set<number> | null = null;
   if (opts.routeTypes) {
-    allowed = new Uint8Array(8);
-    for (const t of opts.routeTypes) allowed[t] = 1;
+    allowed = new Set(opts.routeTypes);
   }
   const patType = tt.patType;
   const bike = opts.bikeOnBoard ? { folding: !!opts.folding, weekday: opts.weekday ?? true } : null;
   const patOk = (p: number) =>
-    (!allowed || allowed[patType[p]]) &&
+    (!allowed || allowed.has(patType[p])) &&
     (!bike || bike.folding || patType[p] === 2 || (patType[p] === 3 && tt.patIntercity && tt.patIntercity[p] === 1));
   const tripOk = (p: number, d: number) => !bike || bikeAllowed(tt, p, d, bike.folding, bike.weekday);
   const chainMax = opts.maxWalkChain ?? Math.min(tt.chainMax, 600);
@@ -802,9 +800,7 @@ export function profile(
         depart: tau[k][bestD.stop],
         arrive: bestT,
       });
-    const sig = legs
-      .map((l) => (l.type === 'ride' ? `r${l.trip}:${l.from}-${l.to}` : `${l.type[0]}${l.from}-${l.to}`))
-      .join('|');
+    const sig = journeySig({ legs } as RawJourney);
     if (seen.has(sig)) return;
     seen.add(sig);
     const rides = legs.filter((l) => l.type === 'ride');

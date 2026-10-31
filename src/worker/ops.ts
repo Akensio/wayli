@@ -158,8 +158,7 @@ export type RouteLabel = {
 /** A station found again on another day (stops.ts findRecent). */
 export type RecentStation = { name: string; stops: number[]; lat: number; lon: number };
 /** A departure from a stop (stops.ts departures): when (seconds on the service day), which line, trip and route id,
- *  the trip's first departure, and whether its times are estimates. `last` is always false: a vehicle ending at the
- *  stop is left out before it. */
+ *  the trip's first departure, and whether its times are estimates. */
 export type Departure = {
   time: number;
   line: string;
@@ -170,7 +169,6 @@ export type Departure = {
   routeId: number | string | null;
   estimated: boolean;
   firstDep: number;
-  last: boolean;
 };
 /** A direct trip between two places (trips.ts trainsBetween, rideOptions): when it leaves and arrives, its
  *  pattern and the positions boarded and left on it, the line, and what identifies the trip in the live data. */

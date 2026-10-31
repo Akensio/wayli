@@ -7,7 +7,7 @@ import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as results from '../state/results';
 import type { Drawable, DrawLeg, StopRef } from '../journey/types';
-import { state, EMPTY, stopKindProp } from './shared';
+import { state, EMPTY, stopKindProp, stale } from './shared';
 import { BADGE_KINDS, stationImage } from './images';
 import { wireStopLayers } from './popups';
 
@@ -189,11 +189,12 @@ export function ensureJourneyLayers(m: MLMap): void {
 async function drawContext(m: MLMap, j: Drawable, focus = -1): Promise<void> {
   const rides = j.legs.filter((l, i) => l.type === 'ride' && l.pattern != null && (focus < 0 || i === focus));
   if (!rides.length || !data.ttReady.value) return;
+  const seq = state.drawSeq; // the drawing this belongs to: when another started meanwhile, its context is not ours
   try {
     const courses = await call('patternCourse', {
       patterns: rides.flatMap((l) => (l.pattern == null ? [] : [l.pattern])),
     });
-    if (!m.getSource('context')) return;
+    if (stale(seq) || !m.getSource('context')) return;
     const lines: GeoJSON.Feature[] = [],
       dots: GeoJSON.Feature[] = [];
     courses.forEach((c, i) => {

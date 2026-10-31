@@ -43,9 +43,13 @@ export async function initMap(): Promise<void> {
   // start where the map was last left (no wide view first, no jump): the saved camera, else the position, else Tel Aviv
   let view: { lat: number; lon: number; zoom: number } | null = null;
   try {
-    view = JSON.parse(localStorage.getItem('wayli-view') || 'null');
+    const v: unknown = JSON.parse(localStorage.getItem('wayli-view') || 'null');
+    const ok = (x: unknown, lo: number, hi: number): x is number => typeof x === 'number' && x >= lo && x <= hi;
+    if (v && typeof v === 'object' && 'lat' in v && 'lon' in v && 'zoom' in v)
+      if (ok(v.lat, -90, 90) && ok(v.lon, -180, 180) && ok(v.zoom, 0, 22))
+        view = { lat: v.lat, lon: v.lon, zoom: v.zoom };
   } catch {
-    /* private mode */
+    /* private mode, or not JSON: start from the position */
   }
   const start = view || lastPos || { lat: 32.08, lon: 34.78 };
   let zoom = 11;

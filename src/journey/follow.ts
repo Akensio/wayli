@@ -245,7 +245,15 @@ export function view(journey: Journey, state: FollowState, nowSec: number): Foll
       departsIn: toRide ? Math.round((toRide.depart - nowSec) / 60) : null,
     };
   }
-  const stops = leg.stopsAlong || [];
+  // a ride the worker gave no stops for (it always does): its two ends stand for them
+  const end = (s: Leg['to'], arr: number): StopAlong => ({
+    stop: s?.stop ?? -1,
+    name: s?.name ?? '',
+    lat: s?.lat ?? 0,
+    lon: s?.lon ?? 0,
+    arr,
+  });
+  const stops = leg.stopsAlong?.length ? leg.stopsAlong : [end(leg.from, leg.depart), end(leg.to, leg.arrive)];
   const lastIdx = stops.length - 1;
   if (!state.onBoard)
     return { kind: 'wait', leg, departsIn: Math.round((leg.depart - nowSec) / 60), stopsLeft: lastIdx };

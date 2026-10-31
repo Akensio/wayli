@@ -19,7 +19,7 @@ import * as map from '../map/index';
 import { toast } from '../widgets/toast';
 import type { Place } from '../state/search';
 import type { Query } from '../journey/types';
-import { startDay } from './loading';
+
 import { openLine } from './line';
 import { openStop } from './stop';
 import { chooseStation, openStation, openTrains } from './station';
@@ -56,10 +56,12 @@ export function parseShared(params: URLSearchParams): Shared | null {
 }
 
 let waiting = false;
+let planSeq = 0; // the newest plan asked for: an older one finishing later is dropped
 effect(() => {
   if (data.ttReady.value && waiting) plan();
 });
 export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
+  const my = ++planSeq;
   showPlanError('');
   if (!search.from.value || !search.to.value) {
     showPlanError(t('pickBoth'));
@@ -76,17 +78,25 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
     if (p.transient && p.lat == null) {
       search.texts[side].value = t('locating');
       try {
-        search.setPlace(side, search.myLocation(await getPosition()));
+        const pos = await getPosition();
+        if (my !== planSeq) return;
+        search.setPlace(side, search.myLocation(pos));
       } catch {
+        if (my !== planSeq) return;
         search.texts[side].value = t('myLoc');
         showPlanError(t('noLocation'));
         return;
       }
     }
   }
+  // a plan from now is from now: the service day may have turned (03:00) since the bar was set, and resetNow loads
+  // that day's timetable through the day hook; the plan then waits for it like any other day change
   if (!search.timeTouched.value) {
-    search.setDefaultTime();
-    if (data.manifest.value && search.day.value !== startDay()) search.day.value = startDay();
+    search.resetNow();
+    if (!data.ttReady.value) {
+      waiting = true;
+      return;
+    }
   }
   if (!nav.stack.value.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' }); // the back button clears the plan
   const from = search.from.value!,
@@ -119,6 +129,7 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
     } catch {
       vehicles = null;
     }
+    if (my !== planSeq) return;
   }
   q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null;
   q.liveTried = liveTried;
@@ -135,12 +146,14 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
       arriveBy,
       vehicles,
     });
+    if (my !== planSeq) return;
     recentTrips.add(q);
     recentPlaces.add(from);
     recentPlaces.add(to);
     lastSearch.set({ q, result: r, at: Date.now() });
     results.setResults(r, q);
   } catch (e) {
+    if (my !== planSeq) return;
     showPlanError(e instanceof Error ? e.message : String(e));
     results.result.value = null;
     results.status.value = 'idle';

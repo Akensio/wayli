@@ -39,6 +39,8 @@ export function Detail() {
     bikeOnly = detail.bikeOnly.value,
     focus = detail.focus.value;
   if (!j || !q) return null;
+  // which journey this is: the rows below are keyed by it, so another journey's rows never reuse their state
+  const jkey = `${j.depart}|${j.arrive}|${j.legs.map((l) => (isRide(l) ? l.trip : l.type)).join(',')}`;
   const key = tripKey(q),
     saved = !bikeOnly && favs.has('trips', key);
   const over = clock.nowOn(q.day) > j.arrive + 1800;
@@ -95,7 +97,7 @@ export function Detail() {
       <div class={`legs${focus >= 0 ? ' focused' : ''}`} id="detailLegs">
         {j.legs.map((l, i) => (
           <LegRow
-            key={i}
+            key={`${jkey}:${i}`}
             l={l}
             mode="detail"
             cls={i === focus ? 'focus' : ''}

@@ -8,6 +8,8 @@ import type { Vehicle } from '../engine/feed.ts';
 import { isNowDay } from '../lib/time';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import { livePoll } from './livepoll';
+import { toast } from '../widgets/toast';
+import { t } from '../lib/i18n';
 import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as stopPage from '../state/stop';
@@ -21,7 +23,13 @@ let current: StopInfo | null = null,
 
 export async function openStop(stop: number, where: { station?: number; stops?: number[] } = {}): Promise<void> {
   const my = ++seq;
-  const info = await call('stopInfo', { stop, station: where.station ?? -1, stops: where.stops || null });
+  let info: StopInfo;
+  try {
+    info = await call('stopInfo', { stop, station: where.station ?? -1, stops: where.stops || null });
+  } catch {
+    if (my === seq) toast(t('liveFail'));
+    return;
+  }
   if (my !== seq) return;
   current = info;
   const members = info.stops && info.stops.length ? info.stops : [stop];
@@ -45,7 +53,13 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
       .catch(() => {
         if (my === seq) stopPage.dests.value = [];
       });
-  const deps = await call('departures', { stop, stops: members, fromTime: from, limit: 40 });
+  let deps: Departure[];
+  try {
+    deps = await call('departures', { stop, stops: members, fromTime: from, limit: 40 });
+  } catch {
+    if (my === seq) stopPage.deps.value = []; // the page says there is nothing to show, not "loading" for ever
+    return;
+  }
   if (my !== seq) return;
   stopPage.deps.value = deps;
   clearInterval(timer);

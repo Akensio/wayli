@@ -388,7 +388,6 @@ export const stopsOps = {
               routeId: liveId(r),
               estimated: !!r[6],
               firstDep: tt!.dep[base + (t - tFirst) * ns],
-              last: pos === ns - 1,
             });
         }
       }

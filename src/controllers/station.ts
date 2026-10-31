@@ -52,7 +52,13 @@ export async function openTrains(
   // the map draws both stations (map/render.ts)
   if (!nav.isOpen('trainTimes')) nav.showOverlay('trainTimes');
   else map.redrawMap(true);
-  const rows = await call('trainsBetween', { from: from.stops, to: to.stops, fromTime: w.from });
+  let rows: TrainRow[];
+  try {
+    rows = await call('trainsBetween', { from: from.stops, to: to.stops, fromTime: w.from });
+  } catch {
+    if (my === seq) st.trains.value = []; // nothing to show, rather than "loading" for ever
+    return;
+  }
   if (my !== seq) return;
   st.trains.value = rows;
   map.redrawMap(true); // their courses and vehicles

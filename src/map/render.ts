@@ -176,7 +176,7 @@ const RECIPES: Record<View['draw'], Recipe> = {
     };
     if (info.pathKind === 'stops') await withCourses(course); // a page opened before the courses arrived
     if (stale(seq)) return null;
-    const b = drawJourney(m, course, markers.journey);
+    const b = drawJourney(m, course, markers.journey, -1, false); // the line is its own course: no faint copy under it
     const color = routeColor(info.routeType, info.agency);
     setData(m, 'stops', {
       type: 'FeatureCollection',
@@ -312,9 +312,11 @@ export function redrawMap(force = false): void {
   if (!m || !state.styled) return;
   clearMap(m);
   const v = viewFor(currentSheet(key));
-  Promise.resolve(RECIPES[v.draw](m, v, seq)).then((d) => {
-    if (stale(seq) || !state.main) return;
-    aim(m, key, v, d);
-    afterDraw[key]?.();
-  });
+  Promise.resolve(RECIPES[v.draw](m, v, seq))
+    .then((d) => {
+      if (stale(seq) || !state.main) return;
+      aim(m, key, v, d);
+      afterDraw[key]?.();
+    })
+    .catch((e) => console.warn(`map: drawing ${key} failed`, e)); // the panel stays usable; the map keeps what it had
 }

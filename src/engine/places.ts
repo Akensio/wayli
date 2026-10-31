@@ -240,7 +240,7 @@ const LANDMARK = new Set(Object.keys(LANDMARK_HE));
 export type PoiKind = keyof typeof LANDMARK_HE | keyof typeof EVERYDAY_HE | (string & {});
 /** A place's kind in words: the Hebrew label, else a general one ("חנות", "משרד", "מקום"); in English the tag's own value. */
 export function kindLabel(kind: PoiKind, lang: Lang = 'he'): string {
-  if (lang !== 'he') return kind.split('=')[1].replace(/_/g, ' ');
+  if (lang !== 'he') return (kind.split('=')[1] ?? kind).replace(/_/g, ' ');
   if (KIND_HE[kind]) return KIND_HE[kind];
   if (kind.startsWith('shop=')) return 'חנות';
   if (kind.startsWith('office=')) return 'משרד';

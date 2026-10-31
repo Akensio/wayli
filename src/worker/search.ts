@@ -14,7 +14,7 @@ function reverseIn(lat: number, lon: number, L: Lang): ReverseHit {
     const r = reverseGeocode(pl, lat, lon, L);
     if (r)
       return {
-        name: r.city && (r.kind as string) !== 'city' ? `${r.name}, ${r.city}` : r.name, // never 'city' (NearestPlace): kept as it was
+        name: r.city ? `${r.name}, ${r.city}` : r.name,
         kind: r.kind,
         distance: r.distance,
       };
