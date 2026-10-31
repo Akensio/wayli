@@ -40,6 +40,10 @@ export type Position = { lat: number; lon: number; acc?: number };
  *  get off here, or the journey is over. */
 export type FollowEvent = 'reached' | 'boarded' | 'getOffNext' | 'getOff' | 'arrived';
 
+/** A trip over by 45 minutes, or started 12 hours ago, is not resumed. `nowSec`: seconds on its service day. */
+export function isTripOver(a: ActiveTrip, nowSec: number, nowMs: number): boolean {
+  return nowSec > a.journey.arrive + 2700 || nowMs - (a.startedAt || 0) > 12 * 3600e3;
+}
 export function initialState(): FollowState {
   return { step: 0, onBoard: false, rideIdx: 0, alerted: {}, done: false, hold: -1, startedAt: Date.now() };
 }

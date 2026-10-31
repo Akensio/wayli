@@ -19,6 +19,7 @@ import * as map from '../map/index';
 import { toast } from '../widgets/toast';
 import type { Place } from '../state/search';
 import type { Query } from '../journey/types';
+import { planWindow, withLive } from '../journey/query.ts';
 
 import { openLine } from './line';
 import { openStop } from './stop';
@@ -107,11 +108,8 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
     folding = search.folding.value,
     arriveBy = search.timeMode.value === 'arrive';
   const at = search.atSeconds();
-  const isNow = !search.timeTouched.value && !arriveBy; // a plan from now looks ten minutes back too: a ride just boarded can still be followed
-  let fromTime = at;
-  if (arriveBy) fromTime = Math.max(0, at - 7200);
-  else if (isNow) fromTime = Math.max(0, at - 600);
-  const toTime = arriveBy ? at : at + 3600;
+  const isNow = !search.timeTouched.value && !arriveBy;
+  const { fromTime, toTime } = planWindow(at, arriveBy, isNow); // journey/query.ts
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   search.busy.value = true;
   results.status.value = 'planning';
@@ -119,7 +117,7 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   const q: Query = { from, to, day, at: search.at.value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
   const svc = clock.serviceDay();
-  const liveTried = map.liveOn() && !arriveBy && day === svc.day && Math.abs(at - svc.seconds) < 1200;
+  const liveTried = withLive({ liveOn: map.liveOn(), arriveBy, day, at, now: { day: svc.day, seconds: svc.seconds } });
   let vehicles: Vehicle[] | null = null,
     liveAsOf: Date | null = null;
   if (liveTried && from.lat != null && from.lon != null) {

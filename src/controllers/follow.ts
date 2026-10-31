@@ -12,8 +12,8 @@ import {
   advance,
   view as followView,
   replanOrigin,
-  ridesKey,
   remainingKey,
+  isTripOver,
   spliceJourney,
   stepForward,
   stepBack,
@@ -21,7 +21,7 @@ import {
 } from '../journey/follow.ts';
 import { settings, activeTrip } from '../state/store.ts';
 import { t } from '../lib/i18n';
-import { dateOf, fmt } from '../lib/time';
+import { dateOf } from '../lib/time';
 import { toast } from '../widgets/toast';
 import { call, tripStopsCached, estimate } from '../worker/client';
 import * as data from '../state/data';
@@ -36,6 +36,8 @@ import type { FollowView, ReplanOrigin } from '../journey/follow.ts';
 import type { LiveTime } from '../engine/delays.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
+import { whyReplan, pickAlternative, REPLAN } from '../journey/replan.ts';
+import { statusLine } from '../journey/status.ts';
 import { isRide } from '../journey/types';
 
 type LiveEst = {
@@ -60,12 +62,11 @@ type Following = {
   toldKey: string | null;
 };
 let fol: Following | null = null;
-let replanGain = 240; // s: an alternative has to arrive this much earlier (plus 3 min per extra transfer) to be proposed
+let replanGain = REPLAN.gainSec; // s: changeable from the console for trying (wayliDebug.setReplanGain)
 
 export const isFollowing = (): boolean => fol != null;
 /** A trip over by 45 minutes, or started 12 hours ago, is not resumed. */
-const tripStale = (a: ActiveTrip): boolean =>
-  clock.nowOn(a.day) > a.journey.arrive + 2700 || Date.now() - (a.startedAt || 0) > 12 * 3600e3;
+const tripStale = (a: ActiveTrip): boolean => isTripOver(a, clock.nowOn(a.day), Date.now());
 const stored = (): ActiveTrip | null => activeTrip.get();
 /** The trip followed, replaced with what changed (never changed in place: the screen's signal, the store and this
  *  module hold the same object, and a change in place is seen by none of them); saved on the phone when `save`. The
@@ -190,43 +191,12 @@ function onFollowEvent(e: string, a: ActiveTrip): void {
   else if (e === 'boarded')
     toast(t('boarded', { line: lineText(v.kind === 'ride' || v.kind === 'wait' ? v.leg.line : '') }));
 }
-/** The screen draws from the published trip; the map gets the rider's dot here. */
-/** The notification bar's line for the trip as it stands (alerts.ts, tripStatus). */
-function statusLine(): [string, string] | null {
-  if (!fol) return null;
-  const a = fol.a,
-    now = clock.nowOn(a.day),
-    dest = a.q.to.name,
-    v: FollowView = followView(a.journey, a.state, now);
-  const asOf = t('statusAsOf', { time: fmt(now) });
-  if (v.kind === 'done') return null;
-  if (v.kind === 'ride') {
-    const l = v.leg,
-      at = fol.liveEst && fol.liveEst.at && !fol.liveEst.at.passed ? fol.liveEst.at.time : l.arrive; // on board: the live time at the stop to get off at
-    const body =
-      v.stopsLeft <= 1
-        ? t('statusLast', { name: v.alight.name, time: fmt(at) })
-        : t('statusRide', { n: v.stopsLeft, name: v.alight.name, time: fmt(at) });
-    return [t('followTitle', { line: lineText(l.line), to: dest }), `${body} · ${asOf}`];
-  }
-  if (v.kind === 'wait') {
-    const l = v.leg,
-      at = fol.liveEst && fol.liveEst.at && !fol.liveEst.at.passed ? fol.liveEst.at.time : l.depart;
-    return [
-      t('followTitle', { line: lineText(l.line), to: dest }),
-      `${t('statusWait', { line: lineText(l.line), stop: l.from?.name ?? '', time: fmt(at) })} · ${asOf}`,
-    ];
-  }
-  const l = v.leg;
-  return [
-    v.toRide ? t('followTitle', { line: lineText(v.toRide.line), to: dest }) : t('walkTitle', { to: dest }),
-    `${v.kind === 'final' ? t('walkToDest', { min: v.minutes, name: dest }) : t('walkTo', { min: v.minutes, name: l.to?.name ?? '' })} · ${asOf}`,
-  ];
-}
 function publish(): void {
   if (!fol) return;
   follow.publish(fol.a, fol.alt);
-  const sl = statusLine();
+  const live = fol.liveEst?.at && !fol.liveEst.at.passed ? fol.liveEst.at.time : null; // the stop that matters now
+  const now = clock.nowOn(fol.a.day);
+  const sl = statusLine(followView(fol.a.journey, fol.a.state, now), fol.a.q.to.name, live, now);
   tripStatus(sl ? sl[0] : null, sl ? sl[1] : '');
   if (map.mapState.drawnFor === 'follow' && fol.pos) map.drawMe(fol.pos);
   if (fol.a.state.done)
@@ -356,19 +326,20 @@ async function replanCheck(force = false): Promise<void> {
     }
     return;
   }
-  // reasons to look: the ride is late, a change ahead is missed, its vehicle is missing close to departure, or five minutes passed
+  // reasons to look (journey/replan.ts): the ride is late, a change ahead is missed, its vehicle is missing close to
+  // departure, or five minutes passed
   const nextRide = a.journey.legs.slice(origin.rideStep).find((l) => l.type === 'ride');
-  const late = shift >= 180;
-  const missed = Object.values(f.legLive).some((x) => x.change != null && x.change.sec < 0);
-  const missing =
-    f.liveChecked && !f.liveEst && nextRide && nextRide.depart! - now < 600 && nextRide.depart! - now > -300;
-  const due = Date.now() - f.replanAt > 300000;
-  if (!force && !(late || missed || missing || due)) {
-    replanSkip('no reason yet');
-    return;
-  }
-  if (!force && Date.now() - f.replanAt < 90000) {
-    replanSkip('too soon');
+  const decision = whyReplan({
+    force,
+    shiftSec: shift,
+    missedChange: Object.values(f.legLive).some((x) => x.change != null && x.change.sec < 0),
+    liveChecked: f.liveChecked,
+    vehicleSeen: !!f.liveEst,
+    nextRideInSec: nextRide ? nextRide.depart - now : null,
+    sinceLastMs: Date.now() - f.replanAt,
+  });
+  if (!decision.look) {
+    replanSkip(decision.why);
     return;
   }
   f.replanning = true;
@@ -394,21 +365,19 @@ async function replanCheck(force = false): Promise<void> {
       vehicles,
     });
     if (fol !== f) return;
-    const curKey = remainingKey(a.journey, a.state);
-    const remainingRides = a.journey.legs.slice(a.state.step).filter((l) => l.type === 'ride').length;
-    let curArrive = a.journey.arrive + Math.max(0, shift);
-    const same = r.journeys.find((j) => ridesKey(j.legs) === curKey);
-    if (same) curArrive = Math.min(curArrive, same.arrive); // staying, with the delays the planner knows of
-    let best: Alt | null = null;
-    for (const j of r.journeys) {
-      const key = ridesKey(j.legs) || 'walk';
-      if (key === curKey) continue;
-      const rides = j.legs.filter((l) => l.type === 'ride').length;
-      if (curArrive - j.arrive < replanGain + 180 * Math.max(0, rides - remainingRides)) continue;
-      if (f.dismissed[key] && Date.now() - f.dismissed[key] < 900000) continue;
-      best = { journey: j, origin, key, gain: curArrive - j.arrive };
-      break;
-    }
+    const picked = pickAlternative(
+      r.journeys,
+      {
+        key: remainingKey(a.journey, a.state),
+        arrive: a.journey.arrive,
+        rides: a.journey.legs.slice(a.state.step).filter((l) => l.type === 'ride').length,
+        shiftSec: shift,
+      },
+      { gainSec: replanGain, dismissed: f.dismissed, nowMs: Date.now() },
+    );
+    const best: Alt | null = picked.best && { ...picked.best, origin };
+    const curArrive = picked.arrive,
+      same = picked.same;
     f.alt = best;
     try {
       window.wayliDebug = {
@@ -417,7 +386,7 @@ async function replanCheck(force = false): Promise<void> {
           origin,
           found: r.journeys.length,
           curArrive,
-          same: !!same,
+          same,
           best: best && { arrive: best.journey.arrive, gain: best.gain, key: best.key },
         },
       };
