@@ -1,5 +1,5 @@
 // Wayli service worker: the app shell works offline; data files are cached once downloaded. The big data files the
-// worker fetches in pieces (range requests, src/worker/data.js) pass straight through: it keeps the pieces itself.
+// worker fetches in pieces (range requests, src/worker/data.ts) pass straight through: it keeps the pieces itself.
 const SHELL = 'wayli-shell-__BUILD__'; // build_site.py puts the build time here: every deploy is a new shell cache
 const DATA = 'wayli-data-v1';
 const PARTS = 'wayli-parts-v1'; // the worker's pieces of the big files: kept across deploys like DATA

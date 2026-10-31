@@ -3,47 +3,61 @@
 // read them (ES module bindings follow the assignments). A new day or a new language drops what was derived from the
 // old one: each index registers its reset with onNewDay / onNewLang (before, each reset was listed by hand in the load,
 // and three were missing: the light rail stations and the traffic's courses and tracks kept the old day's numbers).
-import { parseTimetable } from '../engine/raptor.js';
-import { parseStreets } from '../engine/streets.js';
-import { parsePlaces } from '../engine/places.js';
-import { readContainer } from '../engine/container.js';
-import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/delays.js';
+import { parseTimetable, type Timetable } from '../engine/raptor.ts';
+import { parseStreets, type Streets } from '../engine/streets.ts';
+import { parsePlaces, type Places, type Lang } from '../engine/places.ts';
+import { readContainer, type ContainerHeader } from '../engine/container.ts';
+import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/delays.ts';
+import type { OpsPart, WorkerMessage } from './ops.ts';
 
-export let tt = null,
-  st = null,
-  pl = null,
-  sh = null;
-export let lang = 'he'; // the language names are handed out in (setLang); the timetable carries what the feed translates
+/** The courses file's header (pipeline/shapes.py): how many shapes and points it holds. */
+export type ShapesHeader = ContainerHeader & { counts: { shapes: number; points: number } };
+/** The courses: every GTFS shape of the feed as a simplified polyline. Shape i (its id `shapeId[i]`, the timetable's
+ *  patShape) runs through the points `shapeOff[i]` up to `shapeOff[i + 1]`, in 1e-5 degrees; `index` finds i by id. */
+export type Shapes = {
+  header: ShapesHeader;
+  shapeId: Int32Array;
+  shapeOff: Int32Array;
+  ptLat: Int32Array;
+  ptLon: Int32Array;
+  index: Map<number, number>;
+};
 
-const dayResets = [],
-  langResets = [];
+export let tt: Timetable | null = null,
+  st: Streets | null = null,
+  pl: Places | null = null,
+  sh: Shapes | null = null;
+export let lang: Lang = 'he'; // the language names are handed out in (setLang); the timetable carries what the feed translates
+
+const dayResets: (() => void)[] = [],
+  langResets: (() => void)[] = [];
 /** `f` runs when another day's timetable is loaded: what was derived from the old one (indexed by its numbers) goes. */
-export const onNewDay = (f) => {
+export const onNewDay = (f: () => void): void => {
   dayResets.push(f);
 };
 /** `f` runs when names are to be handed out in another language: what holds names goes. */
-export const onNewLang = (f) => {
+export const onNewLang = (f: () => void): void => {
   langResets.push(f);
 };
 
 /** The compact shapes file: int32 coordinates (1e-5 degrees) per GTFS shape id. */
-function parseShapes(ab) {
-  const out = readContainer(ab);
+function parseShapes(ab: ArrayBuffer): Shapes {
+  const out = readContainer<'shapeId' | 'shapeOff' | 'ptLat' | 'ptLon', ShapesHeader>(ab) as Shapes; // the index is added below
   out.index = new Map();
   for (let i = 0; i < out.shapeId.length; i++) out.index.set(out.shapeId[i], i);
   return out;
 }
 /** A message to the page (an answer, or a download's progress). */
-export const post = (m) => self.postMessage(m);
+export const post = (m: WorkerMessage): void => self.postMessage(m);
 /** The body of a response, streamed so the page sees the download move; `base` bytes were had before it. */
-async function readBody(res, label, base, total) {
+async function readBody(res: Response, label: string, base: number, total: number): Promise<Uint8Array<ArrayBuffer>> {
   if (!res.body || !res.body.getReader) {
     const u8 = new Uint8Array(await res.arrayBuffer());
     post({ type: 'progress', label, got: base + u8.length, total });
     return u8;
   }
   const reader = res.body.getReader(),
-    chunks = [];
+    chunks: Uint8Array[] = [];
   let got = 0;
   for (;;) {
     const { done, value } = await reader.read();
@@ -61,7 +75,7 @@ async function readBody(res, label, base, total) {
   return u8;
 }
 /** A whole file in one request (small files, and browsers without a cache for pieces). */
-async function fetchWhole(url, label) {
+async function fetchWhole(url: string, label: string): Promise<Uint8Array<ArrayBuffer>> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return readBody(res, label, 0, Number(res.headers.get('content-length')) || 0);
@@ -81,8 +95,8 @@ async function fetchWhole(url, label) {
  */
 const PIECE = 1 << 20,
   PARTS = 'wayli-parts-v1';
-const pieceKey = (url, i) => `${url}${url.includes('?') ? '&' : '?'}part=${i}`;
-async function fetchInPieces(url, label, total) {
+const pieceKey = (url: string, i: number): string => `${url}${url.includes('?') ? '&' : '?'}part=${i}`;
+async function fetchInPieces(url: string, label: string, total: number): Promise<Uint8Array<ArrayBuffer> | null> {
   const cache = await caches.open(PARTS);
   const path = new URL(url, self.location.href).pathname;
   for (const k of await cache.keys()) {
@@ -91,7 +105,7 @@ async function fetchInPieces(url, label, total) {
   }
   const n = Math.ceil(total / PIECE),
     u8 = new Uint8Array(total);
-  const keep = (i, bytes) =>
+  const keep = (i: number, bytes: Uint8Array<ArrayBuffer>): Promise<void> =>
     cache.put(
       pieceKey(url, i),
       new Response(bytes, {
@@ -135,7 +149,7 @@ async function fetchInPieces(url, label, total) {
   return u8;
 }
 /** The pieces of a file whose bytes did not make a readable file (a version change in mid-download): fetched anew next time. */
-async function dropPieces(url) {
+async function dropPieces(url: string): Promise<void> {
   try {
     const cache = await caches.open(PARTS);
     for (const k of await cache.keys()) if (k.url.startsWith(url)) await cache.delete(k);
@@ -144,7 +158,7 @@ async function dropPieces(url) {
   }
 }
 /** A data file's contents, unpacked: in pieces when its size is known and the browser has a cache (see fetchInPieces), whole otherwise. */
-async function fetchContainer(url, label, bytes) {
+async function fetchContainer(url: string, label: string, bytes?: number): Promise<ArrayBuffer> {
   const pieces = !!bytes && typeof caches !== 'undefined';
   let u8 = pieces ? await fetchInPieces(url, label, bytes) : null;
   if (!u8) u8 = await fetchWhole(url, label);
@@ -201,4 +215,6 @@ export const dataOps = {
     for (const f of langResets) f();
     return lang;
   },
-};
+} satisfies OpsPart<
+  'loadTimetable' | 'loadStreets' | 'setRailTimes' | 'loadBusTimes' | 'loadShapes' | 'loadPlaces' | 'setLang'
+>;

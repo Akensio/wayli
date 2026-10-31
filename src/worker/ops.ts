@@ -1,21 +1,31 @@
 // What the page may ask the data worker, and what each answer is: one table for both sides. The page's `call`
-// (client.ts) takes its argument and answer types from it; the worker's dispatch (worker.js) declares that it
-// implements it. The shapes are the ones the worker modules build (named after them below): a change there is a
-// change here, and the compiler then finds every reader on the page.
-import type { LatLon, PlanResult } from '../journey/types';
+// (client.ts) takes its argument and answer types from it; each worker module types its ops object with OpsPart and
+// the message loop (worker.ts) the merged table, so a missing, misnamed or mistyped operation is a compile error. The
+// shapes are the ones the worker modules build (named after them below): a change there is a change here, and the
+// compiler then finds every reader on the page. Where the page keeps a looser type of its own for a shape (a
+// state/*.ts type with an optional field the worker always sets), that type is the page's reading of this one.
+import type { LatLon } from '../journey/types';
 import type { Place, LineGroup, StopGroup } from '../state/search';
-import type { LineInfo, LineTime } from '../state/line';
-import type { StopInfo, Departure } from '../state/stop';
-import type { Dest, TrainRow } from '../state/station';
-import type { estimateDelay } from '../engine/delays.js';
+import type { StopInfo } from '../state/stop';
+import type { Dest } from '../state/station';
+import type { TimetableHeader } from '../engine/raptor.ts';
+import type { StreetMode } from '../engine/streets.ts';
+import type { Lang, PlaceKind, PlacesHeader } from '../engine/places.ts';
+import type { Vehicle, Bounds, SnapshotFilter } from '../engine/feed.ts';
+import type { DelayEstimate, RailTimes, VehicleReport } from '../engine/delays.ts';
+import type { Mode } from '../engine/modes.ts';
+import type { ShapesHeader } from './data.ts';
 
-/** A delay estimate for one vehicle (engine/delays.js estimateDelay), null when it cannot be told. */
-export type Estimate = ReturnType<typeof estimateDelay>;
+/** A reported vehicle (engine/feed.ts), as liveQuery hands them out; client.ts estimate takes one. */
+export type { Vehicle } from '../engine/feed.ts';
+/** A delay estimate for one vehicle (engine/delays.ts estimateDelay), null when it cannot be told. */
+export type Estimate = DelayEstimate | null;
 /** A point to search near, or to measure from. */
 export type Near = { lat: number; lon: number } | null;
-/** A stop as the worker hands it out (names.js stopOut), in the rider's language. */
+/** A stop as the worker hands it out (names.ts stopOut), in the rider's language: its index in the day's timetable,
+ *  its name and city, the number on its sign ('' where it has none) and where it is (degrees). */
 export type StopOut = { stop: number; name: string; city: string; code: string; lat: number; lon: number };
-/** One trip's stops with its times (trips.js tripStops), and what identifies it in the live data. */
+/** One trip's stops with its times (trips.ts tripStops), and what identifies it in the live data. */
 export type TripStop = StopOut & { arr: number; dep: number };
 export type TripStops = {
   trip: number;
@@ -29,17 +39,11 @@ export type TripStops = {
   firstDep: number;
   stops: TripStop[];
 };
-/** A reported vehicle as engine/feed.js parses it, or as the map sends it over (the times as milliseconds); the worker
- *  reads these fields of it. */
-export type Vehicle = {
-  lineRef: number | string | null;
-  lat: number | null;
-  lon: number | null;
-  recordedAt: Date | number;
-  scheduledStart: Date | number;
-  [k: string]: unknown;
-};
-/** Which trip a reported vehicle runs and how late it is (vehicles.js vehiclesStatus); trip -1 when it is not found. */
+/** A vehicle as the page sends it back to be placed on a trip (vehiclesStatus): the engine's report (delays.ts
+ *  VehicleReport: where it is and when, a train's trail and call) with the ride it is on, its line ref and its
+ *  scheduled start, each a Date or, once it crossed to the page and back, the milliseconds or ISO string of one. */
+export type RideReport = VehicleReport & { lineRef: number | null; scheduledStart: Date | number | string };
+/** Which trip a reported vehicle runs and how late it is (vehicles.ts vehiclesStatus); trip -1 when it is not found. */
 export type VehicleStatus =
   | { trip: -1 }
   | {
@@ -53,37 +57,46 @@ export type VehicleStatus =
       agency: string;
       routeType: number;
     };
-/** A ride's course between two of its stops with the stops along it (courses.js rideCourses); `course` says the
+/** A ride's course between two of its stops with the stops along it (courses.ts rideCourses); `course` says the
  *  path follows the road or the track, else it joins the stops straight and must not be drawn as a route. */
 export type RideCourse = { path: LatLon[]; course: boolean; stops: { lat: number; lon: number; stop: number }[] };
-/** A whole pattern's course with every stop as [lat, lon, name, stop] (courses.js patternCourse). */
+/** A whole pattern's course with every stop as [lat, lon, name, stop] (courses.ts patternCourse). */
 export type PatternCourse = { path: LatLon[]; course: boolean; stops: [number, number, string, number][] };
-/** What a point on the map is: an address, a place or a street from the address book, else the nearest stop, else a
- *  bare point (search.js reverse). */
-export type ReverseHit = {
+/** What a point on the map is (search.ts reverse): the nearest address, place or street from the address book, else
+ *  the nearest stop within 600 m, else the bare point; `distance` in metres from the point asked about. */
+export type ReverseHit = { name: string; kind: 'address' | 'poi' | 'street' | 'stop' | 'point'; distance: number };
+/** A stop or station from the stop search, as the place search lists it (search.ts search): with its platforms
+ *  (`stops`), the number on its sign, and `rank`, the score stops and address-book places are ordered by together. */
+export type SearchStopHit = {
+  kind: 'stop';
+  key: string;
   name: string;
-  kind: string;
-  distance: number;
-  lat?: number;
-  lon?: number;
-  [k: string]: unknown;
-};
-/** One hit of the place search: a stop (with its platforms), or an address-book entry (search.js search). */
-export type SearchHit = {
-  kind: string;
-  name: string;
-  city?: string;
+  city: string;
+  stops: number[];
   lat: number;
   lon: number;
-  stops?: number[];
-  code?: string;
-  platforms?: number;
-  approx?: number | null;
-  label?: string | null;
+  code: string;
+  platforms: number;
   rank: number;
-  [k: string]: unknown;
 };
-/** A line's label for a live-data line ref (lines.js routeLabels); `offDay` for a line not running on the loaded day. */
+/** An address-book hit as the place search lists it (engine/places.ts PlaceHit, with a place's kind named in `label`
+ *  and `rank` as above). */
+export type SearchPlaceHit = {
+  kind: PlaceKind;
+  name: string;
+  city: string;
+  lat: number;
+  lon: number;
+  approx: number | null;
+  label: string | null;
+  score: number;
+  rank: number;
+};
+/** One hit of the place search: a stop (with its platforms), or an address-book entry. */
+export type SearchHit = SearchStopHit | SearchPlaceHit;
+/** The words a point picked on the map is named with (search.ts localize), per language: "near {name}" and "point". */
+export type LocalizeWords = Record<Lang, { near: string; point: string }>;
+/** A line's label for a live-data line ref (lines.ts routeLabels); `offDay` for a line not running on the loaded day. */
 export type RouteLabel = {
   line: string;
   type: number;
@@ -92,38 +105,178 @@ export type RouteLabel = {
   route: number | null;
   offDay?: boolean;
 };
-/** A station found again on another day (stops.js findRecent). */
+/** A station found again on another day (stops.ts findRecent). */
 export type RecentStation = { name: string; stops: number[]; lat: number; lon: number };
+/** A departure from a stop (stops.ts departures): when (seconds on the service day), which line, trip and route id,
+ *  the trip's first departure, and whether its times are estimates. `last` is always false: a vehicle ending at the
+ *  stop is left out before it. */
+export type Departure = {
+  time: number;
+  line: string;
+  headsign: string;
+  routeType: number;
+  agency: string;
+  trip: number;
+  routeId: number | string | null;
+  estimated: boolean;
+  firstDep: number;
+  last: boolean;
+};
+/** A direct trip between two places (trips.ts trainsBetween, rideOptions): when it leaves and arrives, its
+ *  pattern and the positions boarded and left on it, the line, and what identifies the trip in the live data. */
+export type TrainRow = {
+  trip: number;
+  pattern: number;
+  dep: number;
+  arr: number;
+  stops: number;
+  boardPos: number;
+  alightPos: number;
+  line: string;
+  routeType: number;
+  agency: string;
+  routeId: number | string | null;
+  estimated: boolean;
+  headsign: string;
+  firstDep: number;
+  fromStop: number;
+  toStop: number;
+};
+/** One trip of a line at a stop (lines.ts lineTimes): when it leaves there and its first departure; `arr` is never set. */
+export type LineTime = {
+  trip: number;
+  dep: number;
+  arr: null;
+  routeId: number | string | null;
+  firstDep: number;
+  estimated: boolean;
+};
+/** One direction of a line (lines.ts lineInfo): its main pattern's stops and course, the day's trips, the other
+ *  directions. A train line is every train between the same two stations (`ends`), their route ids in `routeIds`. */
+export type LineInfo = {
+  route: number;
+  ref: string | null;
+  routeId: number | string | null;
+  routeIds: (number | string)[];
+  estimated: boolean;
+  mode: Mode;
+  line: string;
+  agency: string;
+  routeType: number;
+  headsign: string;
+  ends: [string, string] | null;
+  stops: StopOut[];
+  path: LatLon[];
+  pathKind: 'shape' | 'stops';
+  pattern: number | null;
+  trips: number;
+  first: number;
+  last: number;
+  variants: number;
+  others: { route: number; headsign: string }[];
+};
+/** One stop of a ride with the trip's times there (seconds on the service day, as the plan used them). */
+export type StopAlongOut = { stop: number; name: string; lat: number; lon: number; arr: number; dep: number };
+/** A ride as plan.ts legOut dresses the router's (engine/raptor.ts RawRideLeg): the page's RideLeg
+ *  (journey/types.ts), with every field the worker sets. The times are the ones the plan used, live-shifted when it
+ *  had live data; `schedDepart` and `schedArrive` keep the listed ones then. `seconds` is set only on a ride that
+ *  easierTransfers or slowerSiblings rewrote: the router's ride legs carry none, so it is undefined on the rest
+ *  (the page's LegBase.seconds reads it as always there). */
+export type RideLegOut = {
+  type: 'ride';
+  depart: number;
+  arrive: number;
+  seconds: number;
+  from: StopOut;
+  to: StopOut;
+  stops: number;
+  line: string;
+  headsign: string;
+  agency: string;
+  routeType: number;
+  trip: number;
+  routeId: number | string | null;
+  estimated: boolean;
+  route: number;
+  firstDep: number;
+  boardPos: number;
+  live: { delay: number; stale: boolean; seen: number } | null;
+  schedDepart: number;
+  schedArrive: number;
+  pattern: number;
+  alightPos: number;
+  path: LatLon[];
+  pathKind: 'shape' | 'stops';
+  stopsAlong: StopAlongOut[];
+};
+/** A way on foot or by bike as plan.ts dresses it: to the first stop (access), between stops (walk), from the last
+ *  (egress); `path` along the streets ('street') or the two ends joined ('straight'). */
+export type WalkLegOut = {
+  depart: number;
+  arrive: number;
+  seconds: number;
+  path: LatLon[];
+  pathKind: 'street' | 'straight';
+} & (
+  | { type: 'walk'; from: StopOut; to: StopOut }
+  | { type: 'access'; to: StopOut; mode: StreetMode }
+  | { type: 'egress'; from: StopOut; mode: StreetMode }
+);
+export type LegOut = RideLegOut | WalkLegOut;
+/** A journey as the worker hands it to the page (the page's Journey, journey/types.ts): `slower` marks an earlier
+ *  departure that arrives later than its card's first option (plan.ts slowerSiblings). */
+export type JourneyOut = {
+  depart: number;
+  arrive: number;
+  transfers: number;
+  walkSeconds: number;
+  legs: LegOut[];
+  slower?: boolean;
+};
+/** Journeys that board and alight at the same stops (plan.ts groupJourneys): their indices and the lines per leg. */
+export type PlanGroup = { options: number[]; lines: string[][] };
+/** What a plan answers (plan.ts plan; the page's PlanResult): the journeys and their groups; with none in the window,
+ *  `reason` when a place reaches no stop, else `nextAt`, when the next way leaves (null for none more that day);
+ *  `bikeOnly` the way by bike alone; `live` how many vehicles the plan was given and how many it matched to trips. */
+export type PlanOut = {
+  journeys: JourneyOut[];
+  groups: PlanGroup[];
+  reason?: 'noOriginStops' | 'noDestStops';
+  nextAt?: number | null;
+  bikeOnly?: { seconds: number; metres: number; path: LatLon[] } | null;
+  candidates?: number;
+  streets?: boolean;
+  live: { matched: number; vehicles: number } | null;
+  ms: number;
+};
 /** A data file to load: its address and, when known, its size (fetched in pieces then). */
 export type DataFileArgs = { url: string; bytes?: number };
-/** A box on the map. */
-export type Box = { south: number; west: number; north: number; east: number };
 
 export type Ops = {
-  // data.js: what the worker holds
+  // data.ts: what the worker holds
   loadTimetable: {
     args: DataFileArgs;
     result: {
       date: string;
-      counts: { trips: number; stops: number; [k: string]: number };
-      feed?: unknown;
+      counts: TimetableHeader['counts'];
+      feed: TimetableHeader['feed'];
       streets: boolean;
     };
   };
   loadStreets: { args: DataFileArgs; result: { nodes: number } };
-  loadShapes: { args: DataFileArgs; result: Record<string, number> };
-  loadPlaces: { args: DataFileArgs; result: Record<string, number> };
+  loadShapes: { args: DataFileArgs; result: ShapesHeader['counts'] };
+  loadPlaces: { args: DataFileArgs; result: PlacesHeader['counts'] };
   loadBusTimes: { args: DataFileArgs; result: { sections: number; built?: string } };
-  setRailTimes: { args: { m: unknown }; result: true };
-  setLang: { args: { lang: string }; result: string };
-  // search.js: places
+  setRailTimes: { args: { m: RailTimes | null | undefined }; result: true };
+  setLang: { args: { lang: Lang }; result: Lang };
+  // search.ts: places
   search: {
-    args: { q: string; limit?: number; lang?: string; near?: Near };
+    args: { q: string; limit?: number; lang?: Lang; near?: Near };
     result: { results: SearchHit[]; placesLoaded: boolean };
   };
   reverse: { args: { lat: number; lon: number }; result: ReverseHit };
-  localize: { args: { places: Place[]; lang: string; words: unknown }; result: (string | null | false)[] };
-  // plan.js: journeys
+  localize: { args: { places: Place[]; lang: Lang; words: LocalizeWords }; result: (string | null | false)[] };
+  // plan.ts: journeys
   plan: {
     args: {
       from: Place;
@@ -136,11 +289,11 @@ export type Ops = {
       maxTransfers?: number;
       maxWalk?: number;
       arriveBy?: boolean;
-      vehicles?: unknown[] | null;
+      vehicles?: Vehicle[] | null;
     };
-    result: PlanResult;
+    result: PlanOut;
   };
-  // stops.js: stops and stations
+  // stops.ts: stops and stations
   stopGroups: {
     args: { q?: string; mode?: string; near?: Near; limit?: number; from?: number[] | null };
     result: StopGroup[];
@@ -168,36 +321,45 @@ export type Ops = {
     args: { stop: number; stops?: number[] | null; fromTime: number; limit?: number };
     result: Departure[];
   };
-  // lines.js: lines
+  // lines.ts: lines
   routeLabels: { args: { ids: string[] }; result: Record<string, RouteLabel> };
   lineGroups: { args: { q?: string; mode?: string; near?: Near; limit?: number }; result: LineGroup[] };
   lineTimes: { args: { route: number; from: number[] }; result: LineTime[] };
   lineInfo: { args: { route: number }; result: LineInfo };
-  // trips.js: trips
+  // trips.ts: trips
   rideOptions: { args: { from: number[]; to: number[]; fromTime: number; limit?: number }; result: TrainRow[] };
   trainsBetween: { args: { from: number[]; to: number[]; fromTime: number; limit?: number }; result: TrainRow[] };
   tripFor: { args: { routeId: number | string | null; scheduledStart: string | number }; result: number };
   tripStops: { args: { trip: number }; result: TripStops };
-  // courses.js: where rides and walks run on the map
-  streetPaths: { args: { legs: { from: LatLon; to: LatLon; mode: string }[] }; result: (LatLon[] | null)[] };
+  // courses.ts: where rides and walks run on the map
+  streetPaths: { args: { legs: { from: LatLon; to: LatLon; mode: StreetMode }[] }; result: (LatLon[] | null)[] };
   ridePaths: {
     args: { legs: { pattern: number; boardPos: number; alightPos: number }[] };
     result: (LatLon[] | null)[];
   };
   rideCourses: { args: { legs: { pattern: number; boardPos: number; alightPos: number }[] }; result: RideCourse[] };
   patternCourse: { args: { patterns: number[] }; result: PatternCourse[] };
-  // vehicles.js: live vehicles
-  liveQuery: { args: { urls: string[]; filter: object }; result: Vehicle[] };
-  estimate: { args: { vehicle: Vehicle; stops: TripStop[]; day: string }; result: Estimate };
-  vehiclesStatus: { args: { vehicles: Vehicle[] }; result: VehicleStatus[] };
-  // traffic.js: how the roads run
-  traffic: { args: { box: Box }; result: GeoJSON.FeatureCollection };
+  // vehicles.ts: live vehicles
+  liveQuery: { args: { urls: string[]; filter: SnapshotFilter }; result: Vehicle[] };
+  estimate: { args: { vehicle: VehicleReport; stops: TripStop[]; day: string }; result: Estimate };
+  vehiclesStatus: { args: { vehicles: RideReport[] }; result: VehicleStatus[] };
+  // traffic.ts: how the roads run
+  traffic: { args: { box: Bounds }; result: GeoJSON.FeatureCollection };
 };
 export type OpName = keyof Ops;
 /** The arguments an operation takes, as `call` spells them: none for an operation without. */
 export type OpArgs<K extends OpName> = Ops[K]['args'] extends void ? [] : [args: Ops[K]['args']];
-/** What the worker's side has to provide: every operation by name (a missing or renamed one fails the build). The
- *  arguments and answers are declared here and read so on the page; against the worker's JavaScript the compiler can
- *  only infer (a default of null reads as "null only", an array of pairs as number[][]), so they are not checked
- *  there until the modules move to TypeScript. */
-export type OpsImpl = Record<OpName, (args: any) => unknown>;
+/** The operations a worker module (or the whole table, OpsPart<OpName>) provides: each by name, taking its arguments
+ *  and answering its result, at once or as a promise. A module's ops object is typed with its names, so one missing,
+ *  misnamed or answering another shape fails the build. */
+export type OpsPart<K extends OpName> = {
+  [N in K]: (args: Ops[N]['args']) => Ops[N]['result'] | Promise<Ops[N]['result']>;
+};
+/** A request as the page sends it (client.ts call): the operation, its arguments and the number its answer carries.
+ *  Over postMessage nothing checks it: the worker's loop looks the operation up by name and hands the arguments on. */
+export type Request = { id: number; op: OpName; args?: Ops[OpName]['args'] };
+/** What the worker sends the page: a request's answer or its error, or a download's progress (client.ts Progress:
+ *  `got` of `total` bytes of the file `label`, then `unpacking` while it is decompressed). */
+export type Reply = { id: number; result: unknown } | { id: number; error: string };
+export type ProgressMessage = { type: 'progress'; label: string; got: number; total?: number; unpacking?: boolean };
+export type WorkerMessage = Reply | ProgressMessage;

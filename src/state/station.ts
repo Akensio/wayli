@@ -22,7 +22,7 @@ export type TrainRow = {
   line: string;
   routeType: number;
   agency: string;
-  routeId: number | null;
+  routeId: number | string | null;
   headsign: string;
   firstDep: number;
   fromStop: number;

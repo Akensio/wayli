@@ -2,7 +2,7 @@
 // query, so the UI never blocks. This is the UI's end: one promise per request.
 import type { OpName, Ops, OpArgs, Estimate, Vehicle, TripStop, TripStops } from './ops';
 export type Progress = { label: string; got: number; total?: number; unpacking?: boolean };
-const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 /** Data files are addressed from the page, not from the worker's own folder under assets/. */
 export const DATA_URL = new URL('data/', location.href).href;
 const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();

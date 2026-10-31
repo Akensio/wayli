@@ -6,16 +6,17 @@ import { signal } from '@preact/signals';
 import { lang, t } from '../lib/i18n';
 import * as data from './data';
 import type { Place } from './search';
+import type { Lang } from '../engine/text.ts';
 
 /** Filled in by the app at start: the worker's lookup. A name, null (not found) or false (its data is still loading). */
-export const hooks = { localize: async (_places: Place[], _lang: string): Promise<(string | null | false)[]> => [] };
+export const hooks = { localize: async (_places: Place[], _lang: Lang): Promise<(string | null | false)[]> => [] };
 
 const known = signal(new Map<string, string | null>());
 const asked = new Map<string, Place>();
 let flushing = 0;
 const keyOf = (p: Place, L: string) => `${L}|${p.code ?? ''}|${p.lat ?? ''},${p.lon ?? ''}|${p.name}`;
 
-async function flush(L: string): Promise<void> {
+async function flush(L: Lang): Promise<void> {
   const batch = [...asked.entries()];
   asked.clear();
   try {

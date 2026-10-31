@@ -142,8 +142,12 @@ export type RecentTrip = {
   arriveBy: boolean;
 };
 /** What names a trip in the recent and saved lists: the two places and the bicycle choice. */
-export const tripKey = (x: { from: { name: string }; to: { name: string }; bike?: string; folding?: boolean }): string =>
-  `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
+export const tripKey = (x: {
+  from: { name: string };
+  to: { name: string };
+  bike?: string;
+  folding?: boolean;
+}): string => `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
 // a trip from a place to the same place (my location to my location) is no trip to keep
 const sameEnds = (x: { from?: { name: string } | null; to?: { name: string } | null }): boolean =>
   !!(x.from && x.to && x.from.name === x.to.name);

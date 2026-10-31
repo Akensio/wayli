@@ -205,7 +205,7 @@ the app).
   `map`), imported by `index.css` in that order, which decides ties.
 - `map/`: the one map (`index.ts`: init, the layers, taps), `view.ts`
   (what the map shows for what the sheet holds: what is drawn, the camera,
-  which live vehicles; pure, tested by `tools/mapview.test.mjs`),
+  which live vehicles; pure, tested by `tools/mapview.test.ts`),
   `render.ts` (carries that out from the panels' state, the one camera,
   aimed between the bar and the sheet, the locate button's included; a
   panel's own live vehicles go on after the drawing through `afterDraw`),

@@ -1,4 +1,4 @@
-// Backtest the app's train predictions on a morning's raw SIRI minute files: the app's own code (src/engine/delays.js
+// Backtest the app's train predictions on a morning's raw SIRI minute files: the app's own code (src/engine/delays.ts
 // estimateDelay, with the worker's frozen-fix filter and its reading of a train without GPS) is run every minute, and
 // each prediction of a later station is scored against when that train's GPS first came within 300 m of it.
 //
@@ -7,7 +7,7 @@
 // The minute files come from Hasadna (https://open-bus-siri-requester.hasadna.org.il/, YYYY/MM/DD/HH/MM.br, UTC), the
 // same files the relay passes to the app, and are kept in data/siri/. Errors are in minutes, + when the prediction was
 // later than the train. 2026-10-25: 2.1 minutes typical (median |error|) against the timetable's 3.1. The last line is
-// what the rider is shown (delays.js sureLate), against the timetable alone.
+// what the rider is shown (delays.ts sureLate), against the timetable alone.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { gunzipSync, brotliDecompressSync } from 'node:zlib';
 import { parseTimetable } from '../src/engine/raptor.ts';
@@ -145,7 +145,7 @@ for (const [ride, rs] of byRide) {
   truth.set(ride, arr);
 }
 
-// minute by minute, as the app sees the trains (src/worker/vehicles.js remember and snapVehicles)
+// minute by minute, as the app sees the trains (src/worker/vehicles.ts remember and snapVehicles)
 const posSince = new Map(),
   callSince = new Map(),
   trails = new Map(),
@@ -222,7 +222,7 @@ const q = (a, p) => {
   return s[Math.floor(p * (s.length - 1))];
 };
 // 85% at most: the 85th percentile of the signed error, the margin a shown lateness must leave to be late by at most
-// what is shown 85% of the time (delays.js SURE_MARGIN is read off this column, per distance ahead)
+// what is shown 85% of the time (delays.ts SURE_MARGIN is read off this column, per distance ahead)
 const line = (xs) =>
   xs.length
     ? `n=${String(xs.length).padStart(6)}  typical ${(q(xs.map(Math.abs), 0.5) / 60).toFixed(1)}  90% within ${(q(xs.map(Math.abs), 0.9) / 60).toFixed(1)}  median ${(q(xs, 0.5) / 60).toFixed(1)}  85% at most ${(q(xs, 0.85) / 60).toFixed(1)}  within a minute ${Math.round((100 * xs.filter((e) => Math.abs(e) <= 60).length) / xs.length)}%`
@@ -243,7 +243,7 @@ for (const [a, b] of [
     `    ${p2(a)}-${p2(b)} min ahead ${line(res.filter((x) => x.ahead >= a * 60 && x.ahead < b * 60).map((x) => x.err))}`,
   );
 console.log(`    without GPS     ${line(res.filter((x) => !x.gps).map((x) => x.err))}`);
-// what the rider is shown (delays.js liveAt: a train late only by what we are sure of), against the timetable alone
+// what the rider is shown (delays.ts liveAt: a train late only by what we are sure of), against the timetable alone
 const pct = (f, xs = res) => `${((100 * xs.filter(f).length) / Math.max(1, xs.length)).toFixed(1)}%`,
   big = res.filter((x) => x.real >= 180);
 console.log(

@@ -7,9 +7,9 @@ type LineStop = { stop: number; name: string; city?: string; lat: number; lon: n
 export type LineInfo = {
   route: number;
   ref?: string | null;
-  routeId?: number | null;
+  routeId?: number | string | null;
   estimated?: boolean;
-  routeIds?: number[];
+  routeIds?: (number | string)[];
   mode?: LineMode;
   ends?: [string, string] | null;
   line: string;

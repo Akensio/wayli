@@ -1,26 +1,39 @@
 // How the roads run now, from the buses on them: each bus is followed across the snapshots read (the last 15
 // minutes); between two of its positions at least 90 s apart it covered part of its trip, and the time that took
-// against the part's usual time (delays.js usualRun: learned by hour, else the timetable's) says how that stretch runs
-// now. Every section it covered gets that ratio. delays.js applies them to the sections ahead of other buses
+// against the part's usual time (delays.ts usualRun: learned by hour, else the timetable's) says how that stretch runs
+// now. Every section it covered gets that ratio. delays.ts applies them to the sections ahead of other buses
 // (roadFactor), and the map colours the sections by them (trafficIn).
-import { secondsOn } from '../engine/clock.js';
-import { hasBusTimes, setRoadsNow, usualRun, freeRun, median } from '../engine/delays.js';
-import { metres, scaleAt, nearestOnSegment, projectOnStops } from '../engine/geo.js';
-import { ridePath } from './courses.js';
-import { tt, onNewDay } from './data.js';
-import { tripFor, tripStopList } from './trips.js';
+import { secondsOn } from '../engine/clock.ts';
+import { hasBusTimes, setRoadsNow, usualRun, freeRun, median, type RoadRun, type TimedStop } from '../engine/delays.ts';
+import type { Bounds, Fix } from '../engine/feed.ts';
+import { metres, scaleAt, nearestOnSegment, projectOnStops, type LatLon, type Projection } from '../engine/geo.ts';
+import type { LatLon as PathPoint } from '../journey/types';
+import { ridePath } from './courses.ts';
+import { tt, onNewDay } from './data.ts';
+import { tripFor, tripStopList } from './trips.ts';
+import type { OpsPart } from './ops.ts';
+import type { SnapVehicle } from './vehicles.ts';
+
+/** A bus followed across the snapshots: its ride's line ref and scheduled start (what finds its trip), and its fixes,
+ *  oldest first. */
+type Track = { lineRef: string; start: Date; pts: Fix[] };
+/** A bus's run over a section (delays.ts RoadRun) with where that was: the pattern and the section's index on it. */
+type Run = RoadRun & { p: number; k: number };
+/** One section of a pattern's course (sectionsOf): its points, the length along them to each point (`cum`, metres),
+ *  the whole length, and a box around them [south, north, west, east] with a margin. */
+type Section = { pts: PathPoint[]; cum: number[]; len: number; box: [number, number, number, number] };
 
 const TRACK_MS = 900e3,
   PAIR_MS = 90e3;
-const tracks = new Map();
+const tracks = new Map<string, Track>();
 // ride -> { lineRef, start, pts: [[ms, lat, lon]] } oldest first
-let roads = new Map();
+let roads = new Map<string, Run[]>();
 // "code>code" -> [{ ratio, t, ride, p, k }]
 // A pattern's course cut at its stops, for placing a bus on it: per section the points, the length along them and a
 // box around them. Placed on the straight line between two stops instead, a bus on a long highway section (stops
 // kilometres apart, the road curving away from that line) was more than 120 m off it and left out: no traffic on Route
 // 4 or on half of Route 1 (Gadi, 2026-10-24).
-const courseSections = new Map();
+const courseSections = new Map<number, Section[] | null>();
 // a new day numbers its patterns anew: the courses and the tracks of the old one would draw the wrong roads
 onNewDay(() => {
   courseSections.clear();
@@ -28,10 +41,10 @@ onNewDay(() => {
   roads = new Map();
   setRoadsNow(roads);
 });
-function sectionsOf(p) {
-  if (courseSections.has(p)) return courseSections.get(p);
-  const ns = tt.patStopsOff[p + 1] - tt.patStopsOff[p],
-    out = [];
+function sectionsOf(p: number): Section[] | null {
+  if (courseSections.has(p)) return courseSections.get(p) ?? null; // null is kept for a pattern without a course
+  const ns = tt!.patStopsOff[p + 1] - tt!.patStopsOff[p],
+    out: Section[] = [];
   for (let k = 0; k < ns - 1; k++) {
     const pts = ridePath(p, k, k + 1);
     if (!pts) {
@@ -63,11 +76,11 @@ function sectionsOf(p) {
 }
 /** Where a position lies along a trip: the section and how far along it, and how far off the course (the straight
  *  lines between stops where the pattern has no course). */
-function projectOnCourse(lat, lon, p, stops) {
+function projectOnCourse(lat: number, lon: number, p: number, stops: readonly LatLon[]): Projection {
   const secs = sectionsOf(p);
   if (!secs || secs.length !== stops.length - 1) return projectOnStops(lat, lon, stops);
   const { kx, ky } = scaleAt(lat);
-  let best = { index: 0, frac: 0, metres: Infinity };
+  let best: Projection = { index: 0, frac: 0, metres: Infinity };
   secs.forEach((sec, k) => {
     const b = sec.box;
     if (lat < b[0] || lat > b[1] || lon < b[2] || lon > b[3]) return;
@@ -90,7 +103,7 @@ function projectOnCourse(lat, lon, p, stops) {
   });
   return best.metres === Infinity ? projectOnStops(lat, lon, stops) : best;
 }
-export function noteRoads(vehicles) {
+export function noteRoads(vehicles: SnapVehicle[]): void {
   if (!tt || !hasBusTimes()) return; // without the learned times there is nothing to compare with
   let newest = 0;
   for (const v of vehicles) {
@@ -108,13 +121,13 @@ export function noteRoads(vehicles) {
     if (!tr.pts.length) tracks.delete(k);
   }
   const day = tt.header.date,
-    out = new Map();
+    out = new Map<string, Run[]>();
   for (const [ride, tr] of tracks) {
     if (tr.pts.length < 2) continue;
     const trip = tripFor(tr.lineRef, secondsOn(tr.start, day));
     if (trip < 0) continue;
     const { p, stops } = tripStopList(trip);
-    let a = null;
+    let a: { t: number; x: number } | null = null;
     for (const pt of tr.pts) {
       const pr = projectOnCourse(pt[1], pt[2], p, stops);
       if (pr.metres > 120) continue;
@@ -136,7 +149,7 @@ export function noteRoads(vehicles) {
           for (let k = Math.floor(a.x); k < Math.min(stops.length - 1, Math.ceil(at.x)); k++) {
             const key = `${stops[k].code}>${stops[k + 1].code}`;
             if (!out.has(key)) out.set(key, []);
-            out.get(key).push({ ratio, t: at.t, ride, p, k });
+            out.get(key)!.push({ ratio, t: at.t, ride, p, k });
           }
         }
       }
@@ -149,17 +162,20 @@ export function noteRoads(vehicles) {
 /**
  * Traffic in a box, from the buses: each section that at least two buses ran in the last 15 minutes, drawn along its
  * course, with how its time now (the median of their ratios to its usual time, times that) compares with its best in
- * the day's hours (delays.js freeRun): level 0 free (up to 1.5 times), 1 slow (to 2.2), 2 jammed (to 3.2), 3 stuck. On a
+ * the day's hours (delays.ts freeRun): level 0 free (up to 1.5 times), 1 slow (to 2.2), 2 jammed (to 3.2), 3 stuck. On a
  * Thursday in Tel Aviv (2026-10-22) that made 10:00 mostly free and 17:00 a mix with jams where they were.
  */
-function trafficIn(box) {
+function trafficIn(box: Bounds): GeoJSON.FeatureCollection {
   if (!tt || !roads.size) return { type: 'FeatureCollection', features: [] };
   const day = tt.header.date,
-    features = [];
+    features: GeoJSON.Feature[] = [];
   let newest = 0;
   for (const v of roads.values()) for (const x of v) if (x.t > newest) newest = x.t;
-  const inBox = (s) =>
-    tt.stopLat[s] >= box.south && tt.stopLat[s] <= box.north && tt.stopLon[s] >= box.west && tt.stopLon[s] <= box.east;
+  const inBox = (s: number): boolean =>
+    tt!.stopLat[s] >= box.south &&
+    tt!.stopLat[s] <= box.north &&
+    tt!.stopLon[s] >= box.west &&
+    tt!.stopLon[s] <= box.east;
   const nowSec = secondsOn(new Date(newest), day);
   for (const [key, v] of roads) {
     const recent = v.filter((x) => x.t > newest - TRACK_MS);
@@ -179,9 +195,11 @@ function trafficIn(box) {
     if (!free) continue;
     const rs = recent.map((x) => x.ratio),
       m = median(rs);
-    const stops = [
-      { code: c1, arr: 0, dep: 0 },
-      { code: c2, arr: 0, dep: 0 },
+    // the section's two stops by code, for its usual time (usualRun reads the codes and the times only; the position
+    // TimedStop asks for is not used here)
+    const stops: TimedStop[] = [
+      { code: c1, arr: 0, dep: 0, lat: 0, lon: 0 },
+      { code: c2, arr: 0, dep: 0, lat: 0, lon: 0 },
     ];
     const now = m * usualRun(stops, 0, nowSec, day),
       x = now / free;
@@ -206,4 +224,4 @@ export const trafficOps = {
   traffic({ box }) {
     return trafficIn(box);
   },
-};
+} satisfies OpsPart<'traffic'>;

@@ -8,8 +8,6 @@
     "jsxImportSource": "preact",
     "strict": true,
     "noUncheckedIndexedAccess": false,
-    "allowJs": true,
-    "checkJs": false,
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
@@ -19,6 +17,6 @@
     "resolveJsonModule": true,
     "types": ["node", "geojson", "vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.js", "tools/**/*.ts", "vite.config.ts", "vitest.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tools/**/*.ts", "vite.config.ts", "vitest.config.ts"],
   "exclude": ["src/public", "node_modules", "dist"]
 }

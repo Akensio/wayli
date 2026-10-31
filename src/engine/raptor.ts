@@ -27,7 +27,7 @@ export type Route = [
   longName: string,
   agency: string,
   type: number,
-  routeId: number | string | null,
+  routeId: number | string | null, // the feed's route_id (a number in Israel's GTFS, text kept as text); null for a line with estimated times
   lineCode: string | null,
   estimated: number | boolean,
 ];
@@ -474,7 +474,7 @@ export type ProfileOptions = {
 };
 
 /**
- * A leg of a journey as the router finds it (the worker, src/worker/plan.js, dresses it into the page's Leg,
+ * A leg of a journey as the router finds it (the worker, src/worker/plan.ts, dresses it into the page's Leg,
  * src/journey/types.ts). Times are seconds on the service day; `from` and `to` are stop indices, -1 for the door.
  */
 /** From the door to the first stop; `origin` is the index, in the query's origins, of the stop it reaches. */

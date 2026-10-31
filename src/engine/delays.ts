@@ -6,7 +6,7 @@ import { secondsOn } from './clock.ts';
 import { projectOnStops, type Projection } from './geo.ts';
 import type { Fix } from './feed.ts';
 
-/** A stop of a trip as the estimates read it (worker/trips.js tripStopList; the page's TripStop carries more): where
+/** A stop of a trip as the estimates read it (worker/trips.ts tripStopList; the page's TripStop carries more): where
  *  it is (degrees), its listed times there (seconds on the service day; a train's arr = dep), and its code in the feed,
  *  which names the learned sections ("code>code"). A stop without one keeps the timetable's time to the next. */
 export type TimedStop = { lat: number; lon: number; arr: number; dep: number; code?: string | number | null };
@@ -306,7 +306,7 @@ export function freeRun(code1: string | number, code2: string | number, day: str
 // fading back to the usual time for sections the bus reaches more than half an hour from now. Measured on held-out days
 // (pipeline/bustimes.py --score).
 /** How a section ran lately: a bus's time over it against its usual time (`ratio`), when (`t`, ms since the epoch) and
- *  which ride (`ride`; a bus's own runs are left out of its factor). The data worker builds these (worker/traffic.js
+ *  which ride (`ride`; a bus's own runs are left out of its factor). The data worker builds these (worker/traffic.ts
  *  noteRoads) and may add fields of its own. */
 export type RoadRun = { ratio: number; t: number; ride: string | number };
 /** By section ("code>code"), the buses' runs over it in the last 15 minutes. */

@@ -36,7 +36,7 @@ export type Departure = {
   agency?: string;
   line: string;
   headsign: string;
-  routeId?: number | null;
+  routeId?: number | string | null;
   firstDep?: number;
   estimated?: boolean;
 };

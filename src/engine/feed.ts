@@ -1,5 +1,5 @@
 // The live vehicles. The relay (relay/relay.js) serves Hasadna's newest raw SIRI snapshot, about a minute old, which
-// the data worker reads (worker/vehicles.js); when it cannot, Hasadna's Open Bus API answers instead
+// the data worker reads (worker/vehicles.ts); when it cannot, Hasadna's Open Bus API answers instead
 // (open-bus-stride-api.hasadna.org.il, CC-BY: the Ministry of Transport's SIRI feed recorded, with open CORS, no
 // key), 15 minutes behind at rush hour. What leaves the phone: the line numbers and the area the rider looks at. One
 // switch in settings turns live data off. SIRI's line_ref is the GTFS route_id and a ride is known by its scheduled
@@ -10,7 +10,7 @@ const STRIDE = 'https://open-bus-stride-api.hasadna.org.il';
 
 /** One fix of a vehicle: when (ms since the epoch), and where (degrees). */
 export type Fix = [ms: number, lat: number, lon: number];
-/** A reported vehicle, as the relay's snapshot gives it (worker/vehicles.js snapVehicles) or as Hasadna's rows are
+/** A reported vehicle, as the relay's snapshot gives it (worker/vehicles.ts snapVehicles) or as Hasadna's rows are
  *  read here (norm). The ride it is on is its line plus its scheduled start, which is how it is matched to a trip. */
 export type Vehicle = {
   /** SIRI line_ref = the GTFS route_id: a string from the snapshot, a number from Hasadna's rows. */
