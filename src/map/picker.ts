@@ -8,11 +8,11 @@ import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as search from '../state/search';
 import { lastPos } from '../state/position';
-import type { Place } from '../journey/types';
+import type { Place } from '../model/place';
 import { mapReady, pick } from './shared';
 import { openPopup, closePopup } from './popups';
 import { PickBubble } from './bubbles';
-import { reverseName } from '../journey/format';
+import { reverseName } from '../display/places';
 import { maplibregl } from './maplibre';
 
 let resolver: ((p: Place | null) => void) | null = null;

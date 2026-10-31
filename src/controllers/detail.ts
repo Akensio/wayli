@@ -3,18 +3,17 @@
 import * as clock from '../engine/clock.ts';
 import * as delays from '../engine/delays.ts';
 import * as search from '../state/search';
-import { t } from '../lib/i18n';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as detail from '../state/detail';
 import * as nav from '../state/nav';
 import * as map from '../map/index';
-import { liveBadge } from '../journey/format';
-import type { Journey, Query, RideLeg } from '../journey/types';
+import type { Journey, RideLeg } from '../model/journey';
+import type { Query } from '../model/query';
 import { liveRides, seeRide } from './liverides';
 import type { TrainRow, LiveTrain } from '../state/station';
 import { recentViews } from '../state/store.ts';
-import { isRide } from '../journey/types';
+import { isRide } from '../model/journey';
 import { panelSession } from './session';
 import { debug } from '../lib/debug';
 
@@ -50,7 +49,7 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
       const seen = await seeRide(l, day, true);
       if (!session.isCurrent(my)) return;
       if (!seen) {
-        detail.setBadge(trip, { text: t('liveFail'), cls: '' });
+        detail.setLive(trip, 'failed');
         return;
       }
       const { vs, statuses, v, ts, est } = seen;
@@ -61,10 +60,7 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
         mine: trip,
         fallback: { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route },
       });
-      detail.setBadge(
-        trip,
-        v && ts ? liveBadge(delays.liveAt(est, ts.stops, l.boardPos)) : { text: t('liveNoVehicle'), cls: '' },
-      );
+      detail.setLive(trip, { at: v && ts ? delays.liveAt(est, ts.stops, l.boardPos) : null });
     }),
   );
 }

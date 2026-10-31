@@ -10,11 +10,11 @@ import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { FromTo } from '../../widgets/FromTo';
 import { Fold } from '../../widgets/Fold';
-import { stopsText } from '../../journey/format';
-import { agencyName } from '../../journey/agencies';
-import { isRide } from '../../journey/types';
-import type { Leg, RideLeg } from '../../journey/types';
-import type { Badge } from '../../journey/format';
+import { stopsText } from '../../display/travel';
+import { agencyName } from '../../display/operators';
+import { isRide } from '../../model/journey';
+import type { Leg, RideLeg } from '../../model/journey';
+import type { Badge } from '../../display/live';
 
 type Props = {
   l: Leg;

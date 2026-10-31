@@ -3,7 +3,7 @@
 import { signal } from '@preact/signals';
 import type { Dest } from '../worker/ops.ts';
 export type { StopLine, StopInfo, Departure } from '../worker/ops.ts';
-export type { SavedStop } from '../journey/types';
+export type { SavedStop } from './store.ts';
 import type { StopInfo, Departure } from '../worker/ops.ts';
 import { unset } from '../lib/unset';
 

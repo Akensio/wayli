@@ -6,10 +6,10 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
-import { routeColor } from '../../journey/colors';
-import { legMinutes } from '../../journey/format';
-import { isRide } from '../../journey/types';
-import type { Leg, WalkLeg, StopAlong } from '../../journey/types';
+import { routeColor } from '../../display/colors';
+import { legMinutes } from '../../display/time';
+import { isRide } from '../../model/journey';
+import type { Leg, WalkLeg, StopAlong } from '../../model/journey';
 import { LineChip } from '../../widgets/LineChip';
 import { Fold } from '../../widgets/Fold';
 

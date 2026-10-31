@@ -6,10 +6,10 @@ import { LegFrame, StopsAlongFold, legTime } from '../detail/LegFrame';
 import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { FromTo } from '../../widgets/FromTo';
-import { stopsText } from '../../journey/format';
-import { isRide } from '../../journey/types';
-import type { Leg } from '../../journey/types';
-import type { Badge } from '../../journey/format';
+import { stopsText } from '../../display/travel';
+import { isRide } from '../../model/journey';
+import type { Leg } from '../../model/journey';
+import type { Badge } from '../../display/live';
 import type { LegLive } from '../../state/follow';
 
 type Change = NonNullable<LegLive['change']>;

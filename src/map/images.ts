@@ -1,6 +1,6 @@
 // Marker images drawn on canvas at 2x: station badges and the vehicles' heading arrows.
 import { ICONS, modeIcon } from '../widgets/icons';
-import { routeColor } from '../journey/colors';
+import { routeColor } from '../display/colors';
 
 export const BADGE_KINDS = ['rail', 'lrt', 'station', 'bus'] as const;
 /** A station badge (rail, lrt, bus station) or the smaller bus-stop badge: a white disc with a coloured ring and the mode's glyph. */

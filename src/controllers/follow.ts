@@ -18,7 +18,7 @@ import {
   stepForward,
   stepBack,
   connections,
-} from '../journey/follow.ts';
+} from '../following/follow.ts';
 import { settings, activeTrip } from '../state/store.ts';
 import { t } from '../lib/i18n';
 import { dateOf } from '../lib/time';
@@ -29,17 +29,18 @@ import * as nav from '../state/nav';
 import * as follow from '../state/follow';
 import { notePos } from '../state/position';
 import * as map from '../map/index';
-import { lineText, liveBadge } from '../journey/format';
-import type { Journey, Query, RideLeg } from '../journey/types';
+import { lineText } from '../display/travel';
+import type { Journey, RideLeg } from '../model/journey';
+import type { Query } from '../model/query';
 import type { ActiveTrip, Alt, Position, LegLive } from '../state/follow';
-import type { FollowView, ReplanOrigin } from '../journey/follow.ts';
+import type { FollowView, ReplanOrigin } from '../following/follow.ts';
 import type { LiveTime } from '../engine/delays.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { seeRide } from './liverides';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
-import { whyReplan, pickAlternative, REPLAN } from '../journey/replan.ts';
-import { statusLine } from '../journey/status.ts';
-import { isRide } from '../journey/types';
+import { whyReplan, pickAlternative, REPLAN } from '../following/replan.ts';
+import { statusLine } from '../following/status.ts';
+import { isRide } from '../model/journey';
 import { debug } from '../lib/debug';
 
 type LiveEst = {
@@ -255,7 +256,7 @@ async function followLive(): Promise<void> {
       const aboard = a.state.onBoard,
         at = aboard ? atAlight : atBoard;
       fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive : leg.depart) } : null;
-      follow.liveBadge.value = v ? liveBadge(at) : null;
+      follow.nextLive.value = v ? { at } : null;
     }
     // the ride's stops at their shown times, the ones the vehicle has passed marked (the current ride's list opens)
     const along = leg.stopsAlong || [];
@@ -266,7 +267,7 @@ async function followLive(): Promise<void> {
             return { time: x ? x.time : s.arr, passed: !!x && x.passed };
           })
         : null;
-    legLive[i] = { badge: liveBadge(atBoard), change: null, stops };
+    legLive[i] = { live: { at: atBoard }, change: null, stops };
     times[i] = {
       depart: atBoard ? atBoard.time : undefined,
       arrive: atAlight && !atAlight.passed ? atAlight.time : undefined,
@@ -277,7 +278,7 @@ async function followLive(): Promise<void> {
   for (const k of Object.keys(ch)) {
     const i = +k;
     if (legLive[i]) legLive[i].change = ch[i];
-    else legLive[i] = { badge: null, change: ch[i], stops: null };
+    else legLive[i] = { live: null, change: ch[i], stops: null };
   }
   fol.legLive = legLive;
   follow.legLive.value = legLive;
@@ -311,7 +312,7 @@ async function replanCheck(force = false): Promise<void> {
     }
     return;
   }
-  // reasons to look (journey/replan.ts): the ride is late, a change ahead is missed, its vehicle is missing close to
+  // reasons to look (following/replan.ts): the ride is late, a change ahead is missed, its vehicle is missing close to
   // departure, or five minutes passed
   const nextRide = a.journey.legs.slice(origin.rideStep).find((l) => l.type === 'ride');
   const decision = whyReplan({
@@ -397,7 +398,7 @@ export function switchJourney(alt: Alt): void {
   fol.liveEst = null;
   fol.toldKey = null;
   fol.replanAt = Date.now();
-  follow.liveBadge.value = null;
+  follow.nextLive.value = null;
   map.redrawMap(true);
   stepFollow();
   followLive();
@@ -426,7 +427,7 @@ export function closeFollow(end: boolean): void {
     else activeTrip.set({ ...fol.a, view: 'hidden' });
     fol = null;
     follow.publish(null);
-    follow.liveBadge.value = null;
+    follow.nextLive.value = null;
     tripStatus(null);
   }
   map.showVehicles('follow', 'ride', null);

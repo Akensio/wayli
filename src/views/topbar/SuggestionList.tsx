@@ -12,9 +12,9 @@ import { placeName } from '../../state/names';
 import { savedPlaces, recentPlaces } from '../../state/store.ts';
 import * as search from '../../state/search';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
-import type { View } from '../../journey/types';
-import { agencyName } from '../../journey/agencies';
-import { distText } from '../../journey/format';
+import type { View } from '../../state/store.ts';
+import { agencyName } from '../../display/operators';
+import { distText } from '../../display/places';
 import type { SearchHit } from '../../worker/ops.ts';
 import type { Rows } from '../../controllers/suggest';
 

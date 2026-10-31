@@ -4,14 +4,14 @@
 import { signal, computed, effect } from '@preact/signals';
 import { t } from '../lib/i18n';
 import * as settings from './settings';
-import type { Place } from '../journey/types';
+import type { Place } from '../model/place';
 import * as query from './query';
 import { from, to, sides, timeTouched } from './query';
 import { unset } from '../lib/unset';
 
 export type { LineGroup, StopGroup } from '../worker/ops.ts';
-export type { Place } from '../journey/types';
-export { stopPlace } from '../journey/types';
+export type { Place } from '../model/place';
+export { stopPlace } from '../model/place';
 export type Side = 'from' | 'to';
 type OptPanel = '' | 'time' | 'bike';
 

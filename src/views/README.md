@@ -8,7 +8,7 @@ the work it starts); small shared pieces come from `widgets/`.
 |---|---|---|
 | `topbar/` | The search bar: the trip search's two boxes, the line and stop searches, the suggestion list, the time and bicycle options, the summary. | `TopBar`, `SearchField` (one box: its typing and its list's frame), `SuggestionList` (the list's rows), `Popovers` (when, bicycle) |
 | `results/` | The plan screen: the result cards, sorting, the line in the collapsed sheet, the history drawer (Trips, Lines, Stops). | `PlanScreen`, `Results`, `JourneyCard`, `LegChips`, `SortMenu`, `PeekLine`, `Recent` |
-| `detail/` | One journey: its legs, the ride options of each ride. | `Detail`, `DetailLeg`, `LegFrame` (a leg's frame, shared with `follow/`), `RideOptions` |
+| `detail/` | One journey: its legs, the ride options of each ride. | `Detail`, `DetailLeg`, `LegFrame` (a leg's frame, shared with `follow/`), `RideOptions`, `share` (a journey as text and a link), `pay` (the link to HopOn) |
 | `follow/` | The trip being followed, and the bar to resume it. | `Follow`, `FollowLeg`, `ResumeBar` |
 | `stop/` | A stop or a station: its lines, departures, where its trains go. | `StopDetail` |
 | `line/` | A line: its course, stops, timetable at your stop, vehicles. | `LineDetail` |

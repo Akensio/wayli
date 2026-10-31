@@ -4,7 +4,7 @@
 import { Icon } from '../../widgets/Icon';
 import { Wheel } from '../../widgets/Wheel';
 import { t, lang } from '../../lib/i18n';
-import { bikeText } from '../../journey/format';
+import { bikeText } from '../../display/travel';
 import { dayShort, calendarOf, calToday, two } from '../../lib/time';
 import * as search from '../../state/search';
 import * as query from '../../state/query';

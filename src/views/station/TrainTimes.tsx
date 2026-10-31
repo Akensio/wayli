@@ -4,7 +4,9 @@ import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 
 import * as st from '../../state/station';
-import { dur, liveClass, railWords } from '../../journey/format';
+import { dur } from '../../display/time';
+import { liveClass } from '../../display/live';
+import { railWords } from '../../display/travel';
 import { now } from '../../state/clock';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';

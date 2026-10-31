@@ -18,8 +18,8 @@ import { lastPos, getPosition } from '../state/position';
 import * as map from '../map/index';
 import { toast } from '../widgets/toast';
 import type { Place } from '../state/search';
-import type { Query } from '../journey/types';
-import { planWindow, withLive } from '../journey/query.ts';
+import type { Query } from '../model/query';
+import { planWindow, withLive } from '../model/query';
 
 import { openLine } from './line';
 import { openStop } from './stop';
@@ -107,7 +107,7 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
     arriveBy = query.timeMode.value === 'arrive';
   const at = query.atSeconds();
   const isNow = !query.timeTouched.value && !arriveBy;
-  const { fromTime, toTime } = planWindow(at, arriveBy, isNow); // journey/query.ts
+  const { fromTime, toTime } = planWindow(at, arriveBy, isNow); // model/query.ts
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   search.busy.value = true;
   results.status.value = 'planning';

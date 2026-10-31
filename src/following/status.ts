@@ -1,7 +1,7 @@
 // The notification's line for a trip being followed (controllers/alerts.ts tripStatus): what to do next, in words.
 import { t } from '../lib/i18n';
 import { fmt } from '../lib/time';
-import { lineText } from './format';
+import { lineText } from '../display/travel';
 import type { FollowView } from './follow.ts';
 
 /** The title and the body for the step the rider is at, or null once arrived. `liveTime`: the vehicle's live time at

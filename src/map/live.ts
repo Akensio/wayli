@@ -4,8 +4,8 @@
 import type { Map as MLMap } from 'maplibre-gl';
 import * as feed from '../engine/feed.ts';
 import { t } from '../lib/i18n';
-import { routeColor, textOn } from '../journey/colors';
-import { lineText } from '../journey/format';
+import { routeColor, textOn } from '../display/colors';
+import { lineText } from '../display/travel';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as settings from '../state/settings';

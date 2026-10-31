@@ -2,11 +2,11 @@
 // and pins, the faded whole lines of its rides, the other ways muted under it. (What is drawn when, and the camera:
 // map/view.ts decides, map/render.ts carries it out.)
 import type { Map as MLMap, Marker, LngLatBounds } from 'maplibre-gl';
-import { legColor } from '../journey/colors';
+import { legColor } from '../display/colors';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as results from '../state/results';
-import type { Drawable, DrawLeg, StopRef } from '../journey/types';
+import type { Drawable, DrawLeg, StopRef } from '../model/journey';
 import { state, EMPTY, stopKindProp, stale } from './shared';
 import type { PathPoint } from '../engine/geo.ts';
 import { BADGE_KINDS, stationImage } from './images';

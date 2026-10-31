@@ -5,7 +5,7 @@
 // are markers, not chips: map/render.ts, with the same inside.)
 import { Icon } from './Icon';
 import type { IconName } from './icons';
-import { chipColors } from '../journey/colors';
+import { chipColors } from '../display/colors';
 import { LineName } from './RailLogo';
 import { modeOfType, type Mode } from '../engine/modes.ts';
 import { Tappable } from './Tappable';

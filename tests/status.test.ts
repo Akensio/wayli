@@ -1,8 +1,8 @@
-// The notification's line while following (src/journey/status.ts): the live time when there is one, none once arrived.
+// The notification's line while following (src/following/status.ts): the live time when there is one, none once arrived.
 import { test, expect } from 'vitest';
-import { statusLine } from '../src/journey/status.ts';
-import type { FollowView } from '../src/journey/follow.ts';
-import type { RideLeg } from '../src/journey/types';
+import { statusLine } from '../src/following/status.ts';
+import type { FollowView } from '../src/following/follow.ts';
+import type { RideLeg } from '../src/model/journey';
 
 const leg = {
   type: 'ride',

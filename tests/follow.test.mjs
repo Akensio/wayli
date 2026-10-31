@@ -1,7 +1,7 @@
-// The trip-following state machine's manual steps (src/journey/follow.ts): skip and back, on board or not.
+// The trip-following state machine's manual steps (src/following/follow.ts): skip and back, on board or not.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { initialState, advance, stepForward, stepBack, canStepBack, connections } from '../src/journey/follow.ts';
+import { initialState, advance, stepForward, stepBack, canStepBack, connections } from '../src/following/follow.ts';
 
 test('follow: the manual steps of a followed trip', () => {
   const T = (h, m) => h * 3600 + m * 60;

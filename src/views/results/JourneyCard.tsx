@@ -10,11 +10,13 @@ import { t } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import { now } from '../../state/clock';
 import * as results from '../../state/results';
-import { dur, transfersText, lineText, leaveText, inText, liveClass } from '../../journey/format';
+import { dur, leaveText, inText } from '../../display/time';
+import { transfersText, lineText } from '../../display/travel';
+import { liveClass } from '../../display/live';
 import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
-import type { RideLeg } from '../../journey/types';
-import { ridesOf } from '../../journey/types';
+import type { RideLeg } from '../../model/journey';
+import { ridesOf } from '../../model/journey';
 import { openDetail } from '../../controllers/detail';
 import { Tappable } from '../../widgets/Tappable';
 

@@ -1,7 +1,7 @@
 // What the map modules share: the one map under everything, its markers, the stops that are stations, and
 // what the map needs from the rest of the app.
 import type { Map as MLMap, Marker, Popup } from 'maplibre-gl';
-import type { Place } from '../journey/types';
+import type { Place } from '../model/place';
 import * as nav from '../state/nav';
 import * as sheet from '../state/sheet';
 import * as results from '../state/results';

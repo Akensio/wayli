@@ -2,7 +2,7 @@
 // worth proposing. The controller (controllers/follow.ts) gathers what it needs, asks the planner and shows the answer;
 // every threshold that decides is here, with its unit, and tested (tests/replan.test.ts).
 import { ridesKey } from './follow.ts';
-import type { Journey } from './types';
+import type { Journey } from '../model/journey';
 
 export const REPLAN = {
   lateSec: 180, // the ride moved this much since it was planned

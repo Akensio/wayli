@@ -13,7 +13,7 @@ import type { DelayEstimate, RailTimes, VehicleReport } from '../engine/delays.t
 import type { Mode } from '../engine/modes.ts';
 
 /** A place as the worker takes it to plan from or to, or to name: its name, the point when it has one, a stop's or a
- *  station's stops, and what kind of place it is (the page's Place, journey/types.ts, adds what only the page uses). */
+ *  station's stops, and what kind of place it is (the page's Place, model/journey.ts, adds what only the page uses). */
 export type PlanPlace = {
   name: string;
   lat?: number | null;
@@ -226,7 +226,7 @@ export type LineInfo = {
 /** One stop of a ride with the trip's times there (seconds on the service day, as the plan used them). */
 export type StopAlongOut = { stop: number; name: string; lat: number; lon: number; arr: number; dep: number };
 /** A ride as plan.ts legOut dresses the router's (engine/raptor.ts RawRideLeg): the page's RideLeg
- *  (journey/types.ts), with every field the worker sets. The times are the ones the plan used, live-shifted when it
+ *  (model/journey.ts), with every field the worker sets. The times are the ones the plan used, live-shifted when it
  *  had live data; `schedDepart` and `schedArrive` keep the listed ones then. `seconds` is set only on a ride that
  *  easierTransfers or slowerSiblings rewrote: the router's ride legs carry none, so it is undefined on the rest
  *  (the page's LegBase.seconds reads it as always there). */
@@ -271,7 +271,7 @@ export type WalkLegOut = {
   | { type: 'egress'; from: StopOut; mode: StreetMode }
 );
 export type LegOut = RideLegOut | WalkLegOut;
-/** A journey as the worker hands it to the page (the page's Journey, journey/types.ts): `slower` marks an earlier
+/** A journey as the worker hands it to the page (the page's Journey, model/journey.ts): `slower` marks an earlier
  *  departure that arrives later than its card's first option (plan.ts slowerSiblings). */
 export type JourneyOut = {
   depart: number;

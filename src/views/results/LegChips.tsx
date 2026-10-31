@@ -1,7 +1,8 @@
 // The chips of a journey's legs: a line in its operator's colour, a walk or a ride on the bicycle with its minutes.
 import { Icon } from '../../widgets/Icon';
-import { lineText, legMinutes } from '../../journey/format';
-import type { Leg } from '../../journey/types';
+import { lineText } from '../../display/travel';
+import { legMinutes } from '../../display/time';
+import type { Leg } from '../../model/journey';
 import { LineChip } from '../../widgets/LineChip';
 import { Fragment } from 'preact';
 

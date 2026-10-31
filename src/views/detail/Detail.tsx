@@ -8,12 +8,14 @@ import * as clock from '../../engine/clock.ts';
 import { favs, stored } from '../../state/store.ts';
 import * as detail from '../../state/detail';
 import { now } from '../../state/clock';
-import { dur, tripKey, liveBadge } from '../../journey/format';
-import { shareJourney } from '../../journey/share';
+import { dur } from '../../display/time';
+import { tripKey } from '../../state/store.ts';
+import { liveBadge, rideBadge } from '../../display/live';
+import { shareJourney } from './share';
 import { DetailLeg } from './DetailLeg';
-import { payLink } from '../../journey/pay';
-import { isRide } from '../../journey/types';
-import type { RideLeg } from '../../journey/types';
+import { payLink } from './pay';
+import { isRide } from '../../model/journey';
+import type { RideLeg } from '../../model/journey';
 import { rideOptions, rideLive } from '../../controllers/detail';
 import { openLine, openTrip } from '../../controllers/line';
 import { startTrip } from '../../controllers/follow';
@@ -27,9 +29,12 @@ const openRideLine = (l: RideLeg) => {
 };
 
 /** A ride's live badge: the newest look at its vehicle, else the lateness the plan used at its boarding stop. */
-const rideBadge = (l: RideLeg) =>
-  detail.badges.value[String(l.trip)] ||
-  (l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: !!l.live.stale }) : null);
+/** A ride's badge: what the live data says now, else the lateness the plan used, else none. */
+function badgeOf(l: RideLeg) {
+  const r = detail.live.value[String(l.trip)];
+  if (r) return rideBadge(r);
+  return l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: !!l.live.stale }) : null;
+}
 export function Detail() {
   void lang.value;
   void now.value;
@@ -100,7 +105,7 @@ export function Detail() {
             key={`${jkey}:${i}`}
             l={l}
             focus={i === focus}
-            badge={isRide(l) ? rideBadge(l) : null}
+            badge={isRide(l) ? badgeOf(l) : null}
             onChip={isRide(l) ? () => openRideLine(l) : undefined}
             onFocus={() => detail.focusLeg(i)}
             options={

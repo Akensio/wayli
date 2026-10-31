@@ -3,7 +3,7 @@ import { Icon } from '../../widgets/Icon';
 import { placeName, named } from '../../state/names';
 import { FromTo } from '../../widgets/FromTo';
 import { t, lang } from '../../lib/i18n';
-import { bikeText } from '../../journey/format';
+import { bikeText } from '../../display/travel';
 import { toast } from '../../widgets/toast';
 import { savedPlaces, favs, stored } from '../../state/store.ts';
 import { StopList } from './StopList';

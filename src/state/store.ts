@@ -4,8 +4,45 @@
 // The records are typed here, where they are written; the imports of the app's shapes are type-only, so at run
 // time the store depends on nothing of the app.
 import { signal } from '@preact/signals';
-import { savedTripKey, type PlanResult, type Query, type SavedTrip, type SavedStop, type View } from '../journey/types';
-import type { ActiveTrip } from '../journey/follow.ts';
+import type { PlanResult, Journey } from '../model/journey';
+import type { Query } from '../model/query';
+import type { Place } from '../model/place';
+import type { StopLine } from '../worker/ops.ts';
+import type { ActiveTrip } from '../following/follow.ts';
+
+// ---- the records kept, as the app writes and reads them
+/** A stop in a list (saved stops): with its lines, and how far when that is known. */
+export type SavedStop = {
+  stop: number;
+  name: string;
+  city?: string;
+  code?: string;
+  lat: number;
+  lon: number;
+  distance?: number;
+  lines?: StopLine[];
+};
+/** A trip saved with its star: the places and the bicycle choice, planned again from now when chosen. */
+export type SavedTrip = { from: Place; to: Place; bike: string; folding?: boolean };
+
+/** Something opened, as the history keeps it (recentViews below). */
+type At = { name: string; lat: number; lon: number };
+export type View = { at?: number } & (
+  | { type: 'line'; ref: string; line: string; routeType: number; agency: string; headsign: string; mode?: string }
+  | { type: 'stop'; code: string; name: string; city?: string; lat: number; lon: number }
+  | ({ type: 'station'; mode?: 'rail' | 'lrt' } & At)
+  | { type: 'trains'; from: At; to: At; mode?: 'rail' | 'lrt' }
+  | { type: 'trip'; q: Query; j: Journey; built?: string }
+);
+/** What names a trip in the recent and saved lists: its two places and the bicycle choice. */
+export const tripKey = (x: {
+  from: { name: string };
+  to: { name: string };
+  bike?: string;
+  folding?: boolean;
+}): string => `${x.from.name}|${x.to.name}|${x.bike}|${x.folding ? 'f' : ''}`;
+/** A saved trip's key among the stars (favs.get('trips')): `trip:` and its key. */
+export const favTripKey = (x: Parameters<typeof tripKey>[0]): string => 'trip:' + tripKey(x);
 
 /** Bumped on every write to the store. */
 export const stored = signal(0);
@@ -193,8 +230,6 @@ export type RecentTrip = {
 };
 const isRecentTrip = (v: unknown): boolean =>
   isObj(v) && isPlace(v.from) && isPlace(v.to) && isStr(v.day) && isStr(v.time) && isNum(v.at);
-/** What names a trip in the recent and saved lists (journey/types.ts). */
-export const tripKey = savedTripKey;
 // a trip from a place to the same place (my location to my location) is no trip to keep
 const sameEnds = (x: { from?: { name: string } | null; to?: { name: string } | null }): boolean =>
   !!(x.from && x.to && x.from.name === x.to.name);

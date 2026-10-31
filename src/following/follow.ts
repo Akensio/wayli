@@ -8,7 +8,8 @@
 
 import { metres, projectOnStops } from '../engine/geo.ts';
 import { legMinutes } from '../engine/clock.ts';
-import type { Journey, Leg, Query, RideLeg, WalkLeg, StopAlong } from './types';
+import type { Journey, Leg, RideLeg, WalkLeg, StopAlong } from '../model/journey';
+import type { Query } from '../model/query';
 
 const AT_STOP = 60; // m: close enough to count as being at a stop or the destination
 

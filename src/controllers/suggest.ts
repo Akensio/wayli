@@ -12,7 +12,7 @@
 import * as data from '../state/data';
 import { recentViews } from '../state/store.ts';
 import type { Kind, LineFilter, StopFilter, Side, LineGroup, StopGroup } from '../state/search';
-import type { View } from '../journey/types';
+import type { View } from '../state/store.ts';
 import type { SearchHit } from '../worker/ops.ts';
 import { findPlaces, findLineGroups, findStopGroups } from './planner';
 

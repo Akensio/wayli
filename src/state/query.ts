@@ -5,7 +5,7 @@
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
 import { calToday, hm, secOf, calendarOf } from '../lib/time';
-import type { Place } from '../journey/types';
+import type { Place } from '../model/place';
 import { unset } from '../lib/unset';
 
 // ---- the places

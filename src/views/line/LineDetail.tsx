@@ -4,10 +4,10 @@
 // the map and counted here.
 import { Icon } from '../../widgets/Icon';
 import { StarButton } from '../../widgets/StarButton';
-import { agencyName } from '../../journey/agencies';
+import { agencyName } from '../../display/operators';
 import { t, lang } from '../../lib/i18n';
 import * as line from '../../state/line';
-import { fmtPlus } from '../../journey/format';
+import { fmtPlus } from '../../display/time';
 
 import { Timetable } from '../../widgets/Timetable';
 import { Fold } from '../../widgets/Fold';

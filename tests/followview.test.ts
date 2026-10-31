@@ -1,7 +1,7 @@
-// What the follow screen shows (src/journey/follow.ts view): a ride always has a stop to get off at.
+// What the follow screen shows (src/following/follow.ts view): a ride always has a stop to get off at.
 import { test, expect } from 'vitest';
-import { view, initialState } from '../src/journey/follow.ts';
-import type { Journey, RideLeg } from '../src/journey/types';
+import { view, initialState } from '../src/following/follow.ts';
+import type { Journey, RideLeg } from '../src/model/journey';
 
 test('a ride with no stops listed still names where to get off: its own end', () => {
   // with an empty stopsAlong, the view read stops[-1] and the screen showed an empty name (2026-10-31)

@@ -9,15 +9,15 @@ import * as feed from '../engine/feed.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { t, lang } from '../lib/i18n';
 import { vehicleIcon } from '../widgets/icons';
-import { routeColor } from '../journey/colors';
+import { routeColor } from '../display/colors';
 import { call } from '../worker/client';
 import type { StopInfo, VehicleStatus } from '../worker/ops.ts';
 import * as nav from '../state/nav';
-import { stopPlace } from '../journey/types';
+import { stopPlace } from '../model/place';
 import { viewFor } from './view';
 import { popupState, pick, hooks, currentSheet, cameraPadding } from './shared';
 import { timeOf } from '../lib/time';
-import { reverseName } from '../journey/format';
+import { reverseName } from '../display/places';
 import { VehicleBubble, StopBubble, PlaceBubble, VehicleMark, type VehicleInfo } from './bubbles';
 import { maplibregl } from './maplibre';
 

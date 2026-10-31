@@ -16,7 +16,7 @@ import { t, lang } from '../../lib/i18n';
 import { Icon } from '../../widgets/Icon';
 import * as search from '../../state/search';
 import type { Place, StopGroup } from '../../state/search';
-import type { View } from '../../journey/types';
+import type { View } from '../../state/store.ts';
 import * as data from '../../state/data';
 import { getPosition } from '../../state/position';
 import { toast } from '../../widgets/toast';

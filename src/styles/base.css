@@ -4,7 +4,7 @@
   --bg: #f4f5f2; --surface: #ffffff; --ink: #1b1f24; --ink-2: #5b6470; --line: #dde0da;
   --accent: #12998b; --accent-ink: #ffffff; --accent-text: #0d7f72; --ok: #1f7a4d; --warn: #9a5b00; --late: #c62828; --chip: #eceee9;
   --train: #1f5fa8; --bus: #2a7d4f; --lrt: #8a3fb0; --bike: #1f5fa8;
-  --rail-brand: #1b3a6b; --lrt-brand: #d7263d;   /* the operators' own colours, as journey/colors.ts draws their lines (both themes) */
+  --rail-brand: #1b3a6b; --lrt-brand: #d7263d;   /* the operators' own colours, as display/colors.ts draws their lines (both themes) */
   --font: "Heebo", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 /* the interface's dark colours: chosen in settings (data-theme) or the device's, unless light was chosen */

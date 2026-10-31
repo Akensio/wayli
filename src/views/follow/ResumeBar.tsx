@@ -2,7 +2,7 @@
 import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 import * as follow from '../../state/follow';
-import { lineText } from '../../journey/format';
+import { lineText } from '../../display/travel';
 import { resumeTrip } from '../../controllers/follow';
 
 export function ResumeBar() {

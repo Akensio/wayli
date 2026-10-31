@@ -1,5 +1,22 @@
-// What a plan asks the router for: the window of departures it searches, and whether live vehicles go in. Times are
-// seconds on the service day. Tested in tests/query.test.ts.
+// The question a plan asks: the places, the service day and time, the options, and what live data went in; with the
+// rules of what it asks the router for (the window of departures it searches, whether live vehicles go in). Times are
+// seconds on the service day. The rules are tested in tests/query.test.ts.
+import type { Place } from './place';
+
+/** A plan as it was asked: the places, the service day, the options, and what live data went in. */
+export type Query = {
+  from: Place;
+  to: Place;
+  day: string;
+  at: string;
+  bike: 'none' | 'park' | 'along' | string;
+  folding: boolean;
+  arriveBy: boolean;
+  isNow?: boolean;
+  maxWalk?: number;
+  liveAsOf?: number | null;
+  liveTried?: boolean;
+};
 
 export const WINDOW = {
   spanSec: 3600, // departing: the hour from the time asked

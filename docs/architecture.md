@@ -214,17 +214,18 @@ the app).
   stops, the note), `popups` (bubbles for a vehicle and a tapped place; a
   line's vehicle markers), `picker` (a point on the map), `shared` (the
   map, its markers).
-- `journey/`: the domain: places, a plan as asked, journeys and their legs,
-  the records kept on the phone (`types.ts`), following a trip (`follow.ts`,
-  the pure state machine), line colours, the words for journeys, operators'
-  English names, sharing, the pay link.
+- `model/`: places, the question a plan asks, journeys and their legs, what
+  the live data says about a ride (data only). `display/`: how they read and
+  look (time, live, travel and place words, colours, operators). `following/`:
+  the rules of following a trip (the state machine, re-planning, the status
+  line). The records the phone keeps are the store's (`state/store.ts`).
 - `lib/`: used everywhere: `i18n.ts` (every string in Hebrew and English),
   `time.ts`.
 - The on-device store is `state/store.ts` (settings, history, saved places
   and the trip in progress, all in localStorage; every write bumps its
   `stored` signal, which the pages showing what it keeps read).
 - Which folder uses which is the table in `src/README.md` ("May use"),
-  and it runs one way: engine, worker, lib, journey, state, widgets, map,
+  and it runs one way: engine, worker, lib, model, display, following, state, widgets, map,
   controllers, views, and the entry files at the top. `tests/imports.test.ts`
   reads that table and fails the build on an import it does not list, on a
   use it lists that the code no longer has, and on any import cycle,
@@ -253,7 +254,7 @@ and dark styles were rejected as too bare. The RTL text plugin shapes
 Hebrew and Arabic labels. Lines are coloured by mode and
 operator: trains navy, light rail red (both lines running are "the red
 line"), buses in their operator's colour, approximate brand colours kept
-in one table in `journey/colors.ts` (Egged green and Dan blue read off their sites;
+in one table in `display/colors.ts` (Egged green and Dan blue read off their sites;
 Metropoline orange, Kavim purple, Superbus orange-red, Nateev Express lime,
 Electra Afikim dark blue, Tnufa light blue, Extra magenta, Galim teal, Bet
 Shemesh Express brown from memory, to be corrected as seen on the road),
@@ -298,7 +299,7 @@ the open search). Every panel in the sheet has Back (one step) and an X
 a line, then saved, settings and reload. "Recent items to keep" (5, 10,
 20 or 40 of each kind; ways opened at most 20, as they carry their
 journey) is a setting. A journey's detail and the follow screen while
-waiting have Pay, a link to HopOn (Rav-Pass)'s store page (`journey/pay.ts`). A box focused with text in it puts the caret at the end, the
+waiting have Pay, a link to HopOn (Rav-Pass)'s store page (`views/detail/pay.ts`). A box focused with text in it puts the caret at the end, the
 text not selected (maintainer: editing it is more common than replacing it). The suggestion list while typing hangs below all the rows, so
 it never covers the other field. A bottom sheet with three heights (a
 strip, about half the screen, nearly full; it is always its full height

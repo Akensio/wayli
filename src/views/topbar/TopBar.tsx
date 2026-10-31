@@ -21,7 +21,7 @@ import { attachBarPull } from '../shell/pullRefresh';
 import { chooseStation, swapStations, endStations } from '../../controllers/station';
 import { cancelPlan, openStopGroup } from '../../controllers/planner';
 import { openLine } from '../../controllers/line';
-import { railWords } from '../../journey/format';
+import { railWords } from '../../display/travel';
 
 const LINE_FILTERS: { f: search.LineFilter; label: string; icon?: IconName }[] = [
   { f: 'all', label: 'fAll' },

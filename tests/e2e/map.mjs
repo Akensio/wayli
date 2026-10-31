@@ -82,25 +82,41 @@ const at = await page.evaluate(() => {
   return { x: r.left + r.width * 0.3, y: r.top + r.height * 0.3 };
 });
 await page.mouse.click(at.x, at.y);
-await wait(2500);
+// the bubble shows "…" until the worker names the place
+await page
+  .waitForFunction(() => (document.querySelector('.wayli-pop .pop b')?.textContent || '…') !== '…', null, {
+    timeout: 15000,
+  })
+  .catch(() => {});
 const place = await text('.wayli-pop .pop b');
-check("a tap on the map: the place's bubble", { place }, !!place && (await count('.wayli-pop button')) > 0);
+check(
+  "a tap on the map: the place's bubble",
+  { place },
+  !!place && place !== '…' && (await count('.wayli-pop button')) > 0,
+);
 await click('.wayli-pop .primary');
-await wait(6000);
+await page
+  .waitForFunction(() => document.querySelectorAll('.journey').length > 0, null, { timeout: 20000 })
+  .catch(() => {});
+await wait(2000); // the ways drawn on the map, their stops with them
 check('"to here" plans to it', {}, (await count('.journey')) > 0 && (await count('.wayli-pop')) === 0);
 
+// a stop the map itself shows at its point (not one under the sheet or the bar)
 const stop = await page.evaluate(() => {
   const m = window.wayliDebug.map,
     layers = ['journey-stops', 'journey-stations', 'lm-stops', 'lm-stations'].filter((l) => m.getLayer(l)),
-    f = m.queryRenderedFeatures({ layers })[0];
-  if (!f) return null;
-  const p = m.project(f.geometry.coordinates),
     c = m.getContainer().getBoundingClientRect();
-  return { x: c.left + p.x, y: c.top + p.y };
+  for (const f of m.queryRenderedFeatures({ layers })) {
+    const p = m.project(f.geometry.coordinates),
+      x = c.left + p.x,
+      y = c.top + p.y;
+    if (document.elementFromPoint(x, y)?.classList.contains('maplibregl-canvas')) return { x, y };
+  }
+  return null;
 });
 if (stop) {
   await page.mouse.click(stop.x, stop.y);
-  await wait(2500);
+  await page.waitForSelector('.wayli-pop .lchip', { timeout: 10000 }).catch(() => {});
 }
 check(
   'a stop on the drawn way: its bubble with its lines',

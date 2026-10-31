@@ -1,6 +1,6 @@
-// What a plan asks for (src/journey/query.ts): the window of departures and whether live delays go in.
+// What a plan asks for (src/model/query.ts): the window of departures and whether live delays go in.
 import { test, expect } from 'vitest';
-import { planWindow, withLive, WINDOW } from '../src/journey/query.ts';
+import { planWindow, withLive, WINDOW } from '../src/model/query';
 
 test('the window: an hour from the time asked; from now ten minutes back too; arriving by, the two hours before', () => {
   expect(planWindow(36_000, false, false)).toEqual({ fromTime: 36_000, toTime: 36_000 + WINDOW.spanSec });

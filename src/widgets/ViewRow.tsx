@@ -6,9 +6,9 @@ import { LineChip } from './LineChip';
 import { FromTo } from './FromTo';
 import { Tappable } from './Tappable';
 import { t } from '../lib/i18n';
-import { agencyName } from '../journey/agencies';
-import { railWords } from '../journey/format';
-import type { View } from '../journey/types';
+import { agencyName } from '../display/operators';
+import { railWords } from '../display/travel';
+import type { View } from '../state/store.ts';
 import type { ComponentChildren } from 'preact';
 
 /** What leads the row (its icon or its line's chip) and the two lines of text beside it. `trip` describes a trip view

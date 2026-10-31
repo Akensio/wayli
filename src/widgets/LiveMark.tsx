@@ -1,7 +1,8 @@
 // The live mark beside a departure: ⦿ when its vehicle is seen, with how many minutes late (or early) when it is
 // not on time, and a ? when the report is old. Green when sure, amber when not.
 import { t } from '../lib/i18n';
-import { signed, inText } from '../journey/format';
+import { signed } from '../display/live';
+import { inText } from '../display/time';
 
 export function LiveMark({ delayMin, stale }: { delayMin?: number | null; stale?: boolean }) {
   return (

@@ -507,7 +507,7 @@ export type ProfileOptions = {
 
 /**
  * A leg of a journey as the router finds it (the worker, src/worker/plan.ts, dresses it into the page's Leg,
- * src/journey/types.ts). Times are seconds on the service day; `from` and `to` are stop indices, -1 for the door.
+ * src/model/journey.ts). Times are seconds on the service day; `from` and `to` are stop indices, -1 for the door.
  */
 /** From the door to the first stop; `origin` is the index, in the query's origins, of the stop it reaches. */
 export type RawAccessLeg = {
@@ -540,7 +540,7 @@ export type RawRideLeg = {
 };
 export type RawLeg = RawRideLeg | RawWalkLeg | RawAccessLeg | RawEgressLeg;
 /** A journey as the router finds it: leaving the door at `depart`, at the other door at `arrive`, `transfers` the
- *  rides minus one, `walkSeconds` every leg that is not a ride. The page's Journey (src/journey/types.ts) is this with
+ *  rides minus one, `walkSeconds` every leg that is not a ride. The page's Journey (src/model/journey.ts) is this with
  *  dressed legs. */
 export type RawJourney = {
   depart: number;

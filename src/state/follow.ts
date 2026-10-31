@@ -3,15 +3,14 @@
 // found. The controller (timers, the position watch, the live polls, the re-planning) is controllers/follow.ts
 // and publishes here; the screen renders from these and asks through `hooks`.
 import { signal } from '@preact/signals';
-import type { Journey } from '../journey/types';
-import type { Badge } from '../journey/format';
+import type { Journey, RideLive } from '../model/journey';
 import type {
   FollowState,
   Position as EnginePosition,
   Connection,
   ReplanOrigin,
   ActiveTrip,
-} from '../journey/follow.ts';
+} from '../following/follow.ts';
 export type { ActiveTrip };
 
 // the state machine's own types, from the engine; the screen adds when a position was taken
@@ -26,11 +25,11 @@ export type Alt = {
 
 export const active = signal<ActiveTrip | null>(null); // the trip being followed, while the screen is up
 export const pos = signal<Position | null>(null);
-export const liveBadge = signal<Badge | null>(null); // the next ride's vehicle
+export const nextLive = signal<RideLive | null>(null); // the next ride's vehicle, while one is followed
 /** What the live data says of each remaining ride, by leg index: its vehicle at the boarding stop, the change into it
  *  (seconds to spare, negative when missed; with the times), and its stops at their shown times, passed ones marked. */
 export type LegLive = {
-  badge: Badge | null;
+  live: RideLive | null; // its vehicle at the boarding stop; null while nothing was asked
   change: Connection | null;
   stops: { time: number; passed: boolean }[] | null;
 };

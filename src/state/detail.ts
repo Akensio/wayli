@@ -1,15 +1,15 @@
-// The journey detail: the journey shown, one ride of it focused on the map (or none), and the live badges
-// of its rides as they come in.
+// The journey detail: the journey shown, one ride of it focused on the map (or none), and what the live data says
+// about each of its rides as it comes in.
 import { signal } from '@preact/signals';
-import type { Journey, Query } from '../journey/types';
-import type { Badge } from '../journey/format';
+import type { Query } from '../model/query';
+import type { Journey, RideLive } from '../model/journey';
 import { unset } from '../lib/unset';
 
 export const journey = signal<Journey | null>(null);
 export const query = signal<Query | null>(null);
 export const bikeOnly = signal(false);
 export const focus = signal(-1); // the leg focused on the map
-export const badges = signal<Record<string, Badge>>({}); // by trip: what the live data says about each ride
+export const live = signal<Record<string, RideLive>>({}); // by trip: what the live data says about each ride
 
 /** What the detail's own flows need from the controllers: the panel's history entry, the map drawn on a focus change. */
 export const hooks = {
@@ -22,7 +22,7 @@ export function open(j: Journey, q: Query, bike = false): void {
   query.value = q;
   bikeOnly.value = bike;
   focus.value = -1;
-  badges.value = {};
+  live.value = {};
   hooks.show();
 }
 /** Focus one ride of the journey (or release it): its course alone, only its vehicles, the map on it. */
@@ -30,6 +30,6 @@ export function focusLeg(i: number): void {
   focus.value = focus.value === i ? -1 : i;
   hooks.redraw();
 }
-export function setBadge(trip: string | number, b: Badge): void {
-  badges.value = { ...badges.value, [String(trip)]: b };
+export function setLive(trip: string | number, r: RideLive): void {
+  live.value = { ...live.value, [String(trip)]: r };
 }

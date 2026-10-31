@@ -4,15 +4,17 @@ import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 import { fmt } from '../../lib/time';
 import * as clock from '../../engine/clock.ts';
-import { view as followView, canStepBack } from '../../journey/follow.ts';
+import { view as followView, canStepBack } from '../../following/follow.ts';
 import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
-import { lineText, inShort } from '../../journey/format';
+import { lineText } from '../../display/travel';
+import { inShort } from '../../display/time';
 import { LegChips } from '../results/LegChips';
 import { FollowLeg } from './FollowLeg';
-import { payLink } from '../../journey/pay';
-import { isRide, ridesOf } from '../../journey/types';
+import { payLink } from '../detail/pay';
+import { isRide, ridesOf } from '../../model/journey';
 import { switchJourney, dismissAlt, hideFollow, endTrip, backStep, skipStep } from '../../controllers/follow';
+import { rideBadge } from '../../display/live';
 
 /** The card proposing the alternative. */
 function AltCard({ alt }: { alt: follow.Alt }) {
@@ -65,7 +67,8 @@ export function Follow() {
     nowS = clock.nowOn(a.day),
     dest = a.q.to.name;
   const v = followView(j, a.state, nowS);
-  const badge = follow.liveBadge.value,
+  const next = follow.nextLive.value,
+    badge = next ? rideBadge(next) : null,
     liveLine = badge ? ` · ${badge.text}` : '';
   const pos = follow.pos.value,
     fresh = pos && Date.now() - pos.at < 90000;
@@ -161,7 +164,7 @@ export function Follow() {
               key={`${i}:${isRide(l) ? l.trip : l.type}`}
               l={l}
               stage={stage}
-              badge={x ? x.badge : undefined}
+              badge={x && x.live ? rideBadge(x.live) : undefined}
               change={x ? x.change : null}
               stopLive={x ? x.stops : null}
               stopsOpen={i === curRide}

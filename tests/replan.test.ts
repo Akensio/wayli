@@ -1,7 +1,7 @@
-// Re-planning on the way (src/journey/replan.ts): when to look for a faster way, and which way is worth proposing.
+// Re-planning on the way (src/following/replan.ts): when to look for a faster way, and which way is worth proposing.
 import { test, expect } from 'vitest';
-import { whyReplan, pickAlternative, REPLAN, type ReplanSignals } from '../src/journey/replan.ts';
-import type { Journey, RideLeg } from '../src/journey/types';
+import { whyReplan, pickAlternative, REPLAN, type ReplanSignals } from '../src/following/replan.ts';
+import type { Journey, RideLeg } from '../src/model/journey';
 
 const quiet: ReplanSignals = {
   force: false,
@@ -31,7 +31,7 @@ test('never twice within a minute and a half, unless asked by hand', () => {
   expect(whyReplan({ ...quiet, force: true, sinceLastMs: 0 })).toEqual({ look: true, why: 'forced' });
 });
 
-// a ride's key is its trip and the stop it is left at (journey/follow.ts ridesKey): here every ride ends at stop 9
+// a ride's key is its trip and the stop it is left at (following/follow.ts ridesKey): here every ride ends at stop 9
 const ride = (trip: number): RideLeg =>
   ({ type: 'ride', trip, line: String(trip), seconds: 0, depart: 0, arrive: 0, to: { name: 'X', stop: 9 } }) as RideLeg;
 const way = (arrive: number, ...trips: number[]): Journey => ({

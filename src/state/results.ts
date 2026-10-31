@@ -7,9 +7,10 @@ import { settings } from './store.ts';
 import { lang } from '../lib/i18n';
 import * as search from './search';
 import { now } from './clock';
-import type { Journey, PlanResult, Query } from '../journey/types';
+import type { Journey, PlanResult } from '../model/journey';
+import type { Query } from '../model/query';
 import { unset } from '../lib/unset';
-export type { View } from '../journey/types';
+export type { View } from './store.ts';
 
 type Status = 'idle' | 'planning' | 'locating';
 export type Sort = 'depart' | 'arrive' | 'fast' | 'changes';

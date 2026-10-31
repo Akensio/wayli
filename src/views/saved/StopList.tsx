@@ -1,7 +1,7 @@
 // Stops as rows: name, city and code, their lines as chips.
 // A tap opens the stop; a tap on a chip opens that line.
 import { t } from '../../lib/i18n';
-import type { SavedStop as Stop } from '../../journey/types';
+import type { SavedStop as Stop } from '../../state/store.ts';
 import { LineChip } from '../../widgets/LineChip';
 import { Tappable } from '../../widgets/Tappable';
 
