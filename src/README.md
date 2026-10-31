@@ -9,7 +9,7 @@ Preact with signals; Vite builds it into `dist/`.
  nightly files (pipeline/)            live vehicles (Hasadna, via relay/)
           │                                        │
           ▼                                        ▼
-  worker/ (data)  ─── uses ── engine/       engine/feed.js
+  worker/ (data)  ─── uses ── engine/       engine/feed.ts
           ▲                                        ▲
           │ worker/client.ts                       │
   controllers/  ◀──── call ────  views/ (+ widgets/)
@@ -40,7 +40,7 @@ The folders, each with its own README:
 | `widgets/` | Small pieces several views share: icons, line chips, the timetable, toast, ripple. | `lib/`, `journey/`, `state/` |
 | `map/` | The one map under everything and what it draws for each panel. | `state/`, `worker/`, `journey/`, `lib/`, `widgets/`, `engine/` |
 | `journey/` | A journey's types, colours, words, sharing, the pay link. | `lib/`, `state/`, `engine/` |
-| `lib/` | Used everywhere: the strings in both languages, time, the on-device store. | `engine/clock.js` (Israel time) |
+| `lib/` | Used everywhere: the strings in both languages, time, the on-device store. | `engine/clock.ts` (Israel time) |
 | `styles/` | The CSS, one file per part of the screen, in a fixed order. | |
 | `types/` | Global type declarations. | |
 | `public/` | Copied into the build as is: icons, the web manifest. | |
