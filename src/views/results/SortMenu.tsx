@@ -60,13 +60,12 @@ export function SortPopover() {
       const el = e.target as HTMLElement;
       if (!ref.current?.contains(el) && !el.closest?.('#sortBtn')) close();
     };
-    const body = document.getElementById('sheetBody');
     document.addEventListener('pointerdown', away, true);
-    body?.addEventListener('scroll', close);
+    document.addEventListener('scroll', close, true); // the list under it scrolled (scroll events reach the document only when captured)
     window.addEventListener('resize', close);
     return () => {
       document.removeEventListener('pointerdown', away, true);
-      body?.removeEventListener('scroll', close);
+      document.removeEventListener('scroll', close, true);
       window.removeEventListener('resize', close);
     };
   }, [a]);

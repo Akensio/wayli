@@ -10,12 +10,12 @@ import { call, tripStopsCached, estimate } from '../worker/client';
 import { livePoll } from './livepoll';
 import { toast } from '../widgets/toast';
 import { t } from '../lib/i18n';
-import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as stopPage from '../state/stop';
 import type { StopInfo, Departure } from '../state/stop';
 import { recentViews } from '../state/store.ts';
 import { openLine } from './line';
+import * as query from '../state/query';
 
 let current: StopInfo | null = null,
   seq = 0,
@@ -40,10 +40,10 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
       : { type: 'stop', code: info.code || '', name: info.name, city: info.city, lat: info.lat, lon: info.lon },
   );
   // the map draws the stop and its lines' courses (map/render.ts)
-  const day = search.day.value,
+  const day = query.day.value,
     isNow = isNowDay(day);
   stopPage.open(info, day, isNow);
-  const from = isNow ? clock.nowOn(day) - 120 : search.atSeconds();
+  const from = isNow ? clock.nowOn(day) - 120 : query.atSeconds();
   // a station's trains: where they go without a change, the next one there and how long it takes
   if (info.reach)
     call('stationReach', { stops: members, fromTime: from + 120, mode: info.reach })

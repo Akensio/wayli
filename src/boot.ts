@@ -22,7 +22,8 @@ import {
 } from './controllers/loading';
 import { plan, planFromBar, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
-import { layoutTop, updateOnline, registerServiceWorker } from './controllers/shell';
+import { updateOnline, registerServiceWorker } from './controllers/shell';
+import * as query from './state/query';
 
 // the last search opens again at start for six hours: its places and options, planned afresh (never its old results:
 // live times change in between; 2026-10-22, Gadi)
@@ -33,7 +34,6 @@ async function boot(): Promise<void> {
   registerServiceWorker();
   applyLang();
   updateOnline();
-  layoutTop();
   warmPosition();
   map.initMap();
   resumeAtStart();
@@ -50,13 +50,13 @@ async function boot(): Promise<void> {
   if (shared && shared.day && hasDay(shared.day)) start = shared.day;
   else if (recent && hasDay(last.q.day) && !last.q.isNow) start = last.q.day;
   renderDays();
-  search.day.value = start;
-  search.setDefaultTime();
+  query.day.value = start;
+  query.setDefaultTime();
   if (shared) search.applyQuery(shared);
   const again = !shared && recent && !last.dismissed && (last.q.isNow || last.q.day === start);
   if (again) {
     search.applyQuery(last.q);
-    if (last.q.isNow) search.resetNow();
+    if (last.q.isNow) query.resetNow();
   } // a search from now starts from now
   try {
     await loadDay(start);

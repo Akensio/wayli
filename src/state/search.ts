@@ -1,13 +1,12 @@
-// The search state: where from, where to, when, with what bicycle, and which parts of the bar are open.
-// One place for the state that used to live in the bar's DOM. Components read the signals; the rest of the
-// app sets them through the actions here. What the planner itself does (routing, results, the map) stays
-// behind `hooks`, which the app fills in at start.
+// The bar: what its boxes show, which of its parts are open, what it searches for (a trip, a line, a stop, the two
+// stations of a train timetable), and its actions. The question it edits (places, time, bicycle) is state/query.ts.
+// What the planner itself does (routing, results, the map) stays behind `hooks`, which the app fills in at start.
 import { signal, computed, effect } from '@preact/signals';
-import * as clock from '../engine/clock.ts';
 import { t } from '../lib/i18n';
-import { calToday, hm, secOf, calendarOf } from '../lib/time';
 import * as settings from './settings';
 import type { Place } from '../journey/types';
+import * as query from './query';
+import { from, to, sides, timeTouched } from './query';
 
 export type { LineGroup, StopGroup } from '../worker/ops.ts';
 export type { Place } from '../journey/types';
@@ -16,20 +15,24 @@ export type Side = 'from' | 'to';
 type OptPanel = '' | 'time' | 'bike';
 
 // ---- the places
-export const from = signal<Place | null>(null);
-export const to = signal<Place | null>(null);
 /** What the boxes show: a chosen place's name, or what is being typed. */
 export const fromText = signal('');
 export const toText = signal('');
-export const sides = { from, to } as const;
 export const texts = { from: fromText, to: toText } as const;
+/** The question's places, as the boxes show them (re-exported for the bar's components). */
+export { from, to, sides };
 
 // ---- the bar
 export const barOpen = signal(false); // editing: both rows and the options show
 export const typing = signal(''); // the bar's box with the keyboard (its id), for back
 export const listing = signal(''); // the bar's box with its list open
 /** What back does to a bar box: let go of its focus (the keyboard goes), close its list. */
-export const boxes = new Map<string, { blur: () => void; closeList: () => void }>();
+/** The search boxes on screen, by id (SearchField registers itself): how state and the bar move the keyboard and close
+ *  a list without looking elements up by id. */
+export const boxes = new Map<
+  string,
+  { focus: () => void; blur: () => void; focused: () => boolean; closeList: () => void }
+>();
 export const leaving = signal(false); // the moment after editing ends: the rows play out before they go
 export const settling = signal(false); // then the pill's icons pop back in
 export const optOpen = signal<OptPanel>('');
@@ -59,15 +62,6 @@ export const stFromText = signal('');
 export const stTo = signal<Place | null>(null);
 export const stToText = signal('');
 export const busy = signal(true); // the planner is not ready, or planning
-
-// ---- when and how
-export const timeMode = signal<'depart' | 'arrive'>('depart');
-export const day = signal(''); // YYYYMMDD, one of `days`
-export const at = signal('08:00'); // HH:MM on that day, past 24:00 for its night ("25:10")
-export const bike = signal<'none' | 'park' | 'along'>('none');
-export const folding = signal(false);
-export const timeTouched = signal(false); // the rider set a day, a time or "arrive by"; until then every plan is from now
-export const days = signal<string[]>([]); // the service days the data covers
 
 // Leaving search mode, the rows play out (`leaving`) before they go. Set in the same moment the bar closes:
 // set a frame later (after a render), the rows vanished for that frame and came back to play out.
@@ -109,14 +103,12 @@ export const mode = computed<'rest' | 'edit' | 'summary'>(() => {
 });
 
 /** What the bar's own flows need from the controllers (state cannot import them): planning when a place is picked, the
- *  plan cleared when its panel closes, the day's files, the search kind's history step. Filled in at start. */
+ *  plan cleared when its panel closes, the search kind's history step. Filled in at start. */
 export const hooks = {
   plan: () => {},
   planTo: (_p: Place) => {},
   clearPlan: () => {},
   kindChanged: (_k: Kind) => {}, // the line and stop searches are a step back can undo
-  dayChanged: (_d: string) => {},
-  startDay: (): string => '',
 };
 
 // ---- actions
@@ -131,8 +123,8 @@ export function setPlace(side: Side, p: Place | null): void {
   texts[side].value = p ? p.name : '';
 }
 /** Focus one of the boxes once the bar has rendered its new shape (the signals render a moment later). */
-export function focusBox(id: 'toQ' | 'fromQ'): void {
-  setTimeout(() => (document.getElementById(id) as HTMLInputElement | null)?.focus(), 60);
+export function focusBox(id: string, afterMs = 60): void {
+  setTimeout(() => boxes.get(id)?.focus(), afterMs);
 }
 export function openBar(): void {
   if (barOpen.value) return;
@@ -162,7 +154,7 @@ export function swapPlaces(): void {
  *  searches fold to their own pill instead (a step back from there is the trip pill). (A tap on the map folds the rows
  *  back to the summary or the pill.) */
 export function back(): void {
-  for (const id of ['toQ', 'fromQ']) (document.getElementById(id) as HTMLInputElement | null)?.blur();
+  for (const id of ['toQ', 'fromQ']) boxes.get(id)?.blur();
   if (kind.value !== 'trip') foldBar();
   else hooks.clearPlan();
 }
@@ -176,7 +168,7 @@ function planSet(): void {
 export function go(): void {
   setOpt('', false);
   if (!to.value) {
-    (document.getElementById('toQ') as HTMLInputElement | null)?.focus();
+    boxes.get('toQ')?.focus();
     return;
   }
   planSet();
@@ -186,7 +178,7 @@ export function go(): void {
 export function chooseTo(p: Place): void {
   if (from.value && !from.value.transient) {
     setPlace('to', p);
-    if (!timeTouched.value) resetNow();
+    if (!timeTouched.value) query.resetNow();
     hooks.plan();
   } else hooks.planTo(p);
 }
@@ -195,22 +187,22 @@ export function chooseTo(p: Place): void {
  * elsewhere, Go) sets what it shows. Opened on "now", it shows "depart at" the time now (whoever taps the chip means
  * to set a time); closed untouched, it stays "now". Closing after a change plans again when there is a destination.
  */
-export const whenDraft = signal<When | null>(null);
-let whenOpened: When | null = null; // the draft as the popover opened, to tell a change from none
+export const whenDraft = signal<query.When | null>(null);
+let whenOpened: query.When | null = null; // the draft as the popover opened, to tell a change from none
 export function setOpt(which: OptPanel, replan = true): void {
   const was = optOpen.value;
   if (was === which) return;
   if (was === 'time' && whenDraft.value) {
     const d = whenDraft.value;
     if (JSON.stringify(d) !== JSON.stringify(whenOpened)) {
-      setWhen(d);
+      query.setWhen(d);
       optDirty.value = true;
     }
     whenDraft.value = null;
     whenOpened = null;
   }
   if (which === 'time') {
-    const w = whenNow();
+    const w = query.whenNow();
     whenDraft.value = whenOpened = w.mode === 'now' ? { ...w, mode: 'depart' } : w;
   }
   optOpen.value = which;
@@ -282,79 +274,6 @@ export function stopMode(): void {
   focusBox('toQ');
 }
 
-// ---- when
-/** The time as seconds on the selected service day. */
-export const atSeconds = (): number => secOf(at.value);
-export function setAt(sec: number): void {
-  at.value = hm(Math.max(0, Math.min(sec, 86400 * 2 - 60)));
-  timeTouched.value = true;
-}
-/** The time now on the selected day ("25:10" on the night's day, "01:10" on a day that starts now), else 08:00. */
-export function setDefaultTime(): void {
-  const n = clock.nowOn(day.value);
-  at.value = n >= 0 && n < 86400 * 2 ? hm(n) : '08:00';
-}
-
-/** What the time popover shows and sets: the calendar day and the clock, never the service day behind them. */
-export type When = { mode: 'now' | 'depart' | 'arrive'; cal: string; hh: string; mm: string };
-function whenNow(): When {
-  const { cal, time } = calendarOf(day.value || calToday(), atSeconds()),
-    [hh, mm] = time.split(':');
-  return { mode: timeTouched.value ? timeMode.value : 'now', cal, hh, mm };
-}
-/** The calendar days the wheel offers: those the data covers from today on (today also after midnight, when the night
- *  is still in yesterday's timetable). */
-export const calDays = computed(() => {
-  const today = calToday(),
-    svc = clock.serviceDay();
-  const s = new Set(days.value.filter((d) => d >= today));
-  if (svc.lateNight && days.value.includes(svc.day)) s.add(today);
-  return s.size ? [...s].sort() : days.value;
-});
-/**
- * Set a calendar day and clock. Before 03:00 the service day is the one before, its night (a day's timetable carries
- * the night after it, the next day's early trips included); otherwise the day itself, or the nearest day the data has.
- */
-function setWhen(w: When): void {
-  if (w.mode === 'now') {
-    resetNow();
-    return;
-  }
-  let sec = Number(w.hh) * 3600 + Number(w.mm) * 60,
-    d = w.cal;
-  const eve = clock.shiftDay(w.cal, -1);
-  if (sec < 3 * 3600 && days.value.includes(eve)) {
-    d = eve;
-    sec += 86400;
-  } else if (!days.value.includes(d)) d = days.value.find((x) => x >= d) || days.value[days.value.length - 1] || d;
-  timeMode.value = w.mode;
-  at.value = hm(sec);
-  timeTouched.value = true;
-  if (d !== day.value) {
-    day.value = d;
-    hooks.dayChanged(d);
-  }
-}
-/** A service day the data has and a time on it, departing (the results' "plan from 20:23" and "tomorrow"). */
-export function setDayAt(d: string, sec: number): void {
-  if (!days.value.includes(d)) return;
-  timeMode.value = 'depart';
-  setAt(sec);
-  if (d !== day.value) {
-    day.value = d;
-    hooks.dayChanged(d);
-  }
-}
-/** Back to "now": the current service day, its time, departing. */
-export function resetNow(): void {
-  const d = hooks.startDay();
-  const changed = d && d !== day.value;
-  if (d) day.value = d;
-  setDefaultTime();
-  timeMode.value = 'depart';
-  timeTouched.value = false;
-  if (changed) hooks.dayChanged(day.value);
-}
 /** Apply a query's places and options (a shared link, a recent trip, the last search). */
 export function applyQuery(q: {
   from: Place;
@@ -367,20 +286,24 @@ export function applyQuery(q: {
 }): void {
   setPlace('from', q.from);
   setPlace('to', q.to);
-  bike.value = (q.bike as typeof bike.value) || 'none';
-  folding.value = !!q.folding;
-  if (q.day && days.value.includes(q.day)) day.value = q.day;
-  if (q.at) at.value = q.at;
-  timeMode.value = q.arriveBy ? 'arrive' : 'depart';
-  timeTouched.value = !!(q.at || q.arriveBy);
+  query.applyWhenAndHow(q);
 }
-/** The current options as the planner takes them. */
-export const options = () => ({
-  day: day.value,
-  at: at.value,
-  timeMode: timeMode.value,
-  bike: bike.value,
-  folding: folding.value,
-  timeTouched: timeTouched.value,
-  arriveBy: timeMode.value === 'arrive',
-});
+/** The bicycle choice from the popover: the plan is made again when the popover closes. */
+export function setBike(v: 'none' | 'park' | 'along'): void {
+  query.bike.value = v;
+  optDirty.value = true;
+}
+export function setFolding(v: boolean): void {
+  query.folding.value = v;
+  optDirty.value = true;
+}
+/** A filter chip under the line or stop search; the two stations of a train timetable are not carried from trains to
+ *  the light rail or back. Answers which timetable of two stations is now up, if any. */
+export function setFilter(k: Kind, f: string): 'rail' | 'lrt' | null {
+  const was = railPair.value ? pairMode.value : null;
+  if (k === 'stop') stopFilter.value = f as StopFilter;
+  else lineFilter.value = f as LineFilter;
+  const now = railPair.value ? pairMode.value : null;
+  if (was !== now) clearStations();
+  return now;
+}

@@ -120,6 +120,8 @@ export const list = computed(() => {
   void now.value;
   return build(result.value, query.value, resultsAt.value, filters.value);
 });
+/** A way's card to bring into view with a flash (its index; `n` makes asking again for the same card a change). */
+export const reveal = signal<{ idx: number; n: number } | null>(null);
 /** Something fills the plan screen: a list, or the wait for one. */
 export const showing = computed(() => status.value !== 'idle' || result.value != null);
 /** The card highlighted on the map: the peek line's journey. */

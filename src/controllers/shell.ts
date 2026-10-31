@@ -25,17 +25,6 @@ import { isFollowing, closeFollow } from './follow';
 import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
 import { type Journey, isRide } from '../journey/types';
 
-/** The top bar's height, for the map controls, the status pill and the menu under it; the sheet's full size. */
-export function layoutTop(): void {
-  const bar = document.getElementById('topbar');
-  if (!bar) return;
-  document.documentElement.style.setProperty('--top-h', `${Math.round(bar.getBoundingClientRect().bottom + 6)}px`);
-  document.documentElement.style.setProperty('--sheet-box', `${sheet.boxPx()}px`); // the sheet's box: the whole screen
-  // fully open, the sheet reaches up to the bar: it follows the bar's height (an eased slide, never a jump)
-  if (sheet.state.value === 'full') document.documentElement.style.setProperty('--sheet-h', `${sheet.fullPx()}px`);
-}
-window.addEventListener('resize', layoutTop);
-
 // ---- install: Chrome's own prompt when it offers one; otherwise (iPhones and iPads never fire it, and Chrome holds
 // it back at times, e.g. after a dismissal) the row still shows outside the installed app and explains the browser's way
 let installPrompt: any = null;
@@ -274,8 +263,7 @@ Object.assign(nav.hooks, {
 });
 sheet.hooks.changed = (prev, st) => {
   if (prev === 'full' && st !== 'full') map.refreshLiveMap();
-  const body = document.getElementById('sheetBody');
-  if (body && st !== prev && map.hasMap() && (st === 'peek' || prev === 'peek')) body.scrollTop = 0;
+  if (st !== prev && map.hasMap() && (st === 'peek' || prev === 'peek')) sheet.scrollToTop();
   // the results opened from collapsed (a tap or a drag): the highlighted way's card in view, which need not be the first
   const c = results.highlighted.value;
   if (prev === 'peek' && st !== 'peek' && c && nav.key.value === 'screen-plan') revealCard(c.idx, false);

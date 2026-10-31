@@ -13,6 +13,7 @@ import * as app from '../state/app';
 import * as map from '../map/index';
 import type { Manifest, DataFile } from '../state/data';
 import { setStatus, loadFailed } from './status';
+import * as query from '../state/query';
 
 const manifest = (): Manifest => data.manifest.value!;
 // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
@@ -42,9 +43,9 @@ export async function loadManifest(): Promise<void> {
 /** The service days the data covers, for the day pills; the chosen day stays if it is one of them. */
 export function renderDays(): void {
   if (!data.manifest.value) return;
-  search.days.value = manifest().days.map((d) => d.date);
-  if (!search.days.value.includes(search.day.value))
-    search.day.value = data.dayInfo.value ? data.dayInfo.value.date : manifest().days[0].date;
+  query.days.value = manifest().days.map((d) => d.date);
+  if (!query.days.value.includes(query.day.value))
+    query.day.value = data.dayInfo.value ? data.dayInfo.value.date : manifest().days[0].date;
 }
 /** The best service day to plan on right now: tonight's until 03:00, else today. */
 export function startDay(): string {
@@ -110,11 +111,7 @@ export async function loadPlaces(): Promise<void> {
   await retrying(
     async () => {
       await call('loadPlaces', { url: fileUrl(f), bytes: f.bytes });
-      data.plReady.value = true;
-      // a box with text in it searches again, now with addresses
-      for (const side of ['from', 'to'] as const)
-        if (!search.sides[side].value && search.texts[side].value.trim().length >= 2)
-          document.getElementById(side + 'Q')?.dispatchEvent(new Event('input', { bubbles: true }));
+      data.plReady.value = true; // a box with text typed in it searches again (views/topbar/SearchField.tsx)
     },
     () => {
       loadPlaces();
@@ -174,8 +171,8 @@ export async function loadStreets(): Promise<void> {
 }
 // the bar's day pills ask for the day's timetable
 // a time the rider set stays (the wheels set day and time in either order); otherwise the new day starts at its default
-search.hooks.dayChanged = (d) => {
+query.hooks.dayChanged = (d) => {
   loadDay(d).catch(loadFailed);
-  if (!search.timeTouched.value) search.setDefaultTime();
+  if (!query.timeTouched.value) query.setDefaultTime();
 };
-search.hooks.startDay = () => (data.manifest.value ? startDay() : '');
+query.hooks.startDay = () => (data.manifest.value ? startDay() : '');

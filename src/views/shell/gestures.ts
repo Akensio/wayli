@@ -3,10 +3,11 @@
 // lands where it is let go. A tap on the handle steps through the sizes. A tap elsewhere stays a tap.
 import * as sheet from '../../state/sheet';
 import * as search from '../../state/search';
+import * as nav from '../../state/nav';
 import type { SheetState } from '../../state/sheet';
 import { pullRefresh } from './pullRefresh';
 
-const onPage = () => document.body.classList.contains('page'); // pages over the whole screen do not drag
+const onPage = () => nav.page.value; // pages over the whole screen do not drag
 const clampH = (h: number) => Math.max(sheet.px('peek'), Math.min(sheet.px('full'), h));
 
 export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: HTMLElement): void {
@@ -266,5 +267,4 @@ export function attachSheetGestures(el: HTMLElement, handle: HTMLElement, body: 
       { passive: true },
     );
   }
-  window.addEventListener('resize', () => sheet.set(sheet.state.value));
 }

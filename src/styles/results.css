@@ -90,7 +90,7 @@
 /* only collapsed: the open sheet's list says the same, so the line folds away as the sheet opens */
 .peekline { max-height: 48px; transition: max-height .25s var(--ease-out), opacity .18s, margin .25s, padding .25s; }
 .sheet:not([data-state="peek"]) .peekline { max-height: 0; opacity: 0; margin: 0; padding-block: 0; pointer-events: none; }
-.journey.flash { animation: cardFlash .9s ease-out; }
+.journey { scroll-margin: 8px; } /* a card brought into view stops short of the list's edge */
 .peekline .times { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
 .peekline .leave { margin-inline-start: auto; font-weight: 600; }
 .peekline .leave.past { color: var(--ink-2); font-weight: 400; }

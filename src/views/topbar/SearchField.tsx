@@ -381,8 +381,9 @@ export function SearchField({
     else if (search.listing.peek() === id) search.listing.value = '';
   });
   useEffect(() => {
-    if (!inBar) return;
     search.boxes.set(id, {
+      focus: () => inputRef.current?.focus(),
+      focused: () => document.activeElement === inputRef.current,
       blur: () => inputRef.current?.blur(),
       closeList: () => {
         open.value = false;
@@ -393,6 +394,13 @@ export function SearchField({
       search.boxes.delete(id);
     };
   }, []);
+  // the address book came in while a box had text typed in it: that box searches again, now with addresses
+  const placesWere = useRef(data.plReady.peek());
+  useSignalEffect(() => {
+    const ready = data.plReady.value;
+    if (ready && !placesWere.current && !place.peek() && text.peek().trim().length >= 2) typed(text.peek().trim());
+    placesWere.current = ready;
+  });
   // the line search's kind of line changed (the chips under the box): list again for it
   useSignalEffect(() => {
     void search.lineFilter.value;

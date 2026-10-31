@@ -1,6 +1,6 @@
 // Choosing a place for home, work or the saved list: a search box, my location, or a point on the map.
 import { signal } from '@preact/signals';
-import type { Place } from './search';
+import { focusBox, type Place } from './search';
 
 export const title = signal('');
 export const text = signal('');
@@ -20,7 +20,7 @@ export function open(t: string): Promise<Place | null> {
     text.value = '';
     place.value = null;
     hooks.show();
-    setTimeout(() => (document.getElementById('chQ') as HTMLInputElement | null)?.focus(), 50);
+    focusBox('chQ', 50);
   });
 }
 /** Done, with a place or none; the panel closes (unless it is already closing, when the history did it). */

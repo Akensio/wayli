@@ -16,7 +16,8 @@ import { SearchField } from './SearchField';
 import { WhenPopover, BikePopover, TimeChipInner, BikeChipInner } from './Popovers';
 import type { IconName } from '../../widgets/icons';
 import { useFlip } from '../../widgets/flip';
-import { layoutTop } from '../../controllers/shell';
+import { watchLayout } from '../shell/layout';
+import { attachBarPull } from '../shell/pullRefresh';
 import { chooseStation, swapStations, endStations } from '../../controllers/station';
 import { cancelPlan, openStopGroup } from '../../controllers/planner';
 import { openLine } from '../../controllers/line';
@@ -71,7 +72,7 @@ export function TopBar() {
     if (typing)
       setTimeout(() => {
         if (box === 'fromQ' || !had!.getClientRects().length || document.activeElement !== had)
-          (document.getElementById(box) as HTMLInputElement | null)?.focus();
+          search.boxes.get(box)?.focus();
       }, 60);
   };
   const filters = kind === 'stop' ? STOP_FILTERS : LINE_FILTERS,
@@ -79,12 +80,8 @@ export function TopBar() {
   // a filter chip; trains and the light rail are a timetable of two stations each, From first: their stations are not
   // carried from one to the other, and the keyboard moves up to the From box
   const pickFilter = (f: string) => {
-    const was = search.railPair.value ? search.pairMode.value : null;
-    (filter as { value: string }).value = f;
-    const now = search.railPair.value ? search.pairMode.value : null;
-    if (was !== now) search.clearStations();
-    if (now && !search.stFrom.value && document.activeElement?.id === 'toQ')
-      setTimeout(() => (document.getElementById('fromQ') as HTMLInputElement | null)?.focus(), 60);
+    const now = search.setFilter(kind, f);
+    if (now && !search.stFrom.value && search.boxes.get('toQ')?.focused()) search.focusBox('fromQ');
   };
   const opt = search.optOpen.value;
   const barRef = useRef<HTMLDivElement>(null),
@@ -109,9 +106,8 @@ export function TopBar() {
   useEffect(() => {
     const el = barRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => layoutTop());
-    ro.observe(el);
-    return () => ro.disconnect();
+    attachBarPull(el); // pull down on the bar to reload
+    return watchLayout(el);
   }, []);
   // a tap anywhere else closes an option popover, keeping what was set (state/search, setOpt)
   useEffect(() => {
@@ -127,7 +123,7 @@ export function TopBar() {
     if (search.barOpen.value || e.pointerType === 'mouse') return;
     e.preventDefault();
     search.openBar();
-    setTimeout(() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus(), 480);
+    search.focusBox('toQ', 480);
   };
 
   return (
@@ -206,11 +202,11 @@ export function TopBar() {
             kind={pair ? 'stop' : 'trip'}
             stationSide={pair ? 'from' : undefined}
             onStop={(g) => {
-              (document.getElementById('fromQ') as HTMLInputElement | null)?.blur();
+              search.boxes.get('fromQ')?.blur();
               chooseStation('from', g);
             }}
             onPick={(p) => {
-              (document.getElementById('fromQ') as HTMLInputElement | null)?.blur();
+              search.boxes.get('fromQ')?.blur();
               search.chooseFrom(p);
             }}
           >
@@ -240,7 +236,7 @@ export function TopBar() {
             kind={kind}
             stationSide={pair ? 'to' : undefined}
             onStop={(g) => {
-              (document.getElementById('toQ') as HTMLInputElement | null)?.blur();
+              search.boxes.get('toQ')?.blur();
               if (pair) chooseStation('to', g);
               else {
                 openStopGroup(g);
@@ -248,12 +244,12 @@ export function TopBar() {
               }
             }}
             onPick={(p) => {
-              (document.getElementById('toQ') as HTMLInputElement | null)?.blur();
+              search.boxes.get('toQ')?.blur();
               search.chooseTo(p);
             }}
             onLine={(r) => {
               if (!line) search.toText.value = '';
-              (document.getElementById('toQ') as HTMLInputElement | null)?.blur();
+              search.boxes.get('toQ')?.blur();
               openLine(r.route);
               search.foldBar();
             }}
@@ -265,7 +261,7 @@ export function TopBar() {
               title={t('menu')}
               aria-label={t('menu')}
               onClick={() => {
-                (document.getElementById('toQ') as HTMLInputElement | null)?.blur();
+                search.boxes.get('toQ')?.blur();
                 nav.showOverlay('drawer');
               }}
             >
@@ -293,7 +289,7 @@ export function TopBar() {
                 class="applogo"
                 id="appLogo"
                 aria-label="Wayli"
-                onClick={() => (document.getElementById('toQ') as HTMLInputElement | null)?.focus()}
+                onClick={() => search.boxes.get('toQ')?.focus()}
               >
                 <Logo />
               </button>
@@ -315,14 +311,7 @@ export function TopBar() {
       </div>
       <div class="trow" id="sumRow" hidden={!sum}>
         <div class="sumbox">
-          <button
-            type="button"
-            class="sumtxt"
-            id="sumEdit"
-            onClick={() => {
-              search.barOpen.value = true;
-            }}
-          >
+          <button type="button" class="sumtxt" id="sumEdit" onClick={search.openBar}>
             {pair ? (
               <>
                 {/* the trains between two stations, as a trip's summary: To above, From and the kind of train below */}

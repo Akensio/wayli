@@ -7,6 +7,7 @@ import { t, lang } from '../../lib/i18n';
 import { bikeText } from '../../journey/format';
 import { dayShort, calendarOf, calToday, two } from '../../lib/time';
 import * as search from '../../state/search';
+import * as query from '../../state/query';
 
 const Seg = <T extends string>({
   id,
@@ -35,7 +36,7 @@ export function WhenPopover() {
   void lang.value;
   const w = search.whenDraft.value;
   if (!w) return null;
-  const set = (patch: Partial<search.When>) => {
+  const set = (patch: Partial<query.When>) => {
     const d = search.whenDraft.value;
     if (d) search.whenDraft.value = { ...d, ...patch };
   }; // two wheels can turn at once
@@ -45,7 +46,7 @@ export function WhenPopover() {
       id="dayWheel"
       class="day"
       label={t('wheelDay')}
-      items={search.calDays.value.map((d) => ({ key: d, label: dayShort(d) }))}
+      items={query.calDays.value.map((d) => ({ key: d, label: dayShort(d) }))}
       value={w.cal}
       onChange={(cal) => set({ cal })}
     />
@@ -106,33 +107,24 @@ export function WhenPopover() {
 
 export function BikePopover() {
   void lang.value;
-  const touch = () => {
-    search.optDirty.value = true;
-  };
   return (
     <div id="bikeBody">
       <Seg
         id="bikeMode"
-        value={search.bike.value}
-        onPick={(v) => {
-          search.bike.value = v;
-          touch();
-        }}
+        value={query.bike.value}
+        onPick={search.setBike}
         options={[
           { v: 'none' as const, label: t('bikeNone') },
           { v: 'park' as const, label: t('bikePark') },
           { v: 'along' as const, label: t('bikeAlong') },
         ]}
       />
-      <label class="check pilltoggle" id="foldingRow" hidden={search.bike.value === 'none'}>
+      <label class="check pilltoggle" id="foldingRow" hidden={query.bike.value === 'none'}>
         <input
           type="checkbox"
           id="folding"
-          checked={search.folding.value}
-          onChange={(e) => {
-            search.folding.value = (e.currentTarget as HTMLInputElement).checked;
-            touch();
-          }}
+          checked={query.folding.value}
+          onChange={(e) => search.setFolding((e.currentTarget as HTMLInputElement).checked)}
         />{' '}
         <span>{t('folding')}</span>
       </label>
@@ -143,14 +135,14 @@ export function BikePopover() {
 /** The chips' texts, shared with the summary box: short, so the bicycle chip keeps its room ("18:30", "By 19:00",
  *  "Tomorrow 08:00"; the day only when it is not today, by the calendar). */
 function timeChipText(): string {
-  if (!search.timeTouched.value) return t('now');
-  const { cal, time } = calendarOf(search.day.value, search.atSeconds());
+  if (!query.timeTouched.value) return t('now');
+  const { cal, time } = calendarOf(query.day.value, query.atSeconds());
   const day = cal !== calToday() ? dayShort(cal) + ' ' : '';
-  return `${search.timeMode.value === 'arrive' ? t('arriveByShort') + ' ' : ''}${day}${time}`;
+  return `${query.timeMode.value === 'arrive' ? t('arriveByShort') + ' ' : ''}${day}${time}`;
 }
 function bikeChipText(): string {
-  const b = search.bike.value;
-  return bikeText(b) + (b !== 'none' && search.folding.value ? ' · ' + t('folding') : '');
+  const b = query.bike.value;
+  return bikeText(b) + (b !== 'none' && query.folding.value ? ' · ' + t('folding') : '');
 }
 export const TimeChipInner = () => (
   <>

@@ -1,6 +1,8 @@
 // One way to get there: times and duration, the legs as chips, the lines and where they head, the other
 // departures of the same lines, when to leave (counting down), when the first ride reaches its stop, and the map
 // button that draws it on the map or takes it off.
+import { useRef } from 'preact/hooks';
+import { useSignalEffect } from '@preact/signals';
 import { Icon } from '../../widgets/Icon';
 import { LiveMark } from '../../widgets/LiveMark';
 import { TimeRange } from '../../widgets/TimeRange';
@@ -43,13 +45,32 @@ const RideIn = ({ l, day }: { l?: RideLeg; day: string }) => {
 };
 
 export function JourneyCard({ card }: { card: Card }) {
+  const el = useRef<HTMLDivElement>(null);
+  // asked to come into view (results.reveal): scrolled to within the list only as far as needed, with a flash so the
+  // eye finds it; after the sheet's own scroll reset, once it has its size
+  useSignalEffect(() => {
+    const r = results.reveal.value;
+    if (!r || r.idx !== card.idx) return;
+    const t = setTimeout(() => {
+      el.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      el.current?.animate(
+        [
+          { backgroundColor: 'color-mix(in srgb, var(--accent) 22%, var(--surface))', offset: 0 },
+          { backgroundColor: 'color-mix(in srgb, var(--accent) 22%, var(--surface))', offset: 0.3 },
+          { backgroundColor: 'var(--surface)', offset: 1 },
+        ],
+        { duration: 900, easing: 'ease-out' },
+      );
+    }, 60);
+    return () => clearTimeout(t);
+  });
   const { j, q, options, lines, idx } = card;
   const rides = ridesOf(j.legs);
   const shown = results.altShown.value.has(idx),
     sel = shown && results.altSel.value === idx;
   void now.value; // the "also at" times grey out as they pass
   return (
-    <div class={`journey${sel ? ' sel' : ''}`} data-idx={idx} onClick={() => openDetail(j, q)}>
+    <div class={`journey${sel ? ' sel' : ''}`} ref={el} onClick={() => openDetail(j, q)}>
       <div class="top">
         {rides.some((l) => l.estimated) && <span class="est">~</span>}
         <TimeRange from={j.depart} to={j.arrive} />

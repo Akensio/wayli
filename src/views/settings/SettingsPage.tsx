@@ -5,13 +5,12 @@ import { useRef } from 'preact/hooks';
 import { Icon } from '../../widgets/Icon';
 import { useSwipeClose } from '../../widgets/swipeClose';
 import { t, lang } from '../../lib/i18n';
-import * as app from '../../state/app';
 import { Settings } from './Settings';
 import * as nav from '../../state/nav';
 
 export function SettingsPage() {
   void lang.value;
-  const open = app.settingsOpen.value;
+  const open = nav.settingsOpen.value;
   const ref = useRef<HTMLElement>(null);
   // it came in from the right in English (from the left in Hebrew): swiped back that way, it closes
   const swipe = useSwipeClose({

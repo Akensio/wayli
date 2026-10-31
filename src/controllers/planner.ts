@@ -26,6 +26,7 @@ import { openStop } from './stop';
 import { chooseStation, openStation, openTrains } from './station';
 import * as stopPage from '../state/stop';
 import { openDetail } from './detail';
+import * as query from '../state/query';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
 
@@ -92,8 +93,8 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   }
   // a plan from now is from now: the service day may have turned (03:00) since the bar was set, and resetNow loads
   // that day's timetable through the day hook; the plan then waits for it like any other day change
-  if (!search.timeTouched.value) {
-    search.resetNow();
+  if (!query.timeTouched.value) {
+    query.resetNow();
     if (!data.ttReady.value) {
       waiting = true;
       return;
@@ -102,19 +103,19 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   if (!nav.stack.value.some((e) => e.kind === 'plan')) nav.push({ kind: 'plan' }); // the back button clears the plan
   const from = search.from.value!,
     to = search.to.value!,
-    day = search.day.value;
+    day = query.day.value;
   const weekday = dateOf(day).getDay() <= 4;
-  const bike = search.bike.value,
-    folding = search.folding.value,
-    arriveBy = search.timeMode.value === 'arrive';
-  const at = search.atSeconds();
-  const isNow = !search.timeTouched.value && !arriveBy;
+  const bike = query.bike.value,
+    folding = query.folding.value,
+    arriveBy = query.timeMode.value === 'arrive';
+  const at = query.atSeconds();
+  const isNow = !query.timeTouched.value && !arriveBy;
   const { fromTime, toTime } = planWindow(at, arriveBy, isNow); // journey/query.ts
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   search.busy.value = true;
   results.status.value = 'planning';
   search.optOpen.value = '';
-  const q: Query = { from, to, day, at: search.at.value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
+  const q: Query = { from, to, day, at: query.at.value, bike, folding, arriveBy, isNow, maxWalk: maxWalk / 60 };
   // a plan from now takes the delays of the vehicles on the road into account
   const svc = clock.serviceDay();
   const liveTried = withLive({ liveOn: map.liveOn(), arriveBy, day, at, now: { day: svc.day, seconds: svc.seconds } });
@@ -174,7 +175,7 @@ export async function planTo(p: Place): Promise<void> {
     if (!f || f.transient) search.setPlace('from', null);
     else search.fromText.value = f.name;
   }
-  if (!search.timeTouched.value) search.resetNow(); // from now, unless the rider set a time
+  if (!query.timeTouched.value) query.resetNow(); // from now, unless the rider set a time
   if (search.from.value) plan();
   else {
     results.status.value = 'idle';
@@ -199,7 +200,7 @@ export function clearPlan(): void {
   if (l) lastSearch.set({ ...l, dismissed: true });
   showPlanError('');
   search.optOpen.value = '';
-  search.resetNow();
+  query.resetNow();
   map.applyLiveShow();
   nav.renderPanels();
   map.redrawMap(true);
@@ -220,7 +221,7 @@ export function cancelPlan(): void {
 /** A recent or saved trip planned again: the bar filled from its query, from now. */
 export function replan(q: Query): void {
   search.applyQuery(q);
-  search.resetNow();
+  query.resetNow();
   planFromBar();
 }
 /** Places matching what is typed, the nearest first. */
@@ -324,26 +325,13 @@ export function revealCard(idx: number, open: boolean): void {
     if (open) sheet.set('half');
     return;
   } // opening brings the highlighted card itself (shell.ts)
-  setTimeout(() => {
-    // after the sheet's own scroll reset, once it has its size
-    const body = document.getElementById('sheetBody'),
-      el = document.querySelector<HTMLElement>(`.journey[data-idx="${idx}"]`);
-    if (!body || !el || sheet.state.value === 'peek') return;
-    const top = el.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop,
-      seen = body.clientHeight;
-    if (top < body.scrollTop + 8 || top + el.offsetHeight > body.scrollTop + seen - 8)
-      body.scrollTo({ top: Math.max(0, top - 8), behavior: 'smooth' });
-    el.classList.remove('flash');
-    void el.offsetWidth;
-    el.classList.add('flash');
-  }, 60);
+  results.reveal.value = { idx, n: (results.reveal.peek()?.n ?? 0) + 1 }; // the card answers (JourneyCard)
 }
 // What the results' own flows need back from here: the sheet and the map after results come, a way's card brought
 // into view.
 Object.assign(results.hooks, {
   afterResults: () => {
-    const body = document.getElementById('sheetBody');
-    if (body) body.scrollTop = 0;
+    sheet.scrollToTop();
     if (!nav.topPanel() && nav.screen.value === 'plan' && sheet.state.value === 'peek') sheet.set('half');
     map.applyLiveShow();
     map.redrawMap(true);

@@ -2,20 +2,14 @@
 // page, the drawer, the map picker). Every panel and every screen change is a history entry, so the phone's
 // back button (or the browser's) closes the panel or returns to the previous screen instead of leaving the
 // app. Closing with an in-app button goes through history too, so both paths look the same.
-// A close steps history back; the browser performs that later, and a pushState made meanwhile would be
-// swallowed by it (the traversal is measured from where the call was made). So while a step back is
-// pending, new entries wait in `queued` and are pushed once its popstate arrives.
-// On Android, Chrome plays its own "previous page" slide for every history step, which made closing a panel look
-// like one page leaving another, on an app that is one map with things on top. There, where the browser has
-// CloseWatcher, each entry gets one instead of a history entry: back closes the panel with the app's own
-// animation and the browser draws nothing. Everywhere else, history as above.
+// How the phone's Back reaches the stack is a back-end chosen once (below): browser history, or on Android a
+// CloseWatcher per entry, so back closes the panel with the app's own animation and the browser draws nothing.
 import { signal, computed } from '@preact/signals';
 import { t } from '../lib/i18n';
 import * as sheet from './sheet';
 import * as results from './results';
 import * as search from './search';
 import * as chooser from './chooser';
-import * as app from './app';
 
 // 'search': the bar searches lines or stops (a step back is the trip search again); 'ui': a search box's open list or
 // its keyboard, which back closes first (Android only: see pushUi)
@@ -27,8 +21,6 @@ export type Entry =
   | { kind: 'ui'; undo: () => void };
 export const stack = signal<Entry[]>([]);
 export const screen = signal('plan');
-let settling = false;
-const queued: Entry[] = [];
 
 /** What the app does when panels close or change. Filled in by the app at start. */
 export const hooks = {
@@ -56,7 +48,11 @@ export const key = computed(() => topPanel() || 'screen-' + screen.value);
 export const picking = computed(() => key.value === 'picker'); // picking a point: the sheet and the bar go, the crosshair bar shows
 // pages over the whole screen (the sheet grows to it; the bar, the map's buttons and the handle go)
 const PAGE_TITLE: Record<string, string | null> = { 'screen-saved': 'savedTitle', chooser: null };
-const page = computed(() => !picking.value && key.value in PAGE_TITLE);
+/** A page over the whole screen is up (the sheet grows to it; the bar, the map's buttons and the handle go). */
+export const page = computed(() => !picking.value && key.value in PAGE_TITLE);
+/** The menu drawer and the settings page: layers beside the panels. */
+export const drawerOpen = computed(() => stack.value.some((e) => e.kind === 'overlay' && e.id === 'drawer'));
+export const settingsOpen = computed(() => stack.value.some((e) => e.kind === 'overlay' && e.id === 'settings'));
 export const pageTitle = (): string => {
   const k = key.value;
   return PAGE_TITLE[k] ? t(PAGE_TITLE[k]!) : chooser.title.value;
@@ -72,13 +68,6 @@ const SHEET_FOR: Record<string, sheet.SheetState | (() => sheet.SheetState)> = {
 
 /** Apply what is on top: the drawer, the settings page, the page look, the sheet's size; the map follows. */
 export function renderPanels(): void {
-  app.drawerOpen.value = isOpen('drawer');
-  app.settingsOpen.value = isOpen('settings');
-  document.body.classList.toggle('page', page.value);
-  if (page.value) {
-    const b = document.getElementById('sheetBody');
-    if (b) b.scrollTop = 0;
-  }
   if (!picking.value) {
     const st = SHEET_FOR[key.value];
     sheet.set(typeof st === 'function' ? st() : st || 'half');
@@ -86,88 +75,165 @@ export function renderPanels(): void {
   hooks.changed();
 }
 
-const CW = (window as any).CloseWatcher;
-const WATCH = typeof CW === 'function' && /Android/i.test(navigator.userAgent);
-/** Back is a close request at a time here (CloseWatcher), not history. */
-export const closeWatchers = WATCH;
-const watchers = new Map<Entry, any>();
-/** An entry's CloseWatcher: Android's back closes it, and whatever was opened over it. */
-function watch(entry: Entry): void {
-  try {
-    const w = new CW();
-    w.onclose = () => {
-      watchers.delete(entry);
-      backTo(entry);
-    };
-    watchers.set(entry, w);
-  } catch {
-    /* back leaves the app then */
-  }
-}
-function unwatch(entry: Entry): void {
-  const w = watchers.get(entry);
-  watchers.delete(entry);
-  if (w)
-    try {
-      w.destroy();
-    } catch {
-      /* already gone */
-    }
-}
-/** Close an entry and every entry above it, top first. */
-function backTo(entry: Entry): void {
-  const i = stack.value.indexOf(entry);
-  if (i < 0) return;
-  const above = stack.value.slice(i).reverse();
-  stack.value = stack.value.slice(0, i);
-  for (const e of above) {
-    unwatch(e);
-    undo(e);
-  }
-}
+// ---- how Back reaches the stack
+/** The phone's Back and the stack, kept in step: browser history (an entry per panel), or on Android, where Chrome
+ *  animates every history step as one page leaving another, a CloseWatcher per entry. Chosen once; the stack's own
+ *  logic below does not know which. */
+type BackEnd = {
+  /** Back is one close request at a time (CloseWatcher): the bar's own steps (pushUi) can be entries too. */
+  readonly closeRequests: boolean;
+  /** An entry went on top. */
+  pushed(entry: Entry): void;
+  /** The app took entries off itself (a close button, closeAll): Back must not find them again. */
+  removed(entries: Entry[]): void;
+  /** An entry took another's place (the detail became the trip followed). */
+  replaced(old: Entry, next: Entry): void;
+  /** The in-app Back: as the phone's would. */
+  back(): void;
+};
 
-export function push(entry: Entry): void {
-  stack.value = [...stack.value, entry];
-  if (WATCH) {
-    watch(entry);
-    return;
-  }
-  if (settling) {
-    queued.push(entry);
-    return;
-  }
+/** History: a pushState per entry; a close steps history back. The browser performs that later, and a pushState made
+ *  meanwhile would be swallowed by it (the traversal is measured from where the call was made), so while a step back is
+ *  pending, new entries wait in `queued` and are pushed once its popstate arrives. */
+function historyBackEnd(): BackEnd {
+  let settling = false;
+  const queued: Entry[] = [];
+  const settled = () => {
+    settling = false;
+    for (const e of queued.splice(0)) {
+      const i = stack.value.indexOf(e);
+      if (i >= 0)
+        try {
+          history.pushState({ wayli: i + 1 }, '');
+        } catch {
+          /* history unavailable */
+        }
+    }
+  };
+  const stepBack = (n: number) => {
+    settling = true;
+    try {
+      history.go(-n);
+    } catch {
+      settled();
+      return;
+    }
+    setTimeout(() => {
+      if (settling) settled();
+    }, 600);
+  };
+  window.addEventListener('popstate', (e) => {
+    if (settling) {
+      settled();
+      return;
+    } // our own step back: the stack is already right
+    const depth = e.state && e.state.wayli ? e.state.wayli : 0;
+    while (stack.value.length > depth) {
+      const top = stack.value[stack.value.length - 1];
+      stack.value = stack.value.slice(0, -1);
+      undo(top);
+    }
+  });
   try {
-    history.pushState({ wayli: stack.value.length }, '');
+    history.replaceState({ wayli: 0 }, '');
   } catch {
     /* history unavailable */
   }
-}
-/** History caught up with a close: push what waited, in stack order. */
-function settled(): void {
-  settling = false;
-  for (const e of queued.splice(0)) {
-    const i = stack.value.indexOf(e);
-    if (i >= 0)
+  return {
+    closeRequests: false,
+    pushed() {
+      if (settling) {
+        queued.push(stack.value[stack.value.length - 1]);
+        return;
+      }
       try {
-        history.pushState({ wayli: i + 1 }, '');
+        history.pushState({ wayli: stack.value.length }, '');
       } catch {
         /* history unavailable */
       }
-  }
+    },
+    removed(entries) {
+      if (entries.length) stepBack(entries.length);
+    },
+    replaced() {},
+    back() {
+      history.back();
+    },
+  };
 }
-function stepBack(n: number): void {
-  settling = true;
-  try {
-    history.go(-n);
-  } catch {
-    settled();
-    return;
-  }
-  setTimeout(() => {
-    if (settling) settled();
-  }, 600);
+
+/** CloseWatchers: one per entry; Android's Back closes the newest, and with it whatever was opened over it. */
+function watcherBackEnd(CW: new () => { onclose: (() => void) | null; destroy(): void }): BackEnd {
+  const watchers = new Map<Entry, { onclose: (() => void) | null; destroy(): void }>();
+  const watch = (entry: Entry) => {
+    try {
+      const w = new CW();
+      w.onclose = () => {
+        watchers.delete(entry);
+        closeFrom(entry);
+      };
+      watchers.set(entry, w);
+    } catch {
+      /* back leaves the app then */
+    }
+  };
+  const unwatch = (entry: Entry) => {
+    const w = watchers.get(entry);
+    watchers.delete(entry);
+    if (w)
+      try {
+        w.destroy();
+      } catch {
+        /* already gone */
+      }
+  };
+  /** Close an entry and every entry above it, top first. */
+  const closeFrom = (entry: Entry) => {
+    const i = stack.value.indexOf(entry);
+    if (i < 0) return;
+    const above = stack.value.slice(i).reverse();
+    stack.value = stack.value.slice(0, i);
+    for (const e of above) {
+      unwatch(e);
+      undo(e);
+    }
+  };
+  return {
+    closeRequests: true,
+    pushed: watch,
+    removed(entries) {
+      for (const e of entries) unwatch(e);
+    },
+    replaced(old, next) {
+      const w = watchers.get(old);
+      if (!w) return;
+      watchers.delete(old);
+      watchers.set(next, w);
+      w.onclose = () => {
+        watchers.delete(next);
+        closeFrom(next);
+      };
+    },
+    back() {
+      const top = stack.value[stack.value.length - 1];
+      if (top) closeFrom(top);
+    },
+  };
 }
-/** Undo the top entry (from popstate, or to close programmatically). */
+
+const CW = (window as unknown as { CloseWatcher?: new () => { onclose: (() => void) | null; destroy(): void } })
+  .CloseWatcher;
+const backEnd: BackEnd =
+  typeof CW === 'function' && /Android/i.test(navigator.userAgent) ? watcherBackEnd(CW) : historyBackEnd();
+/** Back is a close request at a time here (CloseWatcher), not history. */
+export const closeWatchers = backEnd.closeRequests;
+
+// ---- the stack
+export function push(entry: Entry): void {
+  stack.value = [...stack.value, entry];
+  backEnd.pushed(entry);
+}
+/** Undo an entry: what it stood for goes (from Back, or to close programmatically). */
 function undo(entry: Entry): void {
   if (entry.kind === 'overlay') hideOverlay(entry.id);
   else if (entry.kind === 'tab') showScreen(entry.from, false);
@@ -175,9 +241,8 @@ function undo(entry: Entry): void {
   else if (entry.kind === 'ui') entry.undo();
   else hooks.clearPlan();
 }
-/** Close the given panel (or the plan, or the line or stop search) now; history steps back one entry to match (its
- *  popstate then finds nothing left to undo). `undo` false drops the entry only: what it stood for is already undone
- *  (the bar's switch went back to the trip search). */
+/** Close the given panel (or the plan, or the line or stop search) now; Back's record steps back to match. `undo`
+ *  false drops the entry only: what it stood for is already undone (the bar's switch went back to the trip search). */
 export function close(id: string, undo = true): void {
   const i = stack.value.findIndex(
     (e) => (e.kind === 'overlay' && e.id === id) || (e.kind === id && (id === 'plan' || id === 'search')),
@@ -193,16 +258,15 @@ export function close(id: string, undo = true): void {
   } else if (entry.kind === 'plan') hooks.clearPlan();
   else if (entry.kind === 'search') hooks.leaveSearch();
   else hideOverlay(id);
-  if (WATCH) unwatch(entry);
-  else stepBack(1);
+  backEnd.removed([entry]);
 }
 /**
  * A step back of the top bar's own (controllers/shell.ts): its keyboard, then its list, then the line or stop search.
- * Android only (CloseWatcher), where back is one close request at a time; elsewhere each focus and blur would be a
- * history entry. Returns null there.
+ * Only where Back is one close request at a time (Android); elsewhere each focus and blur would be a history entry.
+ * Returns null there.
  */
 export function pushUi(undo: () => void): Entry | null {
-  if (!WATCH) return null;
+  if (!backEnd.closeRequests) return null;
   const entry: Entry = { kind: 'ui', undo };
   push(entry);
   return entry;
@@ -211,7 +275,7 @@ export function pushUi(undo: () => void): Entry | null {
 export function dropUi(entry: Entry | null): void {
   if (!entry || !stack.value.includes(entry)) return;
   stack.value = stack.value.filter((e) => e !== entry);
-  unwatch(entry);
+  backEnd.removed([entry]);
 }
 /** Replace one open panel by another in place (the trip detail becomes the trip being followed). */
 export function swap(oldId: string, newId: string): boolean {
@@ -220,20 +284,12 @@ export function swap(oldId: string, newId: string): boolean {
   const old = stack.value[i],
     next: Entry = { kind: 'overlay', id: newId };
   stack.value = stack.value.map((e, k) => (k === i ? next : e));
-  const w = watchers.get(old);
-  if (w) {
-    watchers.delete(old);
-    watchers.set(next, w);
-    w.onclose = () => {
-      watchers.delete(next);
-      backTo(next);
-    };
-  }
+  backEnd.replaced(old, next);
   hooks.closed(oldId);
   renderPanels();
   return true;
 }
-/** Close every panel and return to the base screen (the history catches up on its own). */
+/** Close every panel and return to the base screen (Back's record catches up on its own). */
 export function closeAll(): void {
   const old = stack.value;
   if (!old.length) return;
@@ -244,8 +300,7 @@ export function closeAll(): void {
     if (e.kind === 'overlay') hooks.closed(e.id);
     else if (e.kind === 'search') hooks.leaveSearch();
   renderPanels();
-  if (WATCH) for (const e of old) unwatch(e);
-  else stepBack(old.length);
+  backEnd.removed(old);
 }
 /** A panel to the front: pushed when new. Already open, it is drawn anew (another stop or line in the same panel); if
  *  other panels were opened over it since (a stop's page over a line's page, whose chip asked for a line), those close
@@ -257,8 +312,7 @@ export function showOverlay(id: string): void {
     if (above.length) {
       stack.value = stack.value.slice(0, i + 1);
       for (const e of [...above].reverse()) undo(e);
-      if (WATCH) for (const e of above) unwatch(e);
-      else stepBack(above.length);
+      backEnd.removed(above);
     }
     hooks.changed(true);
     return;
@@ -279,27 +333,6 @@ export function showScreen(name: string, record = true): void {
 /** The page's back button: the chooser cancels, a panel closes, else the plan screen. */
 export function back(): void {
   if (topPanel() === 'chooser') chooser.finish(null);
-  else if (stack.value.length) {
-    if (WATCH) backTo(stack.value[stack.value.length - 1]);
-    else history.back();
-  } else showScreen('plan');
-}
-
-window.addEventListener('popstate', (e) => {
-  if (WATCH) return; // no history entries of ours there
-  if (settling) {
-    settled();
-    return;
-  } // our own step back: the stack is already right
-  const depth = e.state && e.state.wayli ? e.state.wayli : 0;
-  while (stack.value.length > depth) {
-    const top = stack.value[stack.value.length - 1];
-    stack.value = stack.value.slice(0, -1);
-    undo(top);
-  }
-});
-try {
-  history.replaceState({ wayli: 0 }, '');
-} catch {
-  /* history unavailable */
+  else if (stack.value.length) backEnd.back();
+  else showScreen('plan');
 }

@@ -105,7 +105,6 @@ label.pilltoggle { background: var(--chip); border-radius: 999px; padding: 6px 1
 label.pilltoggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 label.pilltoggle:has(input:checked) { background: var(--ink); color: var(--bg); }
 label.pilltoggle[hidden] { display: none; }
-@keyframes cardFlash { 0%, 30% { background-color: color-mix(in srgb, var(--accent) 22%, var(--surface)); } 100% { background-color: var(--surface); } }
 #lineLive { flex: 0 1 auto; min-width: 0; margin-inline-start: auto; overflow: hidden; text-overflow: ellipsis; }
 #lineTitle { font-size: 18px; margin: 0 0 4px; }
 #trainsTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -13,7 +13,7 @@ import { go, lineSearch, stopSearch } from '../../controllers/shell';
 
 export function Drawer() {
   void lang.value;
-  const open = app.drawerOpen.value;
+  const open = nav.drawerOpen.value;
   const Row = ({
     icon,
     label,

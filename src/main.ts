@@ -13,8 +13,6 @@ import { Floating, PickBar, LiveNote, Menus } from './views/shell/Floating';
 import { Sheet } from './views/shell/Sheet';
 import { Drawer } from './views/menu/Drawer';
 import { SettingsPage } from './views/settings/SettingsPage';
-import { attachSheetGestures } from './views/shell/gestures';
-import { attachBarPull } from './views/shell/pullRefresh';
 import * as sheet from './state/sheet';
 
 const el = (id: string) => document.getElementById(id)!;
@@ -28,8 +26,6 @@ render(h(LiveNote, {}), el('livenote-root'));
 render(h(PickBar, {}), el('pickbar-root'));
 render(h(Sheet, {}), el('sheet-root'));
 render(h(Menus, {}), el('menus-root'));
-attachSheetGestures(el('sheet'), el('sheetHandle'), el('sheetBody'));
-attachBarPull(el('topbar'));
 sheet.set('peek');
 document.body.classList.add('booted'); // the shell paints now, icons and all, in one go
 import('./boot'); // after the first paint

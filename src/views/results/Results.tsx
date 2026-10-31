@@ -10,7 +10,6 @@ import type { IconName } from '../../widgets/icons';
 import { t, lang } from '../../lib/i18n';
 import * as clock from '../../engine/clock.ts';
 import { fmt, secOf, timeOf } from '../../lib/time';
-import * as search from '../../state/search';
 import * as results from '../../state/results';
 import { describePlace } from '../../journey/format';
 import { LegChips } from './LegChips';
@@ -21,6 +20,7 @@ import { ridesOf } from '../../journey/types';
 import { plan } from '../../controllers/planner';
 import { openDetail } from '../../controllers/detail';
 import { startTrip } from '../../controllers/follow';
+import * as query from '../../state/query';
 
 function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
   let note = '';
@@ -49,7 +49,7 @@ function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
           type="button"
           class="linkbtn"
           onClick={() => {
-            search.resetNow();
+            query.resetNow();
             plan();
           }}
         >
@@ -194,7 +194,7 @@ function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored:
  *  "nothing before 20:23" and a button that plans from then; with nothing more that day, "no more ways today" (on a
  *  Friday, that they resume after Shabbat) and a button for the next day the data has; a stop too far, the walk setting. */
 function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Query }) {
-  const days = search.days.value,
+  const days = query.days.value,
     next = days[days.indexOf(q.day) + 1];
   const friday = new Date(+q.day.slice(0, 4), +q.day.slice(4, 6) - 1, +q.day.slice(6, 8)).getDay() === 5;
   const noMore = !r.reason && r.nextAt == null;
@@ -210,7 +210,7 @@ function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Q
             type="button"
             class="ghost"
             onClick={() => {
-              search.setAt(r.nextAt!);
+              query.setAt(r.nextAt!);
               plan();
             }}
           >
@@ -222,7 +222,7 @@ function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Q
             type="button"
             class="ghost"
             onClick={() => {
-              search.setDayAt(next, 5 * 3600);
+              query.setDayAt(next, 5 * 3600);
               plan();
             }}
           >
@@ -234,7 +234,7 @@ function NoWays({ r, q }: { r: { reason?: string; nextAt?: number | null }; q: Q
             type="button"
             class="ghost"
             onClick={() => {
-              search.setAt(search.atSeconds() + 3600);
+              query.setAt(query.atSeconds() + 3600);
               plan();
             }}
           >
@@ -324,7 +324,7 @@ export function Results() {
               type="button"
               class="ghost"
               onClick={() => {
-                search.setAt(Math.max(0, search.atSeconds() - 3600));
+                query.setAt(Math.max(0, query.atSeconds() - 3600));
                 plan();
               }}
             >
@@ -334,7 +334,7 @@ export function Results() {
               type="button"
               class="ghost"
               onClick={() => {
-                search.setAt(search.atSeconds() + 3600);
+                query.setAt(query.atSeconds() + 3600);
                 plan();
               }}
             >

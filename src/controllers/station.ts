@@ -14,13 +14,14 @@ import * as stopPage from '../state/stop';
 import { openStop } from './stop';
 import { liveRides } from './liverides';
 import { recentViews } from '../state/store.ts';
+import * as query from '../state/query';
 
 let seq = 0,
   timer = 0;
 const when = () => {
-  const day = search.day.value,
+  const day = query.day.value,
     isNow = isNowDay(day);
-  return { day, isNow, from: isNow ? clock.nowOn(day) - 60 : search.atSeconds() };
+  return { day, isNow, from: isNow ? clock.nowOn(day) - 60 : query.atSeconds() };
 };
 
 /** A station: the one stop view, for all its platforms (its departures, and where its trains go). */
