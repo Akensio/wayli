@@ -256,15 +256,10 @@ export function SuggestionList({ rows, a }: { rows: Shown; a: ListActions }) {
     );
   return (
     <>
-      {rows.lines.length > 0 && <div class="grp">{t('grpLines')}</div>}
-      {rows.lines.map((g) => (
-        <LineRow key={g.key} g={g} onLine={a.onLine} />
-      ))}
-      {rows.lines.length > 0 && rows.results.length > 0 && <div class="grp">{t('grpPlaces')}</div>}
       {rows.results.map((g) => (
         <PlaceRow key={resultKey(g)} g={g} onPlace={a.onPlace} />
       ))}
-      {!rows.results.length && !rows.lines.length && <Empty rows={rows} />}
+      {!rows.results.length && <Empty rows={rows} />}
     </>
   );
 }

@@ -2,7 +2,7 @@
 // SuggestionList draws the answer):
 //
 //   trip box, empty           → the quick entries (my location, pick on the map, saved and recent places)
-//   trip box, typed           → places matching, and (the To box) line numbers matching; nothing for one letter
+//   trip box, typed           → places and stops matching (lines are the line search's); nothing for one letter
 //   line box, empty or typed  → lines near the rider (with those opened lately) or matching the number
 //   stop box, empty or typed  → stops near the rider, every station for trains (with those opened lately), or matching
 //
@@ -20,9 +20,9 @@ import { findPlaces, findLineGroups, findStopGroups } from './planner';
 export type Rows =
   /** An empty trip box: my location, pick on the map, saved and recent places (read by the list as it draws). */
   | { kind: 'quick' }
-  /** What a trip box matched: places (stops among them), and line numbers in the To box; `placesLoaded` false while
+  /** What a trip box matched: places, stops among them; `placesLoaded` false while
    *  the address book is still coming (only stops can match yet). */
-  | { kind: 'places'; results: SearchHit[]; lines: LineGroup[]; placesLoaded: boolean }
+  | { kind: 'places'; results: SearchHit[]; placesLoaded: boolean }
   /** The line search: lines near the rider and those opened lately while empty (`near`), else those matching. */
   | { kind: 'lines'; groups: LineGroup[]; near: boolean; recent: View[] }
   /** The stop search, or a side of the train timetable: stops near (every station for trains) and those opened lately
@@ -34,22 +34,20 @@ export type Rows =
 /** What a box asks with, besides its kind and text. */
 export type SuggestCtx = {
   box: string; // the box asking (its id): each box's answers are ordered on their own
-  lines?: boolean; // a trip box where line numbers match too (the To box)
   lineFilter?: LineFilter; // the line search's chips
   stopMode?: StopFilter; // the stops listed: the stop search's chips, or the kind of train of the timetable's side
   side?: Side; // a side of the train timetable (stations only; the To side lists no recents)
   fromStops?: number[]; // the To side: only the stations reachable from these (the From station's platforms)
 };
 
-/** Whether the text can be searched as places: two letters, or one digit in a box where line numbers match. */
-const placeSearchable = (q: string, ctx: SuggestCtx): boolean =>
-  (q.length >= 2 || (!!ctx.lines && /^\d+$/.test(q))) && data.ttReady.value;
+/** Whether the text can be searched as places: two letters at least, once the timetable is in. */
+const placeSearchable = (q: string): boolean => q.length >= 2 && data.ttReady.value;
 
 /** Whether the answer searches for what is typed, so the box should let the typing pause before it asks. An empty box
  *  (its quick entries or what is near) and a text too short for places are answered at once. */
-export function searchesText(kind: Kind, q: string, ctx: SuggestCtx): boolean {
+export function searchesText(kind: Kind, q: string): boolean {
   if (!q) return false;
-  return kind !== 'trip' || placeSearchable(q, ctx);
+  return kind !== 'trip' || placeSearchable(q);
 }
 
 /** What was opened lately, of the kind the chips choose, at most four (the To side of the timetable lists none). */
@@ -94,10 +92,7 @@ export async function suggest(kind: Kind, q: string, ctx: SuggestCtx): Promise<R
     return latest({ kind: 'stops', groups, near: !q, recent: q ? [] : recentFor('stop', ctx) });
   }
   if (!q) return latest({ kind: 'quick' });
-  if (!placeSearchable(q, ctx)) return latest({ kind: 'none' });
-  const [found, lines] = await Promise.all([
-    orNothing(findPlaces(q), { results: [], placesLoaded: data.plReady.peek() }),
-    ctx.lines && q.length <= 5 ? orNothing(findLineGroups(q, 'all', 3), []) : Promise.resolve([]),
-  ]);
-  return latest({ kind: 'places', results: found.results, lines, placesLoaded: found.placesLoaded });
+  if (!placeSearchable(q)) return latest({ kind: 'none' });
+  const found = await orNothing(findPlaces(q), { results: [], placesLoaded: data.plReady.peek() });
+  return latest({ kind: 'places', results: found.results, placesLoaded: found.placesLoaded });
 }

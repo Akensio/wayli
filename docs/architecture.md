@@ -276,7 +276,8 @@ is rotated or tilted and resets both on a tap, and whatever the open panel
 is about. Over it,
 a floating top bar that is the planner: a menu button and one prompt,
 "where do you want to go?". A tap on it opens the bar: the destination
-field (tagged "to"; places, addresses and line numbers; its quick menu
+field (tagged "to"; places, addresses and stops, no lines: those are the
+line search's; its quick menu
 offers my location, a point on the map, saved and recent places), a
 second row with the origin field (tagged "from"; empty means my location)
 and a swap button, then a row with two chips for the options (when,
@@ -627,8 +628,7 @@ the rider; typed, exact numbers first, then prefixes, the nearest first
 among equals (line 1 here before line 1 in another city). Chips are
 styled by mode: a bus as a tag in its operator's colour, train (navy),
 light rail (red) and cable (teal) as rounded pills with their icon, shared
-taxis yellow, on-demand lines outlined. In the trip search, line numbers
-still match in the To box (three lines above the places). A line page shows the
+taxis yellow, on-demand lines outlined. A line page shows the
 direction's course on the map with every stop as a dot and the line's
 vehicles reporting now, each with its delay (tap one for its bubble), the other
 directions as buttons, today's trip count and first and last departure,

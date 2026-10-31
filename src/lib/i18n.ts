@@ -75,8 +75,6 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   done: ['אישור', 'Done'],
   recentOnly: ['אחרונים', 'Recent'],
   goQ: ['לאן רוצים להגיע?', 'Where do you want to go?'],
-  grpLines: ['קווים', 'Lines'],
-  grpPlaces: ['מקומות', 'Places'],
   fromQ: ['מאיפה יוצאים?', 'Where are you leaving from?'],
   toQ: ['לאן?', 'To?'],
   kindStop: ['תחנה', 'stop'],

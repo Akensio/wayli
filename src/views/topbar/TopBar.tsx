@@ -231,7 +231,6 @@ export function TopBar() {
             withUser
             placeholder={t(pair ? 'toStationQ' : search.toPlaceholder.value)}
             inputMode={search.toInputMode.value}
-            lines
             kind={kind}
             stationSide={pair ? 'to' : undefined}
             onStop={(g) => {

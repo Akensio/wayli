@@ -34,15 +34,14 @@ type Props = {
   place: Signal<Place | null>; // the place chosen, cleared by typing
   placeholder: string;
   inputMode?: '' | 'numeric';
-  kind?: search.Kind; // what the box searches for: a trip (places, stops, lines), a line, a stop
+  kind?: search.Kind; // what the box searches for: a trip (places and stops), a line, a stop
   // a stop box that is a side of the train timetable: stations only; the To side lists those reachable from the From
   // one. A refinement of `kind` 'stop' rather than a kind of its own: the bar switches both together from one flag,
   // and a change of either lists again (read only while `kind` is 'stop').
   stationSide?: search.Side;
-  lines?: boolean; // line numbers match too (the To box)
   onPick: (p: Place) => void; // a place chosen: a quick entry, a saved or recent place, a result
   onStop?: (g: StopGroup) => void; // a stop chosen (boxes of `kind` 'stop')
-  onLine?: (r: { route: number }) => void; // a line's direction chosen (the line search, and the To box's `lines`)
+  onLine?: (r: { route: number }) => void; // a line's direction chosen (the line search)
   // "my location" and "pick on the map" done by the caller (the place chooser, which finishes with the place itself),
   // both or neither; without them the box does its own: it fills with the place and passes it to `onPick`
   quickActions?: { locate: () => void; map: () => void };
@@ -78,7 +77,6 @@ export function SearchField({
   inputMode = '',
   kind = 'trip',
   stationSide,
-  lines = false,
   onPick,
   onStop,
   onLine,
@@ -133,7 +131,7 @@ export function SearchField({
         stopMode: stationSide ? search.pairMode.value : search.stopFilter.value,
         fromStops: stationSide === 'to' ? search.stFrom.value?.stops : undefined,
       };
-    return { box: id, lines };
+    return { box: id };
   };
   /** An answer in: shown and the list opened, or the list closed for "none"; a superseded answer (null) is dropped. */
   const apply = (r: Rows | null) => {
@@ -154,7 +152,7 @@ export function SearchField({
   const typed = (q: string) => {
     place.value = null;
     clearTimeout(timer.current);
-    if (searchesText(kind, q, ctxFor())) timer.current = window.setTimeout(() => list(q), PAUSE[kind]);
+    if (searchesText(kind, q)) timer.current = window.setTimeout(() => list(q), PAUSE[kind]);
     else list(q);
   };
 
