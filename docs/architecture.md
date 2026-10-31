@@ -590,7 +590,16 @@ gzipped) and the feed's for cities; a word typed in Latin letters matches the En
 name, or, failing that, the consonant skeleton of the Hebrew one (vowels
 dropped, letters that sound alike merged, doubled letters collapsed, so
 "Hayarkon", "HaYarkon" and "Ha-Yarkon" all find הירקון, and "Petach Tikvah"
-finds פתח תקווה), scored a little below a spelled-out English name. Results
+finds פתח תקווה), scored a little below a spelled-out English name. A
+Hebrew word not found as written is matched loosely, in order: the word
+with one slip (a letter wrong, missing, extra, or two swapped: ארומא for
+ארומה), the same skeleton (עזראלי, אזריאלי for עזריאלי), the start of it, and
+from five consonants one slip in the skeleton (מקדולנדס); from three letters
+typed, so short words reach nothing by chance. A Latin word gets the same
+skeleton slip. A name found only loosely lists after every name found as
+typed. בי"ח and בי"ס read as בית חולים and בית ספר either way. The
+skeletons are built once, by the worker as soon as the address book is in
+(half a second on a laptop). Results
 are named in the app's language where the data has the name. Stops
 and places are ranked on one scale in the worker: match strength (a whole
 word over a prefix, a name typed in full over a partial one; a street is

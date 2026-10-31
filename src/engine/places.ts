@@ -47,7 +47,7 @@ export type Places = Container<PlacesSections, PlacesHeader> & {
   cityEnByHe: Map<string, string>; // a city's English name by its Hebrew one, for the cities that have one
   poiWords: string[][]; // per place, the words of its Hebrew name in their looser form
   poiCity: string[]; // per place, its city, normalised
-  // built on the first query in Latin letters (ensureLatin), absent until then
+  // built on the first query (ensureSkeletons), absent until then
   streetEn?: string[][]; // per street, the words of its English name, without the street-type words
   streetSk?: string[][][]; // per street, per Hebrew word, the consonant skeletons it may be spelt as
   poiEn?: string[][];
@@ -64,7 +64,10 @@ function canon(word: string): string {
   w = w.replace(/וו/g, 'ו').replace(/יי/g, 'י');
   return w;
 }
-const words = (s: string): string[] => norm(s).split(' ').filter(Boolean).map(canon).filter(Boolean);
+/** Abbreviations written either way: בי"ח is בית חולים, בי"ס בית ספר (the quote is gone by now: ביח, ביס). */
+const ABBR: Record<string, string[]> = { ביח: ['בית', 'חולים'], ביס: ['בית', 'ספר'] };
+const unabbr = (ws: string[]): string[] => ws.flatMap((w) => ABBR[w] || [w]);
+const words = (s: string): string[] => unabbr(norm(s).split(' ').filter(Boolean)).map(canon).filter(Boolean);
 /** Everyday names for cities the feed spells in full. */
 const CITY_ALIASES: Record<string, string> = {
   'תל אביב': 'תל אביב יפו',
@@ -331,11 +334,13 @@ function skelHe(word: string): string[] {
   });
   return expand(s);
 }
-function skelLatin(word: string): string[] {
+/** A Latin word's consonant skeletons; `article` false keeps a leading "ha" (a city's name never takes the article). */
+function skelLatin(word: string, article = true): string[] {
   const w = word.toLowerCase();
+  // sh first, kept apart from what follows, so the t of "rotshild" is not read as ts (צ)
   let s = w
-    .replace(/sch/g, 's')
-    .replace(/sh/g, 's')
+    .replace(/sch/g, 'S')
+    .replace(/sh/g, 'S')
     .replace(/tch/g, 'z')
     .replace(/ch|kh/g, 'x')
     .replace(/ts|tz/g, 'z')
@@ -345,7 +350,8 @@ function skelLatin(word: string): string[] {
     .replace(/[qc]/g, 'k')
     .replace(/[bw]/g, 'v')
     .replace(/f/g, 'p')
-    .replace(/j/g, 'J'); // x: a guttural (ח or כ)
+    .replace(/j/g, 'J') // x: a guttural (ח or כ)
+    .replace(/S/g, 's');
   const bases: string[] = [];
   const vowelH = /[aeiouy]h$/.test(w); // "Tikvah": a bare final h after a vowel is a vowel (ה) or a consonant (ח); "Petach" is ח
   for (const b of vowelH ? [s, s.slice(0, -1)] : [s]) {
@@ -356,18 +362,19 @@ function skelLatin(word: string): string[] {
   const out: string[] = [];
   for (const b of bases) {
     out.push(squash(b));
-    if (w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1))); // "HaYarkon": the article, which Hebrew matching drops
+    if (article && w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1))); // "HaYarkon": the article, which Hebrew matching drops
   }
   return [...new Set(out)].filter(Boolean);
 }
-/** A query word with what it can match: a Hebrew word as it is (`sk` null), a Latin word by the English name or by the
- *  skeletons it may stand for. */
-type QueryWord = { w: string; latin: boolean; sk: string[] | null };
-/** The query's words with what each can match: Hebrew words as they are, Latin words by English name or skeleton. */
+/** A query word with what it can match: its text (a Hebrew name's words, or an English name's), and the consonant
+ *  skeletons it may stand for (matched against the skeletons of the Hebrew names), so a word spelt another way or with
+ *  one slip still finds the name (skelScore). */
+type QueryWord = { w: string; latin: boolean; sk: string[] };
 const queryWords = (words: string[]): QueryWord[] =>
-  words.map((w) => ({ w, latin: isLatin(w), sk: isLatin(w) ? skelLatin(w) : null }));
-/** English names and skeletons of every street, place and city, built on the first Latin query. */
-function ensureLatin(pl: Places): void {
+  words.map((w) => ({ w, latin: isLatin(w), sk: isLatin(w) ? skelLatin(w) : skelHe(w) }));
+/** English names and skeletons of every street, place and city, which every search compares (once per address book;
+ *  half a second on a laptop): built on the first search, or ahead of it by the worker once the book is in. */
+export function ensureSkeletons(pl: Places): void {
   if (pl.streetSk) return;
   pl.streetEn = pl.streets.map((s) => wordsEn(s[4] || ''));
   pl.streetSk = pl.streetWords.map((ws) => ws.map(skelHe));
@@ -387,20 +394,66 @@ function wordScore(q: string, w: string, i: number, firstWordNames: boolean): nu
   if (q.length >= 3 && w.includes(q)) return 1;
   return 0;
 }
-function skelScore(qv: string[], wv: string[], i: number, firstWordNames: boolean): number {
+/** Whether two skeletons are one slip apart: a letter wrong, missing, extra, or two neighbours swapped. */
+function oneSlip(a: string, b: string): boolean {
+  if (a === b || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length)
+    return (
+      a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2))
+    );
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+}
+/**
+ * A Hebrew word not found as written, matched loosely, each way below the last and all below the word as written: the
+ * word with one slip (ארומא for ארומה), the same consonants spelt another way (עזראלי for עזריאלי, רוטשלד), the start of
+ * them, or from five consonants one slip in them (מקדולנדס). Three consonants are shared by many names, so the written
+ * word's slip ranks first.
+ */
+function looseHe(q: QueryWord, w: string, wsk: string[], i: number): number {
+  const first = i === 0 ? 0.2 : 0;
+  if (q.w.length >= 4 && (oneSlip(q.w, w) || (w.length > q.w.length && oneSlip(q.w, w.slice(0, q.w.length)))))
+    return 2.4 + first;
   let best = 0;
+  for (const a of q.sk)
+    for (const b of wsk) {
+      if (a.length >= 3 && a === b) best = Math.max(best, 1.6 + first);
+      else if (a.length >= 3 && b.startsWith(a)) best = Math.max(best, 1.3 + first);
+      else if (a.length >= 5 && (oneSlip(a, b) || (b.length > a.length && oneSlip(a, b.slice(0, a.length)))))
+        best = Math.max(best, 1.0 + first);
+    }
+  return best;
+}
+/**
+ * How well a query word's skeletons match a name word's, below a match of the text itself: the same skeleton (the word
+ * spelt another way: עזראלי for עזריאלי, "dizengof"), the start of it (still typing), or, from four consonants on,
+ * one slip apart (from five), whole or as the start of a longer word (מקדולנדס, דיזנגוב); a slip comes back negative,
+ * so the caller can tell it. Two consonants say little ("hs": Hish,
+ * Yehoash), so they never count as a full match; only a street's first word counts as exact.
+ */
+function skelScore(qv: string[], wv: string[], i: number, firstWordNames: boolean): number {
+  let best = 0,
+    slipped = false;
   for (const a of qv)
     for (const b of wv) {
       if (a === b) {
-        // two consonants say little ("hs": Hish, Yehoash); only a street's first word counts as exact
         let exact = 2.9;
         if (a.length < 3) exact = 1.5;
         else if (firstWordNames && i === 0) exact = 4.5;
         best = Math.max(best, exact);
       } else if (a.length >= 2 && b.startsWith(a)) best = Math.max(best, i === 0 ? 2.2 : 1.8);
+      else if (a.length >= 5 && (oneSlip(a, b) || (b.length > a.length && oneSlip(a, b.slice(0, a.length))))) {
+        best = Math.max(best, i === 0 ? 1.4 : 1.2);
+        slipped = true;
+      }
     }
-  return best;
+  // a slip only when nothing better: the caller then lists the name after those matched as typed
+  return slipped && best <= 1.4 ? -best : best;
 }
+/** What a name found only loosely (another spelling, a slip) loses, so it lists after every name found as typed: what
+ *  the rider wrote first, "did you mean" after. */
+const LOOSE = 20;
 /**
  * Does every query word match a word of the name? Returns a score, or 0. A street is named by its
  * first word, so an exact match there counts most; a place's words count alike (מרכז עזריאלי, קניון עזריאלי).
@@ -413,26 +466,47 @@ function matchEntry(
   en: string[] | null,
   sk: string[][] | null,
   firstWordNames = true,
-): number {
+): { score: number; loose: boolean } {
+  let loose = false;
   let score = 0,
     exact = 0,
+    bySound = 0, // query words whose skeleton is a whole word's of the name
     latin = false;
   for (const q of qs) {
     let best = 0;
     if (!q.latin) {
       for (let i = 0; i < he.length; i++) best = Math.max(best, wordScore(q.w, he[i], i, firstWordNames));
+      // not found as written: spelt another way, or one slip (from three letters typed; short words match too much)
+      if (!best && sk && q.w.length >= 3) {
+        for (let i = 0; i < he.length; i++) best = Math.max(best, looseHe(q, he[i], sk[i] || [], i));
+        if (best) loose = true;
+      }
     } else {
       latin = true;
       if (en) for (let i = 0; i < en.length; i++) best = Math.max(best, wordScore(q.w, en[i], i, firstWordNames));
-      if (sk) for (let i = 0; i < sk.length; i++) best = Math.max(best, skelScore(q.sk!, sk[i], i, firstWordNames));
+      let slip = 0;
+      if (sk)
+        for (let i = 0; i < sk.length; i++) {
+          const v = skelScore(q.sk, sk[i], i, firstWordNames);
+          if (v < 0) slip = Math.max(slip, -v);
+          else best = Math.max(best, v);
+        }
+      if (!best && slip) {
+        best = slip;
+        loose = true;
+      }
     }
-    if (!best) return 0;
+    if (!best) return { score: 0, loose };
     if (best >= 3) exact++;
+    if (sk && sk.some((ws) => q.sk.some((a) => ws.includes(a)))) bySound++;
     score += best;
   }
   const n = latin && en && en.length ? en.length : he.length;
   if (exact === qs.length && qs.length === n) score += 1;
-  return score - n * 0.05;
+  // every word of the name said, by sound ("port said" for פורט סעיד): as good as a name in full, though no word alone
+  // was a strong match (two consonants say little by themselves)
+  else if (bySound === qs.length && qs.length === he.length && qs.length > 1) score += 1.5;
+  return { score: score - n * 0.05, loose };
 }
 const sameSkel = (a: string[][], b: string[][]): boolean =>
   a.length === b.length && a.every((qa, i) => qa.some((x) => b[i].includes(x)));
@@ -463,7 +537,7 @@ function parseQuery(pl: Places, text: string): ParsedQuery {
       suffix = m[2];
     } else rest.push(t);
   }
-  if (isLatin(main) || isLatin(cityText)) ensureLatin(pl);
+  ensureSkeletons(pl);
   const findCity = (text: string): number => {
     const t = CITY_ALIASES[text] || text;
     let ci = pl.cityNorm.indexOf(t);
@@ -471,8 +545,9 @@ function parseQuery(pl: Places, text: string): ParsedQuery {
     if (ci < 0 && t.length >= 3)
       ci = pl.cityNorm.findIndex((c, i) => c.startsWith(t + ' ') || pl.cityEnNorm[i].startsWith(t + ' '));
     if (ci < 0 && isLatin(t)) {
-      const sk = t.split(' ').map(skelLatin);
-      ci = pl.citySk!.findIndex((cs) => prefixSkel(sk, cs));
+      // by sound, each word with three consonants at least: "said" is not Sa'ad, "hacarmel" not Karmiel
+      const sk = t.split(' ').map((w) => skelLatin(w, false).filter((x) => x.length >= 3));
+      if (sk.every((x) => x.length)) ci = pl.citySk!.findIndex((cs) => prefixSkel(sk, cs));
     } // Givatayim, Petach Tikvah
     return ci;
   };
@@ -497,7 +572,7 @@ function parseQuery(pl: Places, text: string): ParsedQuery {
     if (cityIdx < 0)
       cityIdx = pl.cityNorm.findIndex((c, i) => c.startsWith(cityText) || pl.cityEnNorm[i].startsWith(cityText));
   }
-  return { words: rest.map(canon).filter(Boolean), number, suffix, cityIdx, cityText };
+  return { words: unabbr(rest).map(canon).filter(Boolean), number, suffix, cityIdx, cityText };
 }
 
 // names as the rider's language wants them: English where the data has it, else Hebrew
@@ -643,7 +718,7 @@ export function searchPlaces(
   const cityName = q.cityIdx >= 0 ? pl.cityNorm[q.cityIdx] : q.cityText || '';
   const qs = queryWords(q.words);
   const latin = qs.some((w) => w.latin);
-  if (latin) ensureLatin(pl);
+  ensureSkeletons(pl);
 
   const cityRow = (i: number, score: number): PlaceHit => {
     const c = pl.cities[i];
@@ -669,8 +744,9 @@ export function searchPlaces(
   if (qs.length) {
     // streets (and addresses on them)
     for (let s = 0; s < pl.streets.length; s++) {
-      let score = matchEntry(qs, pl.streetWords[s], latin ? pl.streetEn![s] : null, latin ? pl.streetSk![s] : null);
-      if (!score) continue;
+      const m = matchEntry(qs, pl.streetWords[s], latin ? pl.streetEn![s] : null, pl.streetSk![s]);
+      if (!m.score) continue;
+      let score = m.score - (m.loose ? LOOSE : 0);
       const st = pl.streets[s];
       const sc = pl.streetCity[s];
       if (cityName) {
@@ -718,8 +794,9 @@ export function searchPlaces(
     }
     // notable places
     for (let p = 0; p < pl.pois.length; p++) {
-      let score = matchEntry(qs, pl.poiWords[p], latin ? pl.poiEn![p] : null, latin ? pl.poiSk![p] : null, false);
-      if (!score) continue;
+      const m = matchEntry(qs, pl.poiWords[p], latin ? pl.poiEn![p] : null, pl.poiSk![p], false);
+      if (!m.score) continue;
+      let score = m.score - (m.loose ? LOOSE : 0);
       if (cityName) {
         if (pl.poiCity[p] === cityName) score += 3;
         else score -= 1.5;
