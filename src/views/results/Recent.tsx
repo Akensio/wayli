@@ -7,20 +7,19 @@ import { signal } from '@preact/signals';
 import { Icon } from '../../widgets/Icon';
 import { placeName, named } from '../../state/names';
 import { FromTo } from '../../widgets/FromTo';
-import { LineChip } from '../../widgets/LineChip';
-import type { LineMode } from '../../widgets/LineChip';
 import { t, lang } from '../../lib/i18n';
 import { bikeText } from '../../journey/format';
 import { dayLabel, calToday, calendarOf, secOf } from '../../lib/time';
-import { recentTrips, recentViews, favs, recentKeep, stored, type RecentTrip } from '../../state/store.ts';
+import { recentTrips, recentViews, favs, recentKeep, stored, tripKey, type RecentTrip } from '../../state/store.ts';
 import * as results from '../../state/results';
 import * as search from '../../state/search';
 import * as nav from '../../state/nav';
 import type { View } from '../../state/results';
 import type { SavedTrip } from '../../journey/types';
 import { LegChips } from './LegChips';
-import { agencyName } from '../../journey/agencies';
+import { ViewRow } from '../../widgets/ViewRow';
 import { openView, replan } from '../../controllers/planner';
+import { Tappable } from '../../widgets/Tappable';
 
 /** A day and time as the rider reads them: the calendar day (a service day's night is the next day). */
 const clock = (day: string, sec: number): string => {
@@ -31,67 +30,20 @@ const clock = (day: string, sec: number): string => {
 const whenText = (day?: string, time?: string): string =>
   time ? clock(day || calToday(), secOf(time)) : dayLabel(day || calToday());
 
-function ViewRow({ v }: { v: View }) {
-  const open = () => openView(v);
-  if (v.type === 'trip') {
-    const rides = v.j.legs.filter((l) => l.type === 'ride');
-    return (
-      <div class="recent" onClick={open}>
-        <span class="ic">
-          <Icon name="route" />
-        </span>
-        <span class="txt">
-          <span class="name">
-            <FromTo from={placeName(named(v.q.from))} to={placeName(named(v.q.to))} />
-          </span>
-          <small class="legs">
-            {clock(v.q.day, v.j.depart)} · <LegChips legs={rides.length ? rides : v.j.legs} />
-          </small>
-        </span>
-      </div>
-    );
-  }
-  if (v.type === 'line')
-    return (
-      <div class="recent" onClick={open}>
-        <LineChip line={v.line} routeType={v.routeType} agency={v.agency} mode={v.mode as LineMode | undefined} />
-        <span class="txt">
-          <span class="name">
-            <bdi>{t('toward', { headsign: v.headsign })}</bdi>
-          </span>
-          <small>{agencyName(v.agency)}</small>
-        </span>
-      </div>
-    );
-  if (v.type === 'trains')
-    return (
-      <div class="recent" onClick={open}>
-        <span class="ic">
-          <Icon name={v.mode === 'lrt' ? 'tram' : 'train'} />
-        </span>
-        <span class="txt">
-          <span class="name">
-            <FromTo from={v.from.name} to={v.to.name} />
-          </span>
-          <small>{t(v.mode === 'lrt' ? 'directLrt' : 'directTrains')}</small>
-        </span>
-      </div>
-    );
+/** A trip opened before, as the history says it: its places, when, its rides. */
+const tripText = (v: Extract<View, { type: 'trip' }>) => {
+  const rides = v.j.legs.filter((l) => l.type === 'ride');
   return (
-    <div class="recent" onClick={open}>
-      <span class="ic">
-        <Icon name={v.type === 'station' ? 'train' : 'pin'} />
+    <>
+      <span class="name">
+        <FromTo from={placeName(named(v.q.from))} to={placeName(named(v.q.to))} />
       </span>
-      <span class="txt">
-        <span class="name">
-          <bdi>{v.name}</bdi>
-        </span>
-        {v.type === 'stop' && <small>{[v.city, v.code].filter(Boolean).join(' · ')}</small>}
-      </span>
-    </div>
+      <small class="legs">
+        {clock(v.q.day, v.j.depart)} · <LegChips legs={rides.length ? rides : v.j.legs} />
+      </small>
+    </>
   );
-}
-
+};
 type Tab = 'trip' | 'line' | 'stop';
 const TABS = [
   { k: 'trip', icon: 'route', label: 'kindTrip' },
@@ -165,11 +117,12 @@ export function Recent() {
       <div class="rtabs" role="tablist">
         {TABS.map((x) => (
           <button
+            key={x.k}
             type="button"
             role="tab"
             aria-selected={tab === x.k}
             class={`chipbtn${tab === x.k ? ' on' : ''}`}
-            data-tab={x.k}
+
             onClick={() => {
               results.recentTab.value = x.k;
             }}
@@ -183,11 +136,12 @@ export function Recent() {
       <div class="rsubs" role="tablist">
         {SUBS[tab].map((x) => (
           <button
+            key={x.k}
             type="button"
             role="tab"
             aria-selected={cur === x.k}
             class={cur === x.k ? 'on' : ''}
-            data-sub={x.k}
+
             onClick={() => {
               sub.value = { ...sub.value, [tab]: x.k };
             }}
@@ -200,7 +154,7 @@ export function Recent() {
       </div>
       {list === 'trip:saved' &&
         savedTrips.map((v) => (
-          <div class="recent" onClick={() => planAgain(v)}>
+          <Tappable key={tripKey(v)} class="recent" onClick={() => planAgain(v)}>
             <span class="ic">
               <Icon name="star" />
             </span>
@@ -217,11 +171,11 @@ export function Recent() {
                 {bikeText(v.bike)}
               </small>
             </span>
-          </div>
+          </Tappable>
         ))}
       {list === 'trip:searched' &&
         searches.map((r) => (
-          <div class="recent" onClick={() => planAgain(r)}>
+          <Tappable key={`${tripKey(r)}|${r.at}`} class="recent" onClick={() => planAgain(r)}>
             <span class="ic">
               <Icon name="history" />
             </span>
@@ -240,16 +194,24 @@ export function Recent() {
                 {r.arriveBy ? ' · ' + t('arriveBy') : ''}
               </small>
             </span>
-          </div>
+          </Tappable>
         ))}
-      {list === 'trip:opened' && ways.map((v) => <ViewRow v={v} />)}
-      {list === 'line:saved' && savedLines.map((v) => <ViewRow v={v} />)}
-      {list === 'line:recent' && lines.map((v) => <ViewRow v={v} />)}
+      {list === 'trip:opened' &&
+        ways.map((v, i) => <ViewRow key={`${v.at ?? ''}:${i}`} v={v} onOpen={openView} trip={tripText} />)}
+      {list === 'line:saved' &&
+        savedLines.map((v, i) => <ViewRow key={`${v.at ?? ''}:${i}`} v={v} onOpen={openView} trip={tripText} />)}
+      {list === 'line:recent' &&
+        lines.map((v, i) => <ViewRow key={`${v.at ?? ''}:${i}`} v={v} onOpen={openView} trip={tripText} />)}
       {list === 'stop:saved' &&
         savedStops.map((s) => (
-          <ViewRow v={{ type: 'stop', code: s.code || '', name: s.name, city: s.city, lat: s.lat, lon: s.lon }} />
+          <ViewRow
+            key={s.stop}
+            v={{ type: 'stop', code: s.code || '', name: s.name, city: s.city, lat: s.lat, lon: s.lon }}
+            onOpen={openView}
+          />
         ))}
-      {list === 'stop:recent' && stops.map((v) => <ViewRow v={v} />)}
+      {list === 'stop:recent' &&
+        stops.map((v, i) => <ViewRow key={`${v.at ?? ''}:${i}`} v={v} onOpen={openView} trip={tripText} />)}
       {!n[tab][cur] && <div class="empty">{t(curSub.empty)}</div>}
     </div>
   );

@@ -7,6 +7,7 @@ import * as settings from './settings';
 import type { Place } from '../journey/types';
 import * as query from './query';
 import { from, to, sides, timeTouched } from './query';
+import { unset } from '../lib/unset';
 
 export type { LineGroup, StopGroup } from '../worker/ops.ts';
 export type { Place } from '../journey/types';
@@ -105,10 +106,10 @@ export const mode = computed<'rest' | 'edit' | 'summary'>(() => {
 /** What the bar's own flows need from the controllers (state cannot import them): planning when a place is picked, the
  *  plan cleared when its panel closes, the search kind's history step. Filled in at start. */
 export const hooks = {
-  plan: () => {},
-  planTo: (_p: Place) => {},
-  clearPlan: () => {},
-  kindChanged: (_k: Kind) => {}, // the line and stop searches are a step back can undo
+  plan: (): void => unset('search.plan'),
+  planTo: (_p: Place): void => unset('search.planTo'),
+  clearPlan: (): void => unset('search.clearPlan'),
+  kindChanged: (_k: Kind): void => unset('search.kindChanged'), // the line and stop searches are a step back can undo
 };
 
 // ---- actions

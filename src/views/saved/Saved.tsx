@@ -8,14 +8,12 @@ import { toast } from '../../widgets/toast';
 import { savedPlaces, favs, stored } from '../../state/store.ts';
 import { StopList } from './StopList';
 import type { Place } from '../../state/search';
-import type { View } from '../../state/results';
-import { LineChip } from '../../widgets/LineChip';
-import type { LineMode } from '../../widgets/LineChip';
-import { agencyName } from '../../journey/agencies';
+import { ViewRow } from '../../widgets/ViewRow';
 import * as chooser from '../../state/chooser';
 import { planTo, replan, openView } from '../../controllers/planner';
 import { openStop } from '../../controllers/stop';
 import { openLine } from '../../controllers/line';
+import { Tappable } from '../../widgets/Tappable';
 
 export function Saved() {
   void lang.value;
@@ -41,10 +39,10 @@ export function Saved() {
               <span class="ic">
                 <Icon name={slot === 'home' ? 'home' : 'work'} />
               </span>
-              <span class="txt" onClick={() => (p ? planTo(named(p)) : choose(slot))}>
+              <Tappable tag="span" class="txt" onClick={() => (p ? planTo(named(p)) : choose(slot))}>
                 <span class={`name${p ? '' : ' unset'}`}>{p ? placeName(p) : t('notSet')}</span>
                 <small>{t(slot)}</small>
-              </span>
+              </Tappable>
               <button type="button" class="ghost" onClick={() => choose(slot)}>
                 {p ? t('change') : '+'}
               </button>
@@ -52,13 +50,13 @@ export function Saved() {
           );
         })}
         {sp.more.map((p) => (
-          <div class="saved-row">
+          <div class="saved-row" key={`${p.name}|${p.lat},${p.lon}`}>
             <span class="ic">
               <Icon name="star" />
             </span>
-            <span class="txt" onClick={() => planTo(named(p))}>
+            <Tappable tag="span" class="txt" onClick={() => planTo(named(p))}>
               <span class="name">{placeName(p)}</span>
-            </span>
+            </Tappable>
             <button
               type="button"
               class="ghost"
@@ -89,8 +87,9 @@ export function Saved() {
       <h2 class="sec">{t('favTrips')}</h2>
       <div id="favTrips">
         {!Object.keys(trips).length && <div class="empty">{t('favEmptyTrips')}</div>}
-        {Object.values(trips).map((v) => (
-          <div
+        {Object.entries(trips).map(([k, v]) => (
+          <Tappable
+            key={k}
             class="journey"
             onClick={() =>
               replan({
@@ -117,28 +116,15 @@ export function Saved() {
               )}
               {bikeText(v.bike)}
             </div>
-          </div>
+          </Tappable>
         ))}
       </div>
       {Object.keys(lines).length > 0 && (
         <>
           <h2 class="sec">{t('favLines')}</h2>
           <div id="favLines">
-            {(Object.values(lines) as Extract<View, { type: 'line' }>[]).map((v) => (
-              <div class="recent" onClick={() => openView(v)}>
-                <LineChip
-                  line={v.line}
-                  routeType={v.routeType}
-                  agency={v.agency}
-                  mode={v.mode as LineMode | undefined}
-                />
-                <span class="txt">
-                  <span class="name">
-                    <bdi>{t('toward', { headsign: v.headsign })}</bdi>
-                  </span>
-                  <small>{agencyName(v.agency)}</small>
-                </span>
-              </div>
+            {Object.values(lines).map((v, i) => (
+              <ViewRow key={i} v={v} onOpen={openView} />
             ))}
           </div>
         </>

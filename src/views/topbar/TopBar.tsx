@@ -21,6 +21,7 @@ import { attachBarPull } from '../shell/pullRefresh';
 import { chooseStation, swapStations, endStations } from '../../controllers/station';
 import { cancelPlan, openStopGroup } from '../../controllers/planner';
 import { openLine } from '../../controllers/line';
+import { railWords } from '../../journey/format';
 
 const LINE_FILTERS: { f: search.LineFilter; label: string; icon?: IconName }[] = [
   { f: 'all', label: 'fAll' },
@@ -197,7 +198,6 @@ export function TopBar() {
             inBar
             text={pair ? search.stFromText : search.fromText}
             place={pair ? search.stFrom : search.from}
-            onFocus={search.openBar}
             placeholder={t(pair ? 'fromStationQ' : 'fromQ')}
             kind={pair ? 'stop' : 'trip'}
             stationSide={pair ? 'from' : undefined}
@@ -228,7 +228,6 @@ export function TopBar() {
             inBar
             text={pair ? search.stToText : search.toText}
             place={pair ? search.stTo : search.to}
-            onFocus={search.openBar}
             withUser
             placeholder={t(pair ? 'toStationQ' : search.toPlaceholder.value)}
             inputMode={search.toInputMode.value}
@@ -323,8 +322,8 @@ export function TopBar() {
                   <span class="tag">{t('tagFrom')}</span>
                   {search.stFromText.value}
                   <span class="sep">·</span>
-                  <Icon name={search.pairMode.value === 'lrt' ? 'tram' : 'train'} />
-                  {t(search.pairMode.value === 'lrt' ? 'lrt' : 'train')}
+                  <Icon name={railWords(search.pairMode.value).icon} />
+                  {t(railWords(search.pairMode.value).name)}
                 </span>
               </>
             ) : (

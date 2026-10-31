@@ -16,6 +16,7 @@ import type { Card } from '../../state/results';
 import type { RideLeg } from '../../journey/types';
 import { ridesOf } from '../../journey/types';
 import { openDetail } from '../../controllers/detail';
+import { Tappable } from '../../widgets/Tappable';
 
 /** The countdown line; it re-renders with the clock. */
 export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveInfo?: RideLeg['live'] }) {
@@ -70,7 +71,7 @@ export function JourneyCard({ card }: { card: Card }) {
     sel = shown && results.altSel.value === idx;
   void now.value; // the "also at" times grey out as they pass
   return (
-    <div class={`journey${sel ? ' sel' : ''}`} ref={el} onClick={() => openDetail(j, q)}>
+    <Tappable class={`journey${sel ? ' sel' : ''}`} elRef={el} onClick={() => openDetail(j, q)}>
       <div class="top">
         {rides.some((l) => l.estimated) && <span class="est">~</span>}
         <TimeRange from={j.depart} to={j.arrive} />
@@ -122,6 +123,6 @@ export function JourneyCard({ card }: { card: Card }) {
       >
         <Icon name="map" />
       </button>
-    </div>
+    </Tappable>
   );
 }

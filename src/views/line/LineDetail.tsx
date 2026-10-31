@@ -19,6 +19,7 @@ import { LiveMark } from '../../widgets/LiveMark';
 import * as delays from '../../engine/delays.ts';
 import { openOtherDirection, chooseTime, chooseAnchor } from '../../controllers/line';
 import { openStop } from '../../controllers/stop';
+import { Tappable } from '../../widgets/Tappable';
 
 /** The sign before a minutes difference: a plus, a proper minus, nothing for zero. */
 function signGlyph(n: number): string {
@@ -90,7 +91,7 @@ export function LineDetail() {
         {info.estimated && <div class="muted est">{t('estNote')}</div>}
         <div class="chips" id="lineDirs" style="margin:8px 0">
           {info.others.map((o) => (
-            <button type="button" class="chipbtn" onClick={() => openOtherDirection(o.route)}>
+            <button type="button" key={o.route} class="chipbtn" onClick={() => openOtherDirection(o.route)}>
               <Icon name="arrowsLR" /> {t('toward', { headsign: o.headsign })}
             </button>
           ))}
@@ -125,9 +126,8 @@ export function LineDetail() {
               l = live[i];
             const late = l && !l.passed && l.delay > 0 && sel[i] != null;
             return (
-              <div
+              <Tappable
                 class={`linerow${i === ai ? ' anchor' : ''}${i < ai ? ' before' : ''}`}
-                data-i={i}
                 key={i}
                 onClick={() => chooseAnchor(i)}
               >
@@ -163,7 +163,7 @@ export function LineDetail() {
                   )
                 )}
                 {at != null && <ShownTime planned={late ? sel[i]! : at} live={late ? at : null} class="at" />}
-              </div>
+              </Tappable>
             );
           })}
         </div>

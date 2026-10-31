@@ -1,6 +1,6 @@
 // Touch feedback: a ripple from the finger on anything tappable (the browser's blue flash is turned off in CSS).
 const TAPPABLE =
-  'button:not(.handle):not(.maplibregl-ctrl-compass):not(.maplibregl-ctrl-geolocate), .chipbtn, .journey, .item.act, .drawer > button, .recent, .saved-row, .stop, .strip-row .txt, .opt';
+  'button:not(.handle):not(.maplibregl-ctrl-compass):not(.maplibregl-ctrl-geolocate), [role="button"], .chipbtn, .item.act, .saved-row, .strip-row .txt, .opt';
 export function installRipple(): void {
   document.addEventListener(
     'pointerdown',

@@ -8,26 +8,7 @@ import { bikeText } from '../../journey/format';
 import { dayShort, calendarOf, calToday, two } from '../../lib/time';
 import * as search from '../../state/search';
 import * as query from '../../state/query';
-
-const Seg = <T extends string>({
-  id,
-  value,
-  options,
-  onPick,
-}: {
-  id: string;
-  value: T;
-  options: { v: T; label: string }[];
-  onPick: (v: T) => void;
-}) => (
-  <div class="seg pill" id={id}>
-    {options.map((o) => (
-      <button type="button" data-mode={o.v} aria-pressed={o.v === value} onClick={() => onPick(o.v)}>
-        {o.label}
-      </button>
-    ))}
-  </div>
-);
+import { Seg } from '../../widgets/Seg';
 
 const HOURS = Array.from({ length: 24 }, (_, h) => ({ key: two(h), label: two(h) }));
 const MINUTES = Array.from({ length: 60 }, (_, m) => ({ key: two(m), label: two(m) }));

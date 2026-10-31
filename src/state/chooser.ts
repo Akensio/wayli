@@ -1,6 +1,7 @@
 // Choosing a place for home, work or the saved list: a search box, my location, or a point on the map.
 import { signal } from '@preact/signals';
 import { focusBox, type Place } from './search';
+import { unset } from '../lib/unset';
 
 export const title = signal('');
 export const text = signal('');
@@ -9,8 +10,8 @@ let resolver: ((p: Place | null) => void) | null = null;
 
 /** What the chooser's own flow needs from the controllers (state cannot import them): its history entry. */
 export const hooks = {
-  show: () => {}, // the panel opens (a history entry)
-  close: () => {}, // and closes
+  show: (): void => unset('chooser.show'), // the panel opens (a history entry)
+  close: (): void => unset('chooser.close'), // and closes
 };
 
 export function open(t: string): Promise<Place | null> {

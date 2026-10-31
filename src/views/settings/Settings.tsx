@@ -19,29 +19,11 @@ import * as settings from '../../state/settings';
 import * as app from '../../state/app';
 import * as data from '../../state/data';
 import type { IconName } from '../../widgets/icons';
-import { appearanceChanged, testAlert, install } from '../../controllers/shell';
+import { appearanceChanged, testAlert, installApp } from '../../controllers/shell';
 import { setLang } from '../../controllers/lang';
 import { requestAlertPermission } from '../../controllers/alerts';
+import { Seg } from '../../widgets/Seg';
 
-const Seg = ({
-  id,
-  value,
-  options,
-  onPick,
-}: {
-  id: string;
-  value: string;
-  options: { v: string; label: string }[];
-  onPick: (v: string) => void;
-}) => (
-  <div class="seg pill" id={id}>
-    {options.map((o) => (
-      <button type="button" data-v={o.v} aria-pressed={o.v === value} onClick={() => onPick(o.v)}>
-        {o.label}
-      </button>
-    ))}
-  </div>
-);
 const Item = ({
   icon,
   label,
@@ -308,7 +290,7 @@ export function Settings() {
             id="installBtn"
             label={t('install')}
             hidden={!app.installable.value}
-            onClick={() => install()}
+            onClick={() => installApp()}
           />
           <div class="item text" id="installHint" hidden={!app.installHint.value}>
             {app.installHint.value}

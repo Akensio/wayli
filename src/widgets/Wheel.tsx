@@ -71,9 +71,10 @@ export function Wheel({ id, label, items, value, onChange, class: cls = '' }: Pr
     >
       {items.map((it, i) => (
         <div
+          key={it.key}
           class={`wheel-item${i === centre ? ' on' : ''}`}
           id={`${id}-${it.key}`}
-          data-key={it.key}
+
           role="option"
           aria-selected={i === centre}
           style={{ height: `${ROW}px`, lineHeight: `${ROW}px` }}

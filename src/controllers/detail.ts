@@ -16,29 +16,21 @@ import { liveRides } from './liverides';
 import type { TrainRow, LiveTrain } from '../state/station';
 import { recentViews } from '../state/store.ts';
 import { isRide } from '../journey/types';
+import { panelSession } from './session';
+import { debug } from '../lib/debug';
 
-let seq = 0; // the journey shown; a live answer for an older one is dropped
+const session = panelSession(); // the journey shown; a live answer for an older one is dropped
 
 export function openDetail(j: Journey, q: Query, bikeOnly = false): void {
-  seq++;
+  session.begin();
   search.foldBar(); // a result opened: the rider has moved on from the boxes
   if (!bikeOnly) recentViews.add({ type: 'trip', q, j, built: data.manifest.value?.built });
-  try {
-    window.wayliDebug = { ...(window.wayliDebug || {}), journey: j };
-  } catch {
-    /* debugging only */
-  }
+  debug('journey', j);
   detail.open(j, q, bikeOnly); // the map draws it (map/render.ts); its vehicles follow once drawn
 }
 export function closeDetail(): void {
-  seq++;
+  session.end();
 }
-// the way's vehicles, once the map has drawn it (and again after each redraw: a ride focused, the courses in)
-map.afterDraw.detail = () => {
-  const j = detail.journey.value,
-    q = detail.query.value;
-  if (j && q && !detail.bikeOnly.value) liveForJourney(j, q.day, seq, detail.focus.value);
-};
 
 /** Live badges on the ride legs of a journey happening around now; every vehicle of those lines on the map. */
 async function liveForJourney(j: Journey, day: string, my: number, focus = -1): Promise<void> {
@@ -58,9 +50,9 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
       const trip = l.trip;
       try {
         const vs = await feed.vehiclesByLine(l.routeId);
-        if (my !== seq) return;
+        if (!session.isCurrent(my)) return;
         const statuses = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
-        if (my !== seq) return;
+        if (!session.isCurrent(my)) return;
         map.showVehicles('detail', String(trip), {
           vs,
           statuses,
@@ -76,7 +68,7 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
         const ts = await tripStopsCached(trip);
         const est = await estimate(v, ts.stops, day);
         const at = delays.liveAt(est, ts.stops, l.boardPos);
-        if (my !== seq) return;
+        if (!session.isCurrent(my)) return;
         detail.setBadge(trip, liveBadge(at));
       } catch {
         detail.setBadge(trip, { text: t('liveFail'), cls: '' });
@@ -97,8 +89,18 @@ export function rideOptions(l: RideLeg, q: Query): Promise<TrainRow[]> {
 export async function rideLive(rows: TrainRow[], day: string): Promise<Record<string, LiveTrain>> {
   return map.liveOn() ? (await liveRides(rows, day)).live : {};
 }
-// What the detail's own flows need back from here: the panel's history entry, the map drawn when the focus changes.
-Object.assign(detail.hooks, {
-  show: () => nav.showOverlay('detail'),
-  redraw: () => map.redrawMap(true),
-});
+
+/** Start: the way's vehicles once the map has drawn it; the detail's hooks. */
+export function install(): void {
+  // the way's vehicles, once the map has drawn it (and again after each redraw: a ride focused, the courses in)
+  map.afterDraw.detail = () => {
+    const j = detail.journey.value,
+      q = detail.query.value;
+    if (j && q && !detail.bikeOnly.value) liveForJourney(j, q.day, session.current(), detail.focus.value);
+  };
+  // What the detail's own flows need back from here: the panel's history entry, the map drawn when the focus changes.
+  Object.assign(detail.hooks, {
+    show: () => nav.showOverlay('detail'),
+    redraw: () => map.redrawMap(true),
+  });
+}

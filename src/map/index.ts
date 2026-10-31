@@ -21,7 +21,7 @@ import {
 import { BADGE_KINDS, stationImage } from './images';
 import { ensureJourneyLayers } from './layers';
 import { stopPopup, placeBubble } from './popups';
-import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetShow } from './live';
+import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetShow, watchLive } from './live';
 import { pickAt } from './picker';
 import { startHeading, attachHeading } from './heading';
 
@@ -36,6 +36,7 @@ export { hooks } from './shared';
 export { redrawMap, afterDraw } from './render';
 export { cameraPadding } from './shared';
 import { redrawMap } from './render';
+import { debug } from '../lib/debug';
 let locate: LocateControl | null = null;
 
 export async function initMap(): Promise<void> {
@@ -56,17 +57,15 @@ export async function initMap(): Promise<void> {
   if (view) zoom = view.zoom;
   else if (lastPos) zoom = 14.5;
   state.main = makeMap('mainMap', [start.lat, start.lon], zoom);
-  try {
-    window.wayliDebug = { ...(window.wayliDebug || {}), map: state.main };
-  } catch {
-    /* debugging only */
-  }
+  debug('map', state.main);
   if (!state.main) {
     state.failed = true;
     settleWaiters(null);
     return;
   }
   const m = state.main;
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapStyle); // the basemap follows the system's theme
+  watchLive();
   // the camera is remembered for the next start
   let viewTimer = 0;
   m.on('moveend', () => {
@@ -149,11 +148,7 @@ export async function initMap(): Promise<void> {
   });
   setInterval(refreshLiveMap, 20000);
   if (knownGeo()) m.once('load', () => locate?.trigger());
-  try {
-    window.wayliDebug = { ...(window.wayliDebug || {}), liveMap: m };
-  } catch {
-    /* debugging only */
-  }
+  debug('liveMap', m);
 }
 const STOP_LAYERS = [
   'lm-stops',
@@ -354,7 +349,6 @@ export async function applyMapStyle(): Promise<void> {
   lm.stops = false;
   state.main.setStyle(st, { diff: false });
 }
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapStyle);
 
 /** Whether there is a map (none when MapLibre could not start, offline at first start). */
 export const hasMap = (): boolean => state.main != null;

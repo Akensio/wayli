@@ -26,5 +26,8 @@ function showProgress(m: Progress): void {
   const mb = (m.got / 1e6).toFixed(1) + (m.total ? ' / ' + (m.total / 1e6).toFixed(1) : '') + ' MB';
   setStatus(`${label}: ${m.unpacking ? t('unpacking') : mb}`, false, m.total ? m.got / m.total : null);
 }
-workerHooks.progress = showProgress;
-workerHooks.failed = (msg) => setStatus(t('loadFail', { msg }), true);
+/** Start: the worker's loading progress and failures on the status line. */
+export function install(): void {
+  workerHooks.progress = showProgress;
+  workerHooks.failed = (msg) => setStatus(t('loadFail', { msg }), true);
+}

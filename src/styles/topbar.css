@@ -15,6 +15,12 @@ input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-se
 .dropdown button.quick .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dropdown .mini { background: none; border: 0; color: var(--ink-2); font-size: 18px; padding: 0 4px; cursor: pointer; flex: none; }
 .dropdown .mini.on { color: var(--warn); }
+/* a recent place and its save star: one row of two buttons */
+.dropdown .quickrow { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); }
+.dropdown .quickrow:last-child { border-bottom: 0; }
+.dropdown .quickrow > button { border-bottom: 0; }
+.dropdown .quickrow > .quick { flex: 1; min-width: 0; }
+.dropdown .quickrow > .mini { width: auto; padding: 0 12px; }
 .dropdown .grp { font-size: 11px; color: var(--ink-2); padding: 6px 12px 2px; text-transform: uppercase; letter-spacing: .04em; }
 .dropdown button.line { display: flex; align-items: center; gap: 8px; }
 .dropdown button.line .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -21,6 +21,7 @@ import { viewFor } from './view';
 import { currentSheet } from './shared';
 import { metres } from '../engine/geo.ts';
 import { timeOf } from '../lib/time';
+import { debug } from '../lib/debug';
 
 /** How faded a live vehicle is drawn: much when the whole feed lags four minutes, some when its own report is over
  *  two minutes old, else not at all. */
@@ -233,18 +234,17 @@ export async function refreshLiveMap(): Promise<void> {
         ? t(shown === 1 ? 'liveMapOne' : 'liveMapCount', { n: shown, scope, time: timeOf(nw!), age })
         : t('liveMapNone', { scope })) + via;
     app.liveLag.value = !!shown && ageMin >= 4;
-    try {
-      window.wayliDebug = { ...(window.wayliDebug || {}), liveMapVehicles: features.length };
-    } catch {
-      /* debugging only */
-    }
+    debug('liveMapVehicles', features.length);
   } catch {
     if (my === lm.seq && my > lm.applied) app.liveNote.value = t('liveFail');
   }
 }
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) refreshLiveMap();
-});
+/** Start (from initMap): the live layer brought up to date when the phone is looked at again. */
+export function watchLive(): void {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshLiveMap();
+  });
+}
 /** Traffic from the buses in view (the worker follows them across the snapshots), unless switched off in settings. */
 async function refreshTraffic(
   m: MLMap,

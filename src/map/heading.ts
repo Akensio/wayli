@@ -7,6 +7,7 @@
 // (some send only on change), so the cone keeps its last direction for half a minute; it shows only once a reading
 // came. `window.wayliDebug.compass` counts the readings, to tell a phone without a compass from a drawing problem.
 import type { Map as MLMap } from 'maplibre-gl';
+import { debug } from '../lib/debug';
 
 let heading: number | null = null,
   seenAt = 0,
@@ -39,14 +40,7 @@ function onReading(deg: number): void {
   seenAt = performance.now();
   readings++;
   glide();
-  try {
-    (window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug = {
-      ...((window as unknown as { wayliDebug?: Record<string, unknown> }).wayliDebug || {}),
-      compass: { readings, heading: Math.round(heading) },
-    };
-  } catch {
-    /* debugging only */
-  }
+  debug('compass', { readings, heading: Math.round(heading) });
 }
 // what arrives, for the line in Settings that tells a phone without a compass from a drawing problem
 const seen = { abs: 0, absNull: 0, plainAbs: 0, plainRel: 0, ios: 0 };

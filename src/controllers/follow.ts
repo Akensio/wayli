@@ -39,6 +39,7 @@ import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './al
 import { whyReplan, pickAlternative, REPLAN } from '../journey/replan.ts';
 import { statusLine } from '../journey/status.ts';
 import { isRide } from '../journey/types';
+import { debug } from '../lib/debug';
 
 type LiveEst = {
   est: { delay: number; [k: string]: unknown } | null;
@@ -161,12 +162,6 @@ async function requestWake(): Promise<void> {
     /* not allowed */
   }
 }
-document.addEventListener('visibilitychange', () => {
-  if (fol && document.visibilityState === 'visible') {
-    requestWake();
-    stepFollow();
-  }
-});
 
 /** Advance the state machine with the position (when fresh) and the clock; alert on what happened; publish. */
 function stepFollow(): void {
@@ -296,11 +291,7 @@ async function followLive(): Promise<void> {
 
 // ---- re-planning on the way: when delays make another way faster, say so and offer to switch
 const replanSkip = (why: string) => {
-  try {
-    window.wayliDebug = { ...(window.wayliDebug || {}), lastReplan: { skipped: why } };
-  } catch {
-    /* debugging only */
-  }
+  debug('lastReplan', { skipped: why });
 };
 async function replanCheck(force = false): Promise<void> {
   if (!fol || fol.replanning) return;
@@ -377,20 +368,13 @@ async function replanCheck(force = false): Promise<void> {
     const curArrive = picked.arrive,
       same = picked.same;
     f.alt = best;
-    try {
-      window.wayliDebug = {
-        ...(window.wayliDebug || {}),
-        lastReplan: {
-          origin,
-          found: r.journeys.length,
-          curArrive,
-          same,
-          best: best && { arrive: best.journey.arrive, gain: best.gain, key: best.key },
-        },
-      };
-    } catch {
-      /* debugging only */
-    }
+    debug('lastReplan', {
+      origin,
+      found: r.journeys.length,
+      curArrive,
+      same,
+      best: best && { arrive: best.journey.arrive, gain: best.gain, key: best.key },
+    });
     publish();
     if (best && best.key !== f.toldKey) {
       f.toldKey = best.key;
@@ -422,17 +406,6 @@ export function switchJourney(alt: Alt): void {
   stepFollow();
   followLive();
   toast(t('routeSwitched'));
-}
-try {
-  window.wayliDebug = {
-    ...(window.wayliDebug || {}),
-    replan: () => replanCheck(true),
-    setReplanGain: (g: number) => {
-      replanGain = g;
-    },
-  };
-} catch {
-  /* debugging only */
 }
 /** "Next step" or "Back": the rider corrects the state machine by hand (the step reached is held from the clock). */
 function step(dir: 1 | -1): void {
@@ -473,11 +446,6 @@ function updateResumeBar(): void {
   }
   follow.resumable.value = a;
 }
-// a phone keeps the app open for days: a trip over since goes from the resume bar on return and within a minute
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) updateResumeBar();
-});
-window.setInterval(updateResumeBar, 60000);
 /** At start, a trip in progress comes back first, timetable or not: on screen if it was, else as the resume bar. */
 export function resumeAtStart(): void {
   const a = stored();
@@ -513,10 +481,30 @@ export function dismissAlt(alt: Alt): void {
   fol.alt = null;
   publish();
 }
-// the followed trip's vehicle and the rider, once the map has drawn the trip
-map.afterDraw.follow = () => {
-  if (fol) {
-    stepFollow();
-    followLive();
-  }
-};
+
+/** Start: the screen kept on and the trip stepped when the phone is looked at again; the resume bar kept current; the followed vehicle once the map has drawn the trip; the console's re-plan helpers. */
+export function install(): void {
+  document.addEventListener('visibilitychange', () => {
+    if (fol && document.visibilityState === 'visible') {
+      requestWake();
+      stepFollow();
+    }
+  });
+  // for trying at the console: re-plan now, or with another gain
+  debug('replan', () => replanCheck(true));
+  debug('setReplanGain', (g: number) => {
+    replanGain = g;
+  });
+  // a phone keeps the app open for days: a trip over since goes from the resume bar on return and within a minute
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) updateResumeBar();
+  });
+  window.setInterval(updateResumeBar, 60000);
+  // the followed trip's vehicle and the rider, once the map has drawn the trip
+  map.afterDraw.follow = () => {
+    if (fol) {
+      stepFollow();
+      followLive();
+    }
+  };
+}

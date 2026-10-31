@@ -9,6 +9,7 @@ import * as nav from '../../state/nav';
 import { ResumeBar } from '../follow/ResumeBar';
 import { SortPopover } from '../results/SortMenu';
 import { cancelPick } from '../../controllers/shell';
+import { Tappable } from '../../widgets/Tappable';
 
 export function Floating() {
   void lang.value;
@@ -67,9 +68,9 @@ export function LiveNote() {
       <button type="button" class="lnbtn" aria-label={t('liveInfo')} aria-expanded={open.value} onClick={toggle}>
         <Icon name="info" />
       </button>
-      <span class="lntext" id="liveNoteText" onClick={toggle}>
+      <Tappable tag="span" class="lntext" onClick={toggle}>
         {note}
-      </span>
+      </Tappable>
     </div>
   );
 }

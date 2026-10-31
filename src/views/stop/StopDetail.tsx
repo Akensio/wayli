@@ -9,7 +9,7 @@ import { fmt } from '../../lib/time';
 import { favs, stored } from '../../state/store.ts';
 import * as stop from '../../state/stop';
 import { now } from '../../state/clock';
-import { dur, liveClass } from '../../journey/format';
+import { dur, liveClass, railWords } from '../../journey/format';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
 import { InCell } from '../../widgets/LiveMark';
@@ -17,6 +17,7 @@ import { refreshStop, openLineAtStop } from '../../controllers/stop';
 import { fromHere, toHere } from '../../controllers/planner';
 import { openDestination } from '../../controllers/station';
 import { openTrip } from '../../controllers/line';
+import { Tappable } from '../../widgets/Tappable';
 
 export function StopDetail() {
   void lang.value;
@@ -54,7 +55,12 @@ export function StopDetail() {
         {info.lines.length > 0 && (
           <div class="stoplines" id="stopLines">
             {info.lines.map((l) => (
-              <button type="button" class="linkchip" onClick={() => l.route != null && openLineAtStop(l.route)}>
+              <button
+                type="button"
+                key={`${l.label}|${l.route}`}
+                class="linkchip"
+                onClick={() => l.route != null && openLineAtStop(l.route)}
+              >
                 <LineChip line={l.label} routeType={l.type} agency={l.agency} />
               </button>
             ))}
@@ -86,7 +92,7 @@ export function StopDetail() {
             const lv = stop.liveDeps.value[String(d.trip)];
             const timeCls = lv && lv.passed ? 'time gone' : 'time' + liveClass(lv);
             return (
-              <div class="dep" data-trip={d.trip} key={d.trip} onClick={() => openTrip(d.trip, info.stop)}>
+              <Tappable class="dep" key={d.trip} onClick={() => openTrip(d.trip, info.stop)}>
                 <ShownTime
                   planned={d.time}
                   live={lv && !lv.passed ? lv.time : null}
@@ -99,19 +105,17 @@ export function StopDetail() {
                   {d.estimated && <small class="est">{t('estShort')}</small>}
                 </span>
                 <InCell live={lv} time={lv && !lv.passed ? lv.time : d.time} day={day} counting={isNow} />
-              </div>
+              </Tappable>
             );
           })}
         </div>
         {info.reach && (
           <>
             <h2 class="sec" style="margin:14px 0 6px">
-              {t(info.reach === 'lrt' ? 'directLrt' : 'directTrains')}
+              {t(railWords(info.reach).direct)}
             </h2>
             {stop.dests.value === null && <div class="empty">{t('loading')}</div>}
-            {stop.dests.value && !stop.dests.value.length && (
-              <div class="empty">{t(info.reach === 'lrt' ? 'noLrt' : 'noTrains')}</div>
-            )}
+            {stop.dests.value && !stop.dests.value.length && <div class="empty">{t(railWords(info.reach).none)}</div>}
             <div id="stationDests">
               {(stop.dests.value || []).map((d) => (
                 <button type="button" class="destrow" key={d.key} onClick={() => openDestination(d)}>
@@ -119,7 +123,7 @@ export function StopDetail() {
                   <small>
                     {d.next != null
                       ? t('nextTrain', { time: fmt(d.next), ride: dur(d.ride || 0) })
-                      : t(info.reach === 'lrt' ? 'noMoreLrt' : 'noMoreTrains')}{' '}
+                      : t(railWords(info.reach).noMore)}{' '}
                     · {t('tripsToday', { n: d.trips })}
                   </small>
                 </button>

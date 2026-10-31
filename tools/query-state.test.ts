@@ -1,6 +1,12 @@
 // The rider's question (src/state/query.ts): the rules of its time, which need no screen.
-import { test, expect } from 'vitest';
+import { test, expect, beforeEach } from 'vitest';
 import * as query from '../src/state/query';
+
+// the hooks the controllers fill in the app (controllers/loading.ts): here, nothing to load
+beforeEach(() => {
+  query.hooks.dayChanged = () => {};
+  query.hooks.startDay = () => '20261031';
+});
 
 test('a time after midnight belongs to the night of the day before, when the data has that day', () => {
   query.days.value = ['20261030', '20261031'];

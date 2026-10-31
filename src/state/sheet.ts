@@ -4,6 +4,7 @@
 // the screen's layout); the Sheet component (views/shell/Sheet.tsx) applies it to the page.
 import { signal } from '@preact/signals';
 import * as results from './results';
+import { unset } from '../lib/unset';
 
 export type SheetState = 'peek' | 'half' | 'full';
 export const ORDER: SheetState[] = ['peek', 'half', 'full'];
@@ -17,7 +18,7 @@ export const layout = signal({ h: 800, barBottom: 0, sab: 0 });
 export const scrollReset = signal(0);
 
 /** What the app does when the sheet changes size (the map's live layer, the list's scroll). */
-export const hooks = { changed: (_prev: SheetState, _st: SheetState) => {} };
+export const hooks = { changed: (_prev: SheetState, _st: SheetState): void => unset('sheet.changed') };
 
 /** Where the map's controls start: under the top bar. */
 export const topPad = (): number => Math.round(layout.value.barBottom + 12);

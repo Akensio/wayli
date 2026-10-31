@@ -3,6 +3,7 @@ import { Icon } from '../../widgets/Icon';
 import { lineText, legMinutes } from '../../journey/format';
 import type { Leg } from '../../journey/types';
 import { LineChip } from '../../widgets/LineChip';
+import { Fragment } from 'preact';
 
 const LegChip = ({ l, alts }: { l: Leg; alts?: string[] | null }) =>
   l.type === 'ride' ? (
@@ -22,10 +23,10 @@ const LegChip = ({ l, alts }: { l: Leg; alts?: string[] | null }) =>
 export const LegChips = ({ legs, lines }: { legs: Leg[]; lines?: string[][] | null }) => (
   <>
     {legs.map((l, i) => (
-      <>
+      <Fragment key={i}>
         {i > 0 && <span class="muted">›</span>}
         <LegChip l={l} alts={lines ? lines[i] : null} />
-      </>
+      </Fragment>
     ))}
   </>
 );

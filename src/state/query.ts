@@ -6,6 +6,7 @@ import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
 import { calToday, hm, secOf, calendarOf } from '../lib/time';
 import type { Place } from '../journey/types';
+import { unset } from '../lib/unset';
 
 // ---- the places
 export const from = signal<Place | null>(null);
@@ -24,8 +25,8 @@ export const days = signal<string[]>([]); // the service days the data covers
 /** What a change of the question must set off (state cannot import the controllers): another day's timetable loaded,
  *  and the day "now" is on. Filled in at start (controllers/loading.ts). */
 export const hooks = {
-  dayChanged: (_d: string) => {},
-  startDay: (): string => '',
+  dayChanged: (_d: string): void => unset('query.dayChanged'),
+  startDay: (): string => unset('query.startDay'),
 };
 // ---- when
 /** The time as seconds on the selected service day. */

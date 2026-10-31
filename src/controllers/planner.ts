@@ -59,9 +59,6 @@ export function parseShared(params: URLSearchParams): Shared | null {
 
 let waiting = false;
 let planSeq = 0; // the newest plan asked for: an older one finishing later is dropped
-effect(() => {
-  if (data.ttReady.value && waiting) plan();
-});
 export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   const my = ++planSeq;
   showPlanError('');
@@ -234,13 +231,6 @@ export const findStopGroups = (q: string, mode: search.StopFilter, from?: number
   call('stopGroups', { q, mode, near: lastPos, limit: 60, from });
 /** A group from the stop search: the one stop view (a station too; its train chip is the timetable of two stations). */
 export const openStopGroup = (g: search.StopGroup): Promise<void> => openStop(g.stops[0], { stops: g.stops });
-// What the bar's own flows need back from here (state cannot import the controllers): planning when a place is picked,
-// the plan cleared when its panel closes.
-Object.assign(search.hooks, {
-  plan: planFromBar,
-  planTo,
-  clearPlan: cancelPlan,
-});
 /** Open again something from the history, found in the day loaded now. A trip opens as it was while that timetable is
  *  loaded and it has not ended; otherwise it is planned again from now, like a recent search. */
 export async function openView(v: results.View): Promise<void> {
@@ -327,18 +317,6 @@ export function revealCard(idx: number, open: boolean): void {
   } // opening brings the highlighted card itself (shell.ts)
   results.reveal.value = { idx, n: (results.reveal.peek()?.n ?? 0) + 1 }; // the card answers (JourneyCard)
 }
-// What the results' own flows need back from here: the sheet and the map after results come, a way's card brought
-// into view.
-Object.assign(results.hooks, {
-  afterResults: () => {
-    sheet.scrollToTop();
-    if (!nav.topPanel() && nav.screen.value === 'plan' && sheet.state.value === 'peek') sheet.set('half');
-    map.applyLiveShow();
-    map.redrawMap(true);
-  },
-  redraw: () => map.redrawMap(true),
-  revealCard,
-} satisfies typeof results.hooks);
 
 /** Plan from the stop in the sheet, or to it. */
 export function fromHere(): void {
@@ -351,4 +329,30 @@ export function fromHere(): void {
 export function toHere(): void {
   const s = stopPage.info.value;
   if (s) planTo(search.stopPlace(s));
+}
+
+/** Start: a plan waiting for its day's timetable is made when it comes; the bar's and the results' hooks. */
+export function install(): void {
+  effect(() => {
+    if (data.ttReady.value && waiting) plan();
+  });
+  // What the bar's own flows need back from here (state cannot import the controllers): planning when a place is picked,
+  // the plan cleared when its panel closes.
+  Object.assign(search.hooks, {
+    plan: planFromBar,
+    planTo,
+    clearPlan: cancelPlan,
+  });
+  // What the results' own flows need back from here: the sheet and the map after results come, a way's card brought
+  // into view.
+  Object.assign(results.hooks, {
+    afterResults: () => {
+      sheet.scrollToTop();
+      if (!nav.topPanel() && nav.screen.value === 'plan' && sheet.state.value === 'peek') sheet.set('half');
+      map.applyLiveShow();
+      map.redrawMap(true);
+    },
+    redraw: () => map.redrawMap(true),
+    revealCard,
+  } satisfies typeof results.hooks);
 }

@@ -7,6 +7,7 @@ import * as sheet from '../state/sheet';
 import * as results from '../state/results';
 import * as detail from '../state/detail';
 import { visibleArea, type Sheet, type Padding } from './view';
+import { unset } from '../lib/unset';
 
 export const state = {
   main: null as MLMap | null,
@@ -46,13 +47,13 @@ export const settleWaiters = (m: MLMap | null): void => {
 
 /** The map's calls into the app: panels to open, plans to make. Filled in by the app at start. */
 export const hooks = {
-  openTrip: (_trip: number, _stop: number) => {},
-  openLine: (_route: number) => {},
-  openStop: (_stop: number, _station?: number) => {}, // a station: all its platforms
-  planTo: (_p: Place) => {},
-  planFrom: (_p: Place) => {}, // "from here": the place in the From box, the bar open
-  timeAt: (_stop: number): number | null => null, // when what the sheet holds passes that stop (the ride, the trip chosen)
-  lineAt: (_stop: number): boolean => false, // the line in the sheet as a timetable at that stop, if it calls there
+  openTrip: (_trip: number, _stop: number): void => unset('shared.openTrip'),
+  openLine: (_route: number): void => unset('shared.openLine'),
+  openStop: (_stop: number, _station?: number): void => unset('shared.openStop'), // a station: all its platforms
+  planTo: (_p: Place): void => unset('shared.planTo'),
+  planFrom: (_p: Place): void => unset('shared.planFrom'), // "from here": the place in the From box, the bar open
+  timeAt: (_stop: number): number | null => unset('shared.timeAt'), // when what the sheet holds passes that stop (the ride, the trip chosen)
+  lineAt: (_stop: number): boolean => unset('shared.lineAt'), // the line in the sheet as a timetable at that stop, if it calls there
 };
 
 /** What the sheet holds, as the decision takes it. */

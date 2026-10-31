@@ -4,12 +4,13 @@ import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../lib/i18n';
 
 import * as st from '../../state/station';
-import { dur, liveClass } from '../../journey/format';
+import { dur, liveClass, railWords } from '../../journey/format';
 import { now } from '../../state/clock';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
 import { InCell } from '../../widgets/LiveMark';
 import { openTrip } from '../../controllers/line';
+import { Tappable } from '../../widgets/Tappable';
 
 export function TrainTimes() {
   void lang.value;
@@ -28,23 +29,21 @@ export function TrainTimes() {
       <div class="legs">
         <div class="row">
           <h2 class="sec" style="margin:8px 0">
-            {t(st.mode.value === 'lrt' ? 'directLrt' : 'directTrains')}
+            {t(railWords(st.mode.value).direct)}
           </h2>
           <span class="muted" id="trainsLive">
             {st.liveNote.value}
           </span>
         </div>
         {rows === null && <div class="empty">{t('loading')}</div>}
-        {rows && !rows.length && (
-          <div class="empty">{t(st.mode.value === 'lrt' ? 'noDirectLrt' : 'noDirectTrains')}</div>
-        )}
+        {rows && !rows.length && <div class="empty">{t(railWords(st.mode.value).noDirect)}</div>}
         <div id="trainRows">
           {(rows || []).map((r) => {
             const lv = st.live.value[String(r.trip)];
             const dep = lv ? lv.dep : r.dep,
               arr = lv ? lv.arr : r.arr;
             return (
-              <div
+              <Tappable
                 class={`trainrow${lv && lv.passed ? ' gone' : ''}`}
                 key={r.trip}
                 onClick={() => openTrip(r.trip, r.fromStop)}
@@ -64,7 +63,7 @@ export function TrainTimes() {
                   </small>
                 </span>
                 <InCell live={lv} time={dep} day={day} counting={st.isNow.value} />
-              </div>
+              </Tappable>
             );
           })}
         </div>

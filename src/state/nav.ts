@@ -10,6 +10,7 @@ import * as sheet from './sheet';
 import * as results from './results';
 import * as search from './search';
 import * as chooser from './chooser';
+import { unset } from '../lib/unset';
 
 // 'search': the bar searches lines or stops (a step back is the trip search again); 'ui': a search box's open list or
 // its keyboard, which back closes first (Android only: see pushUi)
@@ -24,11 +25,10 @@ export const screen = signal('plan');
 
 /** What the app does when panels close or change. Filled in by the app at start. */
 export const hooks = {
-  closed: (_id: string) => {}, // a panel closed: its timers, markers, promises
-  clearPlan: () => {}, // the plan entry was undone
-  leaveSearch: () => {}, // the line or stop search entry was undone
-  changed: (_again = false) => {}, // something shows differently: the map redraws (again: the same panel, new content)
-  screenShown: (_name: string) => {},
+  closed: (_id: string): void => unset('nav.closed'), // a panel closed: its timers, markers, promises
+  clearPlan: (): void => unset('nav.clearPlan'), // the plan entry was undone
+  leaveSearch: (): void => unset('nav.leaveSearch'), // the line or stop search entry was undone
+  changed: (_again = false): void => unset('nav.changed'), // something shows differently: the map redraws (again: the same panel, new content)
 };
 
 export const isOpen = (id: string): boolean => stack.value.some((e) => e.kind === 'overlay' && e.id === id);
@@ -328,7 +328,6 @@ export function showScreen(name: string, record = true): void {
   if (record && name !== screen.value) push({ kind: 'tab', from: screen.value });
   screen.value = name;
   renderPanels();
-  hooks.screenShown(name);
 }
 /** The page's back button: the chooser cancels, a panel closes, else the plan screen. */
 export function back(): void {

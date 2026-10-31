@@ -26,7 +26,7 @@ export function livePoll(panel: string, note: Signal<string>, ask: () => Promise
   void once();
   const timer = window.setInterval(() => {
     if (!nav.isOpen(panel)) clearInterval(timer);
-    else void once();
+    else if (!document.hidden) void once(); // put away: no polling until it is looked at again
   }, EVERY);
   return timer;
 }

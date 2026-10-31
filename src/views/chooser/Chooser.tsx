@@ -30,8 +30,7 @@ export function Chooser() {
           place={chooser.place}
           placeholder={t('toQ')}
           onPick={(p) => chooser.finish(p)}
-          onLocate={myLocation}
-          onMap={fromMap}
+          quickActions={{ locate: myLocation, map: fromMap }}
         >
           <span class="icon">
             <Icon name="search" />

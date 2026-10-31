@@ -10,7 +10,7 @@ import * as detail from '../../state/detail';
 import { now } from '../../state/clock';
 import { dur, tripKey, liveBadge } from '../../journey/format';
 import { shareJourney } from '../../journey/share';
-import { LegRow } from './LegRow';
+import { DetailLeg } from './DetailLeg';
 import { payLink } from '../../journey/pay';
 import { isRide } from '../../journey/types';
 import type { RideLeg } from '../../journey/types';
@@ -96,14 +96,13 @@ export function Detail() {
       </div>
       <div class={`legs${focus >= 0 ? ' focused' : ''}`} id="detailLegs">
         {j.legs.map((l, i) => (
-          <LegRow
+          <DetailLeg
             key={`${jkey}:${i}`}
             l={l}
-            mode="detail"
-            cls={i === focus ? 'focus' : ''}
+            focus={i === focus}
             badge={isRide(l) ? rideBadge(l) : null}
             onChip={isRide(l) ? () => openRideLine(l) : undefined}
-            onClick={() => detail.focusLeg(i)}
+            onFocus={() => detail.focusLeg(i)}
             options={
               isRide(l) && (l.stopsAlong?.length ?? 0) >= 2
                 ? {

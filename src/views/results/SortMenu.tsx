@@ -82,10 +82,11 @@ export function SortPopover() {
       <div class="head">{t('sortBy')}</div>
       {results.SORTS.map((s) => (
         <button
+          key={s}
           type="button"
           role="menuitemradio"
           aria-checked={s === so}
-          data-sort={s}
+
           onClick={() => {
             close();
             if (s !== so) results.setFilter({ resultSort: s });

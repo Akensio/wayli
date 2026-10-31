@@ -14,8 +14,10 @@ import { Sheet } from './views/shell/Sheet';
 import { Drawer } from './views/menu/Drawer';
 import { SettingsPage } from './views/settings/SettingsPage';
 import * as sheet from './state/sheet';
+import { installControllers } from './controllers/install';
 
 const el = (id: string) => document.getElementById(id)!;
+installControllers(); // their hooks filled before anything can be tapped
 installSprite();
 installRipple();
 render(h(TopBar, {}), el('topbar-root'));

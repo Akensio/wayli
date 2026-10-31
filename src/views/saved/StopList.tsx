@@ -3,6 +3,7 @@
 import { t } from '../../lib/i18n';
 import type { SavedStop as Stop } from '../../journey/types';
 import { LineChip } from '../../widgets/LineChip';
+import { Tappable } from '../../widgets/Tappable';
 
 type Props = { stops: Stop[]; onStop: (stop: number) => void; onLine: (route: number) => void };
 
@@ -11,7 +12,7 @@ export function StopList({ stops, onStop, onLine }: Props) {
   return (
     <>
       {stops.map((s) => (
-        <div class="stop" key={s.stop} onClick={() => onStop(s.stop)}>
+        <Tappable class="stop" key={s.stop} onClick={() => onStop(s.stop)}>
           <div class="name">{s.name}</div>
           <div class="meta">
             {s.city || ''}
@@ -34,7 +35,7 @@ export function StopList({ stops, onStop, onLine }: Props) {
               />
             ))}
           </div>
-        </div>
+        </Tappable>
       ))}
     </>
   );

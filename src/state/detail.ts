@@ -3,6 +3,7 @@
 import { signal } from '@preact/signals';
 import type { Journey, Query } from '../journey/types';
 import type { Badge } from '../journey/format';
+import { unset } from '../lib/unset';
 
 export const journey = signal<Journey | null>(null);
 export const query = signal<Query | null>(null);
@@ -12,8 +13,8 @@ export const badges = signal<Record<string, Badge>>({}); // by trip: what the li
 
 /** What the detail's own flows need from the controllers: the panel's history entry, the map drawn on a focus change. */
 export const hooks = {
-  show: () => {},
-  redraw: () => {}, // the map draws the journey, the focused ride alone
+  show: (): void => unset('detail.show'),
+  redraw: (): void => unset('detail.redraw'), // the map draws the journey, the focused ride alone
 };
 
 export function open(j: Journey, q: Query, bike = false): void {

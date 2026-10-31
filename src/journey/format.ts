@@ -91,3 +91,20 @@ export function inText(sec: number, day: string): string {
 }
 /** A time past midnight on the same service day gets a mark. */
 export const fmtPlus = (sec: number): string => fmt(sec) + (sec >= 86400 ? '⁺' : '');
+
+/** What a timetable of two stations calls its trains, by what runs: the icon, the vehicle's name, and the lines that
+ *  say there are direct ones, none, none between the two, or none more today. One table for every place that says it
+ *  (the stop's page, the trains between two stations, the history, the bar's summary). */
+export const RAIL_WORDS = {
+  rail: {
+    icon: 'train',
+    name: 'train',
+    direct: 'directTrains',
+    none: 'noTrains',
+    noDirect: 'noDirectTrains',
+    noMore: 'noMoreTrains',
+  },
+  lrt: { icon: 'tram', name: 'lrt', direct: 'directLrt', none: 'noLrt', noDirect: 'noDirectLrt', noMore: 'noMoreLrt' },
+} as const;
+/** The words for trains or the light rail; anything but 'lrt' is a train. */
+export const railWords = (mode: string | null | undefined) => RAIL_WORDS[mode === 'lrt' ? 'lrt' : 'rail'];

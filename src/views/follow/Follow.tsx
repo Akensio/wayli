@@ -9,7 +9,7 @@ import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
 import { lineText, inShort } from '../../journey/format';
 import { LegChips } from '../results/LegChips';
-import { LegRow } from '../detail/LegRow';
+import { FollowLeg } from './FollowLeg';
 import { payLink } from '../../journey/pay';
 import { isRide, ridesOf } from '../../journey/types';
 import { switchJourney, dismissAlt, hideFollow, endTrip, backStep, skipStep } from '../../controllers/follow';
@@ -152,19 +152,19 @@ export function Follow() {
       <div class="legs" id="followNext">
         {j.legs.map((l, i) => {
           const x = ll[i];
-          let stepCls = '';
-          if (i < a.state.step) stepCls = 'done';
-          else if (i === a.state.step) stepCls = 'current';
+          let stage: 'done' | 'current' | undefined;
+          if (i < a.state.step) stage = 'done';
+          else if (i === a.state.step) stage = 'current';
           return (
-            <LegRow
-              key={i}
+            // a leg is its place in the journey and its trip: another journey's leg there starts afresh
+            <FollowLeg
+              key={`${i}:${isRide(l) ? l.trip : l.type}`}
               l={l}
-              mode="follow"
-              cls={stepCls}
+              stage={stage}
               badge={x ? x.badge : undefined}
               change={x ? x.change : null}
               stopLive={x ? x.stops : null}
-              defaultStopsOpen={i === curRide}
+              stopsOpen={i === curRide}
               passedUpTo={i === a.state.step && a.state.onBoard ? a.state.rideIdx : null}
             />
           );

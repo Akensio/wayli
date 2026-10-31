@@ -15,9 +15,9 @@ import { openStop } from './stop';
 import { liveRides } from './liverides';
 import { recentViews } from '../state/store.ts';
 import * as query from '../state/query';
+import { panelSession } from './session';
 
-let seq = 0,
-  timer = 0;
+const session = panelSession(); // the two stations shown: older answers dropped, the live poll stopped with them
 const when = () => {
   const day = query.day.value,
     isNow = isNowDay(day);
@@ -35,7 +35,7 @@ export async function openTrains(
   to: Station,
   mode: 'rail' | 'lrt' = search.railPair.value ? search.pairMode.value : 'rail',
 ): Promise<void> {
-  const my = ++seq;
+  const my = session.begin();
   const w = when();
   recentViews.add({
     type: 'trains',
@@ -57,24 +57,22 @@ export async function openTrains(
   try {
     rows = await call('trainsBetween', { from: from.stops, to: to.stops, fromTime: w.from });
   } catch {
-    if (my === seq) st.trains.value = []; // nothing to show, rather than "loading" for ever
+    if (session.isCurrent(my)) st.trains.value = []; // nothing to show, rather than "loading" for ever
     return;
   }
-  if (my !== seq) return;
+  if (!session.isCurrent(my)) return;
   st.trains.value = rows;
   map.redrawMap(true); // their courses and vehicles
-  clearInterval(timer);
-  if (w.isNow) timer = livePoll('trainTimes', st.liveNote, () => liveTrains(rows, w.day, my));
+  if (w.isNow) session.poll(livePoll('trainTimes', st.liveNote, () => liveTrains(rows, w.day, my)));
 }
 export function closeTrains(): void {
-  clearInterval(timer);
-  seq++;
+  session.end();
 }
 
 /** Live times of the trains between the two stations (controllers/liverides); the newest report, for the note. */
 async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<Date | null | undefined> {
   const r = await liveRides(rows, day);
-  if (my !== seq) return undefined;
+  if (!session.isCurrent(my)) return undefined;
   st.live.value = { ...st.live.value, ...r.live };
   return r.newest;
 }

@@ -11,27 +11,29 @@ import type { IconName } from '../../widgets/icons';
 import * as nav from '../../state/nav';
 import { go, lineSearch, stopSearch } from '../../controllers/shell';
 
+/** A row of the menu: its icon and label; `screen` marks the screen it opens (the one shown is set apart). */
+const Row = ({
+  icon,
+  label,
+  onClick,
+  screen,
+}: {
+  icon: IconName;
+  label: string;
+  onClick: () => void;
+  screen?: string;
+}) => (
+  <button type="button" data-screen={screen} onClick={onClick}>
+    <span class="ic">
+      <Icon name={icon} />
+    </span>
+    <span>{label}</span>
+  </button>
+);
+
 export function Drawer() {
   void lang.value;
   const open = nav.drawerOpen.value;
-  const Row = ({
-    icon,
-    label,
-    onClick,
-    screen,
-  }: {
-    icon: IconName;
-    label: string;
-    onClick: () => void;
-    screen?: string;
-  }) => (
-    <button type="button" data-screen={screen} onClick={onClick}>
-      <span class="ic">
-        <Icon name={icon} />
-      </span>
-      <span>{label}</span>
-    </button>
-  );
   const navRef = useRef<HTMLElement>(null),
     dropRef = useRef<HTMLDivElement>(null);
   // swiped back towards its edge (left in English, right in Hebrew), on the drawer or on the dimmed map beside it

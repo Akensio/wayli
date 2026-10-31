@@ -8,6 +8,7 @@ import { lang } from '../lib/i18n';
 import * as search from './search';
 import { now } from './clock';
 import type { Journey, PlanResult, Query } from '../journey/types';
+import { unset } from '../lib/unset';
 export type { View } from '../journey/types';
 
 type Status = 'idle' | 'planning' | 'locating';
@@ -132,9 +133,9 @@ export const highlighted = computed<Card | null>(
 /** What the results' own flows need from the controllers: the sheet and the map after results come, a way's card
  *  brought into view. */
 export const hooks = {
-  afterResults: () => {}, // the sheet opens, the map draws
-  redraw: () => {}, // the map draws the ways switched on
-  revealCard: (_idx: number, _open: boolean) => {}, // a way's card scrolled into view (the sheet opened first if asked)
+  afterResults: (): void => unset('results.afterResults'), // the sheet opens, the map draws
+  redraw: (): void => unset('results.redraw'), // the map draws the ways switched on
+  revealCard: (_idx: number, _open: boolean): void => unset('results.revealCard'), // a way's card scrolled into view (the sheet opened first if asked)
 };
 
 /** The first three ways are drawn on the map, the first of them highlighted. */

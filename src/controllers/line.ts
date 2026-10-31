@@ -16,10 +16,10 @@ import * as delays from '../engine/delays.ts';
 import type { LineTime } from '../state/line';
 import { metres } from '../engine/geo.ts';
 import { timeOf } from '../lib/time';
+import { panelSession, whileVisible } from './session';
 
-let seq = 0,
-  timer = 0,
-  current: LineInfo | null = null;
+const session = panelSession(); // the line shown: older answers dropped, its vehicles' poll stopped with it
+let current: LineInfo | null = null;
 let seenNow: { vs: any[]; st: any[] } = { vs: [], st: [] }; // the line's vehicles at the last look, and which trip each runs
 
 /** A line, as a timetable at `stop` when it calls there (the stop the rider came from: a stop's view, a ride's boarding
@@ -28,7 +28,7 @@ export async function openLine(
   route: number,
   at: { stop?: number; near?: { lat: number; lon: number }; trip?: number } = {},
 ): Promise<void> {
-  const my = ++seq;
+  const my = session.begin();
   let info: LineInfo;
   try {
     info = await call('lineInfo', { route });
@@ -36,7 +36,7 @@ export async function openLine(
     toast(t('liveFail'));
     return;
   }
-  if (my !== seq) return;
+  if (!session.isCurrent(my)) return;
   current = info;
   if (info.ref)
     recentViews.add({
@@ -65,8 +65,7 @@ export async function openLine(
   }
   setAnchor(Math.max(0, a), my, at.trip);
   nav.showOverlay('lineDetail');
-  clearInterval(timer);
-  timer = window.setInterval(lineLive, 20000);
+  session.poll(whileVisible(lineLive, 20000));
 }
 /** One trip (a departure at a stop, a vehicle on the map, a train between two stations): its line at that stop, the
  *  trip chosen, so every stop shows its time. There is no page of its own for a trip. */
@@ -81,7 +80,7 @@ export async function openTrip(trip: number, stop: number): Promise<void> {
   openLine(ts.route, { ...(stop >= 0 ? { stop } : {}), trip });
 }
 /** The line's times at the stop chosen, the next one chosen (or the first, on another day), or `trip` when it calls. */
-async function setAnchor(i: number, my = seq, trip?: number): Promise<void> {
+async function setAnchor(i: number, my = session.current(), trip?: number): Promise<void> {
   const info = current;
   if (!info || !info.stops[i]) return;
   // what is shown stays until the new times come (emptied first, the box collapsed and the rows' times blinked)
@@ -94,7 +93,7 @@ async function setAnchor(i: number, my = seq, trip?: number): Promise<void> {
   linePage.now.value = now;
   try {
     const rows = await call('lineTimes', { route: info.route, from: [info.stops[i].stop] });
-    if (my !== seq || linePage.anchor.value !== i) return;
+    if (!session.isCurrent(my) || linePage.anchor.value !== i) return;
     linePage.times.value = rows;
     linePage.loading.value = false;
     const first =
@@ -107,14 +106,14 @@ async function setAnchor(i: number, my = seq, trip?: number): Promise<void> {
       linePage.selTimes.value = [];
     }
   } catch {
-    if (my === seq) {
+    if (session.isCurrent(my)) {
       linePage.times.value = [];
       linePage.loading.value = false;
     }
   }
 }
 /** A time chosen: that trip's time at every stop of the list. */
-async function pick(r: LineTime, my = seq): Promise<void> {
+async function pick(r: LineTime, my = session.current()): Promise<void> {
   const info = current;
   if (!info) return;
   linePage.sel.value = r.trip;
@@ -122,7 +121,7 @@ async function pick(r: LineTime, my = seq): Promise<void> {
   void selLive(my);
   try {
     const ts = await tripStopsCached(r.trip);
-    if (my !== seq || linePage.sel.value !== r.trip) return;
+    if (!session.isCurrent(my) || linePage.sel.value !== r.trip) return;
     // by stop, and by name for a train calling at another platform of the same station
     const byStop = new Map<number, number>(),
       byName = new Map<string, number>();
@@ -136,15 +135,14 @@ async function pick(r: LineTime, my = seq): Promise<void> {
   }
 }
 export function closeLine(): void {
-  clearInterval(timer);
-  seq++;
+  session.end();
   current = null;
   seenNow = { vs: [], st: [] };
 }
 /** The chosen trip's live time at each stop of the list, when its vehicle is among the line's: the time the rider is
  *  shown everywhere (delays.js liveAt), so the line and a trip with that ride say the same. By stop, and by name for a
  *  train calling at another platform of the same station. */
-async function selLive(my = seq): Promise<void> {
+async function selLive(my = session.current()): Promise<void> {
   const info = current,
     trip = linePage.sel.value,
     k = seenNow.st.findIndex((s) => s && s.trip === trip);
@@ -156,7 +154,7 @@ async function selLive(my = seq): Promise<void> {
   try {
     const ts = await tripStopsCached(trip);
     const est = await estimate(seenNow.vs[k], ts.stops, day);
-    if (my !== seq || linePage.sel.value !== trip) return;
+    if (!session.isCurrent(my) || linePage.sel.value !== trip) return;
     if (!est) {
       linePage.selLive.value = [];
       return;
@@ -175,10 +173,6 @@ async function selLive(my = seq): Promise<void> {
     /* the timetable stays */
   }
 }
-// the line's vehicles, once the map has drawn its course (map/render.ts)
-map.afterDraw.lineDetail = () => {
-  lineLive();
-};
 
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive(): Promise<void> {
@@ -187,16 +181,16 @@ async function lineLive(): Promise<void> {
   if (info?.routeIds?.length) ids = info.routeIds;
   else if (info?.routeId != null) ids = [info.routeId];
   if (!info || !nav.isOpen('lineDetail') || !map.liveOn() || !ids.length) return;
-  const my = seq;
+  const my = session.current();
   try {
     // a train line is many routes in the feed (one per train): every train in the country, then those of this line
     const vs =
       ids.length > 1
         ? (await feed.trains()).filter((v: { lineRef: unknown }) => ids.includes(Number(v.lineRef)))
         : await feed.vehiclesByLine(ids[0]);
-    if (my !== seq) return;
+    if (!session.isCurrent(my)) return;
     const st = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
-    if (my !== seq) return;
+    if (!session.isCurrent(my)) return;
     map.showVehicles('lineDetail', 'line', {
       vs,
       statuses: st,
@@ -227,4 +221,12 @@ export function chooseAnchor(i: number): void {
 /** A time tapped: that trip at every stop. */
 export function chooseTime(r: LineTime): void {
   void pick(r);
+}
+
+/** Start: the line's vehicles once the map has drawn it. */
+export function install(): void {
+  // the line's vehicles, once the map has drawn its course (map/render.ts)
+  map.afterDraw.lineDetail = () => {
+    lineLive();
+  };
 }

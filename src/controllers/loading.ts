@@ -16,15 +16,12 @@ import { setStatus, loadFailed } from './status';
 import * as query from '../state/query';
 
 const manifest = (): Manifest => data.manifest.value!;
-// live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
-feed.snapshot.query = (filter: SnapshotFilter) =>
-  call('liveQuery', { urls: feed.RELAY_URLS, filter }) as Promise<Vehicle[]>; // ops.ts names the worker's copy of Vehicle
+// ops.ts names the worker's copy of Vehicle
 // stored places shown in the other language are named again by the worker (state/names.ts)
 const WORDS = {
   he: { near: String(STR.nearName[0]), point: String(STR.pointName[0]) },
   en: { near: String(STR.nearName[1]), point: String(STR.pointName[1]) },
 };
-names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });
 /** A data file's address, with its version in the query, so each version is fetched once and then served from the
  *  service worker's cache: the content hash (a rebuilt file with nothing changed is not fetched again), or the build
  *  time of files without one (the learned times, which change nightly anyway). */
@@ -169,10 +166,18 @@ export async function loadStreets(): Promise<void> {
     },
   );
 }
-// the bar's day pills ask for the day's timetable
-// a time the rider set stays (the wheels set day and time in either order); otherwise the new day starts at its default
-query.hooks.dayChanged = (d) => {
-  loadDay(d).catch(loadFailed);
-  if (!query.timeTouched.value) query.setDefaultTime();
-};
-query.hooks.startDay = () => (data.manifest.value ? startDay() : '');
+
+/** Start: live questions to the relay through the worker, names in another language, a day's timetable when the question's day changes. */
+export function install(): void {
+  // live questions go to the newest snapshot through the relay first (the data worker downloads and filters it)
+  feed.snapshot.query = (filter: SnapshotFilter) =>
+    call('liveQuery', { urls: feed.RELAY_URLS, filter }) as Promise<Vehicle[]>;
+  names.hooks.localize = (places, L) => call('localize', { places, lang: L, words: WORDS });
+  // the bar's day pills ask for the day's timetable
+  // a time the rider set stays (the wheels set day and time in either order); otherwise the new day starts at its default
+  query.hooks.dayChanged = (d) => {
+    loadDay(d).catch(loadFailed);
+    if (!query.timeTouched.value) query.setDefaultTime();
+  };
+  query.hooks.startDay = () => (data.manifest.value ? startDay() : '');
+}

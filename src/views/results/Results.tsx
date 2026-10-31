@@ -21,6 +21,7 @@ import { plan } from '../../controllers/planner';
 import { openDetail } from '../../controllers/detail';
 import { startTrip } from '../../controllers/follow';
 import * as query from '../../state/query';
+import { Tappable } from '../../widgets/Tappable';
 
 function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
   let note = '';
@@ -60,18 +61,19 @@ function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
   );
 }
 
+/** A filter chip: pressed or not. */
+const Chip = ({ label, on, icon, onClick }: { label: string; on: boolean; icon?: IconName; onClick: () => void }) => (
+  <button type="button" class={`chipbtn${on ? ' on' : ''}`} aria-pressed={on} onClick={onClick}>
+    {icon && (
+      <>
+        <Icon name={icon} />{' '}
+      </>
+    )}
+    {label}
+  </button>
+);
 function Filters() {
   const f = results.filters.value;
-  const Chip = ({ label, on, icon, onClick }: { label: string; on: boolean; icon?: IconName; onClick: () => void }) => (
-    <button type="button" class={`chipbtn${on ? ' on' : ''}`} onClick={onClick}>
-      {icon && (
-        <>
-          <Icon name={icon} />{' '}
-        </>
-      )}
-      {label}
-    </button>
-  );
   return (
     <div class="filters">
       <Chip label={t('fDirect')} on={f.fDirect} onClick={() => results.setFilter({ fDirect: !f.fDirect })} />
@@ -114,13 +116,13 @@ function Strip({
 function StripRow({ j, q, note, act }: { j: Journey; q: Query; note: VNode; act: string }) {
   return (
     <div class="strip-row">
-      <div class="txt" onClick={() => openDetail(j, q)}>
+      <Tappable class="txt" onClick={() => openDetail(j, q)}>
         <TimeRange from={j.depart} to={j.arrive} />
         <span class="chips">
           <LegChips legs={ridesOf(j.legs)} />
         </span>
         {note}
-      </div>
+      </Tappable>
       <button
         type="button"
         class="ghost"
@@ -142,6 +144,7 @@ function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
     <Strip cls="hurry" hint={hurry.length === 1 ? t('hurryHint1') : t('hurryHint', { n: hurry.length })}>
       {hurry.slice(0, 4).map((j) => (
         <StripRow
+          key={`${j.depart}|${j.arrive}`}
           j={j}
           q={q}
           act={t('startTrip')}
@@ -173,6 +176,7 @@ function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored:
           const left = nowSec - results.rideDep(j); // a ride out of reach may not have left yet
           return (
             <StripRow
+              key={`${j.depart}|${j.arrive}`}
               j={j}
               q={q}
               act={t('aboard')}
@@ -272,7 +276,7 @@ export function Results() {
       {gone.length > 0 && <GoneStrip gone={gone} q={q} restored={!!at} />}
       {hurry.length > 0 && <HurryStrip hurry={hurry} q={q} />}
       {bikeOnly && (
-        <div
+        <Tappable
           class="journey"
           onClick={() =>
             openDetail(
@@ -305,7 +309,7 @@ export function Results() {
               {t('bikeOnly', { min: Math.round(bikeOnly.seconds / 60), km: (bikeOnly.metres / 1000).toFixed(1) })}
             </span>
           </div>
-        </div>
+        </Tappable>
       )}
       {!bikeOnly && q.bike !== 'none' && r.streets && !q.from.stops && !q.to.stops && (
         <div class="muted">{t('noBikeOnly')}</div>

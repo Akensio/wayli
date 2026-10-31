@@ -5,6 +5,7 @@ import type { Dest } from '../worker/ops.ts';
 export type { StopLine, StopInfo, Departure } from '../worker/ops.ts';
 export type { SavedStop } from '../journey/types';
 import type { StopInfo, Departure } from '../worker/ops.ts';
+import { unset } from '../lib/unset';
 
 type LiveDep = { passed: true } | { passed: false; time: number; stale?: boolean; delayMin: number };
 
@@ -18,7 +19,7 @@ export const dests = signal<Dest[] | null>(null); // a station's: where its trai
 
 /** What the page's own flow needs from the controllers: its history entry. */
 export const hooks = {
-  show: () => {},
+  show: (): void => unset('stop.show'),
 };
 export function open(i: StopInfo, d: string, now: boolean): void {
   info.value = i;

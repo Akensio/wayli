@@ -8,6 +8,7 @@ import type { IconName } from './icons';
 import { chipColors } from '../journey/colors';
 import { LineName } from './RailLogo';
 import { modeOfType, type Mode } from '../engine/modes.ts';
+import { Tappable } from './Tappable';
 
 export type LineMode = Mode; // the same word everywhere, from the engine
 const MODE_ICON: Partial<Record<LineMode, IconName>> = { lrt: 'tram', cable: 'cable', taxi: 'taxi' }; // a train: Israel Railways' mark (LineName)
@@ -35,10 +36,22 @@ export function LineChip({
 }: Line & { text?: string; big?: boolean; onClick?: (e: MouseEvent) => void }) {
   const l = look({ routeType, agency, mode }, `${big ? ' big' : ''}${onClick ? ' btn' : ''}`),
     icon = MODE_ICON[l.mode];
-  return (
-    <span class={l.cls} style={l.style} onClick={onClick}>
+  const inner = (
+    <>
       {icon && <Icon name={icon} />}
       <LineName line={line} routeType={l.mode === 'rail' ? 2 : routeType} text={text} />
+    </>
+  );
+  // a chip that opens its line is a button to everyone (it keeps its inline look: Tappable as a span)
+  if (onClick)
+    return (
+      <Tappable tag="span" class={l.cls} style={l.style as Record<string, string>} onClick={onClick}>
+        {inner}
+      </Tappable>
+    );
+  return (
+    <span class={l.cls} style={l.style}>
+      {inner}
     </span>
   );
 }

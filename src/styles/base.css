@@ -25,11 +25,13 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 /* touch feedback of our own, instead of the browser's blue flash: buttons press down, rows and cards tint, and a
    soft ripple spreads from the finger (script adds .ripple on pointerdown to anything tappable) */
-button, .chipbtn, .journey, .item.act, .drawer > button, .recent, .saved-row, .stop, .strip-row .txt, .dropdown button, .opt { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+button, [role="button"], .chipbtn, .item.act, .drawer > button, .saved-row, .strip-row .txt, .dropdown button, .opt { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 button, .chipbtn, .iconbtn, .userbtn, .seg button, .stepper button, .opt { transition: transform .08s ease, background-color .12s ease, box-shadow .12s ease; }
 button:active:not(.handle), .chipbtn:active, .opt:active { transform: scale(.95); }
 .journey:active, .item.act:active, .drawer > button:active, .recent:active, .saved-row:active, .stop:active, .strip-row .txt:active, .dropdown button:active { background-color: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
 .rippling { position: relative; overflow: hidden; }
+/* reached with the keyboard: rows and chips that are buttons show it like buttons do */
+[role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @keyframes ripple { to { transform: scale(1); opacity: 0; } }
 button:focus-visible, .chipbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* the icon set: stroke icons that take the text colour; `.fill` or a `.star.on` parent fills them */
