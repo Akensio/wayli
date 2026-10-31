@@ -126,6 +126,10 @@ the first run.
   gtfs.mot.gov.il.
 - Streets: OpenStreetMap, the Israel and Palestine extract (Geofabrik or the
   openstreetmap.fr mirror), ODbL.
+- Places: OpenStreetMap, and Overture Maps' places where OpenStreetMap lacks
+  them (overturemaps.org; from Meta, Microsoft and Foursquare under
+  CDLA-Permissive-2.0, Apache-2.0 and CC0), read from Overture's public
+  bucket weekly.
 - Real-time: Hasadna's Open Bus project (open-bus-stride-api.hasadna.org.il),
   which records the Ministry's SIRI vehicle feed and publishes it openly
   with open CORS, so the phone asks it directly. While live times are on,

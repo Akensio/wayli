@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install numpy osmium pillow # pillow (HPND): the elevation tiles' PNGs
+      - run: pip install numpy osmium pillow duckdb # pillow (HPND): the elevation tiles' PNGs; duckdb (MIT): Overture's places
       - name: The pipeline's own checks (the stop-on-course rule; which street an address joins)
         run: python3 -I pipeline/test_projection.py && python3 -I pipeline/test_places.py
       - name: The first service day (until 03:00 the night belongs to the previous date)
@@ -70,7 +70,7 @@ jobs:
           restore-keys: weekend-
       - name: Weekend lines, with estimated times, into the feed
         run: python3 -I pipeline/weekend.py data/gtfs.zip --cache data/weekend.json || echo "::warning::no weekend lines this time"
-      - name: Cache the OpenStreetMap extract, street graph and address book (rebuilt weekly)
+      - name: Cache the OpenStreetMap extract, Overture's places, street graph and address book (rebuilt weekly)
         id: osm
         uses: actions/cache@v4
         with:
@@ -78,6 +78,7 @@ jobs:
             data/osm/israel-and-palestine-latest.osm.pbf
             data/streets.bin.gz
             data/places.bin.gz
+            data/overture.json.gz
             data/rail.bin.gz
             data/dem
           key: osm-${{ github.run_id }}
@@ -93,7 +94,11 @@ jobs:
               || dl data/osm/israel-and-palestine-latest.osm.pbf https://download.openstreetmap.fr/extracts/asia/israel_and_palestine-latest.osm.pbf
             python3 -I pipeline/elevation.py --fetch data/dem   # the ground's heights, for climbs (kept in the cache)
             python3 -I pipeline/streets.py data/osm/israel-and-palestine-latest.osm.pbf --dem data/dem --out data/streets.bin.gz
-            python3 -I pipeline/places.py data/osm/israel-and-palestine-latest.osm.pbf --gtfs data/gtfs.zip --out data/places.bin.gz
+            # Overture's everyday places; when its bucket does not answer, the last week's file (kept in the cache) serves
+            python3 -I pipeline/overture.py --out data/overture.new.json.gz && mv data/overture.new.json.gz data/overture.json.gz \
+              || echo "Overture unreachable: using the previous file" >&2
+            python3 -I pipeline/places.py data/osm/israel-and-palestine-latest.osm.pbf --gtfs data/gtfs.zip \
+              $( [ -f data/overture.json.gz ] && echo --overture data/overture.json.gz ) --out data/places.bin.gz
             python3 -I pipeline/rail.py data/osm/israel-and-palestine-latest.osm.pbf --out data/rail.bin.gz
           fi
       # The compiled days depend only on the feed, the graphs and the compiler: an app-only push reuses them.

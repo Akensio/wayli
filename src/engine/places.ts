@@ -236,15 +236,34 @@ const EVERYDAY_HE = {
   'shop=deli': 'מעדנייה',
   'shop=pastry': 'קונדיטוריה',
 };
-const KIND_HE: Record<string, string> = { ...LANDMARK_HE, ...EVERYDAY_HE };
+// two kinds pipeline/overture.py gives where Overture's word is wider than the landmark's (a mall, a university)
+const OVERTURE_HE = { 'shopping=shopping_center': 'מרכז קניות', 'education=college_university': 'מכללה' };
+const KIND_HE: Record<string, string> = { ...LANDMARK_HE, ...EVERYDAY_HE, ...OVERTURE_HE };
 const LANDMARK = new Set(Object.keys(LANDMARK_HE));
 /** A place's kind, an OpenStreetMap tag "key=value": one the search has a label for, or any other of the pipeline's
  *  (a shop or an office not named here gets a general label). */
 export type PoiKind = keyof typeof LANDMARK_HE | keyof typeof EVERYDAY_HE | (string & {});
+/** Overture's places whose category the app has no word for carry their group ("food_and_drink=winery",
+ *  pipeline/overture.py): the group's word. */
+const GROUP_HE: Record<string, string> = {
+  food_and_drink: 'אוכל ושתייה',
+  shopping: 'חנות',
+  health_care: 'בריאות',
+  education: 'חינוך',
+  sports_and_recreation: 'ספורט ופנאי',
+  lodging: 'לינה',
+  arts_and_entertainment: 'תרבות ובידור',
+  cultural_and_historic: 'מורשת',
+  travel_and_transportation: 'תחבורה',
+  community_and_government: 'שירות ציבורי',
+  geographic_entities: 'מקום',
+};
 /** A place's kind in words: the Hebrew label, else a general one ("חנות", "משרד", "מקום"); in English the tag's own value. */
 export function kindLabel(kind: PoiKind, lang: Lang = 'he'): string {
   if (lang !== 'he') return (kind.split('=')[1] ?? kind).replace(/_/g, ' ');
   if (KIND_HE[kind]) return KIND_HE[kind];
+  const group = GROUP_HE[kind.split('=')[0]];
+  if (group) return group;
   if (kind.startsWith('shop=')) return 'חנות';
   if (kind.startsWith('office=')) return 'משרד';
   return 'מקום';
@@ -253,7 +272,7 @@ export function kindLabel(kind: PoiKind, lang: Lang = 'he'): string {
 // ---------------------------------------------------------------- names typed in Latin letters
 // Streets and places carry OpenStreetMap's English name beside the Hebrew; cities the feed's. Where there is
 // none, or the rider spells it their own way (Hayarkon, HaYarkon, Ha-Yarkon), both scripts reduce to a
-// consonant skeleton: vowels dropped, letters that sound alike merged, doubled letters collapsed.
+// consonant skeleton: vowels dropped, letters that sound alike merged, letters doubled as written collapsed.
 const LATIN_STOP = new Set([
   'street',
   'st',
@@ -323,7 +342,7 @@ function expand(s: string): string[] {
     for (const o of out) for (const a of alts) next.push(o + a);
     out = next.length > 16 ? next.slice(0, 16) : next;
   }
-  return [...new Set(out.map(squash))].filter(Boolean);
+  return [...new Set(out)].filter(Boolean);
 }
 function skelHe(word: string): string[] {
   const chars = [...word];
@@ -332,7 +351,7 @@ function skelHe(word: string): string[] {
     if (c === 'ה' && i === chars.length - 1 && chars.length > 1) return; // a final ה is a vowel
     s += HEB_SK[c] ?? (/\d/.test(c) ? c : '');
   });
-  return expand(s);
+  return expand(squash(s)); // letters doubled as written collapse; two the dropped vowels bring together do not (מיזנון)
 }
 /** A Latin word's consonant skeletons; `article` false keeps a leading "ha" (a city's name never takes the article). */
 function skelLatin(word: string, article = true): string[] {
@@ -355,17 +374,23 @@ function skelLatin(word: string, article = true): string[] {
   const bases: string[] = [];
   const vowelH = /[aeiouy]h$/.test(w); // "Tikvah": a bare final h after a vowel is a vowel (ה) or a consonant (ח); "Petach" is ח
   for (const b of vowelH ? [s, s.slice(0, -1)] : [s]) {
-    const c = b.replace(/[aeiouy]/g, '').replace(/[^a-z0-9J]/g, ''); // x stays: the guttural
+    // doubled letters collapse as written (dizzengoff), before the vowels go: "miznon" keeps its two n's
+    const c = squash(b)
+      .replace(/[aeiouy]/g, '')
+      .replace(/[^a-z0-9J]/g, ''); // x stays: the guttural
     if (c.includes('J')) bases.push(c.replace(/J/g, 'z'), c.replace(/J/g, 'g'));
     else bases.push(c); // ז' and ג' are both j
   }
   const out: string[] = [];
   for (const b of bases) {
-    out.push(squash(b));
-    if (article && w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1))); // "HaYarkon": the article, which Hebrew matching drops
+    out.push(b);
+    if (article && w.startsWith('ha') && b.length > 2) out.push(b.slice(1)); // "HaYarkon": the article, which Hebrew matching drops
   }
   return [...new Set(out)].filter(Boolean);
 }
+/** A name word's skeletons, whatever its script: a place named only in English ("Miznon") is found by its Hebrew
+ *  spelling (מיזנון) too. */
+const skelOf = (w: string): string[] => (isLatin(w) ? skelLatin(w) : skelHe(w));
 /** A query word with what it can match: its text (a Hebrew name's words, or an English name's), and the consonant
  *  skeletons it may stand for (matched against the skeletons of the Hebrew names), so a word spelt another way or with
  *  one slip still finds the name (skelScore). */
@@ -377,9 +402,9 @@ const queryWords = (words: string[]): QueryWord[] =>
 export function ensureSkeletons(pl: Places): void {
   if (pl.streetSk) return;
   pl.streetEn = pl.streets.map((s) => wordsEn(s[4] || ''));
-  pl.streetSk = pl.streetWords.map((ws) => ws.map(skelHe));
+  pl.streetSk = pl.streetWords.map((ws) => ws.map(skelOf));
   pl.poiEn = pl.pois.map((p) => wordsEn(p[5] || ''));
-  pl.poiSk = pl.poiWords.map((ws) => ws.map(skelHe));
+  pl.poiSk = pl.poiWords.map((ws) => ws.map(skelOf));
   pl.citySk = pl.cities.map((c) => words(c[0]).map(skelHe));
   pl.cityEnWords = pl.cities.map((c) => wordsEn(c[3] || ''));
 }
@@ -466,6 +491,7 @@ function matchEntry(
   en: string[] | null,
   sk: string[][] | null,
   firstWordNames = true,
+  loosen = true,
 ): { score: number; loose: boolean } {
   let loose = false;
   let score = 0,
@@ -477,7 +503,7 @@ function matchEntry(
     if (!q.latin) {
       for (let i = 0; i < he.length; i++) best = Math.max(best, wordScore(q.w, he[i], i, firstWordNames));
       // not found as written: spelt another way, or one slip (from three letters typed; short words match too much)
-      if (!best && sk && q.w.length >= 3) {
+      if (!best && loosen && sk && q.w.length >= 3) {
         for (let i = 0; i < he.length; i++) best = Math.max(best, looseHe(q, he[i], sk[i] || [], i));
         if (best) loose = true;
       }
@@ -491,7 +517,7 @@ function matchEntry(
           if (v < 0) slip = Math.max(slip, -v);
           else best = Math.max(best, v);
         }
-      if (!best && slip) {
+      if (!best && slip && loosen) {
         best = slip;
         loose = true;
       }
@@ -741,11 +767,12 @@ export function searchPlaces(
         out.push(cityRow(i, 2 + proximity(near, c[1], c[2]) / 3));
     });
   }
-  if (qs.length) {
+  // the streets and places matching, as typed (`loosen` false) or only loosely (true: another spelling, a slip)
+  const entries = (loosen: boolean): void => {
     // streets (and addresses on them)
     for (let s = 0; s < pl.streets.length; s++) {
-      const m = matchEntry(qs, pl.streetWords[s], latin ? pl.streetEn![s] : null, pl.streetSk![s]);
-      if (!m.score) continue;
+      const m = matchEntry(qs, pl.streetWords[s], latin ? pl.streetEn![s] : null, pl.streetSk![s], true, loosen);
+      if (!m.score || (loosen && !m.loose)) continue;
       let score = m.score - (m.loose ? LOOSE : 0);
       const st = pl.streets[s];
       const sc = pl.streetCity[s];
@@ -794,8 +821,8 @@ export function searchPlaces(
     }
     // notable places
     for (let p = 0; p < pl.pois.length; p++) {
-      const m = matchEntry(qs, pl.poiWords[p], latin ? pl.poiEn![p] : null, pl.poiSk![p], false);
-      if (!m.score) continue;
+      const m = matchEntry(qs, pl.poiWords[p], latin ? pl.poiEn![p] : null, pl.poiSk![p], false, loosen);
+      if (!m.score || (loosen && !m.loose)) continue;
       let score = m.score - (m.loose ? LOOSE : 0);
       if (cityName) {
         if (pl.poiCity[p] === cityName) score += 3;
@@ -813,6 +840,12 @@ export function searchPlaces(
         score,
       });
     }
+  };
+  if (qs.length) {
+    entries(false);
+    // what is found loosely lists after everything found as typed, so it is looked for only when that leaves room
+    // (the loose pass is most of a search's time: half the names, compared by sound)
+    if (new Set(out.map((r) => `${r.kind}|${norm(r.name)}|${norm(r.city)}`)).size < limit) entries(true);
   }
   out.sort(byScore);
   // one entry per (kind, name, city)

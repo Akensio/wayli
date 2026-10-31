@@ -13,7 +13,7 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from places import street_for  # noqa: E402
+from places import street_for, add_overture  # noqa: E402
 
 TLV, TIB, RG = "תל אביב יפו", "טבריה", "רמת גן"
 # the city a point is in: Tiberias in the north, Ramat Gan east of 34.81, Tel Aviv elsewhere; none far at sea
@@ -60,5 +60,21 @@ sl, si, bn = book((SALAH, "@629,688", 31.45, 34.40))  # a street with no city, i
 far = street_for(SALAH, SALAH, "", 32.22, 35.26, bn, sl, si, city_near)
 check("no city known, the same name 100 km away: a street of its own, without a city", (far != 0, sl[far][1]), (True, ""))
 check("an address in the first street's square joins it", street_for(SALAH, SALAH, "", 31.451, 34.401, bn, sl, si, city_near), 0)
+
+# Overture's places beside OpenStreetMap's: the same name (or one the start of the other) within 150 m is the same place
+import gzip, json, tempfile  # noqa: E401,E402
+osm = [["ארומה", "amenity=cafe", TLV, 32.0750, 34.7800, "Aroma"], ["מיזנון", "amenity=restaurant", TLV, 32.0760, 34.7810, ""]]
+ov = [["ארומה דיזנגוף", "Aroma", "amenity=cafe", 32.0751, 34.7801],   # the same café, a longer name: dropped
+      ["Miznon", "Miznon", "amenity=restaurant", 32.0761, 34.7811],    # the English name of an OSM place without one: kept
+      ["ארומה", "", "amenity=cafe", 32.0900, 34.7800],                  # another branch, 1.7 km away: kept
+      ["טאיזו", "Taizu", "amenity=restaurant", 32.0710, 34.7890],       # new: kept
+      ["טאיזו", "Taizu", "amenity=restaurant", 32.0711, 34.7891]]       # Overture's own repeat: dropped
+with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as f:
+    f.write(gzip.compress(json.dumps({"places": ov}).encode()))
+pois = [list(p) for p in osm]
+added = add_overture(pois, f.name, city_near)
+check("Overture: a longer name of the same café nearby is the same place; another branch and a new place join",
+      [p[0] for p in pois[2:]], ["Miznon", "ארומה", "טאיזו"])
+check("Overture: how many added", added, 3)
 
 sys.exit(1 if failures else 0)

@@ -20,6 +20,9 @@ const pois = [
   ['בי"ח איכילוב', 'amenity=hospital', TLV, 32.08, 34.789, ''],
   ['פורט סעיד', 'amenity=bar', TLV, 32.064, 34.772, 'Port Said'],
   ['שוק הכרמל', 'amenity=marketplace', TLV, 32.068, 34.768, ''],
+  ['Benedict', 'amenity=restaurant', TLV, 32.071, 34.789, 'Benedict'], // named only in English (from Overture)
+  ['מיזנון', 'amenity=restaurant', TLV, 32.076, 34.781, ''],
+  ['מוזיאון תל אביב', 'tourism=museum', TLV, 32.077, 34.787, ''],
 ];
 const cities = [
   [TLV, 32.08, 34.78, 'Tel Aviv-Yafo'],
@@ -27,7 +30,7 @@ const cities = [
   ['כרמיאל', 32.92, 35.3, 'Karmiel'],
 ];
 const book = parsePlaces(
-  writeContainer({ format: 4, counts: { streets: 4, addresses: 0, pois: 6, cities: 3 }, streets, pois, cities }, [
+  writeContainer({ format: 4, counts: { streets: 4, addresses: 0, pois: 9, cities: 3 }, streets, pois, cities }, [
     { name: 'addrStreet', dtype: 'int32', data: [] },
     { name: 'addrNumber', dtype: 'uint16', data: [] },
     { name: 'addrLat', dtype: 'float32', data: [] },
@@ -73,4 +76,13 @@ test('a name found as typed lists before one found loosely', () => {
 
 test('short words get no loose match', () => {
   expect(searchPlaces(book, 'קפ', 5, null, 'he').map((h) => h.name)).toEqual(['קפלן']); // only the start, as typed
+});
+
+test('across the scripts: a name in English by its Hebrew spelling, a Hebrew one by its Latin', () => {
+  expect(top('בנדיקט')).toBe('Benedict');
+  expect(top('miznon')).toBe('מיזנון'); // two separate n's: not the museum, whose ו and י drop to leave one
+});
+
+test('two passes give what one would: the loose pass only fills what the exact one leaves', () => {
+  expect(searchPlaces(book, 'מוזיאון', 5, null, 'he').map((h) => h.name)[0]).toBe('מוזיאון תל אביב');
 });

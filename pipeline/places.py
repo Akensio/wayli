@@ -26,8 +26,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import container
 from common import log, member, haversine
 
-FORMAT_VERSION = 4   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
-                     # 4: an address joins a street of its name only in its city or nearby (street_for)
+FORMAT_VERSION = 5   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
+                     # 4: an address joins a street of its name only in its city or nearby (street_for);
+                     # 5: Overture's everyday places beside OpenStreetMap's (--overture)
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {
@@ -125,6 +126,42 @@ def street_for(name, name_norm, city, lat, lon, by_name, street_list, street_ind
         street_list.append([name, city_of_key(c), round(lat, 6), round(lon, 6), ""])
         by_name[name_norm].append((c, street_index[key]))
     return street_index[key]
+
+
+# Overture's places join OpenStreetMap's where OpenStreetMap lacks them: one with the same name (Hebrew or English,
+# normalised, or one name the start of the other: "ארומה" and "ארומה דיזנגוף") within SAME_M of an OpenStreetMap place
+# is the same place.
+SAME_M = 150
+
+
+def same_name(a, b):
+    return bool(a and b) and (a == b or a.startswith(b + " ") or b.startswith(a + " "))
+
+
+def add_overture(poi_list, path, city_near):
+    """Add Overture's places (pipeline/overture.py's file) to poi_list ([name, kind, city, lat, lon, name_en]) where
+    no place of the same name is within SAME_M; returns how many were added."""
+    import gzip
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        places = json.load(f)["places"]
+    cell = 0.002   # about 200 m
+    grid = defaultdict(list)
+    for p in poi_list:
+        grid[(int(p[3] / cell), int(p[4] / cell))].append((p[3], p[4], norm(p[0]), norm(p[5] or "")))
+    added = 0
+    for name, en, kind, lat, lon in places:
+        names = [x for x in (norm(name), norm(en or "")) if x]
+        cy, cx = int(lat / cell), int(lon / cell)
+        dup = any(
+            haversine(lat, lon, olat, olon) <= SAME_M and any(same_name(n, o) for n in names for o in (ohe, oen))
+            for dy in (-1, 0, 1) for dx in (-1, 0, 1) for olat, olon, ohe, oen in grid.get((cy + dy, cx + dx), ())
+        )
+        if dup:
+            continue
+        poi_list.append([name, kind, city_near(lat, lon), round(lat, 6), round(lon, 6), en or ""])
+        grid[(cy, cx)].append((lat, lon, norm(name), norm(en or "")))   # Overture's own repeats too
+        added += 1
+    return added
 
 
 def format_of(path):
@@ -237,6 +274,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("pbf", nargs="?")
     ap.add_argument("--gtfs", help="GTFS zip, for the city of each stop and the English city names")
+    ap.add_argument("--overture", default=None, help="Overture's everyday places (pipeline/overture.py), added where OpenStreetMap lacks them")
     ap.add_argument("--out", default="data/places.bin.gz")
     ap.add_argument("--check", default=None, help="exit 0 when this compiled file has the current format, else 1 (for the build)")
     args = ap.parse_args()
@@ -321,6 +359,9 @@ def main():
             continue
         seen.add(key)
         poi_list.append([name, kind, city_near(lat, lon), round(lat, 6), round(lon, 6), en])
+    if args.overture:
+        added = add_overture(poi_list, args.overture, city_near)
+        log(f"Overture: {added} places added beside OpenStreetMap's")
     poi_list.sort(key=lambda p: (p[0], p[2]))
 
     sec = container.Sections()

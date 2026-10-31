@@ -571,8 +571,14 @@ from OpenStreetMap (streets with their city from the nearest transit stop,
 house numbers, cities from the feed, and named places: landmarks such as
 hospitals, universities, malls, parks and stations, and everyday places such
 as restaurants, cafés, bars, hotels, shops, pharmacies, banks, schools,
-synagogues and offices): about 45k streets, 212k house numbers, 49k places
-(16k landmarks, 33k everyday), 2.9 MB gzipped. Landmarks rank above streets
+synagogues and offices), and Overture Maps' everyday places where
+OpenStreetMap lacks them (`pipeline/overture.py`: Israel and the
+Palestinian territories, confidence 0.7 and up, the kinds a rider travels
+to; one with the same name within 150 m of an OpenStreetMap place is that
+place): about 45k streets, 212k house numbers, 102k places (49k from
+OpenStreetMap, 53k from Overture), 4.3 MB gzipped. Overture's hospitals and
+malls come in as clinics and shopping centres, so only OpenStreetMap's rank
+as landmarks. Landmarks rank above streets
 at an equal match, everyday places level with them, so an exact name wins
 without burying street searches in shops. `src/engine/places.ts` parses free text ("דיזנגוף 50,
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
