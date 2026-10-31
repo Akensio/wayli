@@ -64,7 +64,7 @@ are a required mode. Built the same day:
   along each way and counted with a 2 m hysteresis (bridges and tunnels
   by their ends only), since the radar's noise and the buildings it saw
   made flat streets climb. The cost (`CLIMB` in the header, applied by
-  `streets.js` `secondsOn` and by the compiler's walking transfers): on
+  `streets.ts` `secondsOn` and by the compiler's walking transfers): on
   foot 3 s more per metre up and 1 s per metre down on descents over
   10 %; by bike a climb no faster than about 500 m an hour and a descent
   saving 1.5 s per metre down up to 7 m/s; steps and pushed bikes as
@@ -80,7 +80,7 @@ are a required mode. Built the same day:
   guesses. Inside a station every platform reaches every other (the feed's
   `parent_station`, 220 stations, 4.6k pairs). Every footpath carries a 30 s
   margin; boarding at the stop you arrived at needs 90 s.
-- **Profile search** (`raptor.js` `profile()`): range RAPTOR over a departure
+- **Profile search** (`raptor.ts` `profile()`): range RAPTOR over a departure
   window, so an answer is every journey worth taking in the next hour, not
   one. Origins and destinations are sets (all platforms of a station, or
   every stop reachable from a point) with access and egress times. Ties on
@@ -93,7 +93,7 @@ are a required mode. Built the same day:
   stop by the door costs nothing and getting off a block early to arrive
   seconds sooner is a walk for nothing; the journey's arrival stays the real
   one.
-- **First and last mile** (`src/engine/streets.js`): Dijkstra on the street graph
+- **First and last mile** (`src/engine/streets.ts`): Dijkstra on the street graph
   from a point, on foot (15 min) or by bike (20 min), to every stop it can
   reach; those become the origins or destinations. A point joins the
   network on the street segments in front of it (the nearest, and others
@@ -119,7 +119,7 @@ Measured in headless Chromium, 60-minute window, up to 3 transfers:
 Known gaps, in rough order of importance:
 
 - Bike on transit: the feed has no `bikes_allowed`, so the rules are coded
-  in `raptor.js` (`BIKE_RULES`, `bikeAllowed`) from public sources, checked
+  in `raptor.ts` (`BIKE_RULES`, `bikeAllowed`) from public sources, checked
   2026-10-16: folding bikes ride on any bus, light rail and train at any
   hour; other bikes ride on trains outside the weekday peaks (Sun-Thu
   06:00-09:00 and 15:00-19:00, Israel Railways notice, 2019) and in the
@@ -155,12 +155,12 @@ and every downloaded data file are cached, so the app works offline once
 loaded; a new build reloads the page once, and notification taps reopen
 the app).
 - `engine/`: the logic with no screen, run in the data worker and in Node:
-  `raptor.js` and `streets.js` (the router and the street graph),
-  `places.js` (the address book), `clock.js` (Israel time), `feed.js` (the
-  live vehicles), `delays.js` (delay estimates), `follow.js` (the
-  trip-following state machine), `geo.js` (distances, and where a point is
-  along a trip), `modes.ts` (what runs a line), `container.js` (reading the
-  data files) and `text.js` (how the searches compare names).
+  `raptor.ts` and `streets.ts` (the router and the street graph),
+  `places.ts` (the address book), `clock.ts` (Israel time), `feed.ts` (the
+  live vehicles), `delays.ts` (delay estimates), `follow.ts` (the
+  trip-following state machine), `geo.ts` (distances, and where a point is
+  along a trip), `modes.ts` (what runs a line), `container.ts` (reading the
+  data files) and `text.ts` (how the searches compare names).
 - `worker/`: the data worker (it holds the data and answers every query, so
   the UI never blocks), a module per kind of question (`data`, `search`,
   `plan`, `stops`, `lines`, `trips`, `courses`, `vehicles`, `traffic`, with
@@ -209,7 +209,7 @@ the app).
   `render.ts` (carries that out from the panels' state, the one camera,
   aimed between the bar and the sheet, the locate button's included; a
   panel's own live vehicles go on after the drawing through `afterDraw`),
-  `style.js` (the Liberty style's colours from two palettes), `basemap`
+  `style.ts` (the Liberty style's colours from two palettes), `basemap`
   (theme, labels' language), `layers` (a journey with its stops and pins,
   the other ways muted under it), `live` (the vehicles in view, the day's
   stops, the note), `popups` (bubbles for a vehicle and a tapped place; a
@@ -218,7 +218,7 @@ the app).
 - `journey/`: types, line colours, the words for journeys, operators'
   English names, sharing, the pay link.
 - `lib/`: used everywhere: `i18n.ts` (every string in Hebrew and English),
-  `time.ts`, `store.js` (settings, history, saved places and the trip in
+  `time.ts`, `store.ts` (settings, history, saved places and the trip in
   progress, all in localStorage; every write bumps its `stored` signal, which
   the pages showing what it keeps read).
 - `types/` (global declarations), `public/` (manifest, icons).
@@ -226,7 +226,7 @@ the app).
 Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap
 vector tiles (no key, no cost): the Liberty style, with every colour
 replaced on the device from one of two palettes by role and road class
-(`map/style.js`), so both maps keep all of Liberty's detail (road classes,
+(`map/style.ts`), so both maps keep all of Liberty's detail (road classes,
 3D buildings, stops, places) while the roads recede and the transit lines
 drawn over them carry the colour. Light: warm off-white land, white
 streets with soft grey casings, pale sand motorways, muted water (the
@@ -376,7 +376,7 @@ full style reload, after which the app's layers are added again).
 
 Stored places keep the name they were picked with; shown in the other
 language they are named again through the data worker (`state/names.ts`,
-`localize` in the worker, `placeAt` in `places.js`): a stop by its code, an
+`localize` in the worker, `placeAt` in `places.ts`): a stop by its code, an
 address-book place by its exact position and stored name, a picked map
 point by the same nearest-address lookup that named it. "My location" is
 always the interface's own words.
@@ -486,7 +486,7 @@ history (`results/Recent.tsx`) has three tabs, trips, lines and stops, which
 follow the bar's kind and switch on their own, each with a count, and a
 second level of lists under each: trips are Opened (the ways opened),
 Searched and Saved, lines and stops Recent and Saved (a star on a journey,
-a line or a stop; the recent from `recentViews` in `store.js`, on the phone
+a line or a stop; the recent from `recentViews` in `store.ts`, on the phone
 only). What was opened comes first, as it is what is usually wanted again;
 each level opens on the first list with something in it. For a line or a
 stop, searching it and opening it are one act, so one recent list (stops
@@ -512,7 +512,7 @@ Following a trip draws the same, with the rider's position.
 
 Trip following ("start a trip"): the journey is stored on the device and
 followed with the geolocation watch, a screen wake lock and a five-second
-clock. `follow.js` advances through the legs from the rider's position
+clock. `follow.ts` advances through the legs from the rider's position
 (within 60 m of a stop; on a ride, the stretch between two stops the rider
 is on, a stop reached once passed or within 60 m, never backwards) and falls
 back to the timetable clock when there is no position. It raises "one more
@@ -547,7 +547,7 @@ the new ride from the next stop when only the alighting stop changes, the
 current walk kept), the follower's state is rebuilt on board or waiting,
 the map redrawn, the stored trip updated. A dismissed proposal stays away
 for fifteen minutes. The pure parts (origin, plan identity, splice) live in
-`follow.js`.
+`follow.ts`.
 
 Search and addresses: `pipeline/places.py` compiles an offline address book
 from OpenStreetMap (streets with their city from the nearest transit stop,
@@ -557,7 +557,7 @@ as restaurants, cafés, bars, hotels, shops, pharmacies, banks, schools,
 synagogues and offices): about 45k streets, 212k house numbers, 49k places
 (16k landmarks, 33k everyday), 2.9 MB gzipped. Landmarks rank above streets
 at an equal match, everyday places level with them, so an exact name wins
-without burying street searches in shops. `src/engine/places.js` parses free text ("הורדים 4,
+without burying street searches in shops. `src/engine/places.ts` parses free text ("הורדים 4,
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
 ranks stops, addresses, streets, places and cities together, nearer ones
 first when the user's location is known (distance breaks ties even among
@@ -805,7 +805,7 @@ does not), the bike-on-board rules for light rail, fares.
 ## Compact timetable (format 3, built by `pipeline/compile.py`)
 
 One file per service day, in the container every data file comes in
-(`pipeline/container.py` writes it, `src/engine/container.js` reads it),
+(`pipeline/container.py` writes it, `src/engine/container.ts` reads it),
 gzipped: a u32 header length, a JSON header, then little-endian typed arrays
 the app views in place:
 
@@ -1009,7 +1009,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   from each ride's positions placed along its trip's stops as the app does,
   searched forward so a loop is not read backwards, interpolated between
   positions at most 3 minutes apart (85% of stops get one). From a bus's
-  position the app (delays.js busAhead, in the data worker, where every
+  position the app (delays.ts busAhead, in the data worker, where every
   estimate is made since then) adds the rest of its section and each
   section's learned time at the hour the bus will be there; its delay is
   the one at the next stop and the planner shifts each stop by its own.
@@ -1019,7 +1019,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   pace 52%), 5 ahead 63% (36%), 10 ahead 42% (19%); median error at 10
   stops -0.5 min (-2.5); at the peaks 10 ahead 39% (15%). Each of 18-21
   held out in turn gave the same within a point or two (10 ahead: 20% to
-  44% every day), and the app's own code (delays.js) gives the measurement's
+  44% every day), and the app's own code (delays.ts) gives the measurement's
   times to the second (2,990 of 3,000 predictions; the rest within 18 s,
   a position on the edge of two sections).
 - How the roads run now, from the buses: the data worker follows every bus
@@ -1226,7 +1226,7 @@ morning came from a number read as meaning something it did not.)
  vehicle v = { lineRef, scheduledStart, lat, lon, recordedAt, trail?, callSince? }
         │  matched to a trip by (route id = lineRef, first departure = scheduledStart)
         ▼
- engine/delays.js estimateDelay(v, stops)  ──►  est
+ engine/delays.ts estimateDelay(v, stops)  ──►  est
         │   train: railAhead (learned runs, stands, profile)
         │   bus:   busAhead  (learned hourly sections × live road factor)
         │   else:  the timetable's pace
@@ -1234,7 +1234,7 @@ morning came from a number read as meaning something it did not.)
  est = { late, delay, rail, index, frac, at, arr[], dep[], seen, stale }
         │
         ▼
- engine/delays.js liveAt(est, stops, i)  ──►  { time, delay, passed, stale }   ← the ONE shown time at stop i
+ engine/delays.ts liveAt(est, stops, i)  ──►  { time, delay, passed, stale }   ← the ONE shown time at stop i
         │   train: railShown (sure lateness, carried station to station)
         │   bus:   the predicted arrival
         ▼

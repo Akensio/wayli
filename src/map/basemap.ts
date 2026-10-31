@@ -1,5 +1,5 @@
 // The basemap: OpenFreeMap's Liberty, recoloured on the device from one of two palettes, light or dark
-// (style.js); the interface theme and the status bar follow the map's ground colour. The labels follow
+// (style.ts); the interface theme and the status bar follow the map's ground colour. The labels follow
 // the rider's language.
 import type { Map as MLMap } from 'maplibre-gl';
 import { styledLiberty, PALETTES } from './style.ts';
