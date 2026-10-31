@@ -85,15 +85,16 @@ const RECIPES: Record<View['draw'], Recipe> = {
     const shown = results.list.value.cards.filter((c) => results.altShown.value.has(c.idx));
     const altSel = results.altSel.value;
     if (!shown.length) return null;
-    await Promise.all(shown.map((c) => withCourses(c.j)));
+    const drawn = await Promise.all(shown.map((c) => withCourses(c.j))); // each way along its courses (map/layers.ts)
     if (stale(seq)) return null;
     ensureJourneyLayers(m);
     for (const mk of markers.alt.splice(0)) mk.remove();
     const features: GeoJSON.Feature[] = [],
       b = new maplibregl.LngLatBounds();
-    for (const c of shown) {
+    for (const [n, c] of shown.entries()) {
+      const cj = drawn[n];
       let longest: [number, number][] | null = null;
-      for (const l of c.j.legs) {
+      for (const l of cj.legs) {
         if (!l.path || l.path.length < 2) continue;
         const coords = l.path.map((p) => [p[1], p[0]] as [number, number]);
         coords.forEach((x) => b.extend(x));
@@ -107,7 +108,7 @@ const RECIPES: Record<View['draw'], Recipe> = {
       }
       // each ride says its line where it runs (a third of the way along, clear of the boarding pin and the minutes at
       // the middle): in the line's colours on the highlighted way, grey on the others; a tap highlights that way
-      for (const l of c.j.legs) {
+      for (const l of cj.legs) {
         if (l.type !== 'ride' || !l.path || l.path.length < 2) continue;
         const p = l.path[Math.floor((l.path.length - 1) / 3)];
         const chip = document.createElement('button');
@@ -134,8 +135,11 @@ const RECIPES: Record<View['draw'], Recipe> = {
       markers.alt.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(at).addTo(m));
     }
     setData(m, 'alts', { type: 'FeatureCollection', features });
-    const sel = shown.find((c) => c.idx === altSel) || shown[0];
-    drawJourney(m, sel.j, markers.journey, -1, false);
+    const si = Math.max(
+      0,
+      shown.findIndex((c) => c.idx === altSel),
+    );
+    drawJourney(m, drawn[si], markers.journey, -1, false);
     // the ways shown, not which is highlighted: a rider who zoomed in to tap a route keeps the view
     const q = results.query.value;
     return {
@@ -149,12 +153,12 @@ const RECIPES: Record<View['draw'], Recipe> = {
     const j: Journey | null | undefined = followed ? follow.active.value?.journey : detail.journey.value;
     if (!j) return null;
     const bikeOnly = !followed && detail.bikeOnly.value;
-    if (!bikeOnly) await withCourses(j);
+    const dj = bikeOnly ? j : await withCourses(j);
     if (stale(seq)) return null;
     const focus = followed ? -1 : detail.focus.value;
-    const b = drawJourney(m, j, markers.journey, focus, v.context);
+    const b = drawJourney(m, dj, markers.journey, focus, v.context);
     const id = `${j.depart}|${j.arrive}|${j.legs.length}|${focus}`;
-    return { bounds: b, focus: focus >= 0 && j.legs[focus] ? boundsOf(j.legs[focus].path) : undefined, id };
+    return { bounds: b, focus: focus >= 0 && dj.legs[focus] ? boundsOf(dj.legs[focus].path) : undefined, id };
   },
   /** A line: its course (dashed from stop to stop until the courses are loaded, like a ride), and every stop of it in its colour. */
   line: async (m, _v, seq) => {
@@ -174,9 +178,9 @@ const RECIPES: Record<View['draw'], Recipe> = {
         },
       ],
     };
-    if (info.pathKind === 'stops') await withCourses(course); // a page opened before the courses arrived
+    const dc = info.pathKind === 'stops' ? await withCourses(course) : course; // a page opened before the courses arrived
     if (stale(seq)) return null;
-    const b = drawJourney(m, course, markers.journey, -1, false); // the line is its own course: no faint copy under it
+    const b = drawJourney(m, dc, markers.journey, -1, false); // the line is its own course: no faint copy under it
     const color = routeColor(info.routeType, info.agency);
     setData(m, 'stops', {
       type: 'FeatureCollection',

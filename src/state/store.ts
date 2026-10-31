@@ -18,14 +18,16 @@ function get<T>(k: string, d: T): T {
     return d;
   }
 }
-function set(k: string, v: unknown): void {
+/** Write a record; `notify` false for one no page shows from the store (the trip in progress: its screen has signals
+ *  of its own), so a write every few seconds does not redraw the saved and recent lists. */
+function set(k: string, v: unknown, notify = true): void {
   try {
     if (v == null) localStorage.removeItem(k);
     else localStorage.setItem(k, JSON.stringify(v));
   } catch {
     /* storage blocked or full: the app goes on without remembering */
   }
-  stored.value++;
+  if (notify) stored.value++;
 }
 
 /** The settings. `map` and `theme`: 'light' | 'dark' | 'system' (the old map value 'auto' reads as 'system');
@@ -292,9 +294,9 @@ export const activeTrip = {
     return get<ActiveTrip | null>('wayli-active', null);
   },
   set(v: ActiveTrip): void {
-    set('wayli-active', v);
+    set('wayli-active', v, false);
   },
   clear(): void {
-    set('wayli-active', null);
+    set('wayli-active', null, false);
   },
 };

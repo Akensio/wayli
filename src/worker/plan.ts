@@ -35,7 +35,9 @@ type Access = StopAccess & { mode?: StreetMode };
 /** A place as the planner takes it (resolvePlace): the stops it reaches, the point itself (null for a stop or station
  *  given without one), and whether the street graph found the stops. */
 type ResolvedPlace = { places: Access[]; point: Point | null; streets?: boolean };
-type Resolved = { from: ResolvedPlace; to: ResolvedPlace };
+/** The trips a plan shifted for live delays: when each one's vehicle was last seen, and whether that was long ago. */
+type LiveTrips = Map<number, { seen: number; stale: boolean }>;
+type Resolved = { from: ResolvedPlace; to: ResolvedPlace; live: LiveTrips };
 /** A ride leg as this module sees it: the router's (RawRideLeg), which carries no `seconds`, or one easierTransfers or
  *  slowerSiblings rewrote, which does. legOut copies whatever is there (undefined for the router's own). */
 type RideIn = RawRideLeg & { seconds?: number };
@@ -70,9 +72,32 @@ function resolvePlace(place: PlanPlace, mode: StreetMode, maxSeconds: number): R
 }
 /** The timetable's times a plan shifted with live data, in threes (index, dep, arr), to put back after it; and per
  *  trip shifted, when its vehicle reported and whether that was stale. */
-let liveEdits: number[] = [],
-  tripLive = new Map<number, { seen: number; stale: boolean }>();
-function applyLive(vehicles: Vehicle[]): number {
+/**
+ * Live delays, for one search: the trips with a vehicle on the road move to the times the rider is shown (and stay in
+ * order), the search runs, and every time moved is put back. The times are the timetable's own arrays, shifted in place:
+ * a copy for each plan would be 36 MB. That is safe because nothing runs in between: the worker answers one question at a
+ * time and `run` cannot await. Matching a vehicle to its trip reads the schedule (`tripStart`), never these times.
+ */
+function withLiveTimes<T>(vehicles: Vehicle[] | null, run: (live: LiveTrips, matched: number | null) => T): T {
+  const edits: number[] = [],
+    live: LiveTrips = new Map();
+  try {
+    let matched: number | null = null;
+    if (vehicles)
+      try {
+        matched = applyLive(vehicles, edits, live);
+      } catch {
+        revertLive(edits); // a failure half-way: plan on the timetable as it is
+        edits.length = 0;
+        live.clear();
+      }
+    return run(live, matched);
+  } finally {
+    revertLive(edits);
+  }
+}
+/** Shift the trips the vehicles are on; every time moved goes into `edits` (index, departure, arrival) to be put back. */
+function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips): number {
   const day = tt!.header.date,
     now = Date.now(),
     touched = new Set<number>();
@@ -123,13 +148,11 @@ function applyLive(vehicles: Vehicle[]): number {
   }
   return tripLive.size;
 }
-function revertLive(): void {
+function revertLive(liveEdits: number[]): void {
   for (let i = liveEdits.length - 3; i >= 0; i -= 3) {
     tt!.dep[liveEdits[i]] = liveEdits[i + 1];
     tt!.arr[liveEdits[i]] = liveEdits[i + 2];
   }
-  liveEdits = [];
-  tripLive = new Map();
 }
 /** A leg as the page shows it: the router's leg with its stops named, its course, and for a ride what identifies the
  *  trip and the times the plan used against the listed ones. */
@@ -162,11 +185,11 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
       firstDep: raw.dep[0],
       boardPos: bp,
       // the lateness the plan used at the boarding stop (rule 7: a "+N" beside a time is against the listed time there)
-      live: tripLive.has(l.trip)
+      live: q.live.has(l.trip)
         ? {
             delay: l.depart - (bp >= 0 ? raw.dep[bp] : l.depart),
-            stale: tripLive.get(l.trip)!.stale,
-            seen: tripLive.get(l.trip)!.seen,
+            stale: q.live.get(l.trip)!.stale,
+            seen: q.live.get(l.trip)!.seen,
           }
         : null,
       schedDepart: bp >= 0 ? raw.dep[bp] : l.depart,
@@ -471,22 +494,12 @@ export const planOps = {
     vehicles = null,
   }) {
     const t0 = performance.now();
-    let live: PlanOut['live'] = null;
-    if (vehicles) {
-      try {
-        live = { matched: applyLive(vehicles), vehicles: vehicles.length };
-      } catch (e) {
-        revertLive();
-        live = null;
-      }
-    }
-    try {
-      return planNow();
-    } finally {
-      revertLive();
-    }
-    function planNow(): PlanOut {
+    return withLiveTimes(vehicles, (tripLive, matched) =>
+      planNow(tripLive, matched == null ? null : { matched, vehicles: vehicles!.length }),
+    );
+    function planNow(tripLive: LiveTrips, live: PlanOut['live']): PlanOut {
       const q: Resolved = {
+        live: tripLive,
         from: resolvePlace(
           from,
           bike === 'none' ? 'walk' : 'bike',

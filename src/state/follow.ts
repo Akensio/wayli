@@ -25,7 +25,6 @@ export type Alt = {
 };
 
 export const active = signal<ActiveTrip | null>(null); // the trip being followed, while the screen is up
-export const tick = signal(0); // bumped whenever its state advanced
 export const pos = signal<Position | null>(null);
 export const liveBadge = signal<Badge | null>(null); // the next ride's vehicle
 /** What the live data says of each remaining ride, by leg index: its vehicle at the boarding stop, the change into it
@@ -43,5 +42,4 @@ export const resumable = signal<ActiveTrip | null>(null); // a trip in progress 
 export function publish(a: ActiveTrip | null, found: Alt | null = null): void {
   active.value = a;
   alt.value = found;
-  tick.value++;
 }

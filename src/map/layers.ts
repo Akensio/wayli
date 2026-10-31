@@ -8,6 +8,7 @@ import * as data from '../state/data';
 import * as results from '../state/results';
 import type { Drawable, DrawLeg, StopRef } from '../journey/types';
 import { state, EMPTY, stopKindProp, stale } from './shared';
+import type { PathPoint } from '../engine/geo.ts';
 import { BADGE_KINDS, stationImage } from './images';
 import { wireStopLayers } from './popups';
 
@@ -272,15 +273,49 @@ export const boundsOf = (path?: [number, number][] | null): LngLatBounds => {
   return b;
 };
 /** Legs planned before the courses or the street graph were loaded get their course or street path now (in place). */
-export async function withCourses(j: Drawable): Promise<void> {
-  await Promise.all([withRideCourses(j), withStreetPaths(j)]);
+/** The courses and street paths fetched so far, by what they are for: a ride by its pattern and the stops it runs
+ *  between on that day's timetable, a walk by its two ends and its mode. The map owns them; a journey's own legs are
+ *  never written to (the planner's results, the detail and the stored trip hold the same objects). A few hundred are
+ *  kept, the oldest dropped first. */
+const paths = new Map<string, { path: PathPoint[]; pathKind: string }>();
+const PATHS_KEPT = 400;
+const remember = (k: string, path: PathPoint[], pathKind: string) => {
+  paths.delete(k);
+  paths.set(k, { path, pathKind });
+  if (paths.size > PATHS_KEPT) paths.delete(paths.keys().next().value!);
+};
+const rideKey = (l: DrawLeg): string | null =>
+  l.type === 'ride' && l.pattern != null
+    ? `${data.dayInfo.value?.date}|${l.pattern}|${l.boardPos}|${l.alightPos}`
+    : null;
+const walkKey = (l: DrawLeg): string | null =>
+  l.type !== 'ride' && l.path && l.path.length >= 2
+    ? `${l.path[0].join()}>${l.path[l.path.length - 1].join()}|${l.mode === 'bike' ? 'bike' : 'walk'}`
+    : null;
+/** The drawing of a journey: its legs along their courses and the streets where those are known (fetched first when
+ *  not), as a new object whose unchanged legs are the journey's own; the journey itself is not touched. */
+export async function withCourses<D extends Drawable>(j: D): Promise<D> {
+  await Promise.all([fetchRideCourses(j), fetchStreetPaths(j)]);
+  let changed = false;
+  const legs = j.legs.map((l) => {
+    const k = rideKey(l) ?? walkKey(l),
+      c = k != null ? paths.get(k) : undefined;
+    if (!c || (l.path === c.path && l.pathKind === c.pathKind)) return l;
+    changed = true;
+    return { ...l, path: c.path, pathKind: c.pathKind };
+  });
+  // the same kind of object with its legs drawn along their courses (only the legs that changed are new)
+  return changed ? ({ ...j, legs } as D) : j;
 }
-async function withRideCourses(j: Drawable): Promise<void> {
+async function fetchRideCourses(j: Drawable): Promise<void> {
   if (!data.shReady.value || !data.ttReady.value) return;
-  const rides = j.legs.filter((l) => l.type === 'ride' && l.pathKind !== 'shape' && l.pattern != null);
+  const rides = j.legs.filter((l) => {
+    const k = rideKey(l);
+    return k != null && l.pathKind !== 'shape' && !paths.has(k);
+  });
   if (!rides.length) return;
   try {
-    const paths = await call('ridePaths', {
+    const got = await call('ridePaths', {
       legs: rides.map((l) => ({
         pattern: l.pattern as number,
         boardPos: l.boardPos as number,
@@ -288,29 +323,31 @@ async function withRideCourses(j: Drawable): Promise<void> {
       })),
     });
     rides.forEach((l, i) => {
-      if (paths[i]) {
-        l.path = paths[i];
-        l.pathKind = 'shape';
-      }
+      if (got[i]) remember(rideKey(l)!, got[i], 'shape');
     });
   } catch {
     /* straight lines then */
   }
 }
 /** A walk drawn as a straight line (no street graph when it was planned) follows the streets once they are there. */
-async function withStreetPaths(j: Drawable): Promise<void> {
+async function fetchStreetPaths(j: Drawable): Promise<void> {
   if (!data.stReady.value) return;
-  const walks = j.legs.filter((l) => l.type !== 'ride' && l.pathKind !== 'street' && l.path && l.path.length === 2);
+  const walks = j.legs.filter((l) => {
+    const k = walkKey(l);
+    return k != null && l.pathKind !== 'street' && l.path!.length === 2 && !paths.has(k);
+  });
   if (!walks.length) return;
   try {
-    const paths: any[] = await call('streetPaths', {
-      legs: walks.map((l) => ({ from: l.path![0], to: l.path![1], mode: l.mode === 'bike' ? 'bike' : 'walk' })),
+    const got = await call('streetPaths', {
+      legs: walks.map((l) => ({
+        from: l.path![0],
+        to: l.path![1],
+        mode: l.mode === 'bike' ? ('bike' as const) : ('walk' as const),
+      })),
     });
     walks.forEach((l, i) => {
-      if (paths[i]) {
-        l.path = paths[i];
-        l.pathKind = 'street';
-      }
+      const p = got[i];
+      if (p) remember(walkKey(l)!, p, 'street');
     });
   } catch {
     /* straight lines then */

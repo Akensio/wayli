@@ -67,6 +67,15 @@ export const isFollowing = (): boolean => fol != null;
 const tripStale = (a: ActiveTrip): boolean =>
   clock.nowOn(a.day) > a.journey.arrive + 2700 || Date.now() - (a.startedAt || 0) > 12 * 3600e3;
 const stored = (): ActiveTrip | null => activeTrip.get();
+/** The trip followed, replaced with what changed (never changed in place: the screen's signal, the store and this
+ *  module hold the same object, and a change in place is seen by none of them); saved on the phone when `save`. The
+ *  journey and its legs are shared with the old trip, not copied. */
+function setTrip(f: Following, patch: Partial<ActiveTrip>, save: boolean): ActiveTrip {
+  const a: ActiveTrip = { ...f.a, ...patch };
+  f.a = a;
+  if (save) activeTrip.set(a);
+  return a;
+}
 
 export function startTrip(j: Journey, q: Query): void {
   const day = q.day;
@@ -94,8 +103,9 @@ export function startTrip(j: Journey, q: Query): void {
   openFollow(a);
 }
 
-function openFollow(a: ActiveTrip): void {
-  if (fol && fol.a !== a) closeFollow(false);
+function openFollow(trip: ActiveTrip): void {
+  if (fol && fol.a !== trip) closeFollow(false);
+  const a: ActiveTrip = trip.view === 'follow' ? trip : { ...trip, view: 'follow' };
   if (!fol) {
     const f: Following = {
       a,
@@ -132,9 +142,8 @@ function openFollow(a: ActiveTrip): void {
     ];
     requestWake();
   }
-  a.view = 'follow';
-  activeTrip.set(a);
-  follow.publish(a, follow.alt.value); // the map draws the trip from here (map/render.ts)
+  activeTrip.set(fol!.a);
+  follow.publish(fol!.a, follow.alt.value); // the map draws the trip from here (map/render.ts)
   // started from the detail, the panel is already 'follow' (swapped in before its trip was published), and a plain
   // redraw would see the same panel and skip it: draw it now
   if (nav.isOpen('follow')) map.redrawMap(true);
@@ -164,9 +173,11 @@ function stepFollow(): void {
   const a = fol.a;
   const pos = fol.pos && Date.now() - fol.pos.at < 90000 ? fol.pos : null;
   const { state, events } = advance(a.journey, a.state, pos, clock.nowOn(a.day));
-  a.state = state;
-  activeTrip.set(a);
-  for (const e of events) onFollowEvent(e, a);
+  // saved on the phone only when the machine moved (every 5 s and every fix it mostly does not)
+  if (JSON.stringify(state) !== JSON.stringify(a.state)) {
+    const moved = setTrip(fol, { state }, true);
+    for (const e of events) onFollowEvent(e, moved);
+  }
   publish();
 }
 function onFollowEvent(e: string, a: ActiveTrip): void {
@@ -434,14 +445,11 @@ export function switchJourney(alt: Alt): void {
   if (!fol) return;
   const a = fol.a;
   const { journey, state } = spliceJourney(a.journey, a.state, alt.journey, alt.origin);
-  a.journey = journey;
-  a.state = state;
-  a.replanned = (a.replanned || 0) + 1;
+  setTrip(fol, { journey, state, replanned: (a.replanned || 0) + 1 }, true);
   fol.alt = null;
   fol.liveEst = null;
   fol.toldKey = null;
   fol.replanAt = Date.now();
-  activeTrip.set(a);
   follow.liveBadge.value = null;
   map.redrawMap(true);
   stepFollow();
@@ -463,8 +471,7 @@ try {
 function step(dir: 1 | -1): void {
   if (!fol) return;
   const a = fol.a;
-  a.state = dir > 0 ? stepForward(a.journey, a.state) : stepBack(a.journey, a.state);
-  activeTrip.set(a);
+  setTrip(fol, { state: dir > 0 ? stepForward(a.journey, a.state) : stepBack(a.journey, a.state) }, true);
   publish();
 }
 /** Stop following: `end` forgets the trip; otherwise it stays stored and the resume bar offers it. */
@@ -480,10 +487,7 @@ export function closeFollow(end: boolean): void {
       }
     }
     if (end) activeTrip.clear();
-    else {
-      fol.a.view = 'hidden';
-      activeTrip.set(fol.a);
-    }
+    else activeTrip.set({ ...fol.a, view: 'hidden' });
     fol = null;
     follow.publish(null);
     follow.liveBadge.value = null;

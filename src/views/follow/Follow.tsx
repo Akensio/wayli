@@ -57,7 +57,6 @@ function AltCard({ alt }: { alt: follow.Alt }) {
 
 export function Follow() {
   void lang.value;
-  void follow.tick.value;
   void now.value;
   const a = follow.active.value,
     ll = follow.legLive.value;
