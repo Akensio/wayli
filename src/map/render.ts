@@ -24,6 +24,7 @@ import { clearOwn } from './vehicles';
 import type { View } from './view';
 import { h, render } from 'preact';
 import { LineName } from '../widgets/RailLogo';
+import { maplibregl } from './maplibre';
 
 /** A panel's live vehicles, put on once the map has drawn it (the panels fill this in). */
 export const afterDraw: Record<string, () => void> = {};

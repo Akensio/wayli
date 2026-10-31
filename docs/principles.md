@@ -31,4 +31,4 @@ holds (2026-10-25, `stopPopup` in `src/map/popups.ts`, by `viewFor`).
   out. Panels fill their state and never draw the map themselves; a panel
   whose live vehicles are its own puts them on after the drawing
   (`afterDraw`).
-- Test: `tools/mapview.test.ts` (in `npm test`).
+- Test: `tests/mapview.test.ts` (in `npm test`).

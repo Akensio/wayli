@@ -2,7 +2,7 @@
 // estimateDelay, with the worker's frozen-fix filter and its reading of a train without GPS) is run every minute, and
 // each prediction of a later station is scored against when that train's GPS first came within 300 m of it.
 //
-//   node tools/trainbacktest.mjs 20261025 07:30 10:30 [--timetable data/timetable-20261025.bin.gz] [--railtimes data/railtimes.json]
+//   node measure/trainbacktest.mjs 20261025 07:30 10:30 [--timetable data/timetable-20261025.bin.gz] [--railtimes data/railtimes.json]
 //
 // The minute files come from Hasadna (https://open-bus-siri-requester.hasadna.org.il/, YYYY/MM/DD/HH/MM.br, UTC), the
 // same files the relay passes to the app, and are kept in data/siri/. Errors are in minutes, + when the prediction was
@@ -23,7 +23,7 @@ const opt = (name, dflt) => {
   return i > 0 ? process.argv[i + 1] : dflt;
 };
 if (!/^\d{8}$/.test(day || '')) {
-  console.error('usage: node tools/trainbacktest.mjs YYYYMMDD [HH:MM] [HH:MM] [--timetable file] [--railtimes file]');
+  console.error('usage: node measure/trainbacktest.mjs YYYYMMDD [HH:MM] [HH:MM] [--timetable file] [--railtimes file]');
   process.exit(2);
 }
 const load = (f) => {

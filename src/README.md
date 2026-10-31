@@ -30,7 +30,7 @@ At the top of `src/` only the entry files:
 
 The folders, each with its own README, bottom layer first, and which folders
 each one uses. A folder may import its own files and the folders in its "May
-use" cell, nothing else. `tools/imports.test.ts` reads this table and fails
+use" cell, nothing else. `tests/imports.test.ts` reads this table and fails
 the check on any other import, or on an import cycle; type-only imports
 count. The cells list only what is used today, so a new use is a change to
 this table first.
@@ -53,7 +53,6 @@ Outside the order:
 | Folder | What |
 |---|---|
 | `styles/` | The CSS, one file per part of the screen, in a fixed order. |
-| `types/` | Global type declarations. |
 | `public/` | Copied into the build as is: icons, the web manifest. |
 
 A view is a place on the screen (the top bar, the results, a stop's page);

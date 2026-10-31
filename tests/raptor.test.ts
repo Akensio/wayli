@@ -1,4 +1,4 @@
-// The router's rules (src/engine/raptor.js) on tiny timetables: which stop to get off at, which journeys to keep, and
+// The router's rules (src/engine/raptor.ts) on tiny timetables: which stop to get off at, which journeys to keep, and
 // the next way after an empty window.
 import { test, expect } from 'vitest';
 import {

@@ -1,6 +1,6 @@
 // The rider's question: where from, where to, when (the service day and a time on it, departing or arriving by, or
 // "now"), with what bicycle, and the days the data covers. No screen in it: the rules (a time after midnight belongs to
-// the night of the day before, "now" follows the clock, the days offered) are tested in Node (tools/query-state.test.ts).
+// the night of the day before, "now" follows the clock, the days offered) are tested in Node (tests/query-state.test.ts).
 // The bar (state/search.ts) shows and edits it; the planner reads it.
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';

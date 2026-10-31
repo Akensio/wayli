@@ -17,6 +17,6 @@
     "resolveJsonModule": true,
     "types": ["node", "geojson", "vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tools/**/*.ts", "vite.config.ts", "vitest.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "measure/**/*.ts", "vite.config.ts", "vitest.config.ts"],
   "exclude": ["src/public", "node_modules", "dist"]
 }

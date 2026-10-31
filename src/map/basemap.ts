@@ -6,6 +6,7 @@ import { styledLiberty, PALETTES } from './style.ts';
 import * as settings from '../state/settings';
 import { lang } from '../lib/i18n';
 import { state } from './shared';
+import { maplibregl } from './maplibre';
 
 export const wantDarkMap = (): boolean =>
   settings.mapChoice() === 'dark' ||
@@ -55,7 +56,6 @@ export function mapStyle(): any {
 }
 let rtlSet = false;
 export function makeMap(container: string, center: [number, number], zoom: number): MLMap | null {
-  if (typeof maplibregl === 'undefined') return null;
   if (!rtlSet) {
     try {
       maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.js', true);

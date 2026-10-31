@@ -1,5 +1,5 @@
 // Node benchmark for the router over a compiled timetable.
-//   node tools/bench.ts data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00 [window-minutes] [runs]
+//   node measure/bench.ts data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00 [window-minutes] [runs]
 // A place can also be "lat,lon" or "lat,lon:bike" (needs STREETS=data/streets.bin.gz in the environment).
 import { readFileSync, existsSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
@@ -8,7 +8,7 @@ import { parseStreets, accessStops, route, type Streets, type StreetMode } from 
 
 const [file, fromQ, toQ, timeStr = '08:00', windowStr = '60', runsStr = '10'] = process.argv.slice(2);
 if (!file || !fromQ || !toQ) {
-  console.error('usage: node tools/bench.ts timetable.bin.gz FROM TO [HH:MM] [window-minutes] [runs]');
+  console.error('usage: node measure/bench.ts timetable.bin.gz FROM TO [HH:MM] [window-minutes] [runs]');
   process.exit(2);
 }
 let t = performance.now();

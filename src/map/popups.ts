@@ -19,6 +19,7 @@ import { popupState, pick, hooks, currentSheet, cameraPadding } from './shared';
 import { timeOf } from '../lib/time';
 import { reverseName } from '../journey/format';
 import { VehicleBubble, StopBubble, PlaceBubble, VehicleMark, type VehicleInfo } from './bubbles';
+import { maplibregl } from './maplibre';
 
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 export const heading = (v: { bearing?: number | null; velocity?: number | null }): number =>

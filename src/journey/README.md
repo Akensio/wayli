@@ -3,7 +3,7 @@
 What the app is about, as the page holds it: places, a plan as asked, journeys and
 their legs, following one, and the records the phone keeps of them. Pure modules:
 they import only `lib/` and the engine's and the worker's shapes below them, and
-every layer above uses them (`src/README.md`, "May use", is the table; `tools/imports.test.ts` holds it).
+every layer above uses them (`src/README.md`, "May use", is the table; `tests/imports.test.ts` holds it).
 
 | File | What |
 |---|---|

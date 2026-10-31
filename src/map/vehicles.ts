@@ -7,6 +7,7 @@ import type { VehicleStatus } from '../worker/ops.ts';
 import { state } from './shared';
 import { lineVehicleMarkers } from './popups';
 import { registerDot } from './heading';
+import { maplibregl } from './maplibre';
 
 /** The panels whose live vehicles are their own (map/view.ts, `live: 'own'`). */
 export type OwnPanel = 'detail' | 'lineDetail' | 'follow';

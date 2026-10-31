@@ -1,6 +1,6 @@
 // Re-planning on the way, the decisions only: whether to look for a faster way now, and which of the ways found is
 // worth proposing. The controller (controllers/follow.ts) gathers what it needs, asks the planner and shows the answer;
-// every threshold that decides is here, with its unit, and tested (tools/replan.test.ts).
+// every threshold that decides is here, with its unit, and tested (tests/replan.test.ts).
 import { ridesKey } from './follow.ts';
 import type { Journey } from './types';
 

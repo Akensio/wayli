@@ -1,7 +1,7 @@
 # engine: the logic with no screen
 
 TypeScript modules with no DOM and no app imports, so the data worker
-runs them and so does Node (`tools/`: the benchmark, the tests, the train
+runs them and so does Node (`tests/`: the benchmark, the tests, the train
 backtest).
 
 | File | What |
@@ -18,4 +18,4 @@ backtest).
 | `text.ts` | How the searches compare text (`norm`) and rank matches (`byScore`), shared by the stop search and the address book. |
 
 They are imported with their `.ts` extension: Vite transpiles them for the
-page and the worker, Node 22.18+ runs them as they are for `tools/`.
+page and the worker, Node 22.18+ runs them as they are for `tests/`.

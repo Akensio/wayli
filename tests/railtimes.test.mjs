@@ -1,4 +1,4 @@
-// Train delays from learned section times (src/engine/delays.js, railAhead): node tools/railtimes.test.mjs (exits 1 on a failure).
+// Train delays from learned section times (src/engine/delays.ts, railAhead).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { setRailTimes, estimateDelay, liveAt, sureLate } from '../src/engine/delays.ts';

@@ -1,4 +1,4 @@
-// The trip-following state machine's manual steps: node tools/follow.test.mjs (exits 1 on a failure).
+// The trip-following state machine's manual steps (src/journey/follow.ts): skip and back, on board or not.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { initialState, advance, stepForward, stepBack, canStepBack, connections } from '../src/journey/follow.ts';

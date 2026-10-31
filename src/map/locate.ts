@@ -14,6 +14,7 @@ import { notePos } from '../state/position';
 import { centreOffset } from './view';
 import { cameraPadding } from './shared';
 import { registerDot, startHeading } from './heading';
+import { maplibregl } from './maplibre';
 
 const LOCATE_ZOOM = 15;
 const ON_ME_PX = 40; // the map counts as on you when you are this close to the middle of its visible part

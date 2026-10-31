@@ -1,5 +1,5 @@
 // What a plan asks the router for: the window of departures it searches, and whether live vehicles go in. Times are
-// seconds on the service day. Tested in tools/query.test.ts.
+// seconds on the service day. Tested in tests/query.test.ts.
 
 export const WINDOW = {
   spanSec: 3600, // departing: the hour from the time asked

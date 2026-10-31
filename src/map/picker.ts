@@ -13,6 +13,7 @@ import { mapReady, pick } from './shared';
 import { openPopup, closePopup } from './popups';
 import { PickBubble } from './bubbles';
 import { reverseName } from '../journey/format';
+import { maplibregl } from './maplibre';
 
 let resolver: ((p: Place | null) => void) | null = null;
 

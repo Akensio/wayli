@@ -1,5 +1,5 @@
-// The map follows the sheet (src/map/view.ts): Vitest (npm test)
-// table the principle was agreed on, then the camera's visible part of the screen.
+// The map follows the sheet (src/map/view.ts): what the map shows for each panel, row by row as the principle was
+// agreed (docs/principles.md, 1), then the part of the screen the camera centres in.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { viewFor, visibleArea, centreOffset, type Sheet } from '../src/map/view.ts';

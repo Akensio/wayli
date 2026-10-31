@@ -11,11 +11,12 @@
     "preview": "vite preview",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint src tools relay",
+    "lint": "eslint src tests measure relay",
     "typecheck": "tsc --noEmit",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke": "node tests/e2e/flow.mjs && node tests/e2e/back.mjs && node tests/e2e/map.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

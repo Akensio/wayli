@@ -148,7 +148,7 @@ function railAhead(
 // timetable has slack), and a train does not leave a station before its time, so the rider is shown the timetable's
 // time plus the lateness we are 85% sure of: the predicted lateness less a margin that grows with how far ahead the
 // station is, from 2 minutes up, and beyond 30 minutes ahead only what the stations before it carry. Backtested on three mornings' raw minute
-// files (tools/trainbacktest.mjs, its last line; 2026-10-21, 25 and 26): the point estimate showed a delay on 70% of
+// files (measure/trainbacktest.mjs, its last line; 2026-10-21, 25 and 26): the point estimate showed a delay on 70% of
 // predictions, and a train that came on time as late in about 20% on ordinary mornings; this shows a delay on 7 to 14%,
 // one that came on time in about 1%, a time 2 minutes or more after the train came 1.5 to 4.8% (the timetable alone
 // 0.9 to 3.2%), and 19 to 22% of real delays of 3 minutes or more. Beyond 30 minutes a station carries the lateness of

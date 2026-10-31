@@ -11,6 +11,7 @@ import { state, EMPTY, stopKindProp, stale } from './shared';
 import type { PathPoint } from '../engine/geo.ts';
 import { BADGE_KINDS, stationImage } from './images';
 import { wireStopLayers } from './popups';
+import { maplibregl } from './maplibre';
 
 const setData = (m: MLMap, src: string, fc: GeoJSON.FeatureCollection) => {
   const s = m.getSource(src) as any;

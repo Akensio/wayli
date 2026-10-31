@@ -1,7 +1,7 @@
 # map: the one map under everything
 
 What the map shows for what the sheet holds is decided in one place
-(`view.ts`, pure and tested by `tools/mapview.test.ts`) and drawn by one
+(`view.ts`, pure and tested by `tests/mapview.test.ts`) and drawn by one
 renderer (`render.ts`). Nothing outside this folder touches the map's
 markers or MapLibre itself: panels hand their vehicles over
 (`showVehicles`), and everything on the map is drawn from components or

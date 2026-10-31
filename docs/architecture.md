@@ -204,7 +204,7 @@ the app).
   `map`), imported by `index.css` in that order, which decides ties.
 - `map/`: the one map (`index.ts`: init, the layers, taps), `view.ts`
   (what the map shows for what the sheet holds: what is drawn, the camera,
-  which live vehicles; pure, tested by `tools/mapview.test.ts`),
+  which live vehicles; pure, tested by `tests/mapview.test.ts`),
   `render.ts` (carries that out from the panels' state, the one camera,
   aimed between the bar and the sheet, the locate button's included; a
   panel's own live vehicles go on after the drawing through `afterDraw`),
@@ -225,7 +225,7 @@ the app).
   `stored` signal, which the pages showing what it keeps read).
 - Which folder uses which is the table in `src/README.md` ("May use"),
   and it runs one way: engine, worker, lib, journey, state, widgets, map,
-  controllers, views, and the entry files at the top. `tools/imports.test.ts`
+  controllers, views, and the entry files at the top. `tests/imports.test.ts`
   reads that table and fails the build on an import it does not list, on a
   use it lists that the code no longer has, and on any import cycle,
   type-only imports included.
@@ -234,7 +234,9 @@ the app).
   map reach it through and adds its listeners. Importing a module starts
   nothing, and a hook nobody filled throws (`lib/unset.ts`) instead of
   doing nothing.
-- `types/` (global declarations), `public/` (manifest, icons).
+- `public/` (manifest, icons). There are no global names: MapLibre is
+  imported from `map/maplibre.ts`, the console's handle is declared beside
+  `lib/debug.ts`, its one writer.
 
 Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap
 vector tiles (no key, no cost): the Liberty style, with every colour
@@ -983,7 +985,7 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   how far ahead the station is (20 s within 5 minutes, 60 to 10, 100 to 20,
   140 to 30), in whole minutes from 2 up, never early. Each margin sits just
   under the 85th percentile of the signed error at that distance on three
-  replayed mornings (`tools/trainbacktest.mjs`, its "85% at most" column:
+  replayed mornings (`measure/trainbacktest.mjs`, its "85% at most" column:
   30-36 s under 5 minutes, 66-84 at 5-10, 102-114 at 10-20, 138-162 at
   20-30; 2026-10-21, 25 and 26, 07:30-10:30), so "sure" is 80 to 85%; beyond 30 minutes ahead a
   station only carries the lateness of the one before, less what the
@@ -992,14 +994,14 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   and 26: a typical miss of 1.5 against 1.4 minutes) and showed a train
   that came on time as late in a fifth of predictions; shown this way, in
   under 1%, while a time 2 minutes or more after the train came is about
-  as rare as with the timetable alone (`tools/trainbacktest.mjs`, last
+  as rare as with the timetable alone (`measure/trainbacktest.mjs`, last
   line). A train without
   GPS names only a station (its call), from about a kilometre before it until
   about a kilometre before the next: it reached that station when the call
   first named it (the worker remembers when; on opening, no later than that
   station's time) and has not reached the next one yet. Read as standing
   there now, a train on time was shown 6 minutes late (Herzliya, 2026-10-25).
-  `tools/trainbacktest.mjs` runs this code on a morning's raw minute files
+  `measure/trainbacktest.mjs` runs this code on a morning's raw minute files
   and scores every prediction against when the train's GPS reached the
   station: 07:30-10:30 on 2026-10-25, a typical miss of 2.1 minutes (the
   timetable alone 3.1; the code before that day 2.6, 2.3 early in the
@@ -1283,7 +1285,7 @@ same stop; a lateness at one stop is never shown beside a time at another.
 
 1. One shown time per stop. Whatever shows a vehicle's time at a stop, and
    the planner boarding it there, uses `liveAt` for that trip and stop. No
-   screen recomputes it. (`tools/railtimes.test.mjs`; the line page and a
+   screen recomputes it. (`tests/railtimes.test.mjs`; the line page and a
    trip agree by construction.)
 2. A train is never shown early: λᵢ ≥ 0.
 3. Along a trip the shown times never run backwards: Tᵢ₊₁ ≥ Tᵢ + ¾ of the
@@ -1400,7 +1402,7 @@ Reproduce:
 ```
 curl -o data/gtfs.zip https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
 python3 -I pipeline/compile.py data/gtfs.zip --date 20261019
-node tools/bench.ts data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
+node measure/bench.ts data/timetable.bin.gz "מרכזית המפרץ" "מרכזית באר שבע" 08:00
 ```
 
 ## If on-device routing fails the test

@@ -10,11 +10,17 @@ export default tseslint.config(
   { files: ['src/sw.template.js'], languageOptions: { globals: { __SHELL_FILES__: 'readonly' } } }, // filled in at build time
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.{js,ts,tsx}', 'tools/**/*.{mjs,ts}', 'vite.config.ts', 'vitest.config.ts'],
+    files: [
+      'src/**/*.{js,ts,tsx}',
+      'tests/**/*.{mjs,ts}',
+      'measure/**/*.{mjs,ts}',
+      'vite.config.ts',
+      'vitest.config.ts',
+    ],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
-      globals: { ...globals.browser, ...globals.node, ...globals.worker, maplibregl: 'readonly' },
+      globals: { ...globals.browser, ...globals.node, ...globals.worker },
     },
     rules: {
       'no-undef': 'error',
@@ -35,5 +41,8 @@ export default tseslint.config(
     rules: { 'no-undef': 'error' },
   },
   // TypeScript itself rejects undeclared names, and knows type-only names (GeoJSON, DOM types) that this rule does not
-  { files: ['src/**/*.{ts,tsx}', 'tools/**/*.ts', 'vite.config.ts', 'vitest.config.ts'], rules: { 'no-undef': 'off' } },
+  {
+    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts', 'measure/**/*.ts', 'vite.config.ts', 'vitest.config.ts'],
+    rules: { 'no-undef': 'off' },
+  },
 );

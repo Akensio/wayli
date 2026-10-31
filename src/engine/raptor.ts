@@ -1,5 +1,5 @@
 // Wayli: compact timetable loader + RAPTOR trip planner.
-// Plain ES module, runs in the browser and in Node (see tools/bench.ts).
+// Plain ES module, runs in the browser and in Node (see measure/bench.ts).
 //
 // plan()    one departure time, earliest arrival per number of transfers.
 // profile() a departure window (range RAPTOR): every journey worth showing.
