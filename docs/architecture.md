@@ -223,11 +223,17 @@ the app).
 - The on-device store is `state/store.ts` (settings, history, saved places
   and the trip in progress, all in localStorage; every write bumps its
   `stored` signal, which the pages showing what it keeps read).
-- Imports point one way, each layer using only those below it: engine,
-  worker, lib, journey, state, widgets, map, controllers, views, and the
-  entry files at the top. `tools/imports.test.ts` fails the build on an
-  import against that order or any import cycle, type-only imports
-  included.
+- Which folder uses which is the table in `src/README.md` ("May use"),
+  and it runs one way: engine, worker, lib, journey, state, widgets, map,
+  controllers, views, and the entry files at the top. `tools/imports.test.ts`
+  reads that table and fails the build on an import it does not list, on a
+  use it lists that the code no longer has, and on any import cycle,
+  type-only imports included.
+- The controllers start in `controllers/install.ts`, called once by
+  `main.ts` before anything is drawn: each fills the hooks state and the
+  map reach it through and adds its listeners. Importing a module starts
+  nothing, and a hook nobody filled throws (`lib/unset.ts`) instead of
+  doing nothing.
 - `types/` (global declarations), `public/` (manifest, icons).
 
 Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap

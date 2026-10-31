@@ -1,26 +1,28 @@
-// Who may import whom (src/README.md, "May use"), checked on every file: the layers of the app in one order, each
-// importing only the layers below it and its own folder, and no file reaching itself again through its imports.
-// Type-only imports count: a type says which layer owns a meaning, and a cycle of types is a cycle of ownership.
+// Who may import whom, as src/README.md's folder table says it ("May use"), checked on every file: a file imports its own
+// folder and the folders its folder's row names, nothing else, and no file reaches itself again through its imports.
+// Type-only imports count: a type says which folder owns a meaning, and a cycle of types is a cycle of ownership.
+// The table is read, not copied here, so the README cannot say one thing while the code does another.
 import { test, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 
 const SRC = resolve(import.meta.dirname, '../src');
 
-/** The layers, bottom first: a file may import its own folder and any folder ranked below its own. */
-export const LAYERS = [
-  'engine', // the logic with no screen: nothing of the app
-  'worker', // the data worker and its contract (ops.ts) and client
-  'lib', // strings, time
-  'journey', // the domain: places, queries, journeys, the records kept on the phone; their words and colours
-  'state', // signals, one module per feature, and the on-device store
-  'widgets', // small pieces several views share
-  'map', // the one map and what it draws
-  'controllers', // what happens behind the screen
-  'views', // the parts of the screen
-  '', // the entry files at the top of src/ (main.ts, boot.ts)
-];
-const rank = (folder: string): number => LAYERS.indexOf(folder);
+/** The README's folder table: each folder ('' for the entry files) and the folders it may use. */
+export function readTable(readme: string): Map<string, Set<string>> {
+  const may = new Map<string, Set<string>>();
+  const start = readme.indexOf('| Folder | What | May use |');
+  if (start < 0) throw new Error('src/README.md has no "| Folder | What | May use |" table');
+  for (const line of readme.slice(start).split('\n').slice(2)) {
+    if (!line.startsWith('|')) break;
+    const cells = line.split('|').slice(1, -1);
+    const own = /^\s*`(\w+)\/`/.exec(cells[0])?.[1] ?? (/entry files/.test(cells[0]) ? '' : null);
+    if (own == null) throw new Error(`src/README.md: a row names no folder: ${line}`);
+    may.set(own, new Set([...cells[2].matchAll(/`(\w+)\/`/g)].map((m) => m[1])));
+  }
+  return may;
+}
+const MAY = readTable(readFileSync(join(SRC, 'README.md'), 'utf8'));
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -51,7 +53,7 @@ function resolveSpec(from: string, spec: string): string | null {
     if (/\.(ts|tsx)$/.test(p) && existsSync(p) && statSync(p).isFile()) return p;
   return null; // CSS, the service-worker template, assets
 }
-/** The folder a file belongs to, as LAYERS names it ('' for the entry files). */
+/** The folder a file belongs to, as the table names it ('' for the entry files). */
 const folderOf = (file: string): string => {
   const r = relative(SRC, file).split('/');
   return r.length > 1 ? r[0] : '';
@@ -68,17 +70,50 @@ for (const f of files)
   );
 const rel = (p: string) => relative(SRC, p);
 
-test('every import points to its own folder or a layer below', () => {
+test("every import is to the file's own folder or one its row in src/README.md names", () => {
   const wrong: string[] = [];
   for (const [f, deps] of graph) {
     const a = folderOf(f);
-    expect(rank(a), `${rel(f)}: its folder is not in LAYERS`).toBeGreaterThanOrEqual(0);
+    const may = MAY.get(a);
+    expect(may, `${rel(f)}: its folder has no row in src/README.md`).toBeDefined();
     for (const d of deps) {
       const b = folderOf(d);
-      if (b !== a && !(rank(b) < rank(a))) wrong.push(`${rel(f)} -> ${rel(d)}`);
+      if (b !== a && !may!.has(b)) wrong.push(`${rel(f)} -> ${rel(d)}`);
     }
   }
-  expect(wrong, 'imports against the layer order').toEqual([]);
+  expect(wrong, 'imports src/README.md does not allow').toEqual([]);
+});
+
+test('the table itself runs one way: no folder reaches itself through the folders it may use', () => {
+  const cycles: string[] = [];
+  const seen = new Map<string, 'open' | 'done'>();
+  const path: string[] = [];
+  const visit = (x: string) => {
+    seen.set(x, 'open');
+    path.push(x);
+    for (const y of MAY.get(x) || []) {
+      if (seen.get(y) === 'open') cycles.push([...path.slice(path.indexOf(y)), y].join(' > '));
+      else if (!seen.has(y)) visit(y);
+    }
+    path.pop();
+    seen.set(x, 'done');
+  };
+  for (const x of MAY.keys()) if (!seen.has(x)) visit(x);
+  expect(cycles).toEqual([]);
+});
+
+test('the table lists only uses the code has (a use given up comes out of the table)', () => {
+  const used = new Map<string, Set<string>>();
+  for (const [f, deps] of graph)
+    for (const d of deps) {
+      const a = folderOf(f),
+        b = folderOf(d);
+      if (a !== b) used.set(a, (used.get(a) || new Set()).add(b));
+    }
+  const unused: string[] = [];
+  for (const [a, may] of MAY)
+    for (const b of may) if (b !== 'styles' && !used.get(a)?.has(b)) unused.push(`${a || 'entry files'} -> ${b}/`);
+  expect(unused, 'uses in src/README.md the code no longer has').toEqual([]);
 });
 
 test('no file reaches itself through its imports', () => {
