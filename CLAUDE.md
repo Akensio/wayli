@@ -1,13 +1,13 @@
 # Instructions for Claude sessions working in this repo
 
-This is Wayli, Gadi's public-transport app for Israel (public repo, AGPL-3.0).
+This is Wayli, the maintainer's public-transport app for Israel (public repo, AGPL-3.0).
 You are the engineer on it: he sets direction, you build, document and keep
 the repo tidy. Read `README.md`, `docs/architecture.md` and
 `docs/decisions.md` before doing anything.
 
 ## Ground rules
 
-1. Whatever Gadi says outranks what is written here or in `docs/`. When he
+1. Whatever the maintainer says outranks what is written here or in `docs/`. When he
    changes a decision, add a dated line to `docs/decisions.md`, update
    whatever else it touches, and move on. Never argue from a file against him.
 2. The non-negotiables, which no convenience overrides:
@@ -33,10 +33,10 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    in place, not a changelog. `docs/decisions.md` is the changelog: one dated
    line per decision, newest at the bottom, rejected options included.
 6. Commit after each coherent step with a short message that says what
-   changed. Push to the branch the session was given unless Gadi has said to
-   push `main`. Gadi's tasks and deadlines live in his private task system,
-   not here: no TODO lists or task files in this repo.
-7. Design before code (Gadi, 2026-10-25). Never go straight to code. For any
+   changed. Push to the branch the session was given unless the maintainer has said to
+   push `main`. Tasks and deadlines are kept outside this repo: no TODO lists or task
+   files here.
+7. Design before code (maintainer, 2026-10-25). Never go straight to code. For any
    change beyond a small tweak, new code or a change to existing behaviour
    alike, first explain the algorithm or design in natural language, with a
    diagram where it helps, the way programmers did before AI: what the
@@ -51,19 +51,26 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    `docs/architecture.md`. Prefer the simplest design that meets the
    non-negotiables. (Why: on 2026-10-25 a train's shown time changed from
    departure to arrival while the planner kept the departure, and a plan
-   sent Gadi to a train after it had pulled in.)
-8. Standing instruction from Gadi (2026-10-16): use your own judgment and
+   sent the maintainer to a train after it had pulled in.)
+8. Standing instruction from the maintainer (2026-10-16): use your own judgment and
    build something good, well past an MVP, without waiting for his input at
    each step. He sets direction and priorities (accuracy over speed,
    bicycles, minimal infrastructure, privacy); within those, decide, build,
    measure, document, and report at milestones. Ask only when a choice would
    be expensive to reverse.
-9. Clean up on the way (Gadi, 2026-10-25). When the code you touch has one
+9. Clean up on the way (maintainer, 2026-10-25). When the code you touch has one
    thing implemented again and again in many places (a chip built by hand in
    eight files, the same calculation in three modules), that is where you
    come in: replace the copies with one shared component or function, used
    everywhere, in the same change. Leave the code better than you found it,
    and say in the commit what was unified.
+
+10. Nothing about the maintainer goes in this repo, ever: no name, no links
+   to their own pages, sessions or artifacts, no addresses, places or
+   devices that are theirs. This repo is public. Refer to them as "the
+   maintainer", use public landmarks in examples (Azrieli, Dizengoff
+   Center), and keep commit messages to what changed (no session links or
+   other trailers that point at their accounts).
 
 ## Where things are
 
@@ -72,7 +79,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `README.md` | Public description: what, why, how, roadmap. |
 | `docs/architecture.md` | The design: pipeline, compact timetable, on-device routing, real-time, crowd reports, server pieces, the feasibility test. |
 | `docs/decisions.md` | Dated log of decisions, including rejected options. |
-| `docs/principles.md` | The design rules agreed with Gadi, each with its owner in the code and its test. |
+| `docs/principles.md` | The design rules agreed with the maintainer, each with its owner in the code and its test. |
 | `LICENSE` | GNU AGPL-3.0. |
 | `pipeline/compile.py` | GTFS zip to one service day's compact timetable (format in `docs/architecture.md`); with `--streets`, real walking transfers. |
 | `pipeline/streets.py`, `pipeline/streetgraph.py`, `pipeline/elevation.py` | OpenStreetMap extract to the compact street graph, with the climbs along each street from open elevation tiles; reader and stop-to-stop walking times for the compiler. |
@@ -106,7 +113,7 @@ will join it when that work starts.
 ## Current state
 
 2026-10-18: v0.3 is on `main` and live at https://akensio.github.io/wayli/,
-rebuilt nightly by the workflow. Gadi normally merges session branches into
+rebuilt nightly by the workflow. The maintainer normally merges session branches into
 `main` himself (squash); for this effort he allowed direct pushes of `main`
 (fast-forward from the session branch). The app is map first (one map with
 the live vehicles under a search bar and a bottom sheet), plans
@@ -125,7 +132,7 @@ three ways are drawn on the map together, one highlighted, with a map button
 per card; the collapsed sheet is a handle plus one line about the
 highlighted way (the chip strip is gone); the top bar is pills. Next: crowd
 reports, Arabic, elevation, measuring live-data freshness in daily use, a
-fallback relay only if Hasadna proves unreliable. 2026-10-20: Gadi chose the stack change: Preact with signals,
+fallback relay only if Hasadna proves unreliable. 2026-10-20: Maintainer chose the stack change: Preact with signals,
 TypeScript and a Vite build; the app was moved into components feature by
 feature while staying live (`docs/architecture.md`, "The app"): the bar, the
 results, the sheet, the detail and follow screens, the pages, the navigation

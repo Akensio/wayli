@@ -259,7 +259,7 @@ export function SearchField({
     if (inBar) search.openBar();
     if (place.value?.transient) text.value = '';
     else {
-      // the caret at the end of what is there (after the tap has placed it), the text not selected (Gadi)
+      // the caret at the end of what is there (after the tap has placed it), the text not selected (maintainer)
       const el = inputRef.current;
       if (el)
         setTimeout(() => {

@@ -297,7 +297,7 @@ a line, then saved, settings and reload. "Recent items to keep" (5, 10,
 20 or 40 of each kind; ways opened at most 20, as they carry their
 journey) is a setting. A journey's detail and the follow screen while
 waiting have Pay, a link to HopOn (Rav-Pass)'s store page (`journey/pay.ts`). A box focused with text in it puts the caret at the end, the
-text not selected (Gadi: editing it is more common than replacing it). The suggestion list while typing hangs below all the rows, so
+text not selected (maintainer: editing it is more common than replacing it). The suggestion list while typing hangs below all the rows, so
 it never covers the other field. A bottom sheet with three heights (a
 strip, about half the screen, nearly full; it is always its full height
 and slides by a composited transform, so the slide and the snap run on the
@@ -570,7 +570,7 @@ as restaurants, cafés, bars, hotels, shops, pharmacies, banks, schools,
 synagogues and offices): about 45k streets, 212k house numbers, 49k places
 (16k landmarks, 33k everyday), 2.9 MB gzipped. Landmarks rank above streets
 at an equal match, everyday places level with them, so an exact name wins
-without burying street searches in shops. `src/engine/places.ts` parses free text ("הורדים 4,
+without burying street searches in shops. `src/engine/places.ts` parses free text ("דיזנגוף 50,
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
 ranks stops, addresses, streets, places and cities together, nearer ones
 first when the user's location is known (distance breaks ties even among
@@ -585,7 +585,7 @@ beside the Hebrew (85% of streets, half the notable places; about 300 KB
 gzipped) and the feed's for cities; a word typed in Latin letters matches the English
 name, or, failing that, the consonant skeleton of the Hebrew one (vowels
 dropped, letters that sound alike merged, doubled letters collapsed, so
-"Havradim", "HaVradim" and "Ha-Vradim" all find הורדים, and "Petach Tikvah"
+"Hayarkon", "HaYarkon" and "Ha-Yarkon" all find הירקון, and "Petach Tikvah"
 finds פתח תקווה), scored a little below a spelled-out English name. Results
 are named in the app's language where the data has the name. Stops
 and places are ranked on one scale in the worker: match strength (a whole

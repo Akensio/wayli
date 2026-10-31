@@ -27,7 +27,7 @@ type Props = {
 };
 
 /** A ride's times down the side: boarding, and under it getting off, which says so ("to 21:48"), since the walk after
- *  starts at that same minute and shows it too (Gadi: two times with no cue read as two different things). The boarding
+ *  starts at that same minute and shows it too (maintainer: two times with no cue read as two different things). The boarding
  *  time is the newest live look at the vehicle (`live`) when there is one, else the planned one; a live time a minute or
  *  more off the listed one stands under it struck. */
 function rideTimes(l: RideLeg, live: number | null): ComponentChildren {

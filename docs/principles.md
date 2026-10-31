@@ -1,9 +1,8 @@
 # Wayli's design principles
 
-The rules agreed with Gadi (from the design principles deck,
-https://claude.ai/artifact/R664DeK2CWoKprEPWSJtLz), each with the one place
-in the code that owns it and the test that fails the build when it breaks.
-Rules still under discussion stay in the deck until agreed.
+The rules agreed with the maintainer, each with the one place in the code
+that owns it and the test that fails the build when it breaks. Rules still
+under discussion stay out of this file until agreed.
 
 ## 1. The map follows the sheet
 

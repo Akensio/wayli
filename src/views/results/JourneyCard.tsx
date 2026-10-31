@@ -27,7 +27,7 @@ export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveIn
 }
 /** When the first ride reaches the stop it is boarded at, counting down ("60 at the stop in 14 min"): the time the
  *  plan was made with, live when its vehicle was seen (marked, a ? when the report is old), the timetable's otherwise.
- *  How late it runs is not said: against a planned time the card never shows, it told the rider nothing (Gadi). */
+ *  How late it runs is not said: against a planned time the card never shows, it told the rider nothing (maintainer). */
 const RideIn = ({ l, day }: { l?: RideLeg; day: string }) => {
   void now.value;
   if (!l) return null;

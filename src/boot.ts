@@ -26,7 +26,7 @@ import { updateOnline, registerServiceWorker } from './controllers/shell';
 import * as query from './state/query';
 
 // the last search opens again at start for six hours: its places and options, planned afresh (never its old results:
-// live times change in between; 2026-10-22, Gadi)
+// live times change in between; 2026-10-22, the maintainer)
 const LAST_SEARCH_MS = 6 * 3600e3;
 
 async function boot(): Promise<void> {

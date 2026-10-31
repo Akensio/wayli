@@ -1,6 +1,6 @@
 // The map's two buttons of its own, through MapLibre's public API only (no private members to break on an upgrade):
 //
-// Locate. It only ever shows where you are (Gadi, 2026-10-22): a tap starts locating, and once on, a tap brings the
+// Locate. It only ever shows where you are (maintainer, 2026-10-22): a tap starts locating, and once on, a tap brings the
 // map back to you instead of turning location off (that is the phone's permission, not a map button). A tap brings you
 // to the middle of the part of the screen the map shows, at the zoom the map has; a second tap, with the map on you
 // already, sets the neighbourhood's zoom (2026-10-25). While it follows you, the map moves with you, its zoom left

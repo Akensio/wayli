@@ -250,7 +250,7 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
  * Where to change between the same two vehicles: the router keeps the first place it finds that works, and every other
  * gives the same arrival. Of all the places where the second can be caught from the first (the same stop, or a short
  * walk between stops), take one with time to spare (2 minutes or more, when there is one), then the least walking,
- * then the most time to spare. (2026-10-22, Gadi: the 56 to Ibn Gabirol/Arlosoroff, a 3-minute walk and 2 minutes to
+ * then the most time to spare. (2026-10-22, the maintainer: the 56 to Ibn Gabirol/Arlosoroff, a 3-minute walk and 2 minutes to
  * catch the 61, when the 61 passes Rabin Square, on the 56's way, 9 minutes after the 56 is there.) Changes the
  * journey's legs in place; the vehicles, and so the arrival, stay.
  */
@@ -365,7 +365,7 @@ function mergeWalks(legs: LegOut[]): LegOut[] {
 /**
  * The train in front of you: a direct way's earlier departures between the same two stops that arrive later. The
  * router drops them, being beaten (an earlier departure arriving later), but a rider at the platform wants the one
- * that is there (2026-10-22: Gadi at HaHagana, the 19:30 to Moshe Dayan running at 19:37, beaten on paper by the 19:45
+ * that is there (2026-10-22: Maintainer at HaHagana, the 19:30 to Moshe Dayan running at 19:37, beaten on paper by the 19:45
  * express, which was itself only on its timetable). They join their card's other times, marked (`slower`) with when
  * they arrive: the two latest that can still be reached, arriving at most 30 minutes after the card's own.
  */

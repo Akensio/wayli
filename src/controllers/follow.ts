@@ -208,7 +208,7 @@ function publish(): void {
 /** The remaining rides' vehicles, every 30 s. The current or next ride's: on the map, as the step card's badge, and its
  *  shift for re-planning. Every ride's (at most three): its badge at the boarding stop, its stops at their shown times,
  *  and the change into it from the ride before (connections), so a late connecting bus shows, and a missed change
- *  starts a re-plan (2026-10-29, Gadi). */
+ *  starts a re-plan (2026-10-29, the maintainer). */
 async function followLive(): Promise<void> {
   if (!fol || !map.liveOn()) return;
   const a = fol.a,

@@ -118,7 +118,7 @@ function remember(j: SiriSnapshot, t: number): void {
 // A train takes its next trip's number some minutes before that trip starts: 18% of train fixes came before their
 // trip's start (2026-10-19 to 21), 94% of those from the train standing at its first station. The rest come from a
 // train still running elsewhere, typically 12 minutes before the start (up to 17), a median 12 km away and mostly off
-// the trip's path: about 35 trips a day. Some are the train finishing its trip before under the next number (Gadi's
+// the trip's path: about 35 trips a day. Some are the train finishing its trip before under the next number (the maintainer's
 // reading): another trip went quiet a couple of minutes earlier close by. The feed cannot say so outright (a train's
 // vehicle number is its trip number, not the set), so a fix goes back to such a trip only when it plainly continues
 // it: that trip has not reported for 2-15 minutes, the fix is on its path, further along it, no further from its last
@@ -251,7 +251,7 @@ async function snapshot(urls: string[]): Promise<Snapshot> {
     snapLoading = (async () => {
       // 15 s for the relay to start answering; reading the body then gets a minute: on a phone at start-up it competes
       // with the timetable and street downloads and waits behind their unpacking here (a 12 s limit on the whole read
-      // aborted it on Gadi's phone every time, 2026-10-21)
+      // aborted it on the maintainer's phone every time, 2026-10-21)
       const fetchFrom = async (url: string, ago: number): Promise<Response> => {
         const ctl = new AbortController(),
           timer = setTimeout(() => ctl.abort(new Error('relay did not answer in 15 s')), 15000);

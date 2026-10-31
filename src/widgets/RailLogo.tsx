@@ -1,4 +1,4 @@
-// Israel Railways' mark beside a train's number, so a train chip says whose it is (Gadi, 2026-10-25), and what goes
+// Israel Railways' mark beside a train's number, so a train chip says whose it is (maintainer, 2026-10-25), and what goes
 // inside every line chip: the mark for a train, then the line's name (LineName), on screen and on the map.
 //
 // The mark (only this path) is not AGPL: it is cut out of "Flag of Israel Railways.svg" by Meronim, Wikimedia

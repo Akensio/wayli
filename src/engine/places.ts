@@ -1,6 +1,6 @@
 // Wayli: offline address book (streets, house numbers, cities, notable places) from pipeline/places.py.
-// Free-text search that understands "הורדים 4, גבעתיים", "דיזנגוף סנטר", "חיפה", and the same typed in
-// Latin letters ("Havradim 4 givatayim", "Dizengoff Center", "Haifa").
+// Free-text search that understands "דיזנגוף 50, תל אביב", "דיזנגוף סנטר", "חיפה", and the same typed in
+// Latin letters ("Dizengoff 50 tel aviv", "Dizengoff Center", "Haifa").
 import { haversine, scaleAt, type LatLon } from './geo.ts';
 import { readContainer, type Container, type ContainerHeader } from './container.ts';
 import { norm, byScore } from './text.ts';
@@ -249,7 +249,7 @@ export function kindLabel(kind: PoiKind, lang: Lang = 'he'): string {
 
 // ---------------------------------------------------------------- names typed in Latin letters
 // Streets and places carry OpenStreetMap's English name beside the Hebrew; cities the feed's. Where there is
-// none, or the rider spells it their own way (Havradim, HaVradim, Ha-Vradim), both scripts reduce to a
+// none, or the rider spells it their own way (Hayarkon, HaYarkon, Ha-Yarkon), both scripts reduce to a
 // consonant skeleton: vowels dropped, letters that sound alike merged, doubled letters collapsed.
 const LATIN_STOP = new Set([
   'street',
@@ -356,7 +356,7 @@ function skelLatin(word: string): string[] {
   const out: string[] = [];
   for (const b of bases) {
     out.push(squash(b));
-    if (w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1))); // "HaVradim": the article, which Hebrew matching drops
+    if (w.startsWith('ha') && b.length > 2) out.push(squash(b.slice(1))); // "HaYarkon": the article, which Hebrew matching drops
   }
   return [...new Set(out)].filter(Boolean);
 }

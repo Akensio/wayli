@@ -32,7 +32,7 @@ let roads = new Map<string, Run[]>();
 // A pattern's course cut at its stops, for placing a bus on it: per section the points, the length along them and a
 // box around them. Placed on the straight line between two stops instead, a bus on a long highway section (stops
 // kilometres apart, the road curving away from that line) was more than 120 m off it and left out: no traffic on Route
-// 4 or on half of Route 1 (Gadi, 2026-10-24).
+// 4 or on half of Route 1 (maintainer, 2026-10-24).
 const courseSections = new Map<number, Section[] | null>();
 // a new day numbers its patterns anew: the courses and the tracks of the old one would draw the wrong roads
 onNewDay(() => {

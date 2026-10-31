@@ -268,7 +268,7 @@ export async function styledLiberty(mode: Shade = 'light', tint: Tint = 'teal'):
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${LIBERTY}`);
   const style = (await res.json()) as LibertyStyle;
   for (const layer of style.layers || []) {
-    // an app for riders in Israel does not name "Palestinian Territories" on its map (Gadi, 2026-10-24): that country
+    // an app for riders in Israel does not name "Palestinian Territories" on its map (maintainer, 2026-10-24): that country
     // label is left out, by its code and by its name in either language, whatever language the labels are shown in
     if (layer['source-layer'] === 'place' && /^label_(country|state)/.test(layer.id)) {
       const not = (field: string, part: string) => ['!', ['in', part, ['coalesce', ['get', field], '']]];
@@ -283,7 +283,7 @@ export async function styledLiberty(mode: Shade = 'light', tint: Tint = 'teal'):
     }
     // the stops on the map are the feed's, served today (map/index.ts): OpenStreetMap's own bus stops and stations
     // in the basemap's points of interest doubled them, and named stops no line serves any more (Neve Sha'anan, by
-    // the old central bus station: Gadi, 2026-10-24)
+    // the old central bus station: the maintainer, 2026-10-24)
     if (layer['source-layer'] === 'poi' && /^poi_r/.test(layer.id))
       layer.filter = [
         'all',

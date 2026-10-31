@@ -30,7 +30,7 @@ function signGlyph(n: number): string {
 export function LineDetail() {
   void lang.value;
   const info = line.info.value;
-  // the timetable starts folded, and folds again for another line (Gadi, 2026-10-28)
+  // the timetable starts folded, and folds again for another line (maintainer, 2026-10-28)
   const [ttOpen, setTtOpen] = useState(false);
   useEffect(() => {
     setTtOpen(false);

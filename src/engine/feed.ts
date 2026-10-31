@@ -118,7 +118,7 @@ const recordedSince = (sinceSec: number): { recorded_at_time_from: string; recor
 // to 15 minutes behind at rush hour. The app points `snapshot.query` at it (through the data worker); every question
 // below asks it first, and Hasadna's database answers when it fails.
 // Two addresses for the same relay, tried in this order: our own domain first (some mobile carriers block all of
-// workers.dev, Gadi's among them), then Cloudflare's default address.
+// workers.dev, the maintainer's among them), then Cloudflare's default address.
 export const RELAY_URLS = ['https://relay.waynet.app/siri/latest', 'https://wayli-relay.wayli.workers.dev/siri/latest'];
 /** A box on the map, degrees. */
 export type Bounds = { south: number; west: number; north: number; east: number };

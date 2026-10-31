@@ -17,7 +17,7 @@ export type Filters = { fDirect: boolean; fTrain: boolean; resultSort: Sort };
 /** One card: the first option of a group, the other departures of the same lines. */
 export type Card = { idx: number; j: Journey; q: Query; options: Journey[]; lines: string[][] | null };
 
-export const SORTS: Sort[] = ['arrive', 'depart', 'fast', 'changes']; // by arrival first: every plan starts so (Gadi)
+export const SORTS: Sort[] = ['arrive', 'depart', 'fast', 'changes']; // by arrival first: every plan starts so (maintainer)
 const sortKey: Record<Sort, (j: Journey) => number> = {
   depart: (j) => j.depart,
   arrive: (j) => j.arrive,
@@ -178,7 +178,7 @@ export function pickAlt(idx: number): void {
 }
 /** The card's map button: show the way (highlighted), highlight a shown one, hide the highlighted one. */
 /** A card's map button: on the map or off it, nothing else. The highlighted way stays as it was (it is chosen on the
- *  map, by its time label), unless it is the one taken off or none is highlighted yet (2026-10-22, Gadi). */
+ *  map, by its time label), unless it is the one taken off or none is highlighted yet (2026-10-22, the maintainer). */
 export function toggleAlt(idx: number): void {
   const shown = new Set(altShown.value);
   if (shown.has(idx)) {
