@@ -8,7 +8,7 @@ import { placeName, named } from '../../state/names';
 import { useSignal, useSignalEffect } from '@preact/signals';
 import type { Signal } from '@preact/signals';
 import { t, lang } from '../../lib/i18n';
-import { ic, modeIcon } from '../../widgets/icons';
+import { modeIcon } from '../../widgets/icons';
 import { Icon } from '../../widgets/Icon';
 import type { IconName } from '../../widgets/icons';
 import { savedPlaces, recentPlaces, recentViews } from '../../state/store.ts';
@@ -691,4 +691,3 @@ export function SearchField({
   );
 }
 // `ic` stays for callers that build HTML strings
-export { ic };

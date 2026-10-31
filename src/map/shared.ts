@@ -16,13 +16,11 @@ export const state = {
   drawnFor: null as string | null, // the panel whose content is on the map
   drawSeq: 0,
 };
+/** The markers of what the renderer draws: a journey's pins, the results' badges and chips. (A panel's own vehicles and
+ *  the rider's dot are map/vehicles.ts's.) */
 export const markers = {
   journey: [] as Marker[],
-  live: [] as Marker[],
-  lineVeh: [] as Marker[],
-  followVehicle: [] as Marker[],
   alt: [] as Marker[],
-  me: null as Marker | null,
 };
 export const popupState = { current: null as Popup | null };
 export const pick = { marker: null as Marker | null, seq: 0 };

@@ -1,27 +1,29 @@
 // Bubbles on the map, one at a time: a vehicle (line, direction, delay, when it reported), a stop (its
-// lines, departures, from here, to here), a tapped place (to here, from here); and the vehicle markers of
-// a line with their delays.
+// lines, from here, to here), a tapped place (to here, from here); and the vehicle markers of a line with their
+// delays. What they show is bubbles.tsx; this module opens them and wires what a tap does.
 import type { Map as MLMap, Marker, LngLatLike } from 'maplibre-gl';
+import { h, render, type ComponentChild } from 'preact';
+import { signal } from '@preact/signals';
 import * as delays from '../engine/delays.ts';
 import * as feed from '../engine/feed.ts';
-import { esc } from '../widgets/html';
+import type { Vehicle } from '../engine/feed.ts';
 import { t, lang } from '../lib/i18n';
-import { ic, vehicleIcon } from '../widgets/icons';
+import { vehicleIcon } from '../widgets/icons';
 import { routeColor } from '../journey/colors';
-import { agencyName } from '../journey/agencies';
 import { call } from '../worker/client';
+import type { StopInfo, VehicleStatus } from '../worker/ops.ts';
 import * as nav from '../state/nav';
 import { stopPlace } from '../journey/types';
 import { viewFor } from './view';
 import { popupState, pick, hooks, currentSheet, cameraPadding } from './shared';
-import { fmt, timeOf } from '../lib/time';
-import { lineChipHtml } from '../widgets/LineChip';
-import { signed, delayText, reverseName } from '../journey/format';
+import { timeOf } from '../lib/time';
+import { reverseName } from '../journey/format';
+import { VehicleBubble, StopBubble, PlaceBubble, VehicleMark, type VehicleInfo } from './bubbles';
 
 /** A vehicle's heading in degrees, or -1 when it reports none (0 while standing still means unknown). */
 export const heading = (v: { bearing?: number | null; velocity?: number | null }): number =>
   v.bearing != null && (v.bearing !== 0 || (v.velocity || 0) > 0) ? v.bearing : -1;
-export const vehiclesForWorker = (vs: any[]) =>
+export const vehiclesForWorker = (vs: readonly Vehicle[]) =>
   vs.map((v) => ({
     lineRef: v.lineRef,
     scheduledStart: v.scheduledStart.getTime(),
@@ -39,30 +41,34 @@ export const closePopup = (): void => {
   }
 };
 
-export function openPopup(m: MLMap, lngLat: LngLatLike, html: string, wire?: (el: HTMLElement) => void): void {
+/** Open a bubble at a point showing `content` (one of bubbles.tsx), closing the one open; the component is unmounted
+ *  when the bubble closes. */
+export function openPopup(m: MLMap, lngLat: LngLatLike, content: ComponentChild): void {
   closePopup();
+  const box = document.createElement('div');
+  render(content, box);
   const p = new maplibregl.Popup({ offset: 18, maxWidth: '280px', closeButton: true, className: 'wayli-pop' })
     .setLngLat(lngLat)
-    .setHTML(html)
+    .setDOMContent(box)
     .addTo(m);
   popupState.current = p;
   const el = p.getElement();
-  if (wire && el) wire(el);
   if (el)
     requestAnimationFrame(() => {
       if (popupState.current === p) keepInView(m, el);
     });
   p.on('close', () => {
     if (popupState.current === p) popupState.current = null;
+    render(null, box);
   });
 }
-/** A bubble's button (data-act): it closes the bubble, then does its part. */
-const onAct = (el: Element, act: string, f: () => void): void => {
-  el.querySelector(`[data-act="${act}"]`)?.addEventListener('click', () => {
+/** A bubble's action: the bubble closes, then the action runs. */
+const closing =
+  <A extends unknown[]>(f: (...a: A) => void) =>
+  (...a: A): void => {
     closePopup();
-    f();
-  });
-};
+    f(...a);
+  };
 /** A bubble wholly in the part of the map the screen shows (between the bar and the sheet): the map slides by what
  *  sticks out, its top edge first when it is taller than that. */
 function keepInView(m: MLMap, el: HTMLElement): void {
@@ -78,46 +84,19 @@ function keepInView(m: MLMap, el: HTMLElement): void {
   else if (r.right > c.right - 8) dx = r.right - c.right + 8;
   if (Math.abs(dx) > 1 || Math.abs(dy) > 1) m.panBy([dx, dy], { duration: 250 });
 }
-/** The open bubble's title, changed in place (a name that arrives later): reopening it would flicker. */
-export function setPopupTitle(text: string): void {
-  const b = popupState.current?.getElement()?.querySelector('.pop b');
-  if (b) b.textContent = text;
-}
-type VehicleInfo = {
-  line: string;
-  routeType: number;
-  headsign: string;
-  agency: string;
-  delay?: number | null;
-  stale: boolean;
-  seen: Date;
-  velocity?: number | null;
-  trip: number;
-  route: number | null;
-  offDay?: boolean;
-};
 /** A vehicle's bubble: line, direction, delay, when it reported, speed; its line, with its trip chosen. */
 export function vehiclePopup(m: MLMap, lngLat: LngLatLike, v: VehicleInfo): void {
-  const d = v.delay != null ? delays.delayMinutes(v.delay) : null;
-  const delayTxt = d == null ? '' : delayText(d);
-  const ago = Date.now() - new Date(v.seen).getTime();
-  const html =
-    `<div class="pop"><div class="row">${lineChipHtml({ line: v.line, routeType: v.routeType, agency: v.agency })}<b>${v.headsign ? esc(t('toward', { headsign: v.headsign })) : ''}</b></div>` +
-    `<div class="muted">${v.agency ? `<bdi>${esc(agencyName(v.agency))}</bdi> · ` : ''}${t('seenAgo', { time: timeOf(v.seen) })}${ago >= 180e3 ? ` (${t('agoMin', { n: Math.round(ago / 60000) })})` : ''}${v.velocity != null ? ` · ${Math.round(v.velocity)} ${t('kmh')}` : ''}</div>` +
-    (d == null
-      ? ''
-      : `<div><span class="live ${v.stale ? 'unsure' : 'ok'}">${esc(delayTxt)}${v.stale ? ' ?' : ''}</span></div>`) +
-    // a line the feed has no trips of today (it reports anyway): named, nothing to open
-    (v.offDay
-      ? `<div class="muted">${t('offDayLine')}</div></div>`
-      : // its line, this vehicle's trip chosen: every stop with when it gets there
-        `<div class="row"><button type="button" class="ghost" data-act="line" ${v.trip >= 0 || v.route != null ? '' : 'disabled'}>${t('popLine')}</button></div></div>`);
-  openPopup(m, lngLat, html, (el) => {
-    onAct(el, 'line', () => {
-      if (v.trip >= 0) hooks.openTrip(v.trip, -1);
-      else hooks.openLine(v.route!);
-    });
-  });
+  openPopup(
+    m,
+    lngLat,
+    h(VehicleBubble, {
+      v,
+      onLine: closing(() => {
+        if (v.trip >= 0) hooks.openTrip(v.trip, -1);
+        else hooks.openLine(v.route!);
+      }),
+    }),
+  );
 }
 /** A stop tapped on the map. With nothing else in the sheet, the stop itself opens there (its lines, departures, from
  *  here and to here); while the sheet is about something else (results, a trip, a line, the trains between two
@@ -132,36 +111,29 @@ export async function stopPopup(m: MLMap, lngLat: LngLatLike, stop: number, stat
     hooks.openStop(stop, st);
     return;
   }
-  let info: any;
+  let info: StopInfo;
   try {
     info = await call('stopInfo', { stop, station: st ?? -1 });
   } catch {
     return;
   }
-  const at = hooks.timeAt(stop),
-    onLine = nav.key.value === 'lineDetail';
-  const html =
-    `<div class="pop"><b>${esc(info.name)}</b><div class="muted">${esc(info.city || '')}${info.code ? ' · ' + esc(info.code) : ''}</div>` +
-    (at != null ? `<div class="pop-at">${esc(t(onLine ? 'lineHere' : 'rideHere', { time: fmt(at) }))}</div>` : '') +
-    `<div class="chips">${info.lines
-      .slice(0, 8)
-      .map((l: any) =>
-        lineChipHtml({ line: l.label, routeType: l.type, agency: l.agency }, ` data-route="${l.route ?? ''}"`),
-      )
-      .join('')}</div>` +
-    `<div class="row">${onLine ? `<button type="button" class="primary slim" data-act="times">${t('timesHere')}</button>` : ''}<button type="button" class="ghost" data-act="stop">${t('stopDetails')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button><button type="button" class="ghost" data-act="to">${t('toHere')}</button></div></div>`;
-  openPopup(m, lngLat, html, (el) => {
-    onAct(el, 'times', () => hooks.lineAt(stop));
-    onAct(el, 'stop', () => hooks.openStop(stop, st));
-    onAct(el, 'from', () => hooks.planFrom(stopPlace(info)));
-    onAct(el, 'to', () => hooks.planTo(stopPlace(info)));
-    for (const c of el.querySelectorAll<HTMLElement>('.chip[data-route]'))
-      if (c.dataset.route !== '')
-        c.addEventListener('click', () => {
-          closePopup();
-          hooks.openLine(+c.dataset.route!);
-        });
-  });
+  const onLine = nav.key.value === 'lineDetail';
+  openPopup(
+    m,
+    lngLat,
+    h(StopBubble, {
+      info,
+      at: hooks.timeAt(stop),
+      onLine,
+      act: {
+        times: onLine ? closing(() => hooks.lineAt(stop)) : undefined,
+        stop: closing(() => hooks.openStop(stop, st)),
+        from: closing(() => hooks.planFrom(stopPlace(info))),
+        to: closing(() => hooks.planTo(stopPlace(info))),
+        line: closing((route: number) => hooks.openLine(route)),
+      },
+    }),
+  );
 }
 /** A tap on the bare map (sheet collapsed): a bubble pointing at the spot, naming a place of the basemap under the
  *  finger, anything else by reverse geocoding (the name fills in when it arrives), with "to here" and "from here". */
@@ -193,32 +165,21 @@ export async function placeBubble(
       lang.value === 'he'
         ? poi.properties['name:he'] || poi.properties.name
         : poi.properties['name:en'] || poi.properties['name:latin'] || poi.properties.name;
-  let p = {
-    name: poiName,
-    lat: lngLat[1],
-    lon: lngLat[0],
-  };
+  // the bubble's name is a signal: the reverse geocoding fills it in without reopening (and flickering) the bubble
+  const name = signal(poiName);
+  const place = () => ({ name: name.value, lat: lngLat[1], lon: lngLat[0] });
   openPopup(
     m,
     lngLat,
-    `<div class="pop"><b>${esc(p.name)}</b><div class="row"><button type="button" class="primary slim" data-act="to">${t('toHere')}</button><button type="button" class="ghost" data-act="from">${t('fromHere')}</button></div></div>`,
-    (el2) => {
-      onAct(el2, 'to', () => hooks.planTo(p));
-      onAct(el2, 'from', () => hooks.planFrom(p));
-    },
+    h(PlaceBubble, { name, to: closing(() => hooks.planTo(place())), from: closing(() => hooks.planFrom(place())) }),
   );
   if (poi) return;
-  const mine = popupState.current;
   try {
     const g = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
-    p = {
-      ...p,
-      name: reverseName(g),
-    };
+    if (my === pick.seq) name.value = reverseName(g);
   } catch {
-    p = { ...p, name: t('pointName') };
+    if (my === pick.seq) name.value = t('pointName');
   }
-  if (my === pick.seq && popupState.current === mine) setPopupTitle(p.name);
 }
 /** Stop dots on a journey or line map answer a tap (stopPopup: a bubble, the sheet keeps the journey or line). */
 export function wireStopLayers(m: MLMap, layers: string[]): void {
@@ -236,50 +197,42 @@ export function wireStopLayers(m: MLMap, layers: string[]): void {
     });
   }
 }
-/** A triangle on the rim of a vehicle marker, pointing where it heads. */
-function addHeading(el: HTMLElement, deg: number): void {
-  if (deg < 0) return;
-  const a = document.createElement('span');
-  a.className = 'heading';
-  a.style.transform = `rotate(${deg}deg)`;
-  el.appendChild(a);
-}
-/** Every reporting vehicle of a line as a marker with its delay; the one running `mine` stands out. */
+/** Every reporting vehicle of a line as a marker with its delay (`statuses`, the worker's word on each, in the same
+ *  order); the one running `mine` stands out. The markers go into `markers`, which the caller owns. */
 export function lineVehicleMarkers(
   m: MLMap,
   markers: Marker[],
-  vs: any[],
-  statuses: any[],
+  vs: readonly Vehicle[],
+  statuses: readonly VehicleStatus[],
   routeType: number,
   mine: number | null,
   fallback: { line?: string; headsign?: string; agency?: string; route?: number | null } = {},
 ): void {
-  const icon = ic(vehicleIcon(routeType));
+  const icon = vehicleIcon(routeType);
   const newest = feed.newest(vs);
   vs.forEach((v, i) => {
     if (!feed.isFresh(v, 300, newest)) return; // last seen long before this line's newest report: its position says nothing now
-    const st = statuses[i] || { trip: -1 };
+    const st = statuses[i] && statuses[i].trip >= 0 ? (statuses[i] as Exclude<VehicleStatus, { trip: -1 }>) : null;
+    const isMine = mine != null && st != null && st.trip === mine;
     const el = document.createElement('div');
-    const isMine = mine != null && st.trip === mine;
-    el.className = 'wayli-bus lbl' + (st.stale || st.trip < 0 ? ' stale' : '') + (isMine ? ' mine' : '');
-    const d = st.delay != null ? delays.delayMinutes(st.delay) : null;
-    el.innerHTML = `${icon}${isMine && d != null ? ` ${signed(d)}` : ''}`; // the number (minutes late) only on the rider's own vehicle; the bubble has it for the rest
-    el.style.borderColor = routeColor(st.routeType ?? routeType, st.agency || fallback.agency);
-    addHeading(el, heading(v));
-    el.title = `${timeOf(v.recordedAt)}${st.headsign ? ' · ' + st.headsign : ''}`;
+    el.className = 'wayli-bus lbl' + (!st || st.stale ? ' stale' : '') + (isMine ? ' mine' : '');
+    const d = st && st.delay != null ? delays.delayMinutes(st.delay) : null;
+    render(h(VehicleMark, { icon, delayMin: isMine ? d : null, heading: heading(v) }), el);
+    el.style.borderColor = routeColor(st?.routeType ?? routeType, st?.agency || fallback.agency);
+    el.title = `${timeOf(v.recordedAt)}${st?.headsign ? ' · ' + st.headsign : ''}`;
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       vehiclePopup(m, [v.lon, v.lat], {
-        line: st.line || fallback.line || '',
-        routeType: st.routeType ?? routeType,
-        headsign: st.headsign || fallback.headsign || '',
-        agency: st.agency || fallback.agency || '',
-        delay: st.delay,
-        stale: !!st.stale,
+        line: st?.line || fallback.line || '',
+        routeType: st?.routeType ?? routeType,
+        headsign: st?.headsign || fallback.headsign || '',
+        agency: st?.agency || fallback.agency || '',
+        delay: st?.delay,
+        stale: !!st?.stale,
         seen: v.recordedAt,
         velocity: v.velocity,
-        trip: st.trip,
-        route: st.route ?? fallback.route ?? null,
+        trip: st ? st.trip : -1,
+        route: st?.route ?? fallback.route ?? null,
       });
     });
     markers.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(m));

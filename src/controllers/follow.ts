@@ -198,7 +198,7 @@ function publish(): void {
   const now = clock.nowOn(fol.a.day);
   const sl = statusLine(followView(fol.a.journey, fol.a.state, now), fol.a.q.to.name, live, now);
   tripStatus(sl ? sl[0] : null, sl ? sl[1] : '');
-  if (map.mapState.drawnFor === 'follow' && fol.pos) map.drawMe(fol.pos);
+  map.showRider(fol.pos);
   if (fol.a.state.done)
     setTimeout(() => {
       if (fol && fol.a.state.done) {
@@ -240,15 +240,13 @@ async function followLive(): Promise<void> {
       if (first) {
         const statuses = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
         if (!fol) return;
-        for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
-        const m = map.mapState.main;
-        if (m && map.mapState.drawnFor === 'follow')
-          map.lineVehicleMarkers(m, map.markers.followVehicle, vs, statuses, leg.routeType, leg.trip, {
-            line: leg.line,
-            headsign: leg.headsign,
-            agency: leg.agency,
-            route: leg.route,
-          });
+        map.showVehicles('follow', 'ride', {
+          vs,
+          statuses,
+          routeType: leg.routeType,
+          mine: leg.trip,
+          fallback: { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route },
+        });
       }
       const v = feed.matchTrip(vs, leg.routeId, leg.firstDep, a.day);
       const ts = v ? await tripStopsCached(leg.trip) : null;
@@ -462,11 +460,8 @@ export function closeFollow(end: boolean): void {
     follow.liveBadge.value = null;
     tripStatus(null);
   }
-  for (const mk of map.markers.followVehicle.splice(0)) mk.remove();
-  if (map.markers.me) {
-    map.markers.me.remove();
-    map.markers.me = null;
-  }
+  map.showVehicles('follow', 'ride', null);
+  map.showRider(null);
   updateResumeBar();
 }
 function updateResumeBar(): void {

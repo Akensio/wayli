@@ -1,6 +1,6 @@
 // What the map shows for what the sheet holds: the one place that decides (docs/principles: "the map follows the
 // sheet"). One table, one function: what is drawn, where the camera goes, which live vehicles show. The map's renderer
-// (map/index.ts) carries it out; the panels only fill their state. Pure: no imports, so tools/mapview.test.mjs runs
+// (map/render.ts) carries it out; the panels only fill their state. Pure: no imports, so tools/mapview.test.mjs runs
 // it in Node.
 
 /** What is drawn. */

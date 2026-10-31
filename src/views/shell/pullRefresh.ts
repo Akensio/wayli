@@ -1,11 +1,12 @@
 // Pull to refresh, ours: the browser's needs a page that scrolls, and this one never does. A pull down on the
 // bar or on the collapsed sheet shows a circle that follows the finger and turns on past 72 px; letting go then
 // reloads (the service worker serves the new build). Works the same in Chrome, Safari and the installed app.
-import { ic } from '../../widgets/icons';
+import { h, render } from 'preact';
+import { Icon } from '../../widgets/Icon';
 
 const el = document.createElement('div');
 el.className = 'ptr';
-el.innerHTML = ic('refresh');
+render(h(Icon, { name: 'refresh' }), el);
 let pull = 0,
   armed = false,
   busy = false;

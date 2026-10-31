@@ -197,15 +197,13 @@ async function lineLive(): Promise<void> {
     if (my !== seq) return;
     const st = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
     if (my !== seq) return;
-    for (const mk of map.markers.lineVeh.splice(0)) mk.remove();
-    const m = map.mapState.main;
-    if (m && map.mapState.drawnFor === 'lineDetail')
-      map.lineVehicleMarkers(m, map.markers.lineVeh, vs, st, info.routeType, null, {
-        line: info.line,
-        headsign: info.headsign,
-        agency: info.agency,
-        route: info.route,
-      });
+    map.showVehicles('lineDetail', 'line', {
+      vs,
+      statuses: st,
+      routeType: info.routeType,
+      mine: null,
+      fallback: { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route },
+    });
     seenNow = { vs, st };
     void selLive(my);
     const nw = feed.newest(vs);

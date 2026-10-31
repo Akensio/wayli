@@ -1,11 +1,12 @@
 // The one map under everything: its layers, the stops of the day, the live vehicles, taps on it. What it shows for
 // what the sheet holds is decided in one place (map/view.ts) and drawn by one renderer (map/render.ts).
-import type { Map as MLMap, GeolocateControl } from 'maplibre-gl';
+import type { Map as MLMap } from 'maplibre-gl';
+import { LocateControl, CompassControl } from './locate';
 import * as nav from '../state/nav';
 import * as search from '../state/search';
 import * as sheet from '../state/sheet';
 import * as results from '../state/results';
-import { lastPos, notePos, knownGeo } from '../state/position';
+import { lastPos, knownGeo } from '../state/position';
 import { state, popupState, EMPTY, settleWaiters } from './shared';
 import {
   styleReady,
@@ -25,18 +26,17 @@ import { pickAt } from './picker';
 import { startHeading, attachHeading } from './heading';
 
 export { applyTheme, setBasemapLang } from './basemap';
-export { mapReady, stale, state as mapState, markers, stopKindProp, EMPTY } from './shared';
+export { mapReady, stale, stopKindProp, EMPTY } from './shared';
+export { showVehicles, showRider, type VehicleSet } from './vehicles';
 export { ensureJourneyLayers, drawJourney, boundsOf, withCourses } from './layers';
-export { lineVehicleMarkers, vehiclesForWorker, closePopup } from './popups';
+export { vehiclesForWorker, closePopup } from './popups';
 export { refreshLiveMap, applyLiveShow, loadStopsGeo, updateNearRoutes, liveOn, resetLive, setStopLines } from './live';
 export { pickOnMap, closePicker } from './picker';
 export { hooks } from './shared';
-export { redrawMap, drawMe, afterDraw } from './render';
+export { redrawMap, afterDraw } from './render';
 export { cameraPadding } from './shared';
 import { redrawMap } from './render';
-import { cameraPadding } from './shared';
-import { centreOffset } from './view';
-let geoCtl: GeolocateControl | null = null;
+let locate: LocateControl | null = null;
 
 export async function initMap(): Promise<void> {
   await styleReady();
@@ -67,17 +67,8 @@ export async function initMap(): Promise<void> {
     return;
   }
   const m = state.main;
-  // the locate button centres the rider in the part of the screen the map shows, between the bar and the sheet, not
-  // behind the sheet: MapLibre copies these options on every move, so the padding is read then, as things stand
-  const fitOpts = { maxZoom: 15, linear: true, duration: 500 };
-  Object.defineProperty(fitOpts, 'padding', { get: cameraPadding, enumerable: true });
-  geoCtl = new maplibregl.GeolocateControl({
-    positionOptions: { enableHighAccuracy: true },
-    trackUserLocation: true,
-    showAccuracyCircle: true,
-    fitBoundsOptions: fitOpts,
-  });
-  let viewTimer = 0; // the camera is remembered for the next start
+  // the camera is remembered for the next start
+  let viewTimer = 0;
   m.on('moveend', () => {
     clearTimeout(viewTimer);
     viewTimer = window.setTimeout(() => {
@@ -92,66 +83,10 @@ export async function initMap(): Promise<void> {
       }
     }, 500);
   });
-  m.addControl(geoCtl, 'bottom-right');
-  // The button only ever shows where you are. MapLibre's control turns location off on a tap while it follows you (or
-  // is still locating, or has failed); here that tap re-centres instead (nothing while still locating; a failure tries
-  // again). Turning location off is the phone's permission, not a map button.
-  const g: any = geoCtl;
-  // A tap on it brings the map to the rider at the zoom it has; a second tap, with the map on the rider already, sets the
-  // neighbourhood's zoom (Gadi, 2026-10-25: the zoom used to jump on the first tap). Following the rider moves the map
-  // the same way, its zoom left alone. MapLibre's own move (fitting the accuracy circle) is replaced; the event data
-  // tells it the move was its own, so it keeps following.
-  const LOCATE_ZOOM = 15;
-  const toMe = (pos: GeolocationPosition, zoom?: number) => {
-    const pad = cameraPadding();
-    m.easeTo(
-      {
-        center: [pos.coords.longitude, pos.coords.latitude],
-        offset: centreOffset(pad),
-        ...(zoom != null ? { zoom } : {}),
-        duration: 500,
-      },
-      { geolocateSource: true },
-    );
-  };
-  const onMe = (pos: GeolocationPosition) => {
-    const pad = cameraPadding(),
-      [ox, oy] = centreOffset(pad),
-      c = m.getContainer();
-    const p = m.project([pos.coords.longitude, pos.coords.latitude]);
-    return Math.hypot(p.x - (c.clientWidth / 2 + ox), p.y - (c.clientHeight / 2 + oy)) < 40;
-  };
-  g._updateCamera = (pos: GeolocationPosition) => toMe(pos);
-  g._geolocateButton.addEventListener(
-    'click',
-    (e: Event) => {
-      startHeading(); // the compass for the cone on the dot; an iPhone asks for it here, on the tap
-      const st = g._watchState;
-      if (!['ACTIVE_LOCK', 'WAITING_ACTIVE', 'ACTIVE_ERROR', 'BACKGROUND_ERROR'].includes(st)) return; // on, or back to following: as MapLibre does
-      e.stopImmediatePropagation();
-      e.preventDefault();
-      if (st === 'ACTIVE_LOCK' && g._lastKnownPosition)
-        toMe(g._lastKnownPosition, onMe(g._lastKnownPosition) ? LOCATE_ZOOM : undefined);
-      else if (st !== 'WAITING_ACTIVE') {
-        try {
-          g.trigger();
-          g.trigger();
-        } catch {
-          /* no geolocation */
-        }
-      } // off and on: a fresh try
-    },
-    { capture: true },
-  );
-  // a compass under it: shows the rotation and the tilt, a tap sets north up and flat; hidden while there is nothing to reset
-  const compass = new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true });
-  m.addControl(compass, 'bottom-right');
-  const compassVis = () => {
-    const on = Math.abs(m.getBearing()) > 0.5 || m.getPitch() > 0.5;
-    (compass as any)._container.classList.toggle('wayli-hidden', !on);
-  };
-  compassVis();
-  for (const ev of ['rotate', 'pitch', 'moveend', 'load'] as const) m.on(ev, compassVis);
+  // our own locate and compass buttons (map/locate.ts): MapLibre's would need its private members to behave as asked
+  locate = new LocateControl();
+  m.addControl(locate, 'bottom-right');
+  m.addControl(new CompassControl(), 'bottom-right');
   // heights come and go as the map tilts past the threshold (and only then: a check per frame is cheap)
   let tilted = m.getPitch() >= TERRAIN_PITCH;
   m.on('pitch', () => {
@@ -161,12 +96,11 @@ export async function initMap(): Promise<void> {
       applyTerrain(m);
     }
   });
-  geoCtl.on('geolocate', (p: any) => notePos(p.coords.latitude, p.coords.longitude));
   startHeading();
   attachHeading(m); // Android needs no tap for the compass
   m.once('load', () => {
-    const a = document.querySelector('.maplibregl-ctrl-attrib');
-    if (a) a.classList.remove('maplibregl-compact-show');
+    // the attribution starts folded (MapLibre opens it on a wide screen); it is the map's own control, in its container
+    m.getContainer().querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
   });
   m.on('style.load', () => {
     setupMapLayers(m);
@@ -214,14 +148,7 @@ export async function initMap(): Promise<void> {
     placeBubble(m, e);
   });
   setInterval(refreshLiveMap, 20000);
-  if (knownGeo())
-    m.once('load', () => {
-      try {
-        geoCtl!.trigger();
-      } catch {
-        /* no geolocation */
-      }
-    });
+  if (knownGeo()) m.once('load', () => locate?.trigger());
   try {
     window.wayliDebug = { ...(window.wayliDebug || {}), liveMap: m };
   } catch {
@@ -428,3 +355,10 @@ export async function applyMapStyle(): Promise<void> {
   state.main.setStyle(st, { diff: false });
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyMapStyle);
+
+/** Whether there is a map (none when MapLibre could not start, offline at first start). */
+export const hasMap = (): boolean => state.main != null;
+/** The basemap's labels in the current language. */
+export const applyBasemapLang = (): void => {
+  if (state.main) setBasemapLang(state.main);
+};

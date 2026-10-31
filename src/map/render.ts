@@ -20,8 +20,10 @@ import { state, markers, EMPTY, stale, stopKindProp, currentSheet, cameraPadding
 import { ensureJourneyLayers, drawJourney, withCourses, boundsOf, legProps } from './layers';
 import { applyLiveShow, setStopLines } from './live';
 import { viewFor, centreOffset } from './view';
+import { clearOwn } from './vehicles';
 import type { View } from './view';
-import { lineNameHtml } from '../widgets/RailLogo';
+import { h, render } from 'preact';
+import { LineName } from '../widgets/RailLogo';
 
 /** A panel's live vehicles, put on once the map has drawn it (the panels fill this in). */
 export const afterDraw: Record<string, () => void> = {};
@@ -38,16 +40,6 @@ const pin = (m: MLMap, lon: number, lat: number) => {
   el.style.background = 'var(--accent)';
   markers.journey.push(new maplibregl.Marker({ element: el }).setLngLat([lon, lat]).addTo(m));
 };
-/** The rider's own dot, where the map's is not shown (following). */
-export function drawMe(pos: { lat: number; lon: number }): void {
-  const m = state.main;
-  if (!m || !state.styled) return;
-  if (!markers.me) {
-    const el = document.createElement('div');
-    el.className = 'wayli-me';
-    markers.me = new maplibregl.Marker({ element: el }).setLngLat([pos.lon, pos.lat]).addTo(m);
-  } else markers.me.setLngLat([pos.lon, pos.lat]);
-}
 /** Courses as faint lines under the rest (a stop's lines). Only real courses: a line whose course is not loaded yet
  *  is left out rather than drawn as a straight ray across the city (the redraw when the courses arrive adds it). */
 async function stopCourses(m: MLMap, seq: number, stop: number, stops: number[]): Promise<void> {
@@ -114,7 +106,7 @@ const RECIPES: Record<View['draw'], Recipe> = {
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.className = 'wayli-linechip' + (c.idx === altSel ? ' sel' : '');
-        chip.innerHTML = lineNameHtml(l.line, l.routeType);
+        render(h(LineName, { line: l.line, routeType: l.routeType }), chip);
         if (c.idx === altSel) Object.assign(chip.style, chipColors(l.routeType, l.agency));
         chip.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -296,12 +288,8 @@ function aim(m: MLMap, key: string, v: View, d: Drawn): void {
 }
 
 function clearMap(m: MLMap): void {
-  for (const arr of [markers.journey, markers.live, markers.lineVeh, markers.followVehicle, markers.alt])
-    for (const mk of arr.splice(0)) mk.remove();
-  if (markers.me) {
-    markers.me.remove();
-    markers.me = null;
-  }
+  for (const arr of [markers.journey, markers.alt]) for (const mk of arr.splice(0)) mk.remove();
+  clearOwn(); // the panels' own vehicles and the rider's dot (map/vehicles.ts)
   for (const src of ['journey', 'stops', 'context', 'context-stops', 'alts']) setData(m, src, EMPTY);
 }
 /** Draw what the sheet holds; `force` draws again though the panel is the same (its content changed). */

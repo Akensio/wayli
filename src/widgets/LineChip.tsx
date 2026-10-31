@@ -1,20 +1,19 @@
 // A line's chip, the one used everywhere a line is named (cards, a trip's rides, a stop's departures and lines, pages,
-// search, history; `lineChipHtml` for the map's bubbles): styled by what runs on it, a bus in its operator's colour
+// search, history, the map's bubbles): styled by what runs on it, a bus in its operator's colour
 // with its number, a train in navy with Israel Railways' mark, light rail in red with the tram icon, the Carmelit and
 // the cable car in teal with the cabin, a shared taxi in yellow, an on-demand line outlined. (The badges on the map
 // are markers, not chips: map/render.ts, with the same inside.)
 import { Icon } from './Icon';
-import { ic } from './icons';
 import type { IconName } from './icons';
 import { chipColors } from '../journey/colors';
-import { LineName, lineNameHtml } from './RailLogo';
+import { LineName } from './RailLogo';
 import { modeOfType, type Mode } from '../engine/modes.ts';
 
 export type LineMode = Mode; // the same word everywhere, from the engine
 const MODE_ICON: Partial<Record<LineMode, IconName>> = { lrt: 'tram', cable: 'cable', taxi: 'taxi' }; // a train: Israel Railways' mark (LineName)
 
 type Line = { line?: string | null; routeType?: number | null; agency?: string | null; mode?: LineMode };
-/** The chip's class and colours, shared by the component and its HTML twin. */
+/** The chip's class and colours. */
 function look({ routeType, agency, mode = modeOfType(routeType) }: Line, extra = '') {
   const c = chipColors(routeType, agency);
   return {
@@ -42,13 +41,4 @@ export function LineChip({
       <LineName line={line} routeType={l.mode === 'rail' ? 2 : routeType} text={text} />
     </span>
   );
-}
-/** The same chip as HTML, for what the map builds as strings; `attrs` adds attributes (data-route). */
-export function lineChipHtml(line: Line, attrs = ''): string {
-  const l = look(line),
-    icon = MODE_ICON[l.mode];
-  const style = Object.entries(l.style)
-    .map(([k, v]) => `${k === 'borderColor' ? 'border-color' : k}:${v}`)
-    .join(';');
-  return `<span class="${l.cls}" style="${style}"${attrs}>${icon ? ic(icon) : ''}${lineNameHtml(line.line, l.mode === 'rail' ? 2 : line.routeType)}</span>`;
 }

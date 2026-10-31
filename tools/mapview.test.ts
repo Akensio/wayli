@@ -1,4 +1,4 @@
-// The map follows the sheet (src/map/view.ts): node tools/mapview.test.mjs (exits 1 on a failure). Each row of the
+// The map follows the sheet (src/map/view.ts): Vitest (npm test)
 // table the principle was agreed on, then the camera's visible part of the screen.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

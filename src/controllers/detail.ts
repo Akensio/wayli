@@ -61,14 +61,13 @@ async function liveForJourney(j: Journey, day: string, my: number, focus = -1): 
         if (my !== seq) return;
         const statuses = vs.length ? await call('vehiclesStatus', { vehicles: map.vehiclesForWorker(vs) }) : [];
         if (my !== seq) return;
-        const m = map.mapState.main;
-        if (m && map.mapState.drawnFor === 'detail')
-          map.lineVehicleMarkers(m, map.markers.live, vs, statuses, l.routeType, trip, {
-            line: l.line,
-            headsign: l.headsign,
-            agency: l.agency,
-            route: l.route,
-          });
+        map.showVehicles('detail', String(trip), {
+          vs,
+          statuses,
+          routeType: l.routeType,
+          mine: trip,
+          fallback: { line: l.line, headsign: l.headsign, agency: l.agency, route: l.route },
+        });
         const v = feed.matchTrip(vs, l.routeId, l.firstDep, day);
         if (!v) {
           detail.setBadge(trip, { text: t('liveNoVehicle'), cls: '' });

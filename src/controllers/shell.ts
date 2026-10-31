@@ -275,7 +275,7 @@ Object.assign(nav.hooks, {
 sheet.hooks.changed = (prev, st) => {
   if (prev === 'full' && st !== 'full') map.refreshLiveMap();
   const body = document.getElementById('sheetBody');
-  if (body && st !== prev && map.mapState.main && (st === 'peek' || prev === 'peek')) body.scrollTop = 0;
+  if (body && st !== prev && map.hasMap() && (st === 'peek' || prev === 'peek')) body.scrollTop = 0;
   // the results opened from collapsed (a tap or a drag): the highlighted way's card in view, which need not be the first
   const c = results.highlighted.value;
   if (prev === 'peek' && st !== 'peek' && c && nav.key.value === 'screen-plan') revealCard(c.idx, false);

@@ -1,5 +1,5 @@
 // Wayli's icons: one stroke set on a 24-unit grid, drawn as an inline SVG sprite once (installSprite) and
-// referenced by name (ic for HTML strings, the Icon component for Preact); the map badges draw the same
+// referenced by name (the Icon component); the map badges draw the same
 // paths on canvas.
 
 /** The vehicle icon for a GTFS route type: a train, a tram, else a bus. */
@@ -64,10 +64,6 @@ export const ICONS = {
 };
 const FILLED_ICONS = new Set(['play']);
 export type IconName = keyof typeof ICONS;
-
-/** An inline icon from the sprite as an HTML string; `cls` adds classes (e.g. `chev` for a chevron that flips in RTL). */
-export const ic = (name: IconName | string, cls = ''): string =>
-  `<svg class="i${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 /** Put the sprite into the document once, so every `<use href="#i-...">` resolves. */
 export function installSprite(): void {

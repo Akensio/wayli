@@ -15,7 +15,7 @@ export function applyLang(): void {
 export function setLang(l: 'he' | 'en'): void {
   storeLang(l);
   applyLang();
-  if (map.mapState.main) map.setBasemapLang(map.mapState.main);
+  map.applyBasemapLang();
   // stop names, headsigns and map labels come from the worker: ask again in the new language
   call('setLang', { lang: l })
     .then(() => {

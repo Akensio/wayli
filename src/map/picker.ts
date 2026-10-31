@@ -1,7 +1,8 @@
 // Picking a place on the map: a tap drops a pin with a bubble (the place's name, a Choose button); another
 // tap moves it; a tap on a stop picks the stop; Cancel in the bar leaves.
 import type { Map as MLMap } from 'maplibre-gl';
-import { esc } from '../widgets/html';
+import { h } from 'preact';
+import { signal } from '@preact/signals';
 import { t } from '../lib/i18n';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
@@ -9,7 +10,8 @@ import * as search from '../state/search';
 import { lastPos } from '../state/position';
 import type { Place } from '../journey/types';
 import { mapReady, pick } from './shared';
-import { openPopup, closePopup, setPopupTitle } from './popups';
+import { openPopup, closePopup } from './popups';
+import { PickBubble } from './bubbles';
 import { reverseName } from '../journey/format';
 
 let resolver: ((p: Place | null) => void) | null = null;
@@ -37,30 +39,30 @@ export async function pickAt(
   const el = document.createElement('div');
   el.className = 'wayli-pick';
   pick.marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(lngLat).addTo(m);
-  let picked: Place = stopHit
-    ? { name: stopHit.name, stops: [stopHit.stop], lat: lngLat[1], lon: lngLat[0] }
-    : { name: '…', lat: lngLat[1], lon: lngLat[0] };
+  const name = signal(stopHit ? stopHit.name : '…'); // filled in by the reverse geocoding, the bubble left open
+  const picked = (): Place =>
+    stopHit
+      ? { name: name.value, stops: [stopHit.stop], lat: lngLat[1], lon: lngLat[0] }
+      : { name: name.value, lat: lngLat[1], lon: lngLat[0] };
   openPopup(
     m,
     lngLat,
-    `<div class="pop"><b>${esc(picked.name)}</b>${stopHit ? `<div class="muted">${t('kindStop')}</div>` : ''}<div class="row"><button type="button" class="primary slim" data-act="choose">${t('choose')}</button></div></div>`,
-    (el2) =>
-      el2.querySelector('[data-act="choose"]')?.addEventListener('click', () => {
+    h(PickBubble, {
+      name,
+      stop: !!stopHit,
+      choose: () => {
         closePopup();
-        closePicker(picked);
-      }),
+        closePicker(picked());
+      },
+    }),
   );
   if (stopHit) return;
   try {
     const r = await call('reverse', { lat: lngLat[1], lon: lngLat[0] });
-    picked = {
-      ...picked,
-      name: reverseName(r),
-    };
+    if (my === pick.seq) name.value = reverseName(r);
   } catch {
-    picked = { ...picked, name: t('pointName') };
+    if (my === pick.seq) name.value = t('pointName');
   }
-  if (my === pick.seq && nav.isOpen('picker')) setPopupTitle(picked.name); // the name fills in; reopening the bubble would flicker
 }
 /** Done, with a place or none; the panel closes (unless the history already did it). */
 export function closePicker(p: Place | null, closing = true): void {

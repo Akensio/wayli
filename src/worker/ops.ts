@@ -92,7 +92,7 @@ export type TripStops = {
 /** A vehicle as the page sends it back to be placed on a trip (vehiclesStatus): the engine's report (delays.ts
  *  VehicleReport: where it is and when, a train's trail and call) with the ride it is on, its line ref and its
  *  scheduled start, each a Date or, once it crossed to the page and back, the milliseconds or ISO string of one. */
-export type RideReport = VehicleReport & { lineRef: number | null; scheduledStart: Date | number | string };
+export type RideReport = VehicleReport & { lineRef: number | string | null; scheduledStart: Date | number | string };
 /** Which trip a reported vehicle runs and how late it is (vehicles.ts vehiclesStatus); trip -1 when it is not found. */
 export type VehicleStatus =
   | { trip: -1 }

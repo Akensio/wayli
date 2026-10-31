@@ -18,6 +18,17 @@ let permission: 'none' | 'asking' | 'granted' | 'denied' | 'failed' = 'none'; //
 const KEEP_MS = 30000; // a still phone may send nothing: the last direction holds this long
 const GLIDE_MS = 90; // how quickly the cone catches up with the heading (time constant)
 let glide = (): void => {}; // a new reading: the cone moves (set once the map is there)
+/** The position dots the cone sits on: the map's own (map/locate.ts) and the follow screen's (map/vehicles.ts). They
+ *  register here when made; one gone from the page is dropped. */
+const dots = new Set<HTMLElement>();
+export function registerDot(el: HTMLElement): void {
+  dots.add(el);
+  glide();
+}
+const liveDots = (): HTMLElement[] => {
+  for (const d of dots) if (!d.isConnected) dots.delete(d);
+  return [...dots];
+};
 
 /** A compass reading in degrees clockwise from north, corrected for the screen being turned. */
 function onReading(deg: number): void {
@@ -59,7 +70,7 @@ function plain(e: DeviceOrientationEvent): void {
 }
 /** One line on what the compass sends and what the cone does: readings by kind, the heading, the dot and the cone. */
 export function compassReport(): string {
-  const dot = document.querySelector<HTMLElement>('.maplibregl-user-location-dot, .wayli-me'),
+  const dot = liveDots()[0],
     cone = dot?.querySelector<HTMLElement>('.wayli-cone');
   const age = seenAt ? Math.round((performance.now() - seenAt) / 1000) : null;
   let dotState = 'no';
@@ -112,7 +123,7 @@ export function attachHeading(m: MLMap): void {
     frame = 0;
     const now = performance.now(); // (not the frame's own time stamp: it can be older than the readings')
     // the map's position dot, and the one the follow screen draws
-    const dots = document.querySelectorAll<HTMLElement>('.maplibregl-user-location-dot, .wayli-me');
+    const onPage = liveDots();
     const fresh = heading != null && now - seenAt < KEEP_MS;
     let gap = 0;
     if (!fresh) shown = null;
@@ -126,7 +137,7 @@ export function attachHeading(m: MLMap): void {
     }
     last = now;
     const pitch = `${m.getPitch().toFixed(1)}deg`; // the beam lies on the ground: tilted with the map
-    for (const dot of dots) {
+    for (const dot of onPage) {
       let cone = dot.querySelector<HTMLElement>('.wayli-cone'); // its own element: the dot's ::after is its white ring
       if (!cone) {
         cone = document.createElement('div');
