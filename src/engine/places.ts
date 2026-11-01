@@ -348,7 +348,8 @@ function skelHe(word: string): string[] {
   const chars = [...word];
   let s = '';
   chars.forEach((c, i) => {
-    if (c === 'ה' && i === chars.length - 1 && chars.length > 1) s += '|'; // a final ה is a vowel
+    if (c === 'ה' && i === chars.length - 1 && chars.length > 1)
+      s += '|'; // a final ה is a vowel
     else if (/\d/.test(c)) s += c;
     else s += HEB_SK[c] ?? '|'; // א ע י: vowels here, dropped, but they keep their neighbours apart
   });
