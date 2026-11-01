@@ -392,23 +392,27 @@ function skelLatin(word: string, article = true): string[] {
   }
   return [...new Set(out)].filter(Boolean);
 }
-/** A name word's skeletons, whatever its script: a place named only in English ("Miznon") is found by its Hebrew
- *  spelling (מיזנון) too. */
-const skelOf = (w: string): string[] => (isLatin(w) ? skelLatin(w) : skelHe(w));
 /** A query word with what it can match: its text (a Hebrew name's words, or an English name's), and the consonant
  *  skeletons it may stand for (matched against the skeletons of the Hebrew names), so a word spelt another way or with
  *  one slip still finds the name (skelScore). */
 type QueryWord = { w: string; latin: boolean; sk: string[] };
 const queryWords = (words: string[]): QueryWord[] =>
   words.map((w) => ({ w, latin: isLatin(w), sk: isLatin(w) ? skelLatin(w) : skelHe(w) }));
+/** Every English word a name has: its English name's, and those written in Latin letters inside the main name (Overture
+ *  often writes both languages there: "מלון כנען ספא - canaan spa hotel"), without the street-type words. */
+function englishWords(en: string | undefined, main: string): string[] {
+  const ws = wordsEn(en || '');
+  for (const w of wordsEn(main)) if (isLatin(w) && !ws.includes(w)) ws.push(w);
+  return ws;
+}
 /** English names and skeletons of every street, place and city, which every search compares (once per address book;
  *  half a second on a laptop): built on the first search, or ahead of it by the worker once the book is in. */
 export function ensureSkeletons(pl: Places): void {
   if (pl.streetSk) return;
-  pl.streetEn = pl.streets.map((s) => wordsEn(s[4] || ''));
-  pl.streetSk = pl.streetWords.map((ws) => ws.map(skelOf));
-  pl.poiEn = pl.pois.map((p) => wordsEn(p[5] || ''));
-  pl.poiSk = pl.poiWords.map((ws) => ws.map(skelOf));
+  pl.streetEn = pl.streets.map((s) => englishWords(s[4], s[0]));
+  pl.streetSk = pl.streetWords.map((ws) => ws.map(skelHe));
+  pl.poiEn = pl.pois.map((p) => englishWords(p[5], p[0]));
+  pl.poiSk = pl.poiWords.map((ws) => ws.map(skelHe));
   pl.citySk = pl.cities.map((c) => words(c[0]).map(skelHe));
   pl.cityEnWords = pl.cities.map((c) => wordsEn(c[3] || ''));
 }
@@ -490,6 +494,54 @@ function skelScore(qv: string[], wv: string[], i: number, firstWordNames: boolea
 /** What a name found only loosely (another spelling, a slip) loses, so it lists after every name found as typed: what
  *  the rider wrote first, "did you mean" after. */
 const LOOSE = 20;
+// three rows of the edit-distance table, reused by every comparison (a search compares a typed word with ~150k words)
+const ROWS = [new Int32Array(64), new Int32Array(64), new Int32Array(64)];
+/** Edit distance between `a` and the first `bLen` letters of `b` (a letter wrong, missing or extra, or two neighbours
+ *  swapped), or max + 1 as soon as it is over `max`. */
+function editDistance(a: string, b: string, bLen: number, max: number): number {
+  if (Math.abs(a.length - bLen) > max) return max + 1;
+  if (a.length >= 63 || bLen >= 63) return max + 1;
+  let [before, prev, cur] = ROWS;
+  for (let j = 0; j <= bLen; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    cur[0] = i;
+    let rowMin = i;
+    const ai = a.charCodeAt(i - 1);
+    for (let j = 1; j <= bLen; j++) {
+      const bj = b.charCodeAt(j - 1);
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ai === bj ? 0 : 1));
+      if (i > 1 && j > 1 && ai === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === bj)
+        v = Math.min(v, before[j - 2] + 1);
+      cur[j] = v;
+      if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return max + 1;
+    [before, prev, cur] = [prev, cur, before];
+  }
+  return prev[bLen];
+}
+/** How many typos a typed word may carry, as search engines allow by default: none up to two letters, one up to five,
+ *  two beyond. */
+function typosAllowed(len: number): number {
+  if (len <= 2) return 0;
+  return len <= 5 ? 1 : 2;
+}
+/** A Latin word against an English word of the name, within its typos: the whole word, else the start of a longer one
+ *  (still typing). Below the word as written (an exact word scores 3 and up), and one typo just above a name that only
+ *  sounds alike (2.9): a word one letter off an English name says more than three shared consonants. 0 when too far. */
+function fuzzyScore(q: string, w: string): number {
+  const k = typosAllowed(q.length);
+  if (!k || w.length < 2) return 0;
+  // a typo in both of the first two letters is rare: words that share neither are not compared (most of them)
+  if (q[0] !== w[0] && q[1] !== w[1] && !(q[0] === w[1] && q[1] === w[0])) return 0;
+  const d = editDistance(q, w, w.length, k);
+  if (d <= k) return d === 1 ? 2.95 : 2.4;
+  if (w.length > q.length) {
+    const dp = editDistance(q, w, q.length, k);
+    if (dp <= k) return dp === 1 ? 2.0 : 1.6;
+  }
+  return 0;
+}
 /**
  * Does every query word match a word of the name? Returns a score, or 0. A street is named by its
  * first word, so an exact match there counts most; a place's words count alike (מרכז עזריאלי, קניון עזריאלי).
@@ -521,6 +573,8 @@ function matchEntry(
     } else {
       latin = true;
       if (en) for (let i = 0; i < en.length; i++) best = Math.max(best, wordScore(q.w, en[i], i, firstWordNames));
+      // not written so: the English words with typos (standard fuzzy, as search engines do)
+      if (!best && en) for (let i = 0; i < en.length; i++) best = Math.max(best, fuzzyScore(q.w, en[i]));
       let slip = 0;
       if (sk)
         for (let i = 0; i < sk.length; i++) {

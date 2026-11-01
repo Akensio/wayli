@@ -25,6 +25,7 @@ const pois = [
   ['מוזיאון תל אביב', 'tourism=museum', TLV, 32.077, 34.787, ''],
   ['מלון כנען ספא', 'tourism=hotel', 'צפת', 32.97, 35.5, ''],
   ['קניון לב צפת', 'shop=mall', 'צפת', 32.965, 35.497, ''],
+  ['מלון כנען ספא - canaan spa hotel', 'tourism=hotel', 'צפת', 32.977, 35.507, ''], // both languages in one name
 ];
 const cities = [
   [TLV, 32.08, 34.78, 'Tel Aviv-Yafo'],
@@ -33,7 +34,7 @@ const cities = [
   ['צפת', 32.962, 35.505, 'Safed'],
 ];
 const book = parsePlaces(
-  writeContainer({ format: 4, counts: { streets: 4, addresses: 0, pois: 11, cities: 4 }, streets, pois, cities }, [
+  writeContainer({ format: 4, counts: { streets: 4, addresses: 0, pois: 12, cities: 4 }, streets, pois, cities }, [
     { name: 'addrStreet', dtype: 'int32', data: [] },
     { name: 'addrNumber', dtype: 'uint16', data: [] },
     { name: 'addrLat', dtype: 'float32', data: [] },
@@ -81,9 +82,18 @@ test('short words get no loose match', () => {
   expect(searchPlaces(book, 'קפ', 5, null, 'he').map((h) => h.name)).toEqual(['קפלן']); // only the start, as typed
 });
 
-test('across the scripts: a name in English by its Hebrew spelling, a Hebrew one by its Latin', () => {
-  expect(top('בנדיקט')).toBe('Benedict');
+test('a Latin word finds a Hebrew name by sound (miznon), but an English-only name only by its English', () => {
   expect(top('miznon')).toBe('מיזנון'); // two separate n's: not the museum, whose ו and י drop to leave one
+  expect(searchPlaces(book, 'בנדיקט', 5, null, 'he').map((h) => h.name)).not.toContain('Benedict'); // no transliteration
+});
+
+test('English to English: exact, also inside a two-language name, and with typos as search engines allow', () => {
+  expect(top('benedict')).toBe('Benedict');
+  expect(top('bendict')).toBe('Benedict'); // one letter missing
+  expect(top('benedcit')).toBe('Benedict'); // two swapped
+  expect(top('canaan spa hotel')).toBe('מלון כנען ספא - canaan spa hotel'); // English inside the main name
+  expect(top('canan spa')).toBe('מלון כנען ספא - canaan spa hotel'); // and with a typo
+  expect(searchPlaces(book, 'bx', 5, null, 'he')).toEqual([]); // two letters: no typos allowed
 });
 
 test('two passes give what one would: the loose pass only fills what the exact one leaves', () => {
@@ -91,7 +101,7 @@ test('two passes give what one would: the loose pass only fills what the exact o
 });
 
 test('a letter dropped as a vowel keeps its neighbours apart, and a vav is silent only where the Latin has a vowel for it', () => {
-  expect(top('knaan spa')).toBe('מלון כנען ספא'); // כנען keeps both nuns, as "knaan" does
+  expect(top('knaan spa')).toMatch(/^מלון כנען ספא/); // כנען keeps both nuns, as "knaan" does (either record)
   const inSafed = searchPlaces(book, 'knaan safed', 5, null, 'he').map((h) => h.name);
   expect(inSafed).toContain('מלון כנען ספא');
   expect(inSafed).not.toContain('קניון לב צפת'); // קניון's ו is a consonant for "knaan"

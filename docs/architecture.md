@@ -595,7 +595,11 @@ map's station labels) is in the app's language, with Hebrew where the feed
 has no translation. The address book carries OpenStreetMap's English name
 beside the Hebrew (85% of streets, half the notable places; about 300 KB
 gzipped) and the feed's for cities; a word typed in Latin letters matches the English
-name, or, failing that, the consonant skeleton of the Hebrew one (vowels
+words a name has (its English name, and Latin words inside the main name,
+as Overture writes "מלון כנען ספא - canaan spa hotel") as text, else with
+typos as search engines allow (edit distance: none up to two letters, one
+up to five, two beyond; one typo just above a sound-alike, below an exact
+word), or, failing that, the consonant skeleton of the Hebrew one (vowels
 dropped, letters that sound alike merged, doubled letters collapsed, so
 "Hayarkon", "HaYarkon" and "Ha-Yarkon" all find הירקון, and "Petach Tikvah"
 finds פתח תקווה), scored a little below a spelled-out English name. A
