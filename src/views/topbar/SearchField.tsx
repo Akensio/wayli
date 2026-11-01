@@ -130,6 +130,7 @@ export function SearchField({
         side: stationSide,
         stopMode: stationSide ? search.pairMode.value : search.stopFilter.value,
         fromStops: stationSide === 'to' ? search.stFrom.value?.stops : undefined,
+        fromName: stationSide === 'to' ? search.stFrom.value?.name : undefined,
       };
     return { box: id };
   };
@@ -342,7 +343,7 @@ export function SearchField({
     onRecent: (v: View) => {
       open.value = false;
       inputRef.current?.blur();
-      openRecent(v);
+      openRecent(v, stationSide);
     },
     onLocate: locate,
     onMap: pickMap,

@@ -36,8 +36,9 @@ export type SuggestCtx = {
   box: string; // the box asking (its id): each box's answers are ordered on their own
   lineFilter?: LineFilter; // the line search's chips
   stopMode?: StopFilter; // the stops listed: the stop search's chips, or the kind of train of the timetable's side
-  side?: Side; // a side of the train timetable (stations only; the To side lists no recents)
+  side?: Side; // a side of the train timetable (stations only)
   fromStops?: number[]; // the To side: only the stations reachable from these (the From station's platforms)
+  fromName?: string; // the To side: the From station's name (its recent destinations first; never itself)
 };
 
 /** Whether the text can be searched as places: two letters at least, once the timetable is in. */
@@ -51,13 +52,39 @@ export function searchesText(kind: Kind, q: string): boolean {
 }
 
 /** What was opened lately, of the kind the chips choose, at most four (the To side of the timetable lists none). */
-function recentFor(kind: 'line' | 'stop', ctx: SuggestCtx): View[] {
+/** The To side of the train timetable: the stations used lately on either side (a station opened, both ends of a pair
+ *  looked up), reachable from the From station without a change (`reach`: the names the To list holds), those looked up
+ *  from this very station first; at most four, as stations to choose. */
+function recentDestinations(ctx: SuggestCtx, reach: Set<string>): View[] {
+  const mode = ctx.stopMode ?? 'all';
+  const fits = (m: string | undefined) => mode === 'all' || mode === (m || 'rail');
+  const fromHere: View[] = [],
+    others: View[] = [];
+  const seen = new Set<string>([ctx.fromName || '']);
+  const add = (list: View[], s: { name: string; lat: number; lon: number }, m: 'rail' | 'lrt' | undefined) => {
+    if (seen.has(s.name) || !reach.has(s.name) || !fits(m)) return;
+    seen.add(s.name);
+    list.push({ type: 'station', name: s.name, lat: s.lat, lon: s.lon, mode: m });
+  };
+  for (const v of recentViews.list()) {
+    if (v.type === 'trains') {
+      if (v.from.name === ctx.fromName) add(fromHere, v.to, v.mode);
+      else {
+        add(others, v.to, v.mode);
+        add(others, v.from, v.mode);
+      }
+    } else if (v.type === 'station') add(others, v, v.mode);
+  }
+  return [...fromHere, ...others].slice(0, 4);
+}
+
+function recentFor(kind: 'line' | 'stop', ctx: SuggestCtx, groups: StopGroup[] = []): View[] {
   const vs = recentViews.list();
   if (kind === 'line') {
     const f = ctx.lineFilter ?? 'all';
     return vs.filter((v) => v.type === 'line' && (f === 'all' || (v.mode || 'bus') === f)).slice(0, 4);
   }
-  if (ctx.side === 'to') return [];
+  if (ctx.side === 'to') return recentDestinations(ctx, new Set(groups.map((g) => g.name)));
   const f = ctx.stopMode ?? 'all';
   return vs
     .filter((v) => {
@@ -89,7 +116,7 @@ export async function suggest(kind: Kind, q: string, ctx: SuggestCtx): Promise<R
   if (kind === 'stop') {
     const from = ctx.side === 'to' ? ctx.fromStops : undefined;
     const groups = data.ttReady.value ? await orNothing(findStopGroups(q, ctx.stopMode ?? 'all', from), []) : [];
-    return latest({ kind: 'stops', groups, near: !q, recent: q ? [] : recentFor('stop', ctx) });
+    return latest({ kind: 'stops', groups, near: !q, recent: q ? [] : recentFor('stop', ctx, groups) });
   }
   if (!q) return latest({ kind: 'quick' });
   if (!placeSearchable(q)) return latest({ kind: 'none' });

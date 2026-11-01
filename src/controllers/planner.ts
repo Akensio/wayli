@@ -290,8 +290,9 @@ async function findStation(a: { name: string; lat: number; lon: number }, mode: 
   return f && typeof f !== 'number' ? { ...f, key: f.name, name: a.name } : null;
 }
 /** A recent line, stop or station picked in the list under the box. In the train timetable (two stations at the top) a
- *  station is the From one and a pair fills both; otherwise it opens as from the drawer and the bar folds. */
-export async function openRecent(v: results.View): Promise<void> {
+ *  station goes to the side it was picked on (`side`, the From one when none) and a pair fills both; otherwise it opens
+ *  as from the drawer and the bar folds. */
+export async function openRecent(v: results.View, side: search.Side = 'from'): Promise<void> {
   if (!search.railPair.value || (v.type !== 'station' && v.type !== 'trains')) {
     await openView(v);
     search.foldBar();
@@ -300,7 +301,7 @@ export async function openRecent(v: results.View): Promise<void> {
   const mode = search.pairMode.value;
   if (v.type === 'station') {
     const s = await findStation(v, mode);
-    if (s) chooseStation('from', s);
+    if (s) chooseStation(side, s);
     else toast(t('notInDay'));
     return;
   }
