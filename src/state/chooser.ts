@@ -1,7 +1,7 @@
 // Choosing a place for home, work or the saved list: a search box, my location, or a point on the map.
 import { signal } from '@preact/signals';
 import { focusBox, type Place } from './search';
-import { unset } from '../lib/unset';
+import { unset } from '../common/unset';
 
 export const title = signal('');
 export const text = signal('');

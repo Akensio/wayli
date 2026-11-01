@@ -2,8 +2,8 @@
 // between two stations). `ask` fetches and applies them and answers with the newest report it saw, or undefined when
 // there was nothing to ask (or the panel has moved on); the panel's note then says how live it is.
 import type { Signal } from '@preact/signals';
-import { t } from '../lib/i18n';
-import { timeOf } from '../lib/time';
+import { t } from '../common/i18n';
+import { timeOf } from '../common/time';
 import * as nav from '../state/nav';
 import * as map from '../map/index';
 

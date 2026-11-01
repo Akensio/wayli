@@ -1,7 +1,7 @@
 // The place chooser (home, work, a saved place): a search box with the quick entries, plus my location and
 // the map as chips.
 import { Icon } from '../../widgets/Icon';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import * as chooser from '../../state/chooser';
 import { SearchField } from '../topbar/SearchField';
 import { pickOnMap } from '../../map/index';

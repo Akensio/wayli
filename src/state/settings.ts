@@ -1,4 +1,4 @@
-// The settings as the pages read them: the store is the truth (lib/store.ts; its `stored` says when it changed).
+// The settings as the pages read them: the store is the truth (state/store.ts; its `stored` says when it changed).
 import { settings as store, type Settings } from './store.ts';
 
 export type { Settings };

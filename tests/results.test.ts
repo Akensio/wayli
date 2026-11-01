@@ -4,7 +4,7 @@
 import { test, expect } from 'vitest';
 import * as clock from '../src/engine/clock.ts';
 import * as results from '../src/state/results';
-import type { Journey, RideLeg } from '../src/model/journey';
+import type { Journey, RideLeg } from '../src/trip/journey';
 
 const day = clock.serviceDay().day,
   n = clock.nowOn(day);

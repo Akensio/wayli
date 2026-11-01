@@ -2,9 +2,9 @@
 // the class a time carries for it.
 import * as delays from '../engine/delays.ts';
 import type { LiveTime } from '../engine/delays.ts';
-import { t } from '../lib/i18n';
-import { fmt } from '../lib/time';
-import type { RideLive } from '../model/journey';
+import { t } from '../common/i18n';
+import { fmt } from '../common/time';
+import type { RideLive } from '../trip/journey';
 
 /** Minutes late as the rider reads them: +3, -2, 0. */
 export const signed = (n: number): string => (n > 0 ? '+' : '') + n;

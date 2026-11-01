@@ -7,7 +7,7 @@ import { warmPosition } from './state/position';
 import * as map from './map/index';
 import { loadFailed } from './controllers/status';
 import { applyLang } from './controllers/lang';
-import { t } from './lib/i18n';
+import { t } from './common/i18n';
 import {
   loadManifest,
   renderDays,

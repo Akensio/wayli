@@ -9,7 +9,7 @@
 //
 // Compass. Shows the map's rotation and tilt; a tap sets north up and flat. Hidden while there is nothing to reset.
 import type { Map as MLMap, IControl, Marker } from 'maplibre-gl';
-import { t } from '../lib/i18n';
+import { t } from '../common/i18n';
 import { notePos } from '../state/position';
 import { centreOffset } from './view';
 import { cameraPadding } from './shared';

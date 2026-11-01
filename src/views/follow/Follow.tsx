@@ -1,20 +1,20 @@
 // The trip in progress: what to do now (walk, wait, ride, get off), the next ride's vehicle, a faster way when
 // one was found, and the legs ahead. The state machine (follow.js) is pure; this draws its view.
 import { Icon } from '../../widgets/Icon';
-import { t, lang } from '../../lib/i18n';
-import { fmt } from '../../lib/time';
+import { t, lang } from '../../common/i18n';
+import { fmt } from '../../common/time';
 import * as clock from '../../engine/clock.ts';
 import { view as followView, canStepBack } from '../../following/follow.ts';
 import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
-import { lineText } from '../../display/travel';
-import { inShort } from '../../display/time';
+import { lineText } from '../../text/travel';
+import { inShort } from '../../text/durations';
 import { LegChips } from '../results/LegChips';
 import { FollowLeg } from './FollowLeg';
 import { payLink } from '../detail/pay';
-import { isRide, ridesOf } from '../../model/journey';
+import { isRide, ridesOf } from '../../trip/journey';
 import { switchJourney, dismissAlt, hideFollow, endTrip, backStep, skipStep } from '../../controllers/follow';
-import { rideBadge } from '../../display/live';
+import { rideBadge } from '../../text/live';
 
 /** The card proposing the alternative. */
 function AltCard({ alt }: { alt: follow.Alt }) {

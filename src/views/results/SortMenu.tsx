@@ -5,7 +5,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { signal } from '@preact/signals';
 import { Icon } from '../../widgets/Icon';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import * as results from '../../state/results';
 import type { Sort } from '../../state/results';
 

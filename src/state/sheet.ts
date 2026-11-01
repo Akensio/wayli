@@ -4,7 +4,7 @@
 // the screen's layout); the Sheet component (views/shell/Sheet.tsx) applies it to the page.
 import { signal } from '@preact/signals';
 import * as results from './results';
-import { unset } from '../lib/unset';
+import { unset } from '../common/unset';
 
 export type SheetState = 'peek' | 'half' | 'full';
 export const ORDER: SheetState[] = ['peek', 'half', 'full'];

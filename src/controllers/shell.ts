@@ -1,7 +1,7 @@
 // The shell around the screens: the top bar's height for the map and the sheet, install (Chrome's prompt or
 // Safari's steps), online and offline, the drawer's actions, and what closing each panel must stop.
 import { effect } from '@preact/signals';
-import { t } from '../lib/i18n';
+import { t } from '../common/i18n';
 import { call } from '../worker/client';
 import * as app from '../state/app';
 import * as nav from '../state/nav';
@@ -23,7 +23,7 @@ import { openLine, closeLine, openTrip, chooseAnchor } from './line';
 import { closeTrains } from './station';
 import { isFollowing, closeFollow } from './follow';
 import { ensureAudio, requestAlertPermission, alertUser } from './alerts';
-import { type Journey, isRide } from '../model/journey';
+import { type Journey, isRide } from '../trip/journey';
 
 // ---- install: Chrome's own prompt when it offers one; otherwise (iPhones and iPads never fire it, and Chrome holds
 // it back at times, e.g. after a dismissal) the row still shows outside the installed app and explains the browser's way

@@ -3,7 +3,7 @@
 // found. The controller (timers, the position watch, the live polls, the re-planning) is controllers/follow.ts
 // and publishes here; the screen renders from these and asks through `hooks`.
 import { signal } from '@preact/signals';
-import type { Journey, RideLive } from '../model/journey';
+import type { Journey, RideLive } from '../trip/journey';
 import type {
   FollowState,
   Position as EnginePosition,

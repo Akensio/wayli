@@ -3,16 +3,16 @@
 import type { Map as MLMap } from 'maplibre-gl';
 import { h } from 'preact';
 import { signal } from '@preact/signals';
-import { t } from '../lib/i18n';
+import { t } from '../common/i18n';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as search from '../state/search';
 import { lastPos } from '../state/position';
-import type { Place } from '../model/place';
+import type { Place } from '../trip/place';
 import { mapReady, pick } from './shared';
 import { openPopup, closePopup } from './popups';
 import { PickBubble } from './bubbles';
-import { reverseName } from '../display/places';
+import { reverseName } from '../text/placeNames';
 import { maplibregl } from './maplibre';
 
 let resolver: ((p: Place | null) => void) | null = null;

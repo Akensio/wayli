@@ -3,9 +3,9 @@
 // (none, to the stop, take it along; folding once a bike is chosen). The trip is planned again on close.
 import { Icon } from '../../widgets/Icon';
 import { Wheel } from '../../widgets/Wheel';
-import { t, lang } from '../../lib/i18n';
-import { bikeText } from '../../display/travel';
-import { dayShort, calendarOf, calToday, two } from '../../lib/time';
+import { t, lang } from '../../common/i18n';
+import { bikeText } from '../../text/travel';
+import { dayShort, calendarOf, calToday, two } from '../../common/time';
 import * as search from '../../state/search';
 import * as query from '../../state/query';
 import { Seg } from '../../widgets/Seg';

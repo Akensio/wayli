@@ -36,7 +36,7 @@ export { hooks } from './shared';
 export { redrawMap, afterDraw } from './render';
 export { cameraPadding } from './shared';
 import { redrawMap } from './render';
-import { debug } from '../lib/debug';
+import { debug } from '../common/debug';
 let locate: LocateControl | null = null;
 
 export async function initMap(): Promise<void> {

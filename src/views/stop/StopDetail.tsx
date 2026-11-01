@@ -4,14 +4,14 @@
 // trains between the two).
 import { Icon } from '../../widgets/Icon';
 import { StarButton } from '../../widgets/StarButton';
-import { t, lang } from '../../lib/i18n';
-import { fmt } from '../../lib/time';
+import { t, lang } from '../../common/i18n';
+import { fmt } from '../../common/time';
 import { favs, stored } from '../../state/store.ts';
 import * as stop from '../../state/stop';
 import { now } from '../../state/clock';
-import { dur } from '../../display/time';
-import { liveClass } from '../../display/live';
-import { railWords } from '../../display/travel';
+import { dur } from '../../text/durations';
+import { liveClass } from '../../text/live';
+import { railWords } from '../../text/travel';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';
 import { InCell } from '../../widgets/LiveMark';

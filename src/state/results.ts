@@ -4,12 +4,12 @@
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
 import { settings } from './store.ts';
-import { lang } from '../lib/i18n';
+import { lang } from '../common/i18n';
 import * as search from './search';
 import { now } from './clock';
-import type { Journey, PlanResult } from '../model/journey';
-import type { Query } from '../model/query';
-import { unset } from '../lib/unset';
+import type { Journey, PlanResult } from '../trip/journey';
+import type { Query } from '../trip/query';
+import { unset } from '../common/unset';
 export type { View } from './store.ts';
 
 type Status = 'idle' | 'planning' | 'locating';

@@ -2,7 +2,7 @@
 // the pick bar while choosing a point, and the live note at the bottom.
 import { useRef } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import { Icon } from '../../widgets/Icon';
 import * as app from '../../state/app';
 import * as nav from '../../state/nav';

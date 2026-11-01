@@ -4,12 +4,12 @@
 // Also here, for both screens: an estimated time's mark, and a ride's stops along it as a fold.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { t } from '../../lib/i18n';
-import { fmt } from '../../lib/time';
-import { routeColor } from '../../display/colors';
-import { legMinutes } from '../../display/time';
-import { isRide } from '../../model/journey';
-import type { Leg, WalkLeg, StopAlong } from '../../model/journey';
+import { t } from '../../common/i18n';
+import { fmt } from '../../common/time';
+import { routeColor } from '../../widgets/lineColors';
+import { legMinutes } from '../../text/durations';
+import { isRide } from '../../trip/journey';
+import type { Leg, WalkLeg, StopAlong } from '../../trip/journey';
 import { LineChip } from '../../widgets/LineChip';
 import { Fold } from '../../widgets/Fold';
 

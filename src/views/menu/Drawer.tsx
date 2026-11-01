@@ -5,7 +5,7 @@ import { useRef } from 'preact/hooks';
 import { Icon } from '../../widgets/Icon';
 import { Logo } from '../../widgets/Logo';
 import { useSwipeClose } from '../../widgets/swipeClose';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import * as app from '../../state/app';
 import type { IconName } from '../../widgets/icons';
 import * as nav from '../../state/nav';

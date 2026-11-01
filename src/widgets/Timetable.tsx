@@ -6,8 +6,8 @@
 // caller's: the stops' times on a line's page, the arrival on a ride).
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { Fold } from './Fold';
-import { t } from '../lib/i18n';
-import { two } from '../lib/time';
+import { t } from '../common/i18n';
+import { two } from '../common/time';
 
 /** What the timetable shows of a trip: when it leaves the stop, and whether that is an estimate. */
 type TimeRow = { trip: number; dep: number; estimated?: boolean };

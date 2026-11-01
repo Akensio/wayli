@@ -6,15 +6,15 @@ import { useState } from 'preact/hooks';
 import type { ComponentChildren, ComponentProps } from 'preact';
 import { LegFrame, StopsAlongFold, legTime } from './LegFrame';
 import { RideOptions } from './RideOptions';
-import { t } from '../../lib/i18n';
-import { fmt } from '../../lib/time';
+import { t } from '../../common/i18n';
+import { fmt } from '../../common/time';
 import { FromTo } from '../../widgets/FromTo';
 import { Fold } from '../../widgets/Fold';
-import { stopsText } from '../../display/travel';
-import { agencyName } from '../../display/operators';
-import { isRide } from '../../model/journey';
-import type { Leg, RideLeg } from '../../model/journey';
-import type { Badge } from '../../display/live';
+import { stopsText } from '../../text/travel';
+import { agencyName } from '../../text/operators';
+import { isRide } from '../../trip/journey';
+import type { Leg, RideLeg } from '../../trip/journey';
+import type { Badge } from '../../text/live';
 
 type Props = {
   l: Leg;

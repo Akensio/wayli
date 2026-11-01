@@ -1,8 +1,8 @@
 // A trip in progress whose screen was hidden: one bar over the map to go back to it.
 import { Icon } from '../../widgets/Icon';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import * as follow from '../../state/follow';
-import { lineText } from '../../display/travel';
+import { lineText } from '../../text/travel';
 import { resumeTrip } from '../../controllers/follow';
 
 export function ResumeBar() {

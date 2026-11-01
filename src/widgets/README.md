@@ -7,6 +7,7 @@ on the screen.
 |---|---|
 | `Icon.tsx`, `icons.ts` | The icon set (one stroke set, an inline SVG sprite) and its component. |
 | `LineChip.tsx` | The one line chip, used everywhere a line is named, on the screen and in the map's bubbles: its colour, its icon or Israel Railways' mark, its number. |
+| `lineColors.ts` | A line's colour by vehicle and operator, and the text colour that reads on it: the chips' and the map's (the courses, the vehicles). |
 | `RailLogo.tsx` | What goes inside every line chip (`LineName`): Israel Railways' mark before a train's number. The mark is CC BY-SA 3.0, credited in the file. |
 | `Timetable.tsx` | A line's times at a stop, by hour, as printed at the stop: the hour, then its minutes with commas. |
 | `ShownTime.tsx` | A time as read: the live one with the planned one struck beside it when they differ, else the planned one. |

@@ -1,7 +1,7 @@
 // Time as the rider reads it: how long, how soon ("leave in 5 min", "in 3 min"), and a time past midnight marked.
 import * as clock from '../engine/clock.ts';
-import { t } from '../lib/i18n';
-import { fmt } from '../lib/time';
+import { t } from '../common/i18n';
+import { fmt } from '../common/time';
 
 /** A walk's or a ride's length in whole minutes, never 0. */
 export const legMinutes: (sec: number) => number = clock.legMinutes;

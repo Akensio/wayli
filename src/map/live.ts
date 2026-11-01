@@ -3,9 +3,9 @@
 // at the bottom says about freshness.
 import type { Map as MLMap } from 'maplibre-gl';
 import * as feed from '../engine/feed.ts';
-import { t } from '../lib/i18n';
-import { routeColor, textOn } from '../display/colors';
-import { lineText } from '../display/travel';
+import { t } from '../common/i18n';
+import { routeColor, textOn } from '../widgets/lineColors';
+import { lineText } from '../text/travel';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as settings from '../state/settings';
@@ -20,8 +20,8 @@ import { heading, vehiclePopup } from './popups';
 import { viewFor } from './view';
 import { currentSheet } from './shared';
 import { metres } from '../engine/geo.ts';
-import { timeOf } from '../lib/time';
-import { debug } from '../lib/debug';
+import { timeOf } from '../common/time';
+import { debug } from '../common/debug';
 
 /** How faded a live vehicle is drawn: much when the whole feed lags four minutes, some when its own report is over
  *  two minutes old, else not at all. */

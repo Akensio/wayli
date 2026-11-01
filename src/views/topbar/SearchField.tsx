@@ -12,7 +12,7 @@ import type { ComponentChildren } from 'preact';
 import { named } from '../../state/names';
 import { useSignal, useSignalEffect } from '@preact/signals';
 import type { Signal } from '@preact/signals';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import { Icon } from '../../widgets/Icon';
 import * as search from '../../state/search';
 import type { Place, StopGroup } from '../../state/search';

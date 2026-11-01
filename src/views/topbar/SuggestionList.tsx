@@ -2,7 +2,7 @@
 // its placement and its animation): the quick entries of an empty trip box, places and line numbers matching, lines
 // or stops near or matching with those opened lately, or the line saying why there is nothing. Each row only says what
 // was tapped; the box closes its list and passes the choice on.
-import { t } from '../../lib/i18n';
+import { t } from '../../common/i18n';
 import { Icon } from '../../widgets/Icon';
 import type { IconName } from '../../widgets/icons';
 import { LineChip } from '../../widgets/LineChip';
@@ -13,8 +13,8 @@ import { savedPlaces, recentPlaces } from '../../state/store.ts';
 import * as search from '../../state/search';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
 import type { View } from '../../state/store.ts';
-import { agencyName } from '../../display/operators';
-import { distText } from '../../display/places';
+import { agencyName } from '../../text/operators';
+import { distText } from '../../text/placeNames';
 import type { SearchHit } from '../../worker/ops.ts';
 import type { Rows } from '../../controllers/suggest';
 

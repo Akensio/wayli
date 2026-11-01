@@ -2,16 +2,16 @@
 // stations of a train timetable), and its actions. The question it edits (places, time, bicycle) is state/query.ts.
 // What the planner itself does (routing, results, the map) stays behind `hooks`, which the app fills in at start.
 import { signal, computed, effect } from '@preact/signals';
-import { t } from '../lib/i18n';
+import { t } from '../common/i18n';
 import * as settings from './settings';
-import type { Place } from '../model/place';
+import type { Place } from '../trip/place';
 import * as query from './query';
 import { from, to, sides, timeTouched } from './query';
-import { unset } from '../lib/unset';
+import { unset } from '../common/unset';
 
 export type { LineGroup, StopGroup } from '../worker/ops.ts';
-export type { Place } from '../model/place';
-export { stopPlace } from '../model/place';
+export type { Place } from '../trip/place';
+export { stopPlace } from '../trip/place';
 export type Side = 'from' | 'to';
 type OptPanel = '' | 'time' | 'bike';
 

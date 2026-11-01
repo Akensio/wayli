@@ -1,5 +1,5 @@
 // Operators' names in English, where the feed has only Hebrew.
-import { lang } from '../lib/i18n';
+import { lang } from '../common/i18n';
 
 const AGENCY_EN: Record<string, string> = {
   'רכבת ישראל': 'Israel Railways',

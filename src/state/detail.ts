@@ -1,9 +1,9 @@
 // The journey detail: the journey shown, one ride of it focused on the map (or none), and what the live data says
 // about each of its rides as it comes in.
 import { signal } from '@preact/signals';
-import type { Query } from '../model/query';
-import type { Journey, RideLive } from '../model/journey';
-import { unset } from '../lib/unset';
+import type { Query } from '../trip/query';
+import type { Journey, RideLive } from '../trip/journey';
+import { unset } from '../common/unset';
 
 export const journey = signal<Journey | null>(null);
 export const query = signal<Query | null>(null);

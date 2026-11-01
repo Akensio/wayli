@@ -2,7 +2,7 @@
 // view (its departures, where its trains go), and once To is set the direct trains between the two with their live
 // times (every 45 s while open). A rider of trains thinks from station to station, not by line.
 import * as clock from '../engine/clock.ts';
-import { isNowDay } from '../lib/time';
+import { isNowDay } from '../common/time';
 import { call } from '../worker/client';
 import { livePoll } from './livepoll';
 import * as search from '../state/search';

@@ -1,4 +1,7 @@
-# lib: used everywhere
+# common: used everywhere
+
+What every part of the app may use: the strings, time, and two small helpers for
+finding bugs.
 
 | File | What |
 |---|---|

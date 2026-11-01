@@ -2,11 +2,11 @@
 // point's, and a vehicle's marker. popups.ts opens them in MapLibre's popups (rendered with Preact into the popup's
 // element, unmounted when it closes); nothing on the map is built from HTML strings.
 import type { Signal } from '@preact/signals';
-import { t } from '../lib/i18n';
-import { fmt, timeOf } from '../lib/time';
+import { t } from '../common/i18n';
+import { fmt, timeOf } from '../common/time';
 import * as delays from '../engine/delays.ts';
-import { agencyName } from '../display/operators';
-import { delayText, signed } from '../display/live';
+import { agencyName } from '../text/operators';
+import { delayText, signed } from '../text/live';
 import { LineChip } from '../widgets/LineChip';
 import { Icon } from '../widgets/Icon';
 import type { IconName } from '../widgets/icons';

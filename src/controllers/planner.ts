@@ -6,8 +6,8 @@ import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { settings, recentPlaces, recentTrips, lastSearch } from '../state/store.ts';
-import { t, lang } from '../lib/i18n';
-import { dateOf } from '../lib/time';
+import { t, lang } from '../common/i18n';
+import { dateOf } from '../common/time';
 import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as search from '../state/search';
@@ -18,8 +18,8 @@ import { lastPos, getPosition } from '../state/position';
 import * as map from '../map/index';
 import { toast } from '../widgets/toast';
 import type { Place } from '../state/search';
-import type { Query } from '../model/query';
-import { planWindow, withLive } from '../model/query';
+import type { Query } from '../trip/query';
+import { planWindow, withLive } from '../trip/query';
 
 import { openLine } from './line';
 import { openStop } from './stop';
@@ -107,7 +107,7 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
     arriveBy = query.timeMode.value === 'arrive';
   const at = query.atSeconds();
   const isNow = !query.timeTouched.value && !arriveBy;
-  const { fromTime, toTime } = planWindow(at, arriveBy, isNow); // model/query.ts
+  const { fromTime, toTime } = planWindow(at, arriveBy, isNow); // trip/query.ts
   const maxWalk = (opts.maxWalk || settings.get().maxWalk) * 60;
   search.busy.value = true;
   results.status.value = 'planning';

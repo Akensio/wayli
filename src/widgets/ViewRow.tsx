@@ -5,9 +5,9 @@ import { Icon } from './Icon';
 import { LineChip } from './LineChip';
 import { FromTo } from './FromTo';
 import { Tappable } from './Tappable';
-import { t } from '../lib/i18n';
-import { agencyName } from '../display/operators';
-import { railWords } from '../display/travel';
+import { t } from '../common/i18n';
+import { agencyName } from '../text/operators';
+import { railWords } from '../text/travel';
 import type { View } from '../state/store.ts';
 import type { ComponentChildren } from 'preact';
 

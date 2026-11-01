@@ -1,12 +1,12 @@
 // The direct trains between two stations: when each leaves and arrives (live when known), how long it takes, where
 // it heads (the way back: the swap between the two boxes at the top). A tap opens the train's stops.
 import { Icon } from '../../widgets/Icon';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 
 import * as st from '../../state/station';
-import { dur } from '../../display/time';
-import { liveClass } from '../../display/live';
-import { railWords } from '../../display/travel';
+import { dur } from '../../text/durations';
+import { liveClass } from '../../text/live';
+import { railWords } from '../../text/travel';
 import { now } from '../../state/clock';
 import { LineChip } from '../../widgets/LineChip';
 import { ShownTime } from '../../widgets/ShownTime';

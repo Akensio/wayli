@@ -8,7 +8,7 @@ import * as feed from '../engine/feed.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { tripStopsCached, estimate } from '../worker/client';
 import type { TrainRow, LiveTrain } from '../state/station';
-import type { RideLeg } from '../model/journey';
+import type { RideLeg } from '../trip/journey';
 import { call } from '../worker/client';
 import * as map from '../map/index';
 

@@ -4,8 +4,8 @@
 // the followed trip) can put them on. The camera fits a thing once: not again when only the highlight, a live
 // update or the courses arriving redraw it, and again when it changes or the sheet comes back to it.
 import type { Map as MLMap, LngLatBounds } from 'maplibre-gl';
-import { dur } from '../display/time';
-import { chipColors, routeColor } from '../display/colors';
+import { dur } from '../text/durations';
+import { chipColors, routeColor } from '../widgets/lineColors';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
 import * as results from '../state/results';
@@ -14,7 +14,7 @@ import * as follow from '../state/follow';
 import * as linePage from '../state/line';
 import * as stopPage from '../state/stop';
 import * as station from '../state/station';
-import type { Journey, Drawable } from '../model/journey';
+import type { Journey, Drawable } from '../trip/journey';
 import type { TrainRow } from '../state/station';
 import { state, markers, EMPTY, stale, stopKindProp, currentSheet, cameraPadding } from './shared';
 import { ensureJourneyLayers, drawJourney, withCourses, boundsOf, legProps } from './layers';

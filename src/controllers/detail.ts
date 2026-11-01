@@ -8,14 +8,14 @@ import * as data from '../state/data';
 import * as detail from '../state/detail';
 import * as nav from '../state/nav';
 import * as map from '../map/index';
-import type { Journey, RideLeg } from '../model/journey';
-import type { Query } from '../model/query';
+import type { Journey, RideLeg } from '../trip/journey';
+import type { Query } from '../trip/query';
 import { liveRides, seeRide } from './liverides';
 import type { TrainRow, LiveTrain } from '../state/station';
 import { recentViews } from '../state/store.ts';
-import { isRide } from '../model/journey';
+import { isRide } from '../trip/journey';
 import { panelSession } from './session';
-import { debug } from '../lib/debug';
+import { debug } from '../common/debug';
 
 const session = panelSession(); // the journey shown; a live answer for an older one is dropped
 

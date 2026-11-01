@@ -214,18 +214,20 @@ the app).
   stops, the note), `popups` (bubbles for a vehicle and a tapped place; a
   line's vehicle markers), `picker` (a point on the map), `shared` (the
   map, its markers).
-- `model/`: places, the question a plan asks, journeys and their legs, what
-  the live data says about a ride (data only). `display/`: how they read and
-  look (time, live, travel and place words, colours, operators). `following/`:
+- `trip/`: what a trip is made of: places, the question a plan asks,
+  journeys and their legs, what the live data says about a ride (data only).
+  `text/`: the words the rider reads, built from data (durations, delays,
+  lines, places, operators); line colours are the widgets'
+  (`widgets/lineColors.ts`). `following/`:
   the rules of following a trip (the state machine, re-planning, the status
   line). The records the phone keeps are the store's (`state/store.ts`).
-- `lib/`: used everywhere: `i18n.ts` (every string in Hebrew and English),
+- `common/`: used everywhere: `i18n.ts` (every string in Hebrew and English),
   `time.ts`.
 - The on-device store is `state/store.ts` (settings, history, saved places
   and the trip in progress, all in localStorage; every write bumps its
   `stored` signal, which the pages showing what it keeps read).
 - Which folder uses which is the table in `src/README.md` ("May use"),
-  and it runs one way: engine, worker, lib, model, display, following, state, widgets, map,
+  and it runs one way: engine, worker, common, trip, text, following, state, widgets, map,
   controllers, views, and the entry files at the top. `tests/imports.test.ts`
   reads that table and fails the build on an import it does not list, on a
   use it lists that the code no longer has, and on any import cycle,
@@ -233,11 +235,11 @@ the app).
 - The controllers start in `controllers/install.ts`, called once by
   `main.ts` before anything is drawn: each fills the hooks state and the
   map reach it through and adds its listeners. Importing a module starts
-  nothing, and a hook nobody filled throws (`lib/unset.ts`) instead of
+  nothing, and a hook nobody filled throws (`common/unset.ts`) instead of
   doing nothing.
 - `public/` (manifest, icons). There are no global names: MapLibre is
   imported from `map/maplibre.ts`, the console's handle is declared beside
-  `lib/debug.ts`, its one writer.
+  `common/debug.ts`, its one writer.
 
 Maps are MapLibre GL 6 (bundled with the app, its worker as a built asset named to it with `setWorkerUrl`, since the ESM-only 6.x cannot find it beside a Vite bundle) over OpenFreeMap
 vector tiles (no key, no cost): the Liberty style, with every colour
@@ -254,7 +256,7 @@ and dark styles were rejected as too bare. The RTL text plugin shapes
 Hebrew and Arabic labels. Lines are coloured by mode and
 operator: trains navy, light rail red (both lines running are "the red
 line"), buses in their operator's colour, approximate brand colours kept
-in one table in `display/colors.ts` (Egged green and Dan blue read off their sites;
+in one table in `widgets/lineColors.ts` (Egged green and Dan blue read off their sites;
 Metropoline orange, Kavim purple, Superbus orange-red, Nateev Express lime,
 Electra Afikim dark blue, Tnufa light blue, Extra magenta, Galim teal, Bet
 Shemesh Express brown from memory, to be corrected as seen on the road),

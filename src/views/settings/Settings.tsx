@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Icon } from '../../widgets/Icon';
 import { compassReport } from '../../map/heading';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import { toast } from '../../widgets/toast';
 import {
   recentPlaces,

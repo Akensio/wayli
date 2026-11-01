@@ -5,7 +5,7 @@ import type { LiveTime } from '../engine/delays.ts';
 
 /** What the live data says about a ride's vehicle at a stop, as it comes in: its time there (late by, passed, how old
  *  the report; null when no vehicle of the trip is seen), or `failed` when the live data could not be had. Data, not
- *  words: the views word it (display/live.ts rideBadge), in the language shown. */
+ *  words: the views word it (text/live.ts rideBadge), in the language shown. */
 export type RideLive = { at: LiveTime | null } | 'failed';
 /** The lateness a plan used at a ride's boarding stop: against the listed time there, with how old the report was. */
 export type LiveInfo = { delay: number; stale?: boolean; seen?: number };

@@ -6,7 +6,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { useSignalEffect } from '@preact/signals';
 import { Icon } from '../../widgets/Icon';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import * as nav from '../../state/nav';
 import * as sheet from '../../state/sheet';
 import { PlanScreen } from '../results/PlanScreen';

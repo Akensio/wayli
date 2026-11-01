@@ -20,8 +20,8 @@ import {
   connections,
 } from '../following/follow.ts';
 import { settings, activeTrip } from '../state/store.ts';
-import { t } from '../lib/i18n';
-import { dateOf } from '../lib/time';
+import { t } from '../common/i18n';
+import { dateOf } from '../common/time';
 import { toast } from '../widgets/toast';
 import { call } from '../worker/client';
 import * as data from '../state/data';
@@ -29,9 +29,9 @@ import * as nav from '../state/nav';
 import * as follow from '../state/follow';
 import { notePos } from '../state/position';
 import * as map from '../map/index';
-import { lineText } from '../display/travel';
-import type { Journey, RideLeg } from '../model/journey';
-import type { Query } from '../model/query';
+import { lineText } from '../text/travel';
+import type { Journey, RideLeg } from '../trip/journey';
+import type { Query } from '../trip/query';
 import type { ActiveTrip, Alt, Position, LegLive } from '../state/follow';
 import type { FollowView, ReplanOrigin } from '../following/follow.ts';
 import type { LiveTime } from '../engine/delays.ts';
@@ -40,8 +40,8 @@ import { seeRide } from './liverides';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
 import { whyReplan, pickAlternative, REPLAN } from '../following/replan.ts';
 import { statusLine } from '../following/status.ts';
-import { isRide } from '../model/journey';
-import { debug } from '../lib/debug';
+import { isRide } from '../trip/journey';
+import { debug } from '../common/debug';
 
 type LiveEst = {
   est: { delay: number; [k: string]: unknown } | null;

@@ -1,6 +1,6 @@
 // How a trip is made, in words: a line's name, how many stops and changes, the bicycle choice, and what trains or the
 // light rail are called between two stations.
-import { t } from '../lib/i18n';
+import { t } from '../common/i18n';
 
 export const lineText = (line?: string | null): string => (line === 'train' ? t('train') : line || '');
 export const stopsText = (n: number): string => (n === 1 ? t('stops1') : t('stopsN', { n }));

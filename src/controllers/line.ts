@@ -1,7 +1,7 @@
 // A line's page: its course and stops on the map, and its vehicles with their delays, every 20 s while open.
 import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.ts';
-import { t } from '../lib/i18n';
+import { t } from '../common/i18n';
 import { toast } from '../widgets/toast';
 import { call } from '../worker/client';
 import * as nav from '../state/nav';
@@ -15,7 +15,7 @@ import { tripStopsCached, estimate } from '../worker/client';
 import * as delays from '../engine/delays.ts';
 import type { LineTime } from '../state/line';
 import { metres } from '../engine/geo.ts';
-import { timeOf } from '../lib/time';
+import { timeOf } from '../common/time';
 import { panelSession, whileVisible } from './session';
 
 const session = panelSession(); // the line shown: older answers dropped, its vehicles' poll stopped with it

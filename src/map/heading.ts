@@ -7,7 +7,7 @@
 // (some send only on change), so the cone keeps its last direction for half a minute; it shows only once a reading
 // came. `window.wayliDebug.compass` counts the readings, to tell a phone without a compass from a drawing problem.
 import type { Map as MLMap } from 'maplibre-gl';
-import { debug } from '../lib/debug';
+import { debug } from '../common/debug';
 
 let heading: number | null = null,
   seenAt = 0,

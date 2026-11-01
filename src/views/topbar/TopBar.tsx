@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { placeName } from '../../state/names';
 import { Icon } from '../../widgets/Icon';
 import { Logo } from '../../widgets/Logo';
-import { t, lang } from '../../lib/i18n';
+import { t, lang } from '../../common/i18n';
 import * as search from '../../state/search';
 import * as nav from '../../state/nav';
 import { SearchField } from './SearchField';
@@ -21,7 +21,7 @@ import { attachBarPull } from '../shell/pullRefresh';
 import { chooseStation, swapStations, endStations } from '../../controllers/station';
 import { startOver, openStopGroup } from '../../controllers/planner';
 import { openLine } from '../../controllers/line';
-import { railWords } from '../../display/travel';
+import { railWords } from '../../text/travel';
 
 const LINE_FILTERS: { f: search.LineFilter; label: string; icon?: IconName }[] = [
   { f: 'all', label: 'fAll' },

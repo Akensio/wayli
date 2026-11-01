@@ -12,7 +12,7 @@ the answers; the state (`state/follow.ts`) keeps the trip being followed.
 | `status.ts` | The notification's line while following: what to do next, with the live time when there is one. |
 
 Does not own: the timers, the position watch, the alerts or the map (all in
-`controllers/follow.ts`), the words it uses (`display/`).
+`controllers/follow.ts`), the words it uses (`text/`).
 
 Tested in `tests/follow.test.mjs`, `followview.test.ts`, `replan.test.ts`,
 `status.test.ts`.

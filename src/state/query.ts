@@ -4,9 +4,9 @@
 // The bar (state/search.ts) shows and edits it; the planner reads it.
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
-import { calToday, hm, secOf, calendarOf } from '../lib/time';
-import type { Place } from '../model/place';
-import { unset } from '../lib/unset';
+import { calToday, hm, secOf, calendarOf } from '../common/time';
+import type { Place } from '../trip/place';
+import { unset } from '../common/unset';
 
 // ---- the places
 export const from = signal<Place | null>(null);

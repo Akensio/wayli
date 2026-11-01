@@ -2,7 +2,7 @@
 import { test, expect } from 'vitest';
 import { statusLine } from '../src/following/status.ts';
 import type { FollowView } from '../src/following/follow.ts';
-import type { RideLeg } from '../src/model/journey';
+import type { RideLeg } from '../src/trip/journey';
 
 const leg = {
   type: 'ride',

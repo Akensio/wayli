@@ -4,9 +4,9 @@
 // The records are typed here, where they are written; the imports of the app's shapes are type-only, so at run
 // time the store depends on nothing of the app.
 import { signal } from '@preact/signals';
-import type { PlanResult, Journey } from '../model/journey';
-import type { Query } from '../model/query';
-import type { Place } from '../model/place';
+import type { PlanResult, Journey } from '../trip/journey';
+import type { Query } from '../trip/query';
+import type { Place } from '../trip/place';
 import type { StopLine } from '../worker/ops.ts';
 import type { ActiveTrip } from '../following/follow.ts';
 

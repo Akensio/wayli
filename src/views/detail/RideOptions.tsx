@@ -4,10 +4,10 @@
 // boarding stop with that trip chosen. Trains the same: every train from the station that stops at the other.
 import { useEffect, useState } from 'preact/hooks';
 import { Icon } from '../../widgets/Icon';
-import { t } from '../../lib/i18n';
+import { t } from '../../common/i18n';
 import { ShownTime } from '../../widgets/ShownTime';
-import { dur } from '../../display/time';
-import { liveClass } from '../../display/live';
+import { dur } from '../../text/durations';
+import { liveClass } from '../../text/live';
 import type { TrainRow, LiveTrain } from '../../state/station';
 import { LineChip } from '../../widgets/LineChip';
 import { InCell } from '../../widgets/LiveMark';

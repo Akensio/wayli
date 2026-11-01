@@ -1,13 +1,13 @@
 // What the map modules share: the one map under everything, its markers, the stops that are stations, and
 // what the map needs from the rest of the app.
 import type { Map as MLMap, Marker, Popup } from 'maplibre-gl';
-import type { Place } from '../model/place';
+import type { Place } from '../trip/place';
 import * as nav from '../state/nav';
 import * as sheet from '../state/sheet';
 import * as results from '../state/results';
 import * as detail from '../state/detail';
 import { visibleArea, type Sheet, type Padding } from './view';
-import { unset } from '../lib/unset';
+import { unset } from '../common/unset';
 
 export const state = {
   main: null as MLMap | null,

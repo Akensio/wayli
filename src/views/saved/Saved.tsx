@@ -2,8 +2,8 @@
 import { Icon } from '../../widgets/Icon';
 import { placeName, named } from '../../state/names';
 import { FromTo } from '../../widgets/FromTo';
-import { t, lang } from '../../lib/i18n';
-import { bikeText } from '../../display/travel';
+import { t, lang } from '../../common/i18n';
+import { bikeText } from '../../text/travel';
 import { toast } from '../../widgets/toast';
 import { savedPlaces, favs, stored } from '../../state/store.ts';
 import { StopList } from './StopList';

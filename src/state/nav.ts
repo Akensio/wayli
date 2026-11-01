@@ -5,12 +5,12 @@
 // How the phone's Back reaches the stack is a back-end chosen once (below): browser history, or on Android a
 // CloseWatcher per entry, so back closes the panel with the app's own animation and the browser draws nothing.
 import { signal, computed } from '@preact/signals';
-import { t } from '../lib/i18n';
+import { t } from '../common/i18n';
 import * as sheet from './sheet';
 import * as results from './results';
 import * as search from './search';
 import * as chooser from './chooser';
-import { unset } from '../lib/unset';
+import { unset } from '../common/unset';
 
 // 'search': the bar searches lines or stops (a step back is the trip search again); 'ui': a search box's open list or
 // its keyboard, which back closes first (Android only: see pushUi)

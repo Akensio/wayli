@@ -1,10 +1,10 @@
 // Sharing a journey: its legs as text and a link that opens the same plan.
-import { t } from '../../lib/i18n';
-import { fmt, hm } from '../../lib/time';
-import { dur, legMinutes } from '../../display/time';
-import { lineText } from '../../display/travel';
-import type { Journey } from '../../model/journey';
-import type { Query } from '../../model/query';
+import { t } from '../../common/i18n';
+import { fmt, hm } from '../../common/time';
+import { dur, legMinutes } from '../../text/durations';
+import { lineText } from '../../text/travel';
+import type { Journey } from '../../trip/journey';
+import type { Query } from '../../trip/query';
 
 /** Share a journey through the phone's share sheet, or copy it where there is none. `names` are the two places as the
  *  rider reads them (state/names). Answers what happened: shared, copied, or nothing (cancelled or not possible). */

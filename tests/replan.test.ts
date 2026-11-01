@@ -1,7 +1,7 @@
 // Re-planning on the way (src/following/replan.ts): when to look for a faster way, and which way is worth proposing.
 import { test, expect } from 'vitest';
 import { whyReplan, pickAlternative, REPLAN, type ReplanSignals } from '../src/following/replan.ts';
-import type { Journey, RideLeg } from '../src/model/journey';
+import type { Journey, RideLeg } from '../src/trip/journey';
 
 const quiet: ReplanSignals = {
   force: false,

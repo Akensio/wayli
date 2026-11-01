@@ -1,11 +1,11 @@
 // The line the collapsed sheet shows: the journey highlighted on the map, with its countdown; nothing without results.
 // Only collapsed: once the sheet opens the list says the same (the line folds away, styles/results.css).
 import { useEffect } from 'preact/hooks';
-import { lang } from '../../lib/i18n';
+import { lang } from '../../common/i18n';
 import { TimeRange } from '../../widgets/TimeRange';
 import * as results from '../../state/results';
-import { dur } from '../../display/time';
-import { transfersText } from '../../display/travel';
+import { dur } from '../../text/durations';
+import { transfersText } from '../../text/travel';
 import { Leave } from './JourneyCard';
 import * as sheet from '../../state/sheet';
 import { revealCard } from '../../controllers/planner';

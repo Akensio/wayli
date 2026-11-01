@@ -1,7 +1,7 @@
 // Places and distances as the rider reads them: how far, a place's name with its platforms, what a point on the map is
 // called.
-import { t, lang } from '../lib/i18n';
-import type { Place } from '../model/place';
+import { t, lang } from '../common/i18n';
+import type { Place } from '../trip/place';
 
 /** A distance as the rider reads it: to the metre close by, by 50 m within a kilometre, then in km (one decimal under 10). */
 export function distText(m: number): string {

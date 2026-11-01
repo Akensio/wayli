@@ -3,13 +3,13 @@
 // before (to spare, tight, or missed), and its stops along, open by themselves on the current ride, each at its live
 // time with the passed ones marked; a walk or bicycle ride in words.
 import { LegFrame, StopsAlongFold, legTime } from '../detail/LegFrame';
-import { t } from '../../lib/i18n';
-import { fmt } from '../../lib/time';
+import { t } from '../../common/i18n';
+import { fmt } from '../../common/time';
 import { FromTo } from '../../widgets/FromTo';
-import { stopsText } from '../../display/travel';
-import { isRide } from '../../model/journey';
-import type { Leg } from '../../model/journey';
-import type { Badge } from '../../display/live';
+import { stopsText } from '../../text/travel';
+import { isRide } from '../../trip/journey';
+import type { Leg } from '../../trip/journey';
+import type { Badge } from '../../text/live';
 import type { LegLive } from '../../state/follow';
 
 type Change = NonNullable<LegLive['change']>;
