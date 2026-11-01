@@ -348,10 +348,13 @@ function skelHe(word: string): string[] {
   const chars = [...word];
   let s = '';
   chars.forEach((c, i) => {
-    if (c === 'ה' && i === chars.length - 1 && chars.length > 1) return; // a final ה is a vowel
-    s += HEB_SK[c] ?? (/\d/.test(c) ? c : '');
+    if (c === 'ה' && i === chars.length - 1 && chars.length > 1) s += '|'; // a final ה is a vowel
+    else if (/\d/.test(c)) s += c;
+    else s += HEB_SK[c] ?? '|'; // א ע י: vowels here, dropped, but they keep their neighbours apart
   });
-  return expand(squash(s)); // letters doubled as written collapse; two the dropped vowels bring together do not (מיזנון)
+  // letters doubled as written collapse; two that a dropped letter stood between do not (כנען keeps both nuns, as
+  // "knaan" does), nor two a silent ו brings together (מיזנון)
+  return expand(squash(s).replace(/\|/g, ''));
 }
 /** A Latin word's consonant skeletons; `article` false keeps a leading "ha" (a city's name never takes the article). */
 function skelLatin(word: string, article = true): string[] {
@@ -450,6 +453,13 @@ function looseHe(q: QueryWord, w: string, wsk: string[], i: number): number {
     }
   return best;
 }
+/** A Hebrew word's skeletons for a Latin word: a ו may be a silent vowel only where the Latin word has a vowel it could
+ *  be (o, u) or a v/w; "knaan" has none, so קניון keeps its ו and is not כנען. */
+function vavAsWritten(latin: string, he: string | undefined, wv: string[]): string[] {
+  if (!he || !he.includes('ו') || /[ouvw]/.test(latin)) return wv;
+  const most = Math.max(...wv.map((x) => x.length));
+  return wv.filter((x) => x.length === most);
+}
 /**
  * How well a query word's skeletons match a name word's, below a match of the text itself: the same skeleton (the word
  * spelt another way: עזראלי for עזריאלי, "dizengof"), the start of it (still typing), or, from four consonants on,
@@ -513,7 +523,7 @@ function matchEntry(
       let slip = 0;
       if (sk)
         for (let i = 0; i < sk.length; i++) {
-          const v = skelScore(q.sk, sk[i], i, firstWordNames);
+          const v = skelScore(q.sk, vavAsWritten(q.w, he[i], sk[i]), i, firstWordNames);
           if (v < 0) slip = Math.max(slip, -v);
           else best = Math.max(best, v);
         }

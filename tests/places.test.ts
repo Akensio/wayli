@@ -23,14 +23,17 @@ const pois = [
   ['Benedict', 'amenity=restaurant', TLV, 32.071, 34.789, 'Benedict'], // named only in English (from Overture)
   ['מיזנון', 'amenity=restaurant', TLV, 32.076, 34.781, ''],
   ['מוזיאון תל אביב', 'tourism=museum', TLV, 32.077, 34.787, ''],
+  ['מלון כנען ספא', 'tourism=hotel', 'צפת', 32.97, 35.5, ''],
+  ['קניון לב צפת', 'shop=mall', 'צפת', 32.965, 35.497, ''],
 ];
 const cities = [
   [TLV, 32.08, 34.78, 'Tel Aviv-Yafo'],
   ['סעד', 31.47, 34.53, "Sa'ad"],
   ['כרמיאל', 32.92, 35.3, 'Karmiel'],
+  ['צפת', 32.962, 35.505, 'Safed'],
 ];
 const book = parsePlaces(
-  writeContainer({ format: 4, counts: { streets: 4, addresses: 0, pois: 9, cities: 3 }, streets, pois, cities }, [
+  writeContainer({ format: 4, counts: { streets: 4, addresses: 0, pois: 11, cities: 4 }, streets, pois, cities }, [
     { name: 'addrStreet', dtype: 'int32', data: [] },
     { name: 'addrNumber', dtype: 'uint16', data: [] },
     { name: 'addrLat', dtype: 'float32', data: [] },
@@ -85,4 +88,12 @@ test('across the scripts: a name in English by its Hebrew spelling, a Hebrew one
 
 test('two passes give what one would: the loose pass only fills what the exact one leaves', () => {
   expect(searchPlaces(book, 'מוזיאון', 5, null, 'he').map((h) => h.name)[0]).toBe('מוזיאון תל אביב');
+});
+
+test('a letter dropped as a vowel keeps its neighbours apart, and a vav is silent only where the Latin has a vowel for it', () => {
+  expect(top('knaan spa')).toBe('מלון כנען ספא'); // כנען keeps both nuns, as "knaan" does
+  const inSafed = searchPlaces(book, 'knaan safed', 5, null, 'he').map((h) => h.name);
+  expect(inSafed).toContain('מלון כנען ספא');
+  expect(inSafed).not.toContain('קניון לב צפת'); // קניון's ו is a consonant for "knaan"
+  expect(top('kanyon lev')).toBe('קניון לב צפת'); // and silent for "kanyon"
 });
