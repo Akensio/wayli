@@ -6,8 +6,8 @@ clinics, schools, gyms, hotels and the like, which OpenStreetMap maps only in pa
 
 Overture's places (https://docs.overturemaps.org/guides/places/) come mostly from Meta, Microsoft and Foursquare,
 under CDLA-Permissive-2.0, Apache-2.0 and CC0 (each record says which); they are read from Overture's public
-bucket (no key) with DuckDB, newest release first. Kept: Israel and the Palestinian territories, confidence 0.7 and
-up, not closed, of the kinds a rider travels to (KEEP_TOP, less SKIP). Each place is written as
+bucket (no key) with DuckDB, newest release first. Kept: Israel and the Palestinian territories, confidence 0.5 and
+up (below it the names thin out into closed and one-off pages), not closed, of the kinds a rider travels to (KEEP_TOP, less SKIP). Each place is written as
 [name, English name, kind, lat, lon], its kind an OpenStreetMap-style tag where the app has a word for it (KIND),
 else "<group>=<category>" (the app names the group). places.py drops the ones OpenStreetMap already has.
 """
@@ -26,7 +26,7 @@ from common import log
 BUCKET = "https://overturemaps-us-west-2.s3.amazonaws.com"
 BBOX = (34.2, 29.45, 35.9, 33.35)  # west, south, east, north: Israel and the Palestinian territories, with a margin
 COUNTRIES = {"IL", "PS"}
-MIN_CONFIDENCE = 0.7
+MIN_CONFIDENCE = 0.5
 # the groups of Overture's taxonomy a rider travels to
 KEEP_TOP = {"food_and_drink", "shopping", "health_care", "education", "sports_and_recreation", "lodging",
             "arts_and_entertainment", "cultural_and_historic", "travel_and_transportation", "community_and_government",

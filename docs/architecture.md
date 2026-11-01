@@ -575,10 +575,13 @@ hospitals, universities, malls, parks and stations, and everyday places such
 as restaurants, cafés, bars, hotels, shops, pharmacies, banks, schools,
 synagogues and offices), and Overture Maps' everyday places where
 OpenStreetMap lacks them (`pipeline/overture.py`: Israel and the
-Palestinian territories, confidence 0.7 and up, the kinds a rider travels
+Palestinian territories, confidence 0.5 and up, the kinds a rider travels
 to; one with the same name within 150 m of an OpenStreetMap place is that
-place): about 45k streets, 212k house numbers, 102k places (49k from
-OpenStreetMap, 53k from Overture), 4.3 MB gzipped. Overture's hospitals and
+place): about 45k streets, 212k house numbers, 139k places (49k from
+OpenStreetMap, 90k from Overture), 5.2 MB gzipped. Overture's confidence
+is mostly Meta's own signal for a page; at 0.5-0.7 the names are still
+real shops and restaurants (a 2026-11-01 sample), below it closed and
+one-off pages take over, so 0.5 is the floor. Overture's hospitals and
 malls come in as clinics and shopping centres, so only OpenStreetMap's rank
 as landmarks. Landmarks rank above streets
 at an equal match, everyday places level with them, so an exact name wins
@@ -586,7 +589,14 @@ without burying street searches in shops. `src/engine/places.ts` parses free tex
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
 ranks stops, addresses, streets, places and cities together, nearer ones
 first when the user's location is known (distance breaks ties even among
-places close by). A quote mark inside a word belongs to the word, so הל"ה,
+places close by). Trailing words that name a city are the city ("דיזנגוף 50
+תל אביב"), unless the words as typed are a street's name: many streets are
+named after cities (שדרות ירושלים 15, דרך חיפה 3), and a street-type word
+(שדרות, רחוב, דרך) says the rider means a street, so no city row is offered
+for it. A place is also found with one typed word left over ("חומוס אבו חסן"
+for אבו חסן, "ארומה דיזנגוף" for a branch named only ארומה), but only when
+every word of its name was typed exactly, and it lists after everything
+found as typed, like a slip. A quote mark inside a word belongs to the word, so הל"ה,
 צה"ל, ג'וליס and כפר חב"ד match whether typed with the mark, without it,
 or with the keyboard's ״ or ''; the same rule normalises stop names. A stop
 matches whether its Hebrew or its English name is typed (both are indexed),

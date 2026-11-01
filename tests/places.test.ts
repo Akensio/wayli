@@ -11,6 +11,7 @@ const streets = [
   ['רוטשילד', TLV, 32.064, 34.774, 'Rothschild'],
   ['קפלן', TLV, 32.073, 34.787, 'Kaplan'],
   ['רביבים', TLV, 32.1, 34.8, ''],
+  ['שדרות ירושלים', TLV, 32.044, 34.757, 'Jerusalem Blvd'], // a street named after a city; address 15 below
 ];
 // [name, kind, city, lat, lon, English name]
 const pois = [
@@ -26,19 +27,21 @@ const pois = [
   ['מלון כנען ספא', 'tourism=hotel', 'צפת', 32.97, 35.5, ''],
   ['קניון לב צפת', 'shop=mall', 'צפת', 32.965, 35.497, ''],
   ['מלון כנען ספא - canaan spa hotel', 'tourism=hotel', 'צפת', 32.977, 35.507, ''], // both languages in one name
+  ['אבו חסן', 'amenity=restaurant', TLV, 32.049, 34.757, ''], // the name without the dish riders put before it
 ];
 const cities = [
   [TLV, 32.08, 34.78, 'Tel Aviv-Yafo'],
   ['סעד', 31.47, 34.53, "Sa'ad"],
   ['כרמיאל', 32.92, 35.3, 'Karmiel'],
   ['צפת', 32.962, 35.505, 'Safed'],
+  ['ירושלים', 31.78, 35.22, 'Jerusalem'],
 ];
 const book = parsePlaces(
-  writeContainer({ format: 4, counts: { streets: 4, addresses: 0, pois: 12, cities: 4 }, streets, pois, cities }, [
-    { name: 'addrStreet', dtype: 'int32', data: [] },
-    { name: 'addrNumber', dtype: 'uint16', data: [] },
-    { name: 'addrLat', dtype: 'float32', data: [] },
-    { name: 'addrLon', dtype: 'float32', data: [] },
+  writeContainer({ format: 4, counts: { streets: 5, addresses: 1, pois: 13, cities: 5 }, streets, pois, cities }, [
+    { name: 'addrStreet', dtype: 'int32', data: [4] }, // שדרות ירושלים 15
+    { name: 'addrNumber', dtype: 'uint16', data: [15] },
+    { name: 'addrLat', dtype: 'float32', data: [32.0505] },
+    { name: 'addrLon', dtype: 'float32', data: [34.7575] },
   ]),
 );
 const top = (q: string) => searchPlaces(book, q, 3, null, 'he')[0]?.name ?? null;
@@ -106,4 +109,22 @@ test('a letter dropped as a vowel keeps its neighbours apart, and a vav is silen
   expect(inSafed).toContain('מלון כנען ספא');
   expect(inSafed).not.toContain('קניון לב צפת'); // קניון's ו is a consonant for "knaan"
   expect(top('kanyon lev')).toBe('קניון לב צפת'); // and silent for "kanyon"
+});
+
+test('a street named after a city is a street: its trailing word is not the city', () => {
+  const hits = (q: string) => searchPlaces(book, q, 5, null, 'he');
+  expect(hits('שדרות ירושלים 15')[0]).toMatchObject({ kind: 'address', name: 'שדרות ירושלים 15' });
+  expect(hits('שד ירושלים 15')[0]).toMatchObject({ kind: 'address', name: 'שדרות ירושלים 15' });
+  expect(hits('שדרות ירושלים').map((h) => h.kind)).not.toContain('city'); // a street-type word says a street
+  expect(hits('ירושלים')[0]).toMatchObject({ kind: 'city', name: 'ירושלים' }); // the city, as before
+  expect(hits('דיזנגוף תל אביב')[0]).toMatchObject({ kind: 'street', name: 'דיזנגוף', city: TLV }); // a city still stripped
+});
+
+test('a place is found with one typed word left over, when its whole name was typed, listed loosely', () => {
+  const hits = searchPlaces(book, 'חומוס אבו חסן', 5, null, 'he');
+  expect(hits.map((h) => h.name)).toContain('אבו חסן');
+  expect(hits.find((h) => h.name === 'אבו חסן')!.score).toBeLessThan(0); // after anything found as typed
+  expect(searchPlaces(book, 'חומוס אבו', 5, null, 'he').map((h) => h.name)).not.toContain('אבו חסן'); // not the whole name
+  expect(searchPlaces(book, 'ארומה דיזנגוף', 5, null, 'he').map((h) => h.name)).toContain('ארומה');
+  expect(top('דיזנגוף')).toBe('דיזנגוף'); // streets: never with a word left over
 });

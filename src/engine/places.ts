@@ -42,6 +42,7 @@ export type Places = Container<PlacesSections, PlacesHeader> & {
   addrOff: Int32Array;
   streetWords: string[][]; // per street, the words of its Hebrew name in their looser form (canon)
   streetCity: string[]; // per street, its city, normalised
+  streetNames: Set<string>; // every street name in its looser form (the words joined), for the parser
   cityNorm: string[]; // per city, its Hebrew name, normalised
   cityEnNorm: string[]; // per city, its English name, normalised ('' when none)
   cityEnByHe: Map<string, string>; // a city's English name by its Hebrew one, for the cities that have one
@@ -130,6 +131,7 @@ export function parsePlaces(ab: ArrayBuffer): Places {
   pl.addrOff = off;
   pl.streetWords = pl.streets.map((s) => words(s[0]));
   pl.streetCity = pl.streets.map((s) => norm(s[1]));
+  pl.streetNames = new Set(pl.streetWords.map((ws) => ws.join(' ')));
   pl.cityNorm = pl.cities.map((c) => norm(c[0]));
   pl.cityEnNorm = pl.cities.map((c) => norm(c[3] || ''));
   pl.cityEnByHe = new Map(pl.cities.filter((c) => c[3]).map((c): [string, string] => [c[0], c[3]]));
@@ -556,7 +558,8 @@ function matchEntry(
   firstWordNames = true,
   loosen = true,
 ): { score: number; loose: boolean } {
-  let loose = false;
+  let loose = false,
+    missed = false; // a typed word the name lacks (places only: "חומוס אבו חסן" for אבו חסן)
   let score = 0,
     exact = 0,
     bySound = 0, // query words whose skeleton is a whole word's of the name
@@ -587,12 +590,20 @@ function matchEntry(
         loose = true;
       }
     }
-    if (!best) return { score: 0, loose };
+    if (!best) {
+      if (firstWordNames || !loosen || qs.length < 2 || missed) return { score: 0, loose };
+      missed = true; // allowed once, and only if the rest says the whole name (below)
+      continue;
+    }
     if (best >= 3) exact++;
     if (sk && sk.some((ws) => q.sk.some((a) => ws.includes(a)))) bySound++;
     score += best;
   }
   const n = latin && en && en.length ? en.length : he.length;
+  // a place found with one typed word left over (a dish, a type, a quarter: "חומוס אבו חסן", "ארומה דיזנגוף"): only when
+  // every word of its name was typed exactly, and listed loosely, after what was found as typed
+  if (missed)
+    return exact === n && exact === qs.length - 1 ? { score: score + 1 - n * 0.05, loose: true } : { score: 0, loose };
   if (exact === qs.length && qs.length === n) score += 1;
   // every word of the name said, by sound ("port said" for פורט סעיד): as good as a name in full, though no word alone
   // was a strong match (two consonants say little by themselves)
@@ -605,8 +616,17 @@ const prefixSkel = (a: string[][], b: string[][]): boolean =>
   a.length <= b.length && a.every((qa, i) => qa.some((x) => b[i].includes(x))); // "tel aviv" for תל אביב יפו
 
 /** A query parsed: the words to match (in their looser form), the house number typed and its suffix, the city named
- *  (its index in `cities`, -1 when none) and the text that named it. */
-type ParsedQuery = { words: string[]; number: number | null; suffix: string; cityIdx: number; cityText: string };
+ *  (its index in `cities`, -1 when none), the text that named it, and whether a street-type word (שדרות, רחוב) was
+ *  typed, which says the rider means a street, not a city of that name. */
+type ParsedQuery = {
+  words: string[];
+  number: number | null;
+  suffix: string;
+  cityIdx: number;
+  cityText: string;
+  streetTyped: boolean;
+};
+const STREET_WORD = /^(רחוב|רח|שדרות|שד|דרך|סמטת|כיכר|ככר)$/;
 /**
  * Parse free text: words, an optional house number, an optional city (after a comma, or trailing words naming a city).
  */
@@ -643,13 +663,15 @@ function parseQuery(pl: Places, text: string): ParsedQuery {
     return ci;
   };
   let cityIdx = -1;
+  const streetTyped = rest.some((t) => STREET_WORD.test(t));
   // the whole text names a city ("petach tikva", "tel aviv"): nothing else to look for
-  if (!cityText && number === null && rest.length >= 2) {
+  if (!cityText && number === null && rest.length >= 2 && !streetTyped) {
     const ci = findCity(rest.join(' '));
-    if (ci >= 0) return { words: [], number, suffix, cityIdx: ci, cityText: rest.join(' ') };
+    if (ci >= 0) return { words: [], number, suffix, cityIdx: ci, cityText: rest.join(' '), streetTyped };
   }
-  // trailing words that name a city, when no comma was used (longest match first)
-  if (!cityText && rest.length >= 2) {
+  // trailing words that name a city, when no comma was used (longest match first); not when the words as typed are a
+  // street's name: many streets are named after cities (שדרות ירושלים 15, דרך חיפה 3)
+  if (!cityText && rest.length >= 2 && !pl.streetNames.has(words(rest.join(' ')).join(' '))) {
     for (let k = Math.min(3, rest.length - 1); k >= 1; k--) {
       const ci = findCity(rest.slice(-k).join(' '));
       if (ci >= 0) {
@@ -663,7 +685,7 @@ function parseQuery(pl: Places, text: string): ParsedQuery {
     if (cityIdx < 0)
       cityIdx = pl.cityNorm.findIndex((c, i) => c.startsWith(cityText) || pl.cityEnNorm[i].startsWith(cityText));
   }
-  return { words: unabbr(rest).map(canon).filter(Boolean), number, suffix, cityIdx, cityText };
+  return { words: unabbr(rest).map(canon).filter(Boolean), number, suffix, cityIdx, cityText, streetTyped };
 }
 
 // names as the rider's language wants them: English where the data has it, else Hebrew
@@ -816,8 +838,8 @@ export function searchPlaces(
     return { kind: 'city', name: (lang === 'en' && c[3]) || c[0], city: '', lat: c[1], lon: c[2], score };
   };
   if (!q.words.length && q.cityIdx >= 0) return [cityRow(q.cityIdx, 15)]; // the whole text named a city
-  // a city by itself
-  if (q.words.length && q.number === null) {
+  // a city by itself (not when the rider typed a street-type word: "שדרות ירושלים" is the street, not the city)
+  if (q.words.length && q.number === null && !q.streetTyped) {
     const whole = q.words.join(' ');
     const wsk = latin ? q.words.map((w) => (isLatin(w) ? skelLatin(w) : skelHe(w))) : null;
     pl.cities.forEach((c, i) => {
