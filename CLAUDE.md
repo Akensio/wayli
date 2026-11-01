@@ -22,7 +22,13 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    On-device RAPTOR is the leading option because it needs the least
    infrastructure, and the feasibility test decides. Offline use and "no
    trip request leaves the phone" are benefits of that option, not
-   requirements on their own.
+   requirements on their own. The same goes for everything else that runs
+   on the phone (maintainer, 2026-11-01): it is there to save
+   infrastructure and bills, not as a creed. A paid service or a small
+   server that does what free data and the device cannot is a question of
+   cost, the maintainer's call, not a breach of principle
+   (`docs/principles.md`, rule 2); the privacy promises are the specific
+   ones above, nothing wider.
 3. License: every source file in this repo is AGPL-3.0. Only add dependencies
    whose licenses are AGPL-compatible (MIT, BSD, Apache-2.0, MPL-2.0, LGPL,
    GPL, AGPL are fine). If a package's license is unclear, don't add it.

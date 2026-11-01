@@ -27,7 +27,7 @@ the data every night and publishes to GitHub Pages. No crowd reports yet; see
   rail in one query. This is the feature everything else is built around.
 - Live arrivals at a stop, nearby stops, line search, a map, favorites.
 - Search that understands addresses, streets, cities and places, offline,
-  from OpenStreetMap: nothing you type leaves your phone.
+  from OpenStreetMap and Overture Maps, with no server to run.
 - Hebrew and right-to-left as first-class, not an afterthought.
 - Bicycles as a real mode: ride to the station, ride between legs, take the
   bike on the train where allowed.
@@ -44,7 +44,10 @@ the data every night and publishes to GitHub Pages. No crowd reports yet; see
   CDN, rebuilt every night by a GitHub Action. A tiny worker exists only
   where it cannot be avoided: relaying real-time data, collecting crowd
   reports, sending push alerts. Nothing that costs money or needs
-  babysitting gets in without a reason.
+  babysitting gets in without a reason. Work runs on your phone because
+  that is the cheapest setup, not as a creed: a paid service that does
+  what free data cannot is weighed by its bill, and what it sends is
+  stated plainly.
 - **Routing on the device, if it holds up.** The option being tested first:
   compile the national GTFS timetable into a compact file and run the RAPTOR
   algorithm inside the app, so trip planning needs no server, works offline,
