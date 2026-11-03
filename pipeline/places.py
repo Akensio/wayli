@@ -28,7 +28,7 @@ from common import log, member, haversine
 
 FORMAT_VERSION = 5   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
                      # 4: an address joins a street of its name only in its city or nearby (street_for);
-                     # 5: Overture's everyday places beside OpenStreetMap's (--overture)
+                     # 5: Overture's everyday places beside OpenStreetMap's (--overture); public bodies' too (--public)
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {
@@ -128,9 +128,9 @@ def street_for(name, name_norm, city, lat, lon, by_name, street_list, street_ind
     return street_index[key]
 
 
-# Overture's places join OpenStreetMap's where OpenStreetMap lacks them: one with the same name (Hebrew or English,
-# normalised, or one name the start of the other: "ארומה" and "ארומה דיזנגוף") within SAME_M of an OpenStreetMap place
-# is the same place.
+# Another source's places join those already listed where they are lacking: one with the same name (Hebrew or English,
+# normalised, or one name the start of the other: "ארומה" and "ארומה דיזנגוף") within SAME_M of a listed place is the
+# same place. Sources are added in order (OpenStreetMap, Overture, public bodies), so the first listing names a place.
 SAME_M = 150
 
 
@@ -138,9 +138,10 @@ def same_name(a, b):
     return bool(a and b) and (a == b or a.startswith(b + " ") or b.startswith(a + " "))
 
 
-def add_overture(poi_list, path, city_near):
-    """Add Overture's places (pipeline/overture.py's file) to poi_list ([name, kind, city, lat, lon, name_en]) where
-    no place of the same name is within SAME_M; returns how many were added."""
+def add_places(poi_list, path, city_near):
+    """Add a source's places (a file of pipeline/overture.py or pipeline/public.py: {"places": [[name, name_en, kind,
+    lat, lon], ...]}) to poi_list ([name, kind, city, lat, lon, name_en]) where no place of the same name is within
+    SAME_M; returns how many were added."""
     import gzip
     with gzip.open(path, "rt", encoding="utf-8") as f:
         places = json.load(f)["places"]
@@ -159,7 +160,7 @@ def add_overture(poi_list, path, city_near):
         if dup:
             continue
         poi_list.append([name, kind, city_near(lat, lon), round(lat, 6), round(lon, 6), en or ""])
-        grid[(cy, cx)].append((lat, lon, norm(name), norm(en or "")))   # Overture's own repeats too
+        grid[(cy, cx)].append((lat, lon, norm(name), norm(en or "")))   # the source's own repeats too
         added += 1
     return added
 
@@ -275,6 +276,7 @@ def main():
     ap.add_argument("pbf", nargs="?")
     ap.add_argument("--gtfs", help="GTFS zip, for the city of each stop and the English city names")
     ap.add_argument("--overture", default=None, help="Overture's everyday places (pipeline/overture.py), added where OpenStreetMap lacks them")
+    ap.add_argument("--public", default=None, help="public bodies' businesses and institutions (pipeline/public.py), added where both lack them")
     ap.add_argument("--out", default="data/places.bin.gz")
     ap.add_argument("--check", default=None, help="exit 0 when this compiled file has the current format, else 1 (for the build)")
     args = ap.parse_args()
@@ -360,8 +362,11 @@ def main():
         seen.add(key)
         poi_list.append([name, kind, city_near(lat, lon), round(lat, 6), round(lon, 6), en])
     if args.overture:
-        added = add_overture(poi_list, args.overture, city_near)
+        added = add_places(poi_list, args.overture, city_near)
         log(f"Overture: {added} places added beside OpenStreetMap's")
+    if args.public:
+        added = add_places(poi_list, args.public, city_near)
+        log(f"public bodies: {added} places added beside the rest")
     poi_list.sort(key=lambda p: (p[0], p[2]))
 
     sec = container.Sections()

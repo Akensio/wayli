@@ -13,7 +13,8 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from places import street_for, add_overture  # noqa: E402
+from places import street_for, add_places  # noqa: E402
+from public import kind_of, clean_name, survey_name  # noqa: E402
 
 TLV, TIB, RG = "תל אביב יפו", "טבריה", "רמת גן"
 # the city a point is in: Tiberias in the north, Ramat Gan east of 34.81, Tel Aviv elsewhere; none far at sea
@@ -72,9 +73,22 @@ ov = [["ארומה דיזנגוף", "Aroma", "amenity=cafe", 32.0751, 34.7801], 
 with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as f:
     f.write(gzip.compress(json.dumps({"places": ov}).encode()))
 pois = [list(p) for p in osm]
-added = add_overture(pois, f.name, city_near)
+added = add_places(pois, f.name, city_near)
 check("Overture: a longer name of the same café nearby is the same place; another branch and a new place join",
       [p[0] for p in pois[2:]], ["Miznon", "ארומה", "טאיזו"])
 check("Overture: how many added", added, 3)
+
+# public bodies' places (public.py): what a licence's description makes of a place, and the Survey's names
+check("licence: a café whose licence also says restaurant is a café", kind_of("בית קפה, מסעדה לרבות משקאות משכרים"), "amenity=cafe")
+check("licence: a hummus eatery", kind_of("בית אוכל להכנה והגשת חומוס פול"), "amenity=restaurant")
+check("licence: a falafel stand is fast food", kind_of("4.2ב - מזנון, בית אוכל אחר להכנת ומכירת פלאפל"), "amenity=fast_food")
+check("licence: storage is no destination", kind_of("אחסנה - מקום המיועד לאחסנה"), None)
+check("licence: a shop of unnamed goods is a shop", kind_of("מכירת קסטות"), "shop=other")
+check("licence: a description that says nothing is skipped", kind_of("1.4ב"), None)
+check("name: quotes and the company suffix go", clean_name('"יופיטר" בע"מ'), "יופיטר")
+check("name: a phone number is not a name", clean_name("054-4962836"), "")
+check("Survey: the type word is dropped when the name repeats it", survey_name("גן ילדים - גן דולב"), "גן דולב")
+check("Survey: else the type word stays", survey_name("בית ספר - ברנקו וייס"), "בית ספר ברנקו וייס")
+check("Survey: a bare type is no name", survey_name("בית ספר"), "")
 
 sys.exit(1 if failures else 0)

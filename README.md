@@ -132,7 +132,10 @@ the first run.
 - Places: OpenStreetMap, and Overture Maps' places where OpenStreetMap lacks
   them (overturemaps.org; from Meta, Microsoft and Foursquare under
   CDLA-Permissive-2.0, Apache-2.0 and CC0), read from Overture's public
-  bucket weekly.
+  bucket weekly; and where both lack them, Israel's public bodies: licensed
+  businesses from Tel Aviv-Yafo's open data (opendata.tel-aviv.gov.il) and
+  Be'er Sheva's (data.gov.il), and the Survey of Israel's schools,
+  kindergartens, colleges and institutes (data.gov.il, open).
 - Real-time: Hasadna's Open Bus project (open-bus-stride-api.hasadna.org.il),
   which records the Ministry's SIRI vehicle feed and publishes it openly
   with open CORS, so the phone asks it directly. While live times are on,

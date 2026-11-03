@@ -577,13 +577,22 @@ synagogues and offices), and Overture Maps' everyday places where
 OpenStreetMap lacks them (`pipeline/overture.py`: Israel and the
 Palestinian territories, confidence 0.5 and up, the kinds a rider travels
 to; one with the same name within 150 m of an OpenStreetMap place is that
-place): about 45k streets, 212k house numbers, 139k places (49k from
-OpenStreetMap, 90k from Overture), 5.2 MB gzipped. Overture's confidence
-is mostly Meta's own signal for a page; at 0.5-0.7 the names are still
-real shops and restaurants (a 2026-11-01 sample), below it closed and
-one-off pages take over, so 0.5 is the floor. Overture's hospitals and
-malls come in as clinics and shopping centres, so only OpenStreetMap's rank
-as landmarks. Landmarks rank above streets
+place), and where both lack them, Israel's public bodies
+(`pipeline/public.py`, the same file shape and the same rule): businesses
+with their trade names from Tel Aviv-Yafo's licensing layer (21.5k licensed
+businesses, 10.9k with a trade name, the licence's description read into a
+kind: a café, a falafel stand, a pharmacy, a hairdresser; storage,
+production, offices and taxis skipped) and Be'er Sheva's signage survey
+(3k), and the Survey of Israel's institutions on data.gov.il (schools,
+kindergartens, colleges, universities, research institutes, yeshivot,
+about 14k named, converted from the Israeli grid, "גן ילדים - גן דולב"
+read as גן דולב): about 45k streets, 212k house numbers, 158k places (49k
+from OpenStreetMap, 90k from Overture, 19k from the public bodies), 5.5 MB
+gzipped. Overture's confidence is mostly Meta's own signal for a page; at
+0.5-0.7 the names are still real shops and restaurants (a 2026-11-01
+sample), below it closed and one-off pages take over, so 0.5 is the floor.
+Overture's hospitals and malls come in as clinics and shopping centres, so
+only OpenStreetMap's rank as landmarks. Landmarks rank above streets
 at an equal match, everyday places level with them, so an exact name wins
 without burying street searches in shops. `src/engine/places.ts` parses free text ("דיזנגוף 50,
 גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
