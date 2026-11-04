@@ -90,7 +90,7 @@ def translit(w):
                 pass   # the alef wrote it
             elif prev == "ה" and i == 1:
                 out.append("y")   # הישן: Hayashan
-            elif prev == "ו" and i == 1:
+            elif prev == "ו" and i == 1 and nxt != "י":
                 out.append("i")   # ויצמן, ויקטור: Vitzman, Viktor
             elif nxt == "י":
                 out.append("a" if prev not in VOWELS else "")   # יי: a-yi between consonants (חיים, שיניים)
@@ -143,10 +143,13 @@ def translit(w):
 def sounds_like(he, en):
     """Whether an English word could be the Hebrew word's transliteration: the same consonant sounds, or all but one in
     the same order with the same last one (Hertzl/Herzl, Rakhamim/Rachamim; not Center/Star, not City/HaIr)."""
-    a = skeleton(translit(he))
+    t = translit(he)
+    a = skeleton(t)
     b = skeleton(en)
+    if not a or not b:
+        return False
     if len(a) < 2 or len(b) < 2:
-        return False   # one consonant is no evidence ("החיות" is not "The")
+        return a == b and onset(t) == onset(en)   # one consonant is no evidence by itself: "החיות" is not "The", אליהו is Eliyahu
     if a == b:
         return True
     short, long_ = (a, b) if len(a) <= len(b) else (b, a)
@@ -159,6 +162,14 @@ def sounds_like(he, en):
             return False
         j = k + 1
     return True
+
+
+def onset(s):
+    """How a spelling starts, a vowel or which consonant, the article and h-sounds aside ("Eliyahu" and "Aliho" both start
+    on a vowel; "The" does not)."""
+    s = re.sub(r"^(Ha|Al|El)(?=-?[A-Z])", "", s).lower()
+    s = re.sub(r"^(ch|kh|h)", "", s)
+    return "a" if s[:1] in "aeiouy" else s[:1]
 
 
 def skeleton(s):
