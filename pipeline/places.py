@@ -26,9 +26,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import container
 from common import log, member, haversine
 
-FORMAT_VERSION = 5   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
+FORMAT_VERSION = 6   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
                      # 4: an address joins a street of its name only in its city or nearby (street_for);
-                     # 5: Overture's everyday places beside OpenStreetMap's (--overture); public bodies' too (--public)
+                     # 5: Overture's everyday places beside OpenStreetMap's (--overture);
+                     # 6: public bodies' places too (--public), Overture from confidence 0.5. The number is what the
+                     #    workflow's --check compares: a new number makes the next nightly build rebuild the book at once
+                     #    instead of waiting out the weekly cache.
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {
