@@ -100,6 +100,10 @@ check("lexicon: a reordered translation still teaches the word that sounds alike
 check("lexicon: a translation is never learned (ים המלח stays Yam HaMelach)", (lex.get("ים"), lex.get("המלח"), lex.get("העיר")), (None, None, None))
 check("lexicon: the spelling most names agree on", lex.get("הרצל"), "Herzl")
 check("name: the article before a known word, and before a word spelt by rule", (english.english_name("ההרצל", lex), english.translit("הנסיך")), ("HaHerzl", "HaNsikh"))
+park_pairs = [("פארק המסילה", "HaMessila Park"), ("פארק המסילה", "The Track Park"), ("פארק המסילה", "HaMessila Park")]
+whole, park_lex = english.whole_names(park_pairs), english.learn(park_pairs)
+check("whole name: an entry takes the book's English for its name, the spelling most agree on", english.english_name("פארק המסילה", park_lex, whole), "HaMessila Park")
+check("whole name: only for that very name; the words still teach their spelling", english.english_name("פארק המסילה הישן", park_lex, whole), "HaMessila HaYashan Park")
 check("name: generic words in English order", english.english_name("בית ספר דקל וייס", lex), "Dekel Vais School")
 check("name: a generic that stays first", english.english_name("חומוס פיטר", lex), "Hummus Piter")
 check("name: a generic mid-name keeps its Latin spelling", english.english_name("מור מרכז לטיפוח", lex), "Mor Merkaz Letifoch")

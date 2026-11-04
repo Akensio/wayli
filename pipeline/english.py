@@ -2,7 +2,9 @@
 """English names for the address book's Hebrew-only entries (places.py), so the app in English shows Latin letters
 everywhere: a transliteration, with the words every rider knows in English translated.
 
-Three layers, in order, word by word:
+A name the book already has in English under the same Hebrew name takes that English as it is (whole_names: a park
+mapped in pieces, a chain's branches, a street of the same name in another city). Only a name never seen in English
+is made up, in three layers, word by word:
   1. A lexicon learned from the names that have both languages already (OpenStreetMap's streets and places, Overture's
      two-language names, the feed's stop and city translations: about 120k pairs). Two names of the same word count are
      aligned word by word (by sound where English reordered them: "קניון גבעתיים" / "Givatayim Mall"), and an aligned
@@ -198,6 +200,15 @@ def en_words(s):
     return [w for w in tokens(s) if LAT.search(w)]
 
 
+def whole_names(pairs):
+    """{Hebrew name, normalised: its English} from the names that have both, the English most of them agree on."""
+    votes = defaultdict(Counter)
+    for he, en in pairs:
+        if he_words(he) and en_words(en):
+            votes[" ".join(tokens(he)).lower()][en.strip()] += 1
+    return {h: c.most_common(1)[0][0] for h, c in votes.items()}
+
+
 def learn(pairs):
     """{Hebrew word: its spelling in English} from names that have both: each Hebrew word paired with the English word
     in the same place, or, when English reordered the name, with the one that sounds like it; only pairs that sound
@@ -263,12 +274,17 @@ PREFIX = {
 GENERIC_MAX_WORDS = 2
 
 
-def english_name(name, lex):
-    """The English for a Hebrew name: its Latin part if it has one, else the words as the layers above give them."""
+def english_name(name, lex, whole=None):
+    """The English for a Hebrew name: the book's own for that name (whole_names) if it has one, else its Latin part if
+    it has one, else the words as the layers above give them."""
+    words = tokens(name)
+    if whole:
+        known = whole.get(" ".join(words).lower())
+        if known:
+            return known
     latin = en_words(name)
     if latin:
-        return " ".join(w for w in tokens(name) if not HEB.search(w))
-    words = tokens(name)
+        return " ".join(w for w in words if not HEB.search(w))
     if not words or not any(HEB.search(w) for w in words):
         return ""
     tail = ""
