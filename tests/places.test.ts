@@ -28,6 +28,10 @@ const pois = [
   ['קניון לב צפת', 'shop=mall', 'צפת', 32.965, 35.497, ''],
   ['מלון כנען ספא - canaan spa hotel', 'tourism=hotel', 'צפת', 32.977, 35.507, ''], // both languages in one name
   ['אבו חסן', 'amenity=restaurant', TLV, 32.049, 34.757, ''], // the name without the dish riders put before it
+  // one park mapped in pieces, each piece with its own English spelling
+  ['פארק המסילה', 'leisure=park', TLV, 32.06, 34.767, 'The Track Park'],
+  ['פארק המסילה', 'leisure=park', TLV, 32.061, 34.77, 'HaMessila Park'],
+  ['פארק המסילה', 'leisure=park', 'ירושלים', 31.762, 35.219, 'Park HaMesilah'],
 ];
 const cities = [
   [TLV, 32.08, 34.78, 'Tel Aviv-Yafo'],
@@ -37,7 +41,7 @@ const cities = [
   ['ירושלים', 31.78, 35.22, 'Jerusalem'],
 ];
 const book = parsePlaces(
-  writeContainer({ format: 4, counts: { streets: 5, addresses: 1, pois: 13, cities: 5 }, streets, pois, cities }, [
+  writeContainer({ format: 4, counts: { streets: 5, addresses: 1, pois: 16, cities: 5 }, streets, pois, cities }, [
     { name: 'addrStreet', dtype: 'int32', data: [4] }, // שדרות ירושלים 15
     { name: 'addrNumber', dtype: 'uint16', data: [15] },
     { name: 'addrLat', dtype: 'float32', data: [32.0505] },
@@ -127,4 +131,11 @@ test('a place is found with one typed word left over, when its whole name was ty
   expect(searchPlaces(book, 'חומוס אבו', 5, null, 'he').map((h) => h.name)).not.toContain('אבו חסן'); // not the whole name
   expect(searchPlaces(book, 'ארומה דיזנגוף', 5, null, 'he').map((h) => h.name)).toContain('ארומה');
   expect(top('דיזנגוף')).toBe('דיזנגוף'); // streets: never with a word left over
+});
+
+test('one result per place whatever language it is shown in: a park in pieces, each spelt its own way', () => {
+  const en = searchPlaces(book, 'hamesila park', 8, null, 'en').filter((h) => h.kind === 'poi');
+  expect(en.map((h) => h.city)).toEqual(['Tel Aviv-Yafo', 'Jerusalem']); // one per city, the nearest piece of each
+  const he = searchPlaces(book, 'פארק המסילה', 8, null, 'he').filter((h) => h.kind === 'poi');
+  expect(he.map((h) => h.city)).toEqual([TLV, 'ירושלים']);
 });

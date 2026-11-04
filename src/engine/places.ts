@@ -817,8 +817,11 @@ export type PlaceHit = {
   approx?: number | null;
   noNumbers?: boolean;
   poiKind?: PoiKind;
+  /** What makes a result one of a kind: its kind, Hebrew name and Hebrew city, whatever language it is shown in (a park
+   *  mapped in five pieces with five English spellings is one result in English as it is in Hebrew). */
+  key: string;
 };
-/** Results (PlaceHit), best first, one per (kind, name, city), named in `lang` where the data allows. */
+/** Results (PlaceHit), best first, one per key (kind, Hebrew name, Hebrew city), named in `lang` where the data allows. */
 export function searchPlaces(
   pl: Places,
   text: string,
@@ -835,7 +838,15 @@ export function searchPlaces(
 
   const cityRow = (i: number, score: number): PlaceHit => {
     const c = pl.cities[i];
-    return { kind: 'city', name: (lang === 'en' && c[3]) || c[0], city: '', lat: c[1], lon: c[2], score };
+    return {
+      kind: 'city',
+      name: (lang === 'en' && c[3]) || c[0],
+      city: '',
+      lat: c[1],
+      lon: c[2],
+      score,
+      key: `city|${norm(c[0])}`,
+    };
   };
   if (!q.words.length && q.cityIdx >= 0) return [cityRow(q.cityIdx, 15)]; // the whole text named a city
   // a city by itself (not when the rider typed a street-type word: "שדרות ירושלים" is the street, not the city)
@@ -869,7 +880,8 @@ export function searchPlaces(
       }
       score += proximity(near, st[2], st[3]);
       const name = streetName(pl, s, lang),
-        city = cityOf(pl, st[1], lang);
+        city = cityOf(pl, st[1], lang),
+        key = `|${norm(st[0])}|${norm(st[1])}`;
       if (q.number !== null) {
         const a0 = pl.addrOff[s],
           a1 = pl.addrOff[s + 1];
@@ -898,12 +910,22 @@ export function searchPlaces(
             lon: pl.addrLon[i],
             score: score + (exact >= 0 ? 5 : 3),
             approx: exact < 0 ? pl.addrNumber[i] : null,
+            key: `address${key} ${q.number}${q.suffix}`,
           });
         } else {
-          out.push({ kind: 'street', name, city, lat: st[2], lon: st[3], score: score + 0.5, noNumbers: true });
+          out.push({
+            kind: 'street',
+            name,
+            city,
+            lat: st[2],
+            lon: st[3],
+            score: score + 0.5,
+            noNumbers: true,
+            key: `street${key}`,
+          });
         }
       } else {
-        out.push({ kind: 'street', name, city, lat: st[2], lon: st[3], score });
+        out.push({ kind: 'street', name, city, lat: st[2], lon: st[3], score, key: `street${key}` });
       }
     }
     // notable places
@@ -925,6 +947,7 @@ export function searchPlaces(
         lat: poi[3],
         lon: poi[4],
         score,
+        key: `poi|${norm(poi[0])}|${norm(poi[2])}`,
       });
     }
   };
@@ -932,16 +955,15 @@ export function searchPlaces(
     entries(false);
     // what is found loosely lists after everything found as typed, so it is looked for only when that leaves room
     // (the loose pass is most of a search's time: half the names, compared by sound)
-    if (new Set(out.map((r) => `${r.kind}|${norm(r.name)}|${norm(r.city)}`)).size < limit) entries(true);
+    if (new Set(out.map((r) => r.key)).size < limit) entries(true);
   }
   out.sort(byScore);
-  // one entry per (kind, name, city)
+  // one entry per key (kind, Hebrew name, Hebrew city), the best scored: the one nearest the rider
   const seen = new Set<string>();
   const uniq: PlaceHit[] = [];
   for (const r of out) {
-    const k = `${r.kind}|${norm(r.name)}|${norm(r.city)}`;
-    if (seen.has(k)) continue;
-    seen.add(k);
+    if (seen.has(r.key)) continue;
+    seen.add(r.key);
     uniq.push(r);
     if (uniq.length >= limit) break;
   }
