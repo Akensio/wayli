@@ -27,7 +27,8 @@ the data every night and publishes to GitHub Pages. No crowd reports yet; see
   rail in one query. This is the feature everything else is built around.
 - Live arrivals at a stop, nearby stops, line search, a map, favorites.
 - Search that understands addresses, streets, cities and places, offline,
-  from OpenStreetMap and Overture Maps, with no server to run.
+  from OpenStreetMap and Overture Maps, with no server to run; every name
+  has an English form, the source's or a transliteration made at build time.
 - Hebrew and right-to-left as first-class, not an afterthought.
 - Bicycles as a real mode: ride to the station, ride between legs, take the
   bike on the train where allowed.

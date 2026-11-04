@@ -24,14 +24,16 @@ import osmium
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import container
+import english
 from common import log, member, haversine
 
-FORMAT_VERSION = 6   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
+FORMAT_VERSION = 7   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
                      # 4: an address joins a street of its name only in its city or nearby (street_for);
                      # 5: Overture's everyday places beside OpenStreetMap's (--overture);
                      # 6: public bodies' places too (--public), Overture from confidence 0.5. The number is what the
                      #    workflow's --check compares: a new number makes the next nightly build rebuild the book at once
-                     #    instead of waiting out the weekly cache.
+                     #    instead of waiting out the weekly cache;
+                     # 7: every street, place and city has an English name: the source's, else one made by english.py
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {
@@ -372,6 +374,19 @@ def main():
         log(f"public bodies: {added} places added beside the rest")
     poi_list.sort(key=lambda p: (p[0], p[2]))
 
+    # English for every name: the source's where it has one, else made from the pairs the book itself holds (english.py)
+    city_rows = [[c[0], round(c[1], 6), round(c[2], 6), city_en.get(c[0], "")] for c in cities]
+    pairs = [(s[0], s[4]) for s in street_list if s[4]] + [(p[0], p[5]) for p in poi_list if p[5]] \
+        + [(c[0], c[3]) for c in city_rows if c[3]] + list(city_en.items())   # city_en holds every EN translation of the feed
+    lex = english.learn(pairs)
+    made = 0
+    for rows, i in ((street_list, 4), (poi_list, 5), (city_rows, 3)):
+        for r in rows:
+            if not r[i]:
+                r[i] = english.english_name(r[0], lex)
+                made += bool(r[i])
+    log(f"English names: {len(pairs)} pairs taught {len(lex)} spellings; {made} names made for entries that had none")
+
     sec = container.Sections()
     add = sec.add
 
@@ -386,7 +401,7 @@ def main():
         "counts": {"streets": len(street_list), "addresses": len(addr), "pois": len(poi_list), "cities": len(cities)},
         "sections": sec.list,
         "streets": street_list,
-        "cities": [[c[0], round(c[1], 6), round(c[2], 6), city_en.get(c[0], "")] for c in cities],
+        "cities": city_rows,
         "pois": poi_list,
         "addrSuffix": suffixes,
     }

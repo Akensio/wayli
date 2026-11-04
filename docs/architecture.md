@@ -611,8 +611,21 @@ or with the keyboard's ״ or ''; the same rule normalises stop names. A stop
 matches whether its Hebrew or its English name is typed (both are indexed),
 and every name the worker hands out (results, stop lists, headsigns, the
 map's station labels) is in the app's language, with Hebrew where the feed
-has no translation. The address book carries OpenStreetMap's English name
-beside the Hebrew (85% of streets, half the notable places; about 300 KB
+has no translation. The address book carries an English name beside every
+Hebrew one: the source's where it has one (OpenStreetMap's name:en, 81% of
+streets and a third of places; Overture's and the feed's), else one made at
+build time by `pipeline/english.py` (95k names): spellings learned from the
+126k names that have both languages (a Hebrew word paired with the English
+word in its place, or the one that sounds like it where English reordered
+the name, kept only when the two sound alike, so the lexicon holds spellings
+and never translations: "ים המלח" is "Yam HaMelach"), a short table of
+generic words put in English order ("בית ספר X" is "X School", "מלון דן" is
+"Dan Hotel", "קפה" and "חומוס" stay in front), and the rest transliterated
+by rule as Israeli signs write it (ח ch, צ tz, ש sh, vowel letters as
+vowels, a light vowel between consonant clusters), a readable guess rather
+than a right one without vowel points. A name with Latin letters inside it
+keeps that part; Arabic-script names are left alone. The made names are
+shown in English and searched like any other English name (about 700 KB
 gzipped) and the feed's for cities; a word typed in Latin letters matches the English
 words a name has (its English name, and Latin words inside the main name,
 as Overture writes "מלון כנען ספא - canaan spa hotel") as text, else with

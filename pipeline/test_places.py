@@ -15,6 +15,7 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from places import street_for, add_places  # noqa: E402
 from public import kind_of, clean_name, survey_name  # noqa: E402
+import english  # noqa: E402
 
 TLV, TIB, RG = "תל אביב יפו", "טבריה", "רמת גן"
 # the city a point is in: Tiberias in the north, Ramat Gan east of 34.81, Tel Aviv elsewhere; none far at sea
@@ -90,5 +91,22 @@ check("name: a phone number is not a name", clean_name("054-4962836"), "")
 check("Survey: the type word is dropped when the name repeats it", survey_name("גן ילדים - גן דולב"), "גן דולב")
 check("Survey: else the type word stays", survey_name("בית ספר - ברנקו וייס"), "בית ספר ברנקו וייס")
 check("Survey: a bare type is no name", survey_name("בית ספר"), "")
+
+# English names for Hebrew-only entries (english.py): the learned spelling, the generic words in English order, the rule
+lex = english.learn([("אליהו הנביא", "Eliyahu HaNavi"), ("קניון גבעתיים", "Givatayim Mall"), ("ים המלח", "Dead Sea"),
+                     ("הרצל", "Herzl"), ("הרצל", "Herzl"), ("הרצל", "Hertzel"), ("מרכז העיר", "City Center")])
+check("lexicon: a spelling is learned when it sounds like the word", lex.get("אליהו"), "Eliyahu")
+check("lexicon: a reordered translation still teaches the word that sounds alike", lex.get("גבעתיים"), "Givatayim")
+check("lexicon: a translation is never learned (ים המלח stays Yam HaMelach)", (lex.get("ים"), lex.get("המלח"), lex.get("העיר")), (None, None, None))
+check("lexicon: the spelling most names agree on", lex.get("הרצל"), "Herzl")
+check("name: the article before a known word, and before a word spelt by rule", (english.english_name("ההרצל", lex), english.translit("הנסיך")), ("HaHerzl", "HaNsikh"))
+check("name: generic words in English order", english.english_name("בית ספר דקל וייס", lex), "Dekel Vais School")
+check("name: a generic that stays first", english.english_name("חומוס פיטר", lex), "Hummus Piter")
+check("name: a generic mid-name keeps its Latin spelling", english.english_name("מור מרכז לטיפוח", lex), "Mor Merkaz Letifoch")
+check("name: the Latin part of a two-language name is the English", english.english_name("מלון כנען ספא - canaan spa hotel", lex), "canaan spa hotel")
+check("name: the company suffix goes", english.english_name("מאפיית לוטם בע\"מ", lex), "Lotem Bakery")
+check("name: Arabic script is left alone", english.english_name("مطعم ماجد", lex), "")
+check("rule: double yod, initial alef-yod, final he", (english.translit("שיניים"), english.translit("איתן"), english.translit("חנה")), ("Shinayim", "Iten", "Chana"))
+check("rule: a vowel between consonant clusters, in two-letter words and in segolates", (english.translit("פיטר"), english.translit("חם"), english.translit("רכב")), ("Piter", "Cham", "Rekhev"))
 
 sys.exit(1 if failures else 0)
