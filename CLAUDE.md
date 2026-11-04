@@ -39,9 +39,11 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    in place, not a changelog. `docs/decisions.md` is the changelog: one dated
    line per decision, newest at the bottom, rejected options included.
 6. Commit after each coherent step with a short message that says what
-   changed. Push to the branch the session was given unless the maintainer has said to
-   push `main`. Tasks and deadlines are kept outside this repo: no TODO lists or task
-   files here.
+   changed. Push the session's branch, and when a step is done and checked,
+   fast-forward `main` to it and push `main` too (maintainer, 2026-11-04:
+   "you merge to main, you always have"): the nightly build runs from
+   `main`, so work that stays on a branch never reaches the app. Tasks and
+   deadlines are kept outside this repo: no TODO lists or task files here.
 7. Design before code (maintainer, 2026-10-25). Never go straight to code. For any
    change beyond a small tweak, new code or a change to existing behaviour
    alike, first explain the algorithm or design in natural language, with a
@@ -124,9 +126,8 @@ will join it when that work starts.
 ## Current state
 
 2026-10-18: v0.3 is on `main` and live at https://akensio.github.io/wayli/,
-rebuilt nightly by the workflow. The maintainer normally merges session branches into
-`main` himself (squash); for this effort he allowed direct pushes of `main`
-(fast-forward from the session branch). The app is map first (one map with
+rebuilt nightly by the workflow. Sessions push `main` themselves
+(fast-forward from the session branch) once a step is done and checked. The app is map first (one map with
 the live vehicles under a search bar and a bottom sheet), plans
 (depart/arrive-by, grouped results, countdowns, live delays shifted before
 routing), remembers (history, saved places, last search), follows a trip
