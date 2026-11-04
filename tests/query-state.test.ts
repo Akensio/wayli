@@ -55,3 +55,15 @@ test('a query applied sets its day only when the data has it, and "now" unless i
   expect(query.timeMode.value).toBe('arrive');
   expect(query.timeTouched.value).toBe(true);
 });
+
+test('the time popover opens on the clock while the question is "now", not on the time the app opened with', () => {
+  query.days.value = ['20261031'];
+  query.day.value = '20261031';
+  query.timeTouched.value = false;
+  query.at.value = '00:01'; // the time the app opened with, long ago
+  const w = query.whenNow();
+  query.setDefaultTime(); // what "now" is on this day
+  expect(`${w.hh}:${w.mm}`).toBe(query.at.value);
+  expect(w.mode).toBe('now');
+  expect(query.timeTouched.value).toBe(false); // looking is not setting
+});

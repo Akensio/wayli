@@ -43,8 +43,10 @@ export function setDefaultTime(): void {
 
 /** What the time popover shows and sets: the calendar day and the clock, never the service day behind them. */
 export type When = { mode: 'now' | 'depart' | 'arrive'; cal: string; hh: string; mm: string };
-/** The question's time as the time popover shows it. */
+/** The question's time as the time popover shows it. While the question is "now", that is the clock as the popover
+ *  opens, not the time the app opened with (the stored time is only refreshed when a plan is made). */
 export function whenNow(): When {
+  if (!timeTouched.value) setDefaultTime();
   const { cal, time } = calendarOf(day.value || calToday(), atSeconds()),
     [hh, mm] = time.split(':');
   return { mode: timeTouched.value ? timeMode.value : 'now', cal, hh, mm };
