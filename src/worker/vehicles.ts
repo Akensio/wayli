@@ -65,7 +65,8 @@ const callSince = new Map<string, { code: string; since: number; seen: number; c
 // pulled in (delays.ts cameAt: it leaves after its usual stand from then, not at the station's time).
 const trails = new Map<string, Fix[]>();
 // ride -> [[recorded ms, lat, lon], ...]
-const snapTime = (id: string): number => {
+/** A snapshot's minute from its id ("2026/11/05/20/31", UTC). Exported for measure/trafficreplay.ts. */
+export const snapTime = (id: string): number => {
   const m = /^(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)\/(\d\d)$/.exec(id || '');
   return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : NaN;
 };
@@ -164,7 +165,7 @@ function handedOver(early: SnapVehicle, trains: SnapVehicle[]): SnapVehicle | nu
  *  reports when it is at it; Hasadna's database drops those (about one train in eight, 2026-10-21). A train
  *  that has taken its next trip's number while still running elsewhere goes back to the trip it is finishing when
  *  that is clear (handedOver), and is left out otherwise. */
-function snapVehicles(j: SiriSnapshot, t: number): SnapVehicle[] {
+export function snapVehicles(j: SiriSnapshot, t: number): SnapVehicle[] {
   let out: SnapVehicle[] = [];
   const early: SnapVehicle[] = [],
     now = Date.now();
@@ -288,16 +289,21 @@ async function fetchSnapshot(urls: string[], ago: number): Promise<{ id: string;
   return { id, t: snapTime(id), j };
 }
 // The learned bus times land after the first snapshots on a fresh open (they are a download among others), and the
-// road model dropped every snapshot until then: it now gets the snapshot of 10 minutes before and the current one, so
-// the roads are coloured as soon as the times are in, not after minutes of polling (maintainer, 2026-11-05: "why does
-// it not show me the traffic on the road immediately? I see the buses but not the lines").
+// road model dropped every snapshot until then: it now gets the snapshots of 10 and 3 minutes before and the current
+// one, so the roads are coloured as soon as the times are in, not after minutes of polling (maintainer, 2026-11-05:
+// "why does it not show me the traffic on the road immediately? I see the buses but not the lines"). Three snapshots,
+// not two: replayed against the steady state (measure/trafficreplay.ts, 2026-11-05 evening), 10 and now coloured 76% of
+// the sections a quarter of an hour of polling does, 10, 3 and now 92%, both agreeing with it on the level 92-93% of
+// the time with no lean towards slower.
 onBusTimes(async () => {
   if (!snap || !relayUrls.length) return;
-  try {
-    const older = await fetchSnapshot(relayUrls, 10);
-    noteRoads(snapVehicles(older.j, older.t));
-  } catch {
-    /* the current snapshot alone, then: the next poll pairs with it */
+  for (const ago of [10, 3]) {
+    try {
+      const older = await fetchSnapshot(relayUrls, ago);
+      noteRoads(snapVehicles(older.j, older.t));
+    } catch {
+      /* without it the next poll pairs with what there is */
+    }
   }
   noteRoads(snap.vehicles);
 });
@@ -323,10 +329,12 @@ async function snapshot(urls: string[]): Promise<Snapshot> {
             remember(before.j, before.t);
             remember(cur.j, cur.t);
             if (snap && snap.id === cur.id) snap = { ...snap, vehicles: snapVehicles(cur.j, cur.t) };
-            // and the one of 10 minutes before: how the roads run is known at once, not after minutes of use
+            // and the one of 10 minutes before: how the roads run is known at once, not after minutes of use (with
+            // the 3-minute one between them: finer pairs, more sections, measure/trafficreplay.ts)
             if (hasBusTimes())
               return get(10).then((older) => {
                 noteRoads(snapVehicles(older.j, older.t));
+                noteRoads(snapVehicles(before.j, before.t));
                 noteRoads(snap ? snap.vehicles : []);
               });
           })

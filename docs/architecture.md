@@ -1124,8 +1124,11 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   a position on the edge of two sections).
 - How the roads run now, from the buses: the data worker follows every bus
   across the snapshots it reads (the last 15 minutes; the first load also
-  reads the one of 10 minutes before, or does so as soon as the learned
-  times are in when those land later), and between two positions at least
+  reads the ones of 10 and 3 minutes before, or does so as soon as the
+  learned times are in when those land later: replayed against a quarter
+  of an hour of polling, `measure/trafficreplay.ts`, that cold start colours
+  92% of the sections and agrees on the level 93% of the time, with no lean
+  towards slower), and between two positions at least
   90 s apart compares the time it took with the learned time of what it
   covered. Each section it covered gets that ratio. A section's time ahead
   of another bus is its learned time times the median ratio of the other
