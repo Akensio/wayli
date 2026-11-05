@@ -30,7 +30,8 @@ export let tt: Timetable | null = null,
 export let lang: Lang = 'he'; // the language names are handed out in (setLang); the timetable carries what the feed translates
 
 const dayResets: (() => void)[] = [],
-  langResets: (() => void)[] = [];
+  langResets: (() => void)[] = [],
+  busTimesHooks: (() => Promise<void> | void)[] = [];
 /** `f` runs when another day's timetable is loaded: what was derived from the old one (indexed by its numbers) goes. */
 export const onNewDay = (f: () => void): void => {
   dayResets.push(f);
@@ -38,6 +39,11 @@ export const onNewDay = (f: () => void): void => {
 /** `f` runs when names are to be handed out in another language: what holds names goes. */
 export const onNewLang = (f: () => void): void => {
   langResets.push(f);
+};
+/** `f` runs once the learned bus times are in, before their load answers: what waited for them catches up (the road
+ *  model, which dropped every snapshot until then). */
+export const onBusTimes = (f: () => Promise<void> | void): void => {
+  busTimesHooks.push(f);
 };
 
 /** The compact shapes file: int32 coordinates (1e-5 degrees) per GTFS shape id. */
@@ -221,6 +227,7 @@ export const dataOps = {
   async loadBusTimes({ url, bytes }) {
     const m = parseBusTimes(await fetchContainer(url, 'bustimes', bytes));
     setBusTimes(m);
+    for (const f of busTimesHooks) await f();
     return { sections: m.idx.size, built: m.built };
   },
   async loadShapes({ url, bytes }) {

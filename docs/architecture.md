@@ -786,9 +786,12 @@ midnight.
 Data: `data/manifest.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
 being planned), the
+learned section times (`bustimes.bin.gz`, 1.3 MB, and `railtimes.json`),
+loaded first after the first answer because the road colours and the delay
+estimates wait for them and nothing else, then the
 courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749 shapes simplified to 6 m,
-1.26M points as int32 1e-5 degrees) and the address book, both loaded
-right after the first answer, and last the street graph (10.7 MB; until it
+1.26M points as int32 1e-5 degrees) and the address book together, and last
+the street graph (10.7 MB; until it
 is in, points use straight-line access with a detour factor, and walks drawn
 straight then follow the streets once it arrives; a download that drops is
 fetched again after 5, 20 and 60 s and when the phone comes back online,
@@ -1100,7 +1103,8 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   a position on the edge of two sections).
 - How the roads run now, from the buses: the data worker follows every bus
   across the snapshots it reads (the last 15 minutes; the first load also
-  reads the one of 10 minutes before), and between two positions at least
+  reads the one of 10 minutes before, or does so as soon as the learned
+  times are in when those land later), and between two positions at least
   90 s apart compares the time it took with the learned time of what it
   covered. Each section it covered gets that ratio. A section's time ahead
   of another bus is its learned time times the median ratio of the other

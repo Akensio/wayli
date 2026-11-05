@@ -72,11 +72,12 @@ async function boot(): Promise<void> {
     if (!f || f.transient) search.setPlace('from', { name: t('myLoc'), transient: true, auto: !f || !!f.auto }); // where you are now
     planFromBar();
   }
-  // the courses and the address book together (3.5 and 2.8 MB), then the street graph (12 MB): the courses shape
-  // what is on screen at once (a ride, a stop's lines), the streets only refine walks that redraw themselves
+  // the learned section times first (1.3 MB and 15 KB): the road colours and the delay estimates wait for them and
+  // nothing else; then the courses and the address book together (3.6 and 6 MB: the courses shape what is on screen
+  // at once, a ride, a stop's lines), then the street graph (11 MB), which only refines walks that redraw themselves
+  loadBusTimes();
+  loadRailTimes();
   await Promise.all([loadShapes(), loadPlaces()]);
   await loadStreets();
-  loadRailTimes();
-  loadBusTimes();
 }
 boot().catch(loadFailed);

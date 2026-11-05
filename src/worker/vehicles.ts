@@ -6,7 +6,7 @@ import { secondsOn } from '../engine/clock.ts';
 import { estimateDelay, hasBusTimes } from '../engine/delays.ts';
 import type { Fix, Vehicle } from '../engine/feed.ts';
 import { metres } from '../engine/geo.ts';
-import { tt } from './data.ts';
+import { tt, onBusTimes } from './data.ts';
 import { headsign } from './names.ts';
 import { codeIndex } from './stops.ts';
 import { noteRoads } from './traffic.ts';
@@ -245,50 +245,68 @@ function snapVehicles(j: SiriSnapshot, t: number): SnapVehicle[] {
   return gone.size ? out.filter((v) => !gone.has(v)) : out;
 }
 let relayAt = 0; // which of the relay's addresses answered last: tried first next time
+let relayUrls: string[] = []; // the relay's addresses as last asked, for a snapshot fetched outside a poll (busTimesIn)
+// 15 s for the relay to start answering; reading the body then gets a minute: on a phone at start-up it competes
+// with the timetable and street downloads and waits behind their unpacking here (a 12 s limit on the whole read
+// aborted it on the maintainer's phone every time, 2026-10-21)
+async function fetchFrom(url: string, ago: number): Promise<Response> {
+  const ctl = new AbortController(),
+    timer = setTimeout(() => ctl.abort(new Error('relay did not answer in 15 s')), 15000);
+  try {
+    return await fetch(ago ? `${url}?ago=${ago}` : url, { cache: 'no-store', signal: ctl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+/** The relay's snapshot of `ago` minutes back (0: the newest), from the first of its addresses that answers. */
+async function fetchSnapshot(urls: string[], ago: number): Promise<{ id: string; t: number; j: SiriSnapshot }> {
+  let r: Response | null = null,
+    err: unknown = null;
+  for (let k = 0; k < urls.length && !r; k++) {
+    const i = (relayAt + k) % urls.length;
+    try {
+      const res = await fetchFrom(urls[i], ago);
+      if (!res.ok) throw new Error(`relay HTTP ${res.status}`);
+      // an address not (yet) pointed at the relay answers with someone's page: a snapshot names itself
+      if (!res.headers.get('x-snapshot')) throw new Error('not the relay');
+      r = res;
+      relayAt = i;
+    } catch (e) {
+      err = e;
+    }
+  }
+  if (!r) throw err || new Error('relay unavailable');
+  const id = r.headers.get('x-snapshot') || '';
+  let late: ReturnType<typeof setTimeout> | undefined;
+  // the body is JSON of the relay's making (any): read as the SIRI shape above
+  const j: SiriSnapshot = await Promise.race([
+    r.json(),
+    new Promise<never>((_, no) => {
+      late = setTimeout(() => no(new Error('relay body took over 60 s')), 60000);
+    }),
+  ]).finally(() => clearTimeout(late));
+  return { id, t: snapTime(id), j };
+}
+// The learned bus times land after the first snapshots on a fresh open (they are a download among others), and the
+// road model dropped every snapshot until then: it now gets the snapshot of 10 minutes before and the current one, so
+// the roads are coloured as soon as the times are in, not after minutes of polling (maintainer, 2026-11-05: "why does
+// it not show me the traffic on the road immediately? I see the buses but not the lines").
+onBusTimes(async () => {
+  if (!snap || !relayUrls.length) return;
+  try {
+    const older = await fetchSnapshot(relayUrls, 10);
+    noteRoads(snapVehicles(older.j, older.t));
+  } catch {
+    /* the current snapshot alone, then: the next poll pairs with it */
+  }
+  noteRoads(snap.vehicles);
+});
 async function snapshot(urls: string[]): Promise<Snapshot> {
   if (snap && Date.now() - snap.at < SNAP_MS) return snap;
   if (!snapLoading)
     snapLoading = (async () => {
-      // 15 s for the relay to start answering; reading the body then gets a minute: on a phone at start-up it competes
-      // with the timetable and street downloads and waits behind their unpacking here (a 12 s limit on the whole read
-      // aborted it on the maintainer's phone every time, 2026-10-21)
-      const fetchFrom = async (url: string, ago: number): Promise<Response> => {
-        const ctl = new AbortController(),
-          timer = setTimeout(() => ctl.abort(new Error('relay did not answer in 15 s')), 15000);
-        try {
-          return await fetch(ago ? `${url}?ago=${ago}` : url, { cache: 'no-store', signal: ctl.signal });
-        } finally {
-          clearTimeout(timer);
-        }
-      };
-      const get = async (ago: number): Promise<{ id: string; t: number; j: SiriSnapshot }> => {
-        let r: Response | null = null,
-          err: unknown = null;
-        for (let k = 0; k < urls.length && !r; k++) {
-          const i = (relayAt + k) % urls.length;
-          try {
-            const res = await fetchFrom(urls[i], ago);
-            if (!res.ok) throw new Error(`relay HTTP ${res.status}`);
-            // an address not (yet) pointed at the relay answers with someone's page: a snapshot names itself
-            if (!res.headers.get('x-snapshot')) throw new Error('not the relay');
-            r = res;
-            relayAt = i;
-          } catch (e) {
-            err = e;
-          }
-        }
-        if (!r) throw err || new Error('relay unavailable');
-        const id = r.headers.get('x-snapshot') || '';
-        let late: ReturnType<typeof setTimeout> | undefined;
-        // the body is JSON of the relay's making (any): read as the SIRI shape above
-        const j: SiriSnapshot = await Promise.race([
-          r.json(),
-          new Promise<never>((_, no) => {
-            late = setTimeout(() => no(new Error('relay body took over 60 s')), 60000);
-          }),
-        ]).finally(() => clearTimeout(late));
-        return { id, t: snapTime(id), j };
-      };
+      relayUrls = urls;
+      const get = (ago: number) => fetchSnapshot(urls, ago);
       const first = !posSince.size;
       const cur = await get(0);
       // a feed that stalled is no better than the database: then Hasadna's API answers instead

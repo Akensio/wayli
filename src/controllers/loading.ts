@@ -155,6 +155,7 @@ export async function loadBusTimes(): Promise<void> {
   if (!f) return;
   try {
     await call('loadBusTimes', { url: fileUrl(f), bytes: f.bytes });
+    map.refreshLiveMap(); // the roads are coloured from now on: drawn now, not at the next poll
   } catch {
     /* the timetable's own section times then */
   }
