@@ -8,6 +8,7 @@
 //   node --experimental-strip-types measure/trafficreplay.ts [site] [cold minutes, e.g. 10,0]   (default: the live site, 10,0)
 //
 // The worker modules expect a worker's globals: a `self` with postMessage and location is given here.
+export {}; // a module, so the top level may await
 const SITE = process.argv[2] && !/^\d/.test(process.argv[2]) ? process.argv[2] : 'https://akensio.github.io/wayli/';
 const COLD = (process.argv.find((a, i) => i >= 2 && /^\d/.test(a)) || '10,0').split(',').map(Number);
 (globalThis as any).self = { postMessage() {}, location: { href: SITE } };
