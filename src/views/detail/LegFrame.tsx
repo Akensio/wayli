@@ -12,13 +12,22 @@ import { isRide } from '../../trip/journey';
 import type { Leg, WalkLeg, StopAlong } from '../../trip/journey';
 import { LineChip } from '../../widgets/LineChip';
 import { Fold } from '../../widgets/Fold';
+import { exitText } from '../../text/travel';
 
 /** A walk or a bicycle ride in words: to where it goes, or from where it starts when it ends the journey. */
 export function walkText(l: WalkLeg): string {
   const min = legMinutes(l.seconds);
+  // the station entrance the walk comes out of or goes in by, when the station has them
+  const doors = [exitText(l.exit, false), exitText(l.entry, true)]
+    .filter(Boolean)
+    .map((x) => ` · ${x}`)
+    .join('');
   if (l.type === 'egress')
-    return l.mode === 'bike' ? t('bikeFrom', { min, name: l.from!.name }) : t('walkFrom', { min, name: l.from!.name });
-  return l.mode === 'bike' ? t('bikeTo', { min, name: l.to!.name }) : t('walkTo', { min, name: l.to!.name });
+    return (
+      (l.mode === 'bike' ? t('bikeFrom', { min, name: l.from!.name }) : t('walkFrom', { min, name: l.from!.name })) +
+      doors
+    );
+  return (l.mode === 'bike' ? t('bikeTo', { min, name: l.to!.name }) : t('walkTo', { min, name: l.to!.name })) + doors;
 }
 
 /** A time of a leg as shown down the side: an estimated ride's (a line no feed carries) says so with a "~". */

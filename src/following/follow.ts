@@ -63,6 +63,7 @@ type Spot = { lat?: number | null; lon?: number | null };
 /** Walking legs end at a stop or the destination; where is that? */
 function legEnd(journey: Journey, leg: WalkLeg): Spot | null {
   if (leg.type === 'egress') return journey.to || null;
+  if (leg.entry) return leg.entry; // a station's entrance: the walk ends there, the platform is below
   if (leg.to && leg.to.lat != null) return leg.to;
   return null;
 }

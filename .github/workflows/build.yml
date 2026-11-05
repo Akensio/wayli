@@ -37,7 +37,7 @@ jobs:
           python-version: '3.12'
       - run: pip install numpy osmium pillow duckdb pyproj # pillow (HPND): the elevation tiles' PNGs; duckdb (MIT): Overture's places; pyproj (MIT): the Survey of Israel's grid
       - name: The pipeline's own checks (the stop-on-course rule; which street an address joins)
-        run: python3 -I pipeline/test_projection.py && python3 -I pipeline/test_places.py
+        run: python3 -I pipeline/test_projection.py && python3 -I pipeline/test_places.py && python3 -I pipeline/test_entrances.py
       - name: The first service day (until 03:00 the night belongs to the previous date)
         id: day
         run: echo "start=$(TZ=Asia/Jerusalem date -d '-3 hours' +%Y%m%d)" >> "$GITHUB_OUTPUT"
@@ -80,13 +80,14 @@ jobs:
             data/places.bin.gz
             data/overture.json.gz
             data/public.json.gz
+            data/entrances.json
             data/rail.bin.gz
             data/dem
           key: osm-${{ github.run_id }}
           restore-keys: osm-
       - name: Street graph, address book and rail graph
         run: |
-          if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ ! -f data/rail.bin.gz ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ] \
+          if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ ! -f data/rail.bin.gz ] || [ ! -f data/entrances.json ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ] \
              || ! python3 -I pipeline/places.py --check data/places.bin.gz \
              || ! python3 -I pipeline/streets.py --check --out data/streets.bin.gz; then   # an older format is rebuilt too
             # a mirror may answer with an error page instead of the extract: fail on HTTP errors and insist on a real file
@@ -105,6 +106,9 @@ jobs:
               $( [ -f data/overture.json.gz ] && echo --overture data/overture.json.gz ) \
               $( [ -f data/public.json.gz ] && echo --public data/public.json.gz ) --out data/places.bin.gz
             python3 -I pipeline/rail.py data/osm/israel-and-palestine-latest.osm.pbf --out data/rail.bin.gz
+            # station entrances (OpenStreetMap, tied to the feed's rail stops); the previous file serves if this fails
+            python3 -I pipeline/entrances.py data/osm/israel-and-palestine-latest.osm.pbf --out data/entrances.new.json \
+              && mv data/entrances.new.json data/entrances.json || echo "entrances not built: using the previous file" >&2
           fi
       # The compiled days depend only on the feed, the graphs and the compiler: an app-only push reuses them.
       - name: Cache the compiled timetables and courses (reused while the feed, the graphs and the compiler are unchanged)

@@ -7,7 +7,7 @@ import * as clock from '../../engine/clock.ts';
 import { view as followView, canStepBack } from '../../following/follow.ts';
 import * as follow from '../../state/follow';
 import { now } from '../../state/clock';
-import { lineText } from '../../text/travel';
+import { lineText, exitText } from '../../text/travel';
 import { inShort } from '../../text/durations';
 import { LegChips } from '../results/LegChips';
 import { FollowLeg } from './FollowLeg';
@@ -83,7 +83,7 @@ export function Follow() {
     title = v.toRide ? t('followTitle', { line: lineText(v.toRide.line), to: dest }) : t('walkTitle', { to: dest });
     if (v.kind === 'final') big = t('walkToDest', { min: v.minutes, name: dest });
     else if (l.mode === 'bike') big = t('bikeTo', { min: v.minutes, name: l.to!.name });
-    else big = t('walkTo', { min: v.minutes, name: l.to!.name });
+    else big = t('walkTo', { min: v.minutes, name: l.to!.name }) + (l.entry ? ` · ${exitText(l.entry, true)}` : '');
     small = v.toRide
       ? `${lineText(v.toRide.line)} ${t('departsAt', { time: fmt(v.toRide.depart!) })}${inShort(v.departsIn ?? 0)}${liveLine}`
       : t('arrivesAt', { time: fmt(l.arrive!) });
@@ -95,12 +95,14 @@ export function Follow() {
   } else if (v.kind === 'ride') {
     const l = v.leg;
     title = t('followTitle', { line: lineText(l.line), to: dest });
+    // the exit to take, when the walk after the ride comes out of a station with several
+    const door = v.after && v.after.type !== 'ride' ? exitText(v.after.exit, false) : '';
     if (v.stopsLeft <= 1) {
       alert = true;
       big = t('getOffNext');
-      small = v.alight.name;
+      small = v.alight.name + (door ? ` · ${door}` : '');
     } else {
-      big = t('getOffAt', { name: v.alight.name });
+      big = t('getOffAt', { name: v.alight.name }) + (door ? ` · ${door}` : '');
       small = `${t('stopsLeft', { n: v.stopsLeft })} · ${t('nextStopIs', { name: v.nextStop.name })} · ${t('arrivesAt', { time: fmt(l.arrive!) })}`;
     }
   }

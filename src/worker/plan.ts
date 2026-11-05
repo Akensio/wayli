@@ -32,6 +32,7 @@ import { st, tt } from './data.ts';
 import { headsign, liveId, sName, stopOut } from './names.ts';
 import type { JourneyOut, LegOut, OpsPart, PlanGroup, PlanOut, RideLegOut, WalkLegOut } from './ops.ts';
 import { railStops } from './stops.ts';
+import { bestEntrance } from './exits.ts';
 import { rawTimes, tripFor, tripStopList } from './trips.ts';
 import type { PlanPlace } from './ops.ts';
 
@@ -214,33 +215,43 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
       })),
     } satisfies Rest<RideLegOut>);
   } else if (l.type === 'walk') {
-    const path = streetPath([tt!.stopLat[l.from], tt!.stopLon[l.from]], [tt!.stopLat[l.to], tt!.stopLon[l.to]], 'walk');
+    // a station's entrance at either end: the one nearest the other end, the walk drawn between the two
+    const a: PathPoint = [tt!.stopLat[l.from], tt!.stopLon[l.from]],
+      b: PathPoint = [tt!.stopLat[l.to], tt!.stopLon[l.to]];
+    const out = bestEntrance(l.from, { lat: b[0], lon: b[1] }, 'walk', true),
+      into = bestEntrance(l.to, { lat: a[0], lon: a[1] }, 'walk', false);
+    const a2: PathPoint = out ? [out.exit.lat, out.exit.lon] : a,
+      b2: PathPoint = into ? [into.exit.lat, into.exit.lon] : b;
+    const path = streetPath(a2, b2, 'walk');
     Object.assign(o, {
       from: stopOut(l.from),
       to: stopOut(l.to),
-      path: path || [
-        [tt!.stopLat[l.from], tt!.stopLon[l.from]],
-        [tt!.stopLat[l.to], tt!.stopLon[l.to]],
-      ],
+      path: path || [a2, b2],
       pathKind: path ? 'street' : 'straight',
+      ...(out ? { exit: out.exit } : {}),
+      ...(into ? { entry: into.exit } : {}),
     } satisfies Rest<Extract<WalkLegOut, { type: 'walk' }>>);
   } else if (l.type === 'access') {
     const p = q.from.places.find((x) => x.stop === l.to);
-    const path = pathTo(q.from.point, l.to, p && p.mode);
+    const into = q.from.point && bestEntrance(l.to, q.from.point, p && p.mode, false);
+    const path = into ? into.path : pathTo(q.from.point, l.to, p && p.mode);
     Object.assign(o, {
       to: stopOut(l.to),
       mode: p && p.mode === 'bike' ? 'bike' : 'walk',
       path,
       pathKind: path.length > 2 ? 'street' : 'straight',
+      ...(into ? { entry: into.exit } : {}),
     } satisfies Rest<Extract<WalkLegOut, { type: 'access' }>>);
   } else if (l.type === 'egress') {
     const p = q.to.places.find((x) => x.stop === l.from);
-    const path = pathTo(q.to.point, l.from, p && p.mode, true);
+    const out = q.to.point && bestEntrance(l.from, q.to.point, p && p.mode, true);
+    const path = out ? out.path : pathTo(q.to.point, l.from, p && p.mode, true);
     Object.assign(o, {
       from: stopOut(l.from),
       mode: p && p.mode === 'bike' ? 'bike' : 'walk',
       path,
       pathKind: path.length > 2 ? 'street' : 'straight',
+      ...(out ? { exit: out.exit } : {}),
     } satisfies Rest<Extract<WalkLegOut, { type: 'egress' }>>);
   }
   // each kind's fields were checked above as they were assigned; the compiler cannot follow Object.assign into `o`

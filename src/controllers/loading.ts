@@ -4,6 +4,7 @@ import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.ts';
 import type { Vehicle, SnapshotFilter } from '../engine/feed.ts';
 import type { RailTimes } from '../engine/delays.ts';
+import type { EntrancesFile } from '../worker/ops';
 import { t, lang, STR } from '../common/i18n';
 import { calToday, dayLabel, two } from '../common/time';
 import { call, DATA_URL, resetCaches } from '../worker/client';
@@ -147,6 +148,17 @@ export async function loadRailTimes(): Promise<void> {
     await call('setRailTimes', { m });
   } catch (e) {
     console.warn('rail times', e); // the timetable's own section times then
+  }
+}
+/** Station entrances (pipeline/entrances.py): the walk to or from a light rail or train station goes to the right one. */
+export async function loadEntrances(): Promise<void> {
+  const f = manifest().entrances;
+  if (!f) return;
+  try {
+    const m = await fetchJson<EntrancesFile>(fileUrl(f));
+    await call('setEntrances', { m });
+  } catch (e) {
+    console.warn('entrances', e); // walks go to the station's point then
   }
 }
 /** The learned running times of bus sections: bus delays at each stop ahead, in the data worker (where every estimate is made). */

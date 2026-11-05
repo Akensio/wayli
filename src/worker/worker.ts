@@ -21,6 +21,7 @@ import { tripsOps } from './trips.ts';
 import { coursesOps } from './courses.ts';
 import { vehiclesOps } from './vehicles.ts';
 import { trafficOps } from './traffic.ts';
+import { exitsOps } from './exits.ts';
 import type { OpName, OpsPart, Request } from './ops.ts';
 
 const ops: OpsPart<OpName> = {
@@ -33,6 +34,7 @@ const ops: OpsPart<OpName> = {
   ...coursesOps,
   ...vehiclesOps,
   ...trafficOps,
+  ...exitsOps,
 };
 
 // live vehicles and place names do not wait for the timetable (the map asks for vehicles before it is in, and a

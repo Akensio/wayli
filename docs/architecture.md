@@ -568,6 +568,20 @@ the map redrawn, the stored trip updated. A dismissed proposal stays away
 for fifteen minutes. The pure parts (origin, plan identity, splice) live in
 `follow.ts`.
 
+Station entrances: the feed has one point per station, near its middle,
+while the Red Line's underground stations open up to 150 m away on
+different streets. The router is unchanged; when the worker writes out a
+walk that ends at or starts from a station with entrances (`exits.ts`,
+from `plan.ts legOut`), it picks the entrance with the shortest street
+route to the rider's point (or to the other stop of a transfer walk; as the
+crow flies until the street graph is in), draws the walk to it, and puts it
+on the leg: letter, position and the street it opens onto, named by the
+address book. The detail says "walk 3 min to Allenby · Entrance B
+(Rothschild)" and "walk 4 min from Allenby · Exit C (Yehuda HaLevi)"; the
+follow screen's "get off at" names the exit, and the walk to a station ends
+for the follower at the entrance, not the station point. Walk times stay as
+planned: the entrance is within the station's own distance of its point.
+
 Search and addresses: `pipeline/places.py` compiles an offline address book
 from OpenStreetMap (streets with their city from the nearest transit stop,
 house numbers, cities from the feed, and named places: landmarks such as
@@ -788,7 +802,14 @@ Data: `data/manifest.json` lists one timetable file per service day
 being planned), the
 learned section times (`bustimes.bin.gz`, 1.3 MB, and `railtimes.json`),
 loaded first after the first answer because the road colours and the delay
-estimates wait for them and nothing else, then the
+estimates wait for them and nothing else, with them the station entrances
+(`entrances.json`, 4 KB: `pipeline/entrances.py` reads from OpenStreetMap
+where a light rail, underground or train station opens onto the street,
+lettered A to D at the Red Line's underground stations, tied to its station
+by the stop-area relation or the nearest station within 200 m; 18 stations,
+37 entrances on 2026-11-05; the worker ties each station to the timetable's
+train, light rail and underground stops within 200 m, since the feed names
+a station's stops many ways), then the
 courses (`shapes.bin.gz`, 3.6 MB: the feed's 6,749 shapes simplified to 6 m,
 1.26M points as int32 1e-5 degrees) and the address book together, and last
 the street graph (10.7 MB; until it

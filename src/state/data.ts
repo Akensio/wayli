@@ -12,6 +12,7 @@ export type Manifest = {
   shapes?: DataFile;
   streets?: DataFile;
   railtimes?: DataFile;
+  entrances?: DataFile;
   bustimes?: DataFile;
 };
 export const manifest = signal<Manifest | null>(null);

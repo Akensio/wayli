@@ -19,6 +19,7 @@ import {
   loadShapes,
   loadRailTimes,
   loadBusTimes,
+  loadEntrances,
 } from './controllers/loading';
 import { plan, planFromBar, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
@@ -77,6 +78,7 @@ async function boot(): Promise<void> {
   // at once, a ride, a stop's lines), then the street graph (11 MB), which only refines walks that redraw themselves
   loadBusTimes();
   loadRailTimes();
+  loadEntrances(); // a few KB: which entrance of a station a walk goes to
   await Promise.all([loadShapes(), loadPlaces()]);
   await loadStreets();
 }

@@ -259,12 +259,27 @@ export type RideLegOut = {
 };
 /** A way on foot or by bike as plan.ts dresses it: to the first stop (access), between stops (walk), from the last
  *  (egress); `path` along the streets ('street') or the two ends joined ('straight'). */
+/** A station entrance as a leg names it (trip/journey.ts Exit). */
+export type ExitOut = { ref: string; name: string; lat: number; lon: number; street: string };
+/** data/entrances.json (pipeline/entrances.py): stations with their entrances, tied to stops in the worker (exits.ts). */
+export type EntrancesFile = {
+  built?: string;
+  near_m?: number;
+  stations: {
+    name: string;
+    lat: number;
+    lon: number;
+    entrances: { ref: string; name: string; lat: number; lon: number }[];
+  }[];
+};
 export type WalkLegOut = {
   depart: number;
   arrive: number;
   seconds: number;
   path: PathPoint[];
   pathKind: 'street' | 'straight';
+  entry?: ExitOut; // the station entrance the walk goes in by
+  exit?: ExitOut; // the station entrance the walk comes out of
 } & (
   | { type: 'walk'; from: StopOut; to: StopOut }
   | { type: 'access'; to: StopOut; mode: StreetMode }
@@ -316,6 +331,7 @@ export type Ops = {
   loadPlaces: { args: DataFileArgs; result: PlacesHeader['counts'] };
   loadBusTimes: { args: DataFileArgs; result: { sections: number; built?: string } };
   setRailTimes: { args: { m: RailTimes | null | undefined }; result: true };
+  setEntrances: { args: { m: EntrancesFile | null | undefined }; result: true };
   setLang: { args: { lang: Lang }; result: Lang };
   // search.ts: places
   search: {

@@ -30,6 +30,8 @@ the data every night and publishes to GitHub Pages. No crowd reports yet; see
   from OpenStreetMap and Overture Maps, with no server to run; every name
   has an English form, the source's or a transliteration made at build time.
 - Hebrew and right-to-left as first-class, not an afterthought.
+- At a light rail or train station with several entrances, the walk goes to
+  the right one and says which: "Exit B (Rothschild)".
 - Bicycles as a real mode: ride to the station, ride between legs, take the
   bike on the train where allowed.
 - Work offline, if routing ends up on the device: then the whole timetable

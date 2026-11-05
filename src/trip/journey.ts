@@ -39,10 +39,15 @@ export type RideLeg = LegBase & {
   pathKind?: 'shape' | 'stops'; // along its course, or its stops joined straight (drawn dashed)
 };
 /** A way on foot or by bike: to the first stop (access), between stops (walk, transfer), from the last (egress). */
+/** An entrance of a station (data/entrances.json): its letter (A..D at the Red Line's underground stations, '' where
+ *  the map gives none), its name where it has one, where it is, and the street it opens onto ('' when unknown). */
+export type Exit = { ref: string; name: string; lat: number; lon: number; street: string };
 export type WalkLeg = LegBase & {
   type: 'walk' | 'access' | 'egress' | 'transfer';
   mode?: string; // 'walk' or 'bike'
   pathKind?: 'street' | 'straight';
+  entry?: Exit; // the station entrance this walk goes in by (its path ends there)
+  exit?: Exit; // the station entrance this walk comes out of (its path starts there)
 };
 export type Leg = RideLeg | WalkLeg;
 export const isRide = (l: Leg): l is RideLeg => l.type === 'ride';
