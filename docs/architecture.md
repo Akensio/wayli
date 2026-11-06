@@ -581,7 +581,7 @@ without casing, and puts a stairs mark with an accent ring at the entrance,
 `map/layers.ts` walkPieces and doorMarker), and puts it on the leg: letter,
 position and the street it opens onto, named by the address book. Every
 entrance is also on the map by itself from zoom 15 (`lm-doors`, a stairs
-badge like the bus stops', its letter from zoom 16.5), so a rider at a
+badge like the bus stops', its letter from zoom 16), so a rider at a
 station sees where it opens. The detail says "walk 3 min to Allenby · Entrance B
 (Rothschild)" and "walk 4 min from Allenby · Exit C (Yehuda HaLevi)"; the
 follow screen's "get off at" names the exit, and the walk to a station ends

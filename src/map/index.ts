@@ -265,7 +265,7 @@ function setupMapLayers(m: MLMap): void {
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
       'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.8, 17, 1],
-      'text-field': ['step', ['zoom'], '', 16.5, ['get', 'ref']],
+      'text-field': ['step', ['zoom'], '', 16, ['get', 'ref']], // a whole zoom: a symbol layer lays its text out at the tile's zoom, so 16.5 showed nothing until 17
       'text-font': ['Noto Sans Bold'],
       'text-size': 11,
       'text-anchor': 'top',
