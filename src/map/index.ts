@@ -18,7 +18,7 @@ import {
   TERRAIN_PITCH,
   wantDarkMap,
 } from './basemap';
-import { BADGE_KINDS, stationImage } from './images';
+import { BADGE_KINDS, stationImage, doorImage } from './images';
 import { ensureJourneyLayers } from './layers';
 import { stopPopup, placeBubble } from './popups';
 import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetShow, watchLive } from './live';
@@ -183,6 +183,24 @@ function stopNear(m: MLMap, point: { x: number; y: number }) {
   }
   return best;
 }
+/** Every station entrance as the map draws it (lm-doors): kept here so a style change gets them back. */
+let doors: GeoJSON.FeatureCollection = EMPTY;
+/** The station entrances file (data/entrances.json, controllers/loading.ts): each entrance a point with its letter. */
+export function setEntrances(
+  file: { stations: { name: string; entrances: { ref: string; lat: number; lon: number }[] }[] } | null,
+): void {
+  doors = {
+    type: 'FeatureCollection',
+    features: (file?.stations || []).flatMap((st) =>
+      st.entrances.map((e) => ({
+        type: 'Feature' as const,
+        properties: { ref: e.ref, station: st.name },
+        geometry: { type: 'Point' as const, coordinates: [e.lon, e.lat] },
+      })),
+    ),
+  };
+  (state.main?.getSource('lm-doors') as any)?.setData(doors);
+}
 /** Sources and layers of the main map, bottom to top: every stop, the journey or line, live vehicles. Re-made after a style change. */
 function setupMapLayers(m: MLMap): void {
   if (m.getSource('lm-veh')) return;
@@ -234,6 +252,28 @@ function setupMapLayers(m: MLMap): void {
   });
   for (const k of BADGE_KINDS)
     if (!m.hasImage('wayli-st-' + k)) m.addImage('wayli-st-' + k, stationImage(k), { pixelRatio: 2 });
+  // every station entrance (data/entrances.json, setEntrances), close up: a rider at a station sees where it opens
+  if (!m.hasImage('wayli-door')) m.addImage('wayli-door', doorImage(), { pixelRatio: 2 });
+  m.addSource('lm-doors', { type: 'geojson', data: doors });
+  m.addLayer({
+    id: 'lm-doors',
+    type: 'symbol',
+    source: 'lm-doors',
+    minzoom: 15,
+    layout: {
+      'icon-image': 'wayli-door',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.8, 17, 1],
+      'text-field': ['step', ['zoom'], '', 16.5, ['get', 'ref']],
+      'text-font': ['Noto Sans Bold'],
+      'text-size': 11,
+      'text-anchor': 'top',
+      'text-offset': [0, 0.9],
+      'text-optional': true,
+    },
+    paint: { 'text-color': '#1b1f24', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+  });
   // close up, every bus stop gets its badge over the dot; stations keep theirs from zoom 11
   m.addLayer({
     id: 'lm-stops-icon',

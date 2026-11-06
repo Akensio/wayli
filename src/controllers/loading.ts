@@ -156,6 +156,7 @@ export async function loadEntrances(): Promise<void> {
   if (!f) return;
   try {
     const m = await fetchJson<EntrancesFile>(fileUrl(f));
+    map.setEntrances(m); // every entrance on the map
     await call('setEntrances', { m });
   } catch (e) {
     console.warn('entrances', e); // walks go to the station's point then
