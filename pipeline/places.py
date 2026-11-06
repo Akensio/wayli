@@ -27,14 +27,15 @@ import container
 import english
 from common import log, member, haversine
 
-FORMAT_VERSION = 8   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
+FORMAT_VERSION = 9   # 2: English names beside the Hebrew (streets, places, cities); 3: everyday places too (food, shops, hotels...);
                      # 4: an address joins a street of its name only in its city or nearby (street_for);
                      # 5: Overture's everyday places beside OpenStreetMap's (--overture);
                      # 6: public bodies' places too (--public), Overture from confidence 0.5. The number is what the
                      #    workflow's --check compares: a new number makes the next nightly build rebuild the book at once
                      #    instead of waiting out the weekly cache;
                      # 7: every street, place and city has an English name: the source's, else one made by english.py;
-                     # 8: an entry takes the book's English for its Hebrew name before any is made (whole_names)
+                     # 8: an entry takes the book's English for its Hebrew name before any is made (whole_names);
+                     # 9: a spelling is learned only from an English word no other word of the name owns (רכבת is not Beit)
 STREET_TYPES = {"primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "unclassified",
                 "residential", "living_street", "pedestrian", "road", "service", "footway", "path", "cycleway", "track"}
 POI_TAGS = {

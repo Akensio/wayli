@@ -218,10 +218,21 @@ def learn(pairs):
         h, e = he_words(he), en_words(en)
         if not h or len(h) != len(e):
             continue
-        for i, a in enumerate(h):
-            b = e[i] if sounds_like(a, e[i]) else next((x for j, x in enumerate(e) if j != i and sounds_like(a, x)), None)
-            if b:
-                votes[a][b] += 1
+        # the words that sound exactly alike pair first (בית with Beit), each English word to one Hebrew word, so a looser
+        # likeness never takes a word another owns ("תחנת רכבת בית יהושע" / "Beit Yehoshua Railway Station": רכבת is not Beit)
+        taken, pick = set(), {}
+        for exact in (True, False):
+            for i, a in enumerate(h):
+                if i in pick:
+                    continue
+                for j in [i] + [j for j in range(len(e)) if j != i]:   # its own place first
+                    if j in taken or not sounds_like(a, e[j]) or (exact and skeleton(translit(a)) != skeleton(e[j])):
+                        continue
+                    pick[i] = j
+                    taken.add(j)
+                    break
+        for i, j in pick.items():
+            votes[h[i]][e[j]] += 1
     lex = {}
     for h, c in votes.items():
         b, n = c.most_common(1)[0]
@@ -257,7 +268,7 @@ PREFIX = {
     "שדרות": "Sderot", "שד": "Sderot", "דרך": "Derech", "סמטת": "Simtat", "מעלה": "Maale", "רחוב": "",
     # common words the lexicon cannot learn because OpenStreetMap translates them, in their usual Latin spelling
     "מרכז": "Merkaz", "המרכז": "HaMerkaz", "בית": "Beit", "שוק": "Shuk", "חוף": "Hof", "גשר": "Gesher", "נמל": "Namal",
-    "צומת": "Tzomet", "תחנת": "Tahanat", "תחנה": "Tahana", "כפר": "Kfar", "קרית": "Kiryat", "קריית": "Kiryat",
+    "צומת": "Tzomet", "תחנת": "Tahanat", "תחנה": "Tahana", "רכבת": "Rakevet", "הרכבת": "HaRakevet", "קו": "Kav", "כפר": "Kfar", "קרית": "Kiryat", "קריית": "Kiryat",
     "רמת": "Ramat", "נווה": "Neve", "גבעת": "Givat", "עין": "Ein", "באר": "Be'er", "בני": "Bnei", "בת": "Bat",
     "הר": "Har", "נחל": "Nahal", "עמק": "Emek", "ים": "Yam", "העיר": "HaIr", "חנות": "Hanut", "משרד": "Misrad",
     "מספרת": "Misperet", "מכון": "Machon", "אולם": "Ulam", "ספורט": "Sport", "ילדים": "Yeladim", "שיניים": "Shinayim",

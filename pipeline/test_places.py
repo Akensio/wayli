@@ -99,6 +99,8 @@ check("lexicon: a spelling is learned when it sounds like the word", lex.get("א
 check("lexicon: a reordered translation still teaches the word that sounds alike", lex.get("גבעתיים"), "Givatayim")
 check("lexicon: a translation is never learned (ים המלח stays Yam HaMelach)", (lex.get("ים"), lex.get("המלח"), lex.get("העיר")), (None, None, None))
 check("lexicon: the spelling most names agree on", lex.get("הרצל"), "Herzl")
+station_lex = english.learn([("תחנת רכבת בית יהושע", "Beit Yehoshua Railway Station")] * 3)
+check("lexicon: a word pairs only with an English word no other word owns (רכבת is not Beit)", (station_lex.get("בית"), station_lex.get("רכבת")), ("Beit", None))
 check("name: the article before a known word, and before a word spelt by rule", (english.english_name("ההרצל", lex), english.translit("הנסיך")), ("HaHerzl", "HaNsikh"))
 park_pairs = [("פארק המסילה", "HaMessila Park"), ("פארק המסילה", "The Track Park"), ("פארק המסילה", "HaMessila Park")]
 whole, park_lex = english.whole_names(park_pairs), english.learn(park_pairs)
