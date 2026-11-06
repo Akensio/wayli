@@ -49,8 +49,9 @@ function streetOf(lat: number, lon: number): string {
 }
 /**
  * The entrance of stop `s`'s station nearest the way between it and `point`: by the streets when the graph is in (the
- * walk's seconds), else as the crow flies; with the walk's path, from the point to the entrance, or the other way when
- * the walk leaves the station (`fromStation`). Null for a stop without entrances.
+ * walk's seconds), else as the crow flies; with the walk's path, from the point to the entrance and on to the stop's
+ * own point (the stretch inside the station, so the line meets the ride drawn from the stop), or the other way round
+ * when the walk leaves the station (`fromStation`). Null for a stop without entrances.
  */
 export function bestEntrance(
   s: number,
