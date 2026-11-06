@@ -63,3 +63,35 @@ bills, not purity.
 - Test: none the build can run; the test is the question above, asked in
   the decision line.
 
+## 3. One language on screen
+
+Agreed 2026-11-06 (maintainer, after "Entrance A to ארלוזורוב": "this is like
+the millionth time I tell you to make sure we DON'T mix Hebrew and English.
+Please find a way to make sure this never repeats itself").
+
+A sentence shown in English contains no Hebrew letters, and one shown in
+Hebrew no English words of ours. Names are the hard part: the feed, the map
+and the public bodies leave some untranslated. Three layers answer it, each
+below the one before, so a Hebrew name can never reach an English screen:
+
+1. The data's own English: the feed's translations, OpenStreetMap's
+   `name:en`, Overture's.
+2. The build's: `pipeline/english.py` gives an English name to every
+   street, place and city of the address book, every stop, station, city
+   and headsign of the timetable (`compile.py`), and every station of the
+   entrances file, where the source has none (spellings learned from the
+   names that have both languages, generic words, rule transliteration).
+3. The app's: `src/engine/latin.ts` `inLatin`, the same rule
+   transliteration ported, is the last resort inside every helper that
+   hands a name to the screen (`engine/raptor.ts` stop, station, city and
+   headsign names; `engine/places.ts` streets, places and cities). New
+   code that shows a name goes through those helpers, never through the
+   raw field.
+
+- Owner: the name helpers above and `src/engine/latin.ts`; a new string of
+  the app's own goes in `src/common/i18n.ts` in both languages.
+- Test: `tests/latin.test.ts` (in `npm test`): every helper, in English,
+  on Hebrew-only data gives no Hebrew letters; every English string of the
+  app's own carries none. A screen that shows a name another way gets the
+  same test the day it is written.
+

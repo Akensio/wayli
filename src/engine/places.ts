@@ -1,6 +1,7 @@
 // Wayli: offline address book (streets, house numbers, cities, notable places) from pipeline/places.py.
 // Free-text search that understands "דיזנגוף 50, תל אביב", "דיזנגוף סנטר", "חיפה", and the same typed in
 // Latin letters ("Dizengoff 50 tel aviv", "Dizengoff Center", "Haifa").
+import { inLatin } from './latin.ts';
 import { haversine, scaleAt, type LatLon } from './geo.ts';
 import { readContainer, type Container, type ContainerHeader } from './container.ts';
 import { norm, byScore } from './text.ts';
@@ -689,11 +690,15 @@ function parseQuery(pl: Places, text: string): ParsedQuery {
 }
 
 // names as the rider's language wants them: English where the data has it, else Hebrew
+// names as the rider's language wants them: English where the data has it, else Hebrew, which in English goes through
+// the app's own transliteration so no Hebrew letters reach an English screen (engine/latin.ts, docs/principles.md rule 3)
+const own = (name: string, lang: Lang): string => (lang === 'en' ? inLatin(name) : name);
 const streetName = (pl: Places, s: number, lang: Lang): string =>
-  (lang === 'en' && pl.streets[s][4]) || pl.streets[s][0];
-const poiName = (pl: Places, p: number, lang: Lang): string => (lang === 'en' && pl.pois[p][5]) || pl.pois[p][0];
+  (lang === 'en' && pl.streets[s][4]) || own(pl.streets[s][0], lang);
+const poiName = (pl: Places, p: number, lang: Lang): string =>
+  (lang === 'en' && pl.pois[p][5]) || own(pl.pois[p][0], lang);
 const cityOf = (pl: Places, he: string, lang: Lang): string =>
-  (lang === 'en' && he && pl.cityEnByHe.get(he)) || he || '';
+  (lang === 'en' && he && pl.cityEnByHe.get(he)) || own(he || '', lang);
 
 /** What is at a point (reverseGeocode): the nearest address, place or street, named in the rider's language, its city
  *  ('' when none), and how far it is from the point (metres). */
@@ -840,7 +845,7 @@ export function searchPlaces(
     const c = pl.cities[i];
     return {
       kind: 'city',
-      name: (lang === 'en' && c[3]) || c[0],
+      name: (lang === 'en' && c[3]) || own(c[0], lang),
       city: '',
       lat: c[1],
       lon: c[2],

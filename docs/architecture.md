@@ -568,6 +568,12 @@ the map redrawn, the stored trip updated. A dismissed proposal stays away
 for fifteen minutes. The pure parts (origin, plan identity, splice) live in
 `follow.ts`.
 
+Names in the rider's language: the data's English where it has it, the
+build's where it has none (`pipeline/english.py`, used by the address
+book, the timetable's compiler and the entrances file), and in the app
+`src/engine/latin.ts` as the last resort inside every name helper, so no
+Hebrew letters reach an English screen (`docs/principles.md`, rule 3).
+
 Station entrances: the feed has one point per station, near its middle,
 while the Red Line's underground stations open up to 150 m away on
 different streets. The router is unchanged; when the worker writes out a

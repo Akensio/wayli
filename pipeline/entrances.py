@@ -3,6 +3,7 @@
 the street, from OpenStreetMap.
 
     python3 -I pipeline/entrances.py data/osm/israel-and-palestine-latest.osm.pbf --out data/entrances.json
+    python3 -I pipeline/entrances.py --check data/entrances.json   # exit 0 when the file is of this script's format
 
 The feed has no pathways: a station is one point near its middle, while its entrances (lettered A to D at the Red
 Line's underground stations) open up to 150 m away on different streets. OpenStreetMap maps them (railway=
@@ -24,7 +25,10 @@ from common import log, haversine
 
 ENTRANCE = {"subway_entrance", "train_station_entrance"}
 STATION = {"station", "halt"}
+DOOR = {"main", "yes", "exit", "entrance"}   # entrance=* on a node beside a station: a train station's doors (mapped so, not as railway=)
 NEAR_M = 200
+FORMAT = 2   # 1: lettered entrances of light rail and underground stations; 2: name_en, and train stations' doors (plain entrance nodes)
+DOOR_M = 120   # a plain entrance node this close to a station node is the station's (further, it is some building's)
 
 
 def read_osm(path):
@@ -34,14 +38,17 @@ def read_osm(path):
     class H(osmium.SimpleHandler):
         def __init__(self):
             super().__init__()
-            self.stations, self.entrances, self.areas = {}, {}, []
+            self.stations, self.entrances, self.doors, self.areas = {}, {}, {}, []
 
         def node(self, n):
             t = dict(n.tags)
             if t.get("railway") in ENTRANCE:
                 self.entrances[n.id] = {"ref": (t.get("ref") or "").strip()[:4], "name": (t.get("name") or "").strip(), "lat": round(n.location.lat, 6), "lon": round(n.location.lon, 6)}
+            elif t.get("entrance") in DOOR:
+                self.doors[n.id] = {"ref": (t.get("ref") or "").strip()[:4], "name": (t.get("name") or "").strip(), "lat": round(n.location.lat, 6), "lon": round(n.location.lon, 6)}
             elif t.get("railway") in STATION or t.get("public_transport") == "station":
-                self.stations[n.id] = {"name": t.get("name") or "", "lat": n.location.lat, "lon": n.location.lon}
+                self.stations[n.id] = {"name": t.get("name") or "", "name_en": (t.get("name:en") or "").strip(),
+                                       "lat": n.location.lat, "lon": n.location.lon}
 
         def relation(self, r):
             t = dict(r.tags)
@@ -50,6 +57,10 @@ def read_osm(path):
 
     h = H()
     h.apply_file(path)
+    # a plain entrance node within DOOR_M of a station node is one of its doors (38 train stations on 2026-11-06)
+    for nid, d in h.doors.items():
+        if any(haversine(d["lat"], d["lon"], s["lat"], s["lon"]) <= DOOR_M for s in h.stations.values()):
+            h.entrances[nid] = d
     return h.stations, h.entrances, h.areas
 
 
@@ -71,7 +82,7 @@ def group(stations, entrances, areas, near_m=NEAR_M):
             sid = ("area", name)
             centre = (sum(entrances[e]["lat"] for e in ents) / len(ents), sum(entrances[e]["lon"] for e in ents) / len(ents))
             sname = name
-        st = by_station.setdefault(sid, {"name": sname, "lat": centre[0], "lon": centre[1], "entrances": []})
+        st = by_station.setdefault(sid, {"name": sname, "name_en": stations[sid].get("name_en", "") if sts else "", "lat": centre[0], "lon": centre[1], "entrances": []})
         for e in ents:
             if e not in placed:
                 st["entrances"].append(entrances[e])
@@ -87,7 +98,7 @@ def group(stations, entrances, areas, near_m=NEAR_M):
         if best is None:
             continue
         s = stations[best]
-        by_station.setdefault(best, {"name": s["name"], "lat": s["lat"], "lon": s["lon"], "entrances": []})["entrances"].append(e)
+        by_station.setdefault(best, {"name": s["name"], "name_en": s.get("name_en", ""), "lat": s["lat"], "lon": s["lon"], "entrances": []})["entrances"].append(e)
         placed.add(eid)
     out = []
     for st in by_station.values():
@@ -99,16 +110,25 @@ def group(stations, entrances, areas, near_m=NEAR_M):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("pbf")
-    ap.add_argument("--out", required=True)
+    ap.add_argument("pbf", nargs="?")
+    ap.add_argument("--out")
+    ap.add_argument("--check", metavar="FILE", help="exit 0 if FILE is of this script's format (the build rebuilds an older one)")
     args = ap.parse_args()
+    if args.check:
+        try:
+            with open(args.check, encoding="utf-8") as f:
+                sys.exit(0 if json.load(f).get("format") == FORMAT else 1)
+        except (OSError, ValueError):
+            sys.exit(1)
+    if not args.pbf or not args.out:
+        ap.error("pbf and --out are required to build")
     t0 = time.time()
     stations, entrances, areas = read_osm(args.pbf)
     log(f"OSM: {len(stations)} station nodes, {len(entrances)} entrances, {len(areas)} stop areas, {time.time() - t0:.0f}s")
     out = group(stations, entrances, areas)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
-        json.dump({"built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "near_m": NEAR_M, "stations": out},
+        json.dump({"format": FORMAT, "built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "near_m": NEAR_M, "stations": out},
                   f, ensure_ascii=False, separators=(",", ":"))
     log(f"{len(out)} stations with {sum(len(s['entrances']) for s in out)} entrances, wrote {args.out}")
     for s in out:

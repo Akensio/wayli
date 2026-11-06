@@ -267,6 +267,7 @@ export type EntrancesFile = {
   near_m?: number;
   stations: {
     name: string;
+    name_en?: string; // OpenStreetMap's, where it has one
     lat: number;
     lon: number;
     entrances: { ref: string; name: string; lat: number; lon: number }[];
@@ -332,8 +333,12 @@ export type Ops = {
   loadBusTimes: { args: DataFileArgs; result: { sections: number; built?: string } };
   setRailTimes: { args: { m: RailTimes | null | undefined }; result: true };
   setEntrances: { args: { m: EntrancesFile | null | undefined }; result: true };
-  /** An entrance tapped on the map (exits.ts doorInfo): its station's name in the rider's language and the street it opens onto. */
-  doorInfo: { args: { lat: number; lon: number; station: string }; result: { station: string; street: string } };
+  /** An entrance tapped on the map (exits.ts doorInfo): its station's name in the rider's language, what kind of
+   *  station it is (light rail, underground, train, or '' when no stop is tied) and the street it opens onto. */
+  doorInfo: {
+    args: { lat: number; lon: number; station: string; ref: string };
+    result: { station: string; kind: 'lrt' | 'subway' | 'rail' | ''; street: string };
+  };
   setLang: { args: { lang: Lang }; result: Lang };
   // search.ts: places
   search: {

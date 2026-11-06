@@ -18,6 +18,7 @@ import { viewFor } from './view';
 import { popupState, pick, hooks, currentSheet, cameraPadding } from './shared';
 import { timeOf } from '../common/time';
 import { reverseName } from '../text/placeNames';
+import { inLatin } from '../engine/latin';
 import { VehicleBubble, StopBubble, PlaceBubble, VehicleMark, type VehicleInfo } from './bubbles';
 import { maplibregl } from './maplibre';
 
@@ -188,9 +189,11 @@ export async function placeBubble(
 export async function doorPopup(m: MLMap, lngLat: [number, number], ref: string, station: string): Promise<void> {
   if (nav.isOpen('picker')) return;
   const my = ++pick.seq;
-  const title = (stn: string) =>
-    ref ? t('entranceOf', { ref, station: stn }) : t('entranceOfPlain', { station: stn });
-  const name = signal(title(station)),
+  // what the entrance leads to: the station's mode once the worker says, "station" until then
+  const KIND = { lrt: 'Lrt', rail: 'Rail', subway: 'Subway', '': '' } as const;
+  const title = (stn: string, kind: keyof typeof KIND = '') =>
+    ref ? t(`entranceOf${KIND[kind]}`, { ref, station: stn }) : t(`entranceOf${KIND[kind]}Plain`, { station: stn });
+  const name = signal(title(lang.value === 'en' ? inLatin(station) : station)),
     sub = signal('');
   const place = () => ({ name: name.value, lat: lngLat[1], lon: lngLat[0] });
   openPopup(
@@ -204,9 +207,9 @@ export async function doorPopup(m: MLMap, lngLat: [number, number], ref: string,
     }),
   );
   try {
-    const info = await call('doorInfo', { lat: lngLat[1], lon: lngLat[0], station });
+    const info = await call('doorInfo', { lat: lngLat[1], lon: lngLat[0], station, ref });
     if (my !== pick.seq) return;
-    name.value = title(info.station);
+    name.value = title(info.station, info.kind);
     sub.value = info.street;
   } catch {
     /* the file's own name stays */

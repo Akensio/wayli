@@ -8,6 +8,7 @@ import { patternsAt } from '../engine/raptor.ts';
 import { route, type StreetMode } from '../engine/streets.ts';
 import { lang, onNewDay, pl, st, tt } from './data.ts';
 import { ssName } from './names.ts';
+import { inLatin } from '../engine/latin.ts';
 import type { EntrancesFile, ExitOut, OpsPart } from './ops.ts';
 
 type Entrance = EntrancesFile['stations'][number]['entrances'][number];
@@ -101,20 +102,26 @@ export const exitsOps = {
     byStop = null;
     return true;
   },
-  /** An entrance tapped on the map: its station as the timetable names it in the rider's language (the file's own name
-   *  when no stop is tied), and the street it opens onto. */
-  doorInfo({ lat, lon, station }) {
-    const stn = file?.stations.find(
-      (s) => s.name === station && s.entrances.some((e) => e.lat === lat && e.lon === lon),
-    );
-    let name = station;
-    if (stn && tt) {
+  /** An entrance tapped on the map: found by its station's name and its letter (the map's coordinates are the tile's,
+   *  not the file's), its station as the timetable names it in the rider's language and what kind of station that is
+   *  (the tied stop's mode), else the file's English or, last, its Hebrew made Latin on the way out (engine/latin.ts);
+   *  and the street it opens onto. */
+  doorInfo({ lat, lon, station, ref }) {
+    const stn =
+      file?.stations.find((s) => s.name === station && s.entrances.some((e) => e.ref === ref)) ||
+      file?.stations.find((s) => s.entrances.some((e) => haversine(e.lat, e.lon, lat, lon) < 30));
+    let name = (lang === 'en' && stn?.name_en) || station,
+      kind: 'lrt' | 'subway' | 'rail' | '' = '';
+    if (stn && tt)
       for (const [s, ents] of index())
         if (ents === stn.entrances) {
           name = ssName(s);
+          const types = patternsAt(tt, s).map(({ p }) => tt!.routes[tt!.patRoute[p]][3]);
+          if (types.includes(2)) kind = 'rail';
+          else if (types.includes(0)) kind = 'lrt';
+          else if (types.includes(1)) kind = 'subway';
           break;
         }
-    }
-    return { station: name, street: streetOf(lat, lon) };
+    return { station: lang === 'en' ? inLatin(name) : name, kind, street: streetOf(lat, lon) };
   },
 } satisfies OpsPart<'setEntrances' | 'doorInfo'>;

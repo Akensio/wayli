@@ -25,6 +25,7 @@ import numpy as np
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
 import container
+import english
 from common import log, member, rows, hms, haversine
 
 FORMAT_VERSION = 3   # 3: header `names`, stop/station/city names and headsigns in other languages
@@ -595,24 +596,46 @@ def main():
     for L in langs:
         d = translations[L]
         tl = lambda s: (d.get(tkey(s), "") if s else "")
+        # English for what the feed leaves untranslated (2,000 of 25,600 stop names, the light rail's among them), made
+        # as the address book makes its (english.py: spellings learned from the feed's own translations, generic words,
+        # rule transliteration), so no Hebrew name reaches an English screen (docs/principles.md, rule 3)
+        made = {"stops": 0, "stations": 0, "cities": 0, "routes": 0}
+        if L == "en":
+            pairs = [(he, en) for he, en in d.items() if he and en]
+            lex, whole = english.learn(pairs), english.whole_names(pairs)
+
+            def en_of(s, what):
+                if not s:
+                    return ""
+                t = tl(s)
+                if t:
+                    return t
+                e = english.english_name(s, lex, whole)
+                if e:
+                    made[what] += 1
+                return e
+        else:
+            def en_of(s, what):
+                return tl(s)
         cities = {}
         for s in stop_list:
-            if s[6] and s[6] not in cities and tl(s[6]):
-                cities[s[6]] = tl(s[6])
+            if s[6] and s[6] not in cities and en_of(s[6], "cities"):
+                cities[s[6]] = en_of(s[6], "cities")
         heads = []
         for r in route_list:
             hs = headsign_of(r[1])
             th = translate(hs, d)
-            heads.append(th if th != hs else "")
+            heads.append(th if th != hs else en_of(hs, "routes"))
         names[L] = {
-            "stops": [tl(s[1]) for s in stop_list],
-            "stations": [tl(stops_raw[pid][0]) if pid in stops_raw else "" for pid in parent_index],
+            "stops": [en_of(s[1], "stops") for s in stop_list],
+            "stations": [en_of(stops_raw[pid][0], "stations") if pid in stops_raw else "" for pid in parent_index],
             "cities": cities,
             "routes": heads,
         }
         log(f"names in {L}: {sum(1 for x in names[L]['stops'] if x)}/{len(stop_list)} stops, "
             f"{sum(1 for x in names[L]['stations'] if x)}/{len(parent_index)} stations, {len(cities)} cities, "
-            f"{sum(1 for x in heads if x)}/{len(route_list)} headsigns")
+            f"{sum(1 for x in heads if x)}/{len(route_list)} headsigns"
+            + (f"; made where the feed has none: {made}" if L == "en" else ""))
 
     header = {
         "format": FORMAT_VERSION,

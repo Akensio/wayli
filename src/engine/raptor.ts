@@ -7,6 +7,7 @@
 // times, so a station with many platforms, or a location with several stops
 // nearby, is one query.
 
+import { inLatin } from './latin.ts';
 import { readContainer, type ContainerHeader } from './container.ts';
 import { hhmm } from './clock.ts';
 import { norm, byScore } from './text.ts';
@@ -333,14 +334,17 @@ function buildSearchIndex(tt: Timetable): void {
 
 const other = (tt: Timetable, lang: string | undefined): NamesIn | null =>
   (lang && lang !== 'he' && tt.names[lang]) || null;
-/** A stop's name in `lang` when the timetable carries it, else as the feed names it (Hebrew). */
+/** The feed's own name where the timetable has none in `lang`: in English never with Hebrew letters (engine/latin.ts,
+ *  docs/principles.md rule 3), as the feed names it otherwise. */
+const own = (name: string, lang: string | undefined): string => (lang === 'en' ? inLatin(name) : name);
+/** A stop's name in `lang` when the timetable carries it, else as the feed names it (transliterated for English). */
 export function stopName(tt: Timetable, s: number, lang?: string): string {
   const n = other(tt, lang);
-  return (n && n.stops[s]) || tt.stops[s][1];
+  return (n && n.stops[s]) || own(tt.stops[s][1], lang);
 }
 export function stationName(tt: Timetable, p: number, lang?: string): string {
   const n = other(tt, lang);
-  return (n && n.stations[p]) || (tt.stations[p] && tt.stations[p][1]) || '';
+  return (n && n.stations[p]) || own((tt.stations[p] && tt.stations[p][1]) || '', lang);
 }
 /** A stop's name where it is part of a station: the station's, else its own. */
 export function stopOrStationName(tt: Timetable, s: number, lang?: string): string {
@@ -364,7 +368,7 @@ export function centreOf(tt: Timetable, stops: number[]): LatLon {
 }
 export function cityName(tt: Timetable, city: string, lang?: string): string {
   const n = other(tt, lang);
-  return (n && n.cities && n.cities[city]) || city || '';
+  return (n && n.cities && n.cities[city]) || own(city || '', lang);
 }
 /** Where a route is headed: the destination half of the MOT route_long_name "origin-city<->destination-city-1#". */
 export function parseHeadsign(longName: string): string {
@@ -376,7 +380,7 @@ export function parseHeadsign(longName: string): string {
 }
 export function routeHeadsign(tt: Timetable, ri: number, lang?: string): string {
   const n = other(tt, lang);
-  return (n && n.routes && n.routes[ri]) || parseHeadsign(tt.routes[ri][1]);
+  return (n && n.routes && n.routes[ri]) || own(parseHeadsign(tt.routes[ri][1]), lang);
 }
 
 /** How well a name (with its city) answers the typed tokens; null when a token matches neither. */

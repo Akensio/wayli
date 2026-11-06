@@ -16,6 +16,7 @@ backtest).
 | `modes.ts` | What kind of vehicle runs a line, from its GTFS route type: `Mode`, rail, lrt, cable, taxi, flex or bus (the one word for it in the whole app). |
 | `container.ts` | Reading the container every data file comes in (a header, then typed-array sections), for the timetable, the street graph, the address book and the courses. |
 | `text.ts` | How the searches compare text (`norm`) and rank matches (`byScore`), shared by the stop search and the address book. |
+| `latin.ts` | A Hebrew name in Latin letters by rule (`inLatin`, the build's own transliteration ported): the last resort of every name helper in English, so no Hebrew letters reach an English screen (`docs/principles.md`, rule 3). |
 
 They are imported with their `.ts` extension: Vite transpiles them for the
 page and the worker, Node 22.18+ runs them as they are for `tests/`.

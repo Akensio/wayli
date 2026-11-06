@@ -17,6 +17,13 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
    - No tracking: no analytics that follow people, no location data sold,
      no tracking ads, ever. Privacy is the edge over Moovit.
    - Hebrew and right-to-left are first-class from the first screen.
+   - One language on screen (`docs/principles.md`, rule 3; maintainer,
+     2026-11-06, for the last time): an English sentence never carries a
+     Hebrew word. A name shown in English goes through the name helpers
+     (`engine/raptor.ts`, `engine/places.ts`), whose last resort is the
+     app's own transliteration (`src/engine/latin.ts`); never show a raw
+     field. The data and the build give English first (`english.py` in the
+     address book, the timetable and the entrances file).
    - Crowd reports are structured one-tap items. No free-text chat.
    Where trip planning runs (device, server, or a mix) is not decided.
    On-device RAPTOR is the leading option because it needs the least

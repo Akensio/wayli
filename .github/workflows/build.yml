@@ -89,6 +89,7 @@ jobs:
         run: |
           if [ ! -f data/streets.bin.gz ] || [ ! -f data/places.bin.gz ] || [ ! -f data/rail.bin.gz ] || [ ! -f data/entrances.json ] || [ -n "$(find data/streets.bin.gz -mtime +6)" ] \
              || ! python3 -I pipeline/places.py --check data/places.bin.gz \
+             || ! python3 -I pipeline/entrances.py --check data/entrances.json \
              || ! python3 -I pipeline/streets.py --check --out data/streets.bin.gz; then   # an older format is rebuilt too
             # a mirror may answer with an error page instead of the extract: fail on HTTP errors and insist on a real file
             dl() { curl -fsSL --retry 3 --retry-delay 15 -o "$1" "$2" && [ "$(stat -c %s "$1")" -gt 50000000 ]; }
