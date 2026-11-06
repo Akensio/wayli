@@ -17,7 +17,7 @@ import * as station from '../state/station';
 import type { Journey, Drawable } from '../trip/journey';
 import type { TrainRow } from '../state/station';
 import { state, markers, EMPTY, stale, stopKindProp, currentSheet, cameraPadding } from './shared';
-import { ensureJourneyLayers, drawJourney, withCourses, boundsOf, legProps } from './layers';
+import { ensureJourneyLayers, drawJourney, withCourses, boundsOf, legProps, walkPieces } from './layers';
 import { applyLiveShow, setStopLines } from './live';
 import { viewFor, centreOffset } from './view';
 import { clearOwn } from './vehicles';
@@ -92,11 +92,12 @@ const RECIPES: Record<View['draw'], Recipe> = {
         const coords = l.path.map((p) => [p[1], p[0]] as [number, number]);
         coords.forEach((x) => b.extend(x));
         if (c.idx !== altSel)
-          features.push({
-            type: 'Feature',
-            properties: { idx: c.idx, ...legProps(l) },
-            geometry: { type: 'LineString', coordinates: coords },
-          });
+          for (const piece of l.type === 'ride' ? [{ coords, inside: 0 }] : walkPieces(l))
+            features.push({
+              type: 'Feature',
+              properties: { idx: c.idx, inside: piece.inside, ...legProps(l) },
+              geometry: { type: 'LineString', coordinates: piece.coords },
+            });
         if (l.type === 'ride' && (!longest || coords.length > longest.length)) longest = coords;
       }
       // each ride says its line where it runs (a third of the way along, clear of the boarding pin and the minutes at

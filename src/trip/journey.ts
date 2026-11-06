@@ -65,6 +65,8 @@ export type DrawLeg = {
   from?: StopRef;
   to?: StopRef;
   stopsAlong?: { lon: number; lat: number; stop: number }[];
+  entry?: { lat: number; lon: number; ref?: string }; // a station entrance the walk goes in by (on its path)
+  exit?: { lat: number; lon: number; ref?: string }; // one it comes out of
   pattern?: number | null;
   boardPos?: number;
   alightPos?: number;

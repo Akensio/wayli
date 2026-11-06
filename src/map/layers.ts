@@ -10,6 +10,7 @@ import type { Drawable, DrawLeg, StopRef } from '../trip/journey';
 import { state, EMPTY, stopKindProp, stale } from './shared';
 import type { PathPoint } from '../engine/geo.ts';
 import { BADGE_KINDS, stationImage } from './images';
+import { ICONS } from '../widgets/icons';
 import { wireStopLayers } from './popups';
 import { maplibregl } from './maplibre';
 
@@ -26,8 +27,36 @@ export const legProps = (l: DrawLeg): { ride: 0 | 1; approx: 0 | 1 } => ({
   ride: l.type === 'ride' ? 1 : 0,
   approx: l.type === 'ride' && l.pathKind === 'stops' ? 1 : 0,
 });
+/** A walk's path in pieces: the street part, and, where it goes in by or comes out of a station entrance (the path
+ *  passes through the entrance's own point, worker/exits.ts), the stretch inside the station between the entrance and
+ *  the stop, drawn lighter (`inside` 1). A walk that meets no entrance is one piece. */
+export function walkPieces(l: DrawLeg): { coords: [number, number][]; inside: 0 | 1 }[] {
+  const path = l.path || [];
+  const at = (e: { lat: number; lon: number } | undefined): number =>
+    e ? path.findIndex((p) => p[0] === e.lat && p[1] === e.lon) : -1;
+  const toLngLat = (pts: PathPoint[]): [number, number][] => pts.map((p) => [p[1], p[0]]);
+  const out = at(l.exit),
+    into = at(l.entry);
+  const start = out > 0 ? out : 0,
+    end = into > 0 && into < path.length - 1 ? into : path.length - 1;
+  const pieces: { coords: [number, number][]; inside: 0 | 1 }[] = [];
+  if (out > 0) pieces.push({ coords: toLngLat(path.slice(0, out + 1)), inside: 1 });
+  if (end > start) pieces.push({ coords: toLngLat(path.slice(start, end + 1)), inside: 0 });
+  if (into > 0 && into < path.length - 1) pieces.push({ coords: toLngLat(path.slice(into)), inside: 1 });
+  return pieces.filter((x) => x.coords.length >= 2);
+}
+/** A station entrance's mark on the map: a stairs glyph in a white disc, at the entrance's point. */
+export function doorMarker(m: MLMap, e: { lat: number; lon: number }): Marker {
+  const el = document.createElement('div');
+  el.className = 'wayli-door';
+  el.innerHTML = `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS.stairs}"/></svg>`;
+  return new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([e.lon, e.lat]).addTo(m);
+}
 const RIDE_ON_COURSE: any = ['all', ['==', ['get', 'ride'], 1], ['!=', ['get', 'approx'], 1]];
 const RIDE_APPROX: any = ['all', ['==', ['get', 'ride'], 1], ['==', ['get', 'approx'], 1]];
+const WALK: any = ['all', ['==', ['get', 'ride'], 0], ['!=', ['get', 'inside'], 1]];
+const WALK_INSIDE: any = ['==', ['get', 'inside'], 1];
+const NOT_INSIDE: any = ['!=', ['get', 'inside'], 1];
 const RIDE_DASH = [2, 1.5]; // longer than a walk's dots
 /** The map's sources and layers for a journey, created once, bottom to top: the other ways, the faded whole lines, then the journey. */
 export function ensureJourneyLayers(m: MLMap): void {
@@ -42,6 +71,7 @@ export function ensureJourneyLayers(m: MLMap): void {
     id: 'alt-casing',
     type: 'line',
     source: 'alts',
+    filter: NOT_INSIDE,
     paint: { 'line-color': '#ffffff', 'line-width': 7, 'line-opacity': 0.85 },
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   });
@@ -65,8 +95,17 @@ export function ensureJourneyLayers(m: MLMap): void {
     id: 'alt-walk',
     type: 'line',
     source: 'alts',
-    filter: ['==', ['get', 'ride'], 0],
+    filter: WALK,
     paint: { 'line-color': '#8d939c', 'line-width': 3.5, 'line-dasharray': [1, 1.5] },
+    layout: { 'line-cap': 'round' },
+  });
+  // the stretch inside a station, from its entrance to the stop: the same dots, lighter and thinner, no casing
+  m.addLayer({
+    id: 'alt-walk-inside',
+    type: 'line',
+    source: 'alts',
+    filter: WALK_INSIDE,
+    paint: { 'line-color': '#8d939c', 'line-width': 2.5, 'line-dasharray': [1, 1.5], 'line-opacity': 0.5 },
     layout: { 'line-cap': 'round' },
   });
   m.addLayer({
@@ -113,6 +152,7 @@ export function ensureJourneyLayers(m: MLMap): void {
     id: 'journey-casing',
     type: 'line',
     source: 'journey',
+    filter: NOT_INSIDE,
     paint: { 'line-color': '#ffffff', 'line-width': ['case', ['==', ['get', 'ride'], 1], 10, 7], 'line-opacity': 0.95 },
     layout: { 'line-cap': 'round', 'line-join': 'round' },
   });
@@ -136,8 +176,16 @@ export function ensureJourneyLayers(m: MLMap): void {
     id: 'journey-walk',
     type: 'line',
     source: 'journey',
-    filter: ['==', ['get', 'ride'], 0],
+    filter: WALK,
     paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1, 1.5] },
+    layout: { 'line-cap': 'round' },
+  });
+  m.addLayer({
+    id: 'journey-walk-inside',
+    type: 'line',
+    source: 'journey',
+    filter: WALK_INSIDE,
+    paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-dasharray': [1, 1.5], 'line-opacity': 0.5 },
     layout: { 'line-cap': 'round' },
   });
   // the highlighted way takes taps too, among the results (its card comes into view): a wide invisible line over it
@@ -232,11 +280,21 @@ export function drawJourney(m: MLMap, j: Drawable, markers: Marker[], focus = -1
     const color = legColor(l);
     const coords = l.path.map((p) => [p[1], p[0]] as [number, number]);
     coords.forEach((c) => bounds.extend(c));
-    features.push({
-      type: 'Feature',
-      properties: { color, ...legProps(l) },
-      geometry: { type: 'LineString', coordinates: coords },
-    });
+    if (l.type === 'ride')
+      features.push({
+        type: 'Feature',
+        properties: { color, ...legProps(l) },
+        geometry: { type: 'LineString', coordinates: coords },
+      });
+    else {
+      for (const piece of walkPieces(l))
+        features.push({
+          type: 'Feature',
+          properties: { color, inside: piece.inside, ...legProps(l) },
+          geometry: { type: 'LineString', coordinates: piece.coords },
+        });
+      for (const e of [l.exit, l.entry]) if (e) markers.push(doorMarker(m, e));
+    }
     if (l.type === 'ride') {
       // the pins at the stops themselves (where the walk ends), not at the course's ends: a stop placed off its
       // course by the data would otherwise show a pin away from where the rider is sent

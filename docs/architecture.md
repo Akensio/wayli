@@ -576,7 +576,9 @@ from `plan.ts legOut`), it picks the entrance with the shortest street
 route to the rider's point (or to the other stop of a transfer walk; as the
 crow flies until the street graph is in), draws the walk to it and on to
 the stop's own point (the stretch inside the station, so the line meets the
-ride drawn from the stop), and puts it on the leg: letter, position and the
+ride drawn from the stop: the map draws that stretch lighter, thinner and
+without casing, and puts a stairs mark at the entrance, `map/layers.ts`
+walkPieces and doorMarker), and puts it on the leg: letter, position and the
 street it opens onto, named by the address book. The detail says "walk 3 min to Allenby · Entrance B
 (Rothschild)" and "walk 4 min from Allenby · Exit C (Yehuda HaLevi)"; the
 follow screen's "get off at" names the exit, and the walk to a station ends
