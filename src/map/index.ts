@@ -244,10 +244,10 @@ function setupMapLayers(m: MLMap): void {
     minzoom: 14,
     filter: ['in', ['get', 'kind'], ['literal', ['bus', 'platform']]],
     paint: {
-      'circle-radius': ['case', ['==', ['get', 'kind'], 'platform'], 4, 5.5],
+      'circle-radius': ['case', ['==', ['get', 'kind'], 'platform'], 4, 6],
       'circle-color': '#ffffff',
-      'circle-stroke-color': '#4a5560',
-      'circle-stroke-width': 2,
+      'circle-stroke-color': '#1b1f24',
+      'circle-stroke-width': 2.5,
     },
   });
   for (const k of BADGE_KINDS)
@@ -264,12 +264,12 @@ function setupMapLayers(m: MLMap): void {
       'icon-image': 'wayli-door',
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.8, 17, 1],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 1, 17, 1.3],
       'text-field': ['step', ['zoom'], '', 16, ['get', 'ref']], // a whole zoom: a symbol layer lays its text out at the tile's zoom, so 16.5 showed nothing until 17
       'text-font': ['Noto Sans Bold'],
-      'text-size': 11,
+      'text-size': 12,
       'text-anchor': 'top',
-      'text-offset': [0, 0.9],
+      'text-offset': [0, 1],
       'text-allow-overlap': true, // a letter or two: always drawn, whatever label sits near
       'text-ignore-placement': true,
     },
@@ -286,7 +286,7 @@ function setupMapLayers(m: MLMap): void {
       'icon-image': 'wayli-st-bus',
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.9, 17, 1.15],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 1, 17, 1.3],
     },
   });
   // stations: the badge from zoom 11, the name under it from zoom 12.5 (the basemap's station labels are hidden with its squares)
