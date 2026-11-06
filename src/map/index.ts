@@ -266,7 +266,7 @@ function setupMapLayers(m: MLMap): void {
       'icon-ignore-placement': true,
       'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.8, 17, 1],
       'text-field': ['step', ['zoom'], '', 16.5, ['get', 'ref']],
-      'text-font': ['Noto Sans Bold'],
+      'text-font': ['Noto Sans Regular'], // the one font the basemap's glyphs carry
       'text-size': 11,
       'text-anchor': 'top',
       'text-offset': [0, 0.9],
@@ -354,7 +354,7 @@ function setupMapLayers(m: MLMap): void {
       'text-size': ['interpolate', ['linear'], ['zoom'], 13.5, 9, 16, 12],
       'text-allow-overlap': true,
       'text-ignore-placement': true,
-      'text-font': ['Noto Sans Bold'],
+      'text-font': ['Noto Sans Regular'], // the one font the basemap's glyphs carry
     },
     paint: { 'text-color': ['get', 'tcol'], 'text-opacity': ['get', 'opacity'] },
   });
