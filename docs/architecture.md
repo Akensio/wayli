@@ -582,7 +582,10 @@ without casing, and puts a stairs mark with an accent ring at the entrance,
 position and the street it opens onto, named by the address book. Every
 entrance is also on the map by itself from zoom 15 (`lm-doors`, a stairs
 badge like the bus stops', its letter from zoom 16), so a rider at a
-station sees where it opens. The detail says "walk 3 min to Allenby · Entrance B
+station sees where it opens; a tap on one opens a bubble, "Entrance A ·
+Shaul HaMelech" over the street it opens onto (the worker names the station
+in the rider's language from the tied stop, `doorInfo`), with to here and
+from here. The detail says "walk 3 min to Allenby · Entrance B
 (Rothschild)" and "walk 4 min from Allenby · Exit C (Yehuda HaLevi)"; the
 follow screen's "get off at" names the exit, and the walk to a station ends
 for the follower at the entrance, not the station point. Walk times stay as
