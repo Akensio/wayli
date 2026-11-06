@@ -20,7 +20,7 @@ import {
 } from './basemap';
 import { BADGE_KINDS, stationImage, doorImage } from './images';
 import { ensureJourneyLayers } from './layers';
-import { stopPopup, placeBubble } from './popups';
+import { stopPopup, placeBubble, doorPopup } from './popups';
 import { loadStopsGeo, refreshLiveMap, applyLiveShow, selectVehicle, lm, resetShow, watchLive } from './live';
 import { pickAt } from './picker';
 import { startHeading, attachHeading } from './heading';
@@ -132,7 +132,9 @@ export async function initMap(): Promise<void> {
       pickAt(m, s ? (f!.geometry as any).coordinates : [e.lngLat.lng, e.lngLat.lat], s);
       return;
     }
-    const hit = m.queryRenderedFeatures(e.point, { layers: ['lm-veh', ...STOP_LAYERS].filter((l) => m.getLayer(l)) });
+    const hit = m.queryRenderedFeatures(e.point, {
+      layers: ['lm-veh', 'lm-doors', ...STOP_LAYERS].filter((l) => m.getLayer(l)),
+    });
     if (hit.length || popupState.current) return; // the layer's own handler answers, or the open bubble closes
     const near = stopNear(m, e.point);
     if (near) {
@@ -363,13 +365,18 @@ function setupMapLayers(m: MLMap): void {
     if (e.features && e.features[0])
       selectVehicle(m, e.features[0].properties, (e.features[0].geometry as any).coordinates);
   });
+  m.on('click', 'lm-doors', (e) => {
+    const f = e.features && e.features[0];
+    if (f && !m.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length)
+      doorPopup(m, (f.geometry as any).coordinates.slice(), f.properties.ref || '', f.properties.station || '');
+  });
   for (const layer of ['lm-stops', 'lm-stops-icon', 'lm-stations'])
     m.on('click', layer, (e) => {
       const f = e.features && e.features[0];
       if (f && !m.queryRenderedFeatures(e.point, { layers: ['lm-veh'] }).length)
         stopPopup(m, (f.geometry as any).coordinates, +f.properties.stop, f.properties.station);
     });
-  for (const layer of ['lm-veh', 'lm-stops', 'lm-stops-icon', 'lm-stations']) {
+  for (const layer of ['lm-veh', 'lm-stops', 'lm-stops-icon', 'lm-stations', 'lm-doors']) {
     m.on('mouseenter', layer, () => {
       m.getCanvas().style.cursor = 'pointer';
     });

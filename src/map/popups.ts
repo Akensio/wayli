@@ -182,6 +182,36 @@ export async function placeBubble(
     if (my === pick.seq) name.value = t('pointName');
   }
 }
+/** A station entrance tapped on the map (lm-doors): "Entrance A · Shaul HaMelech" with the street it opens onto, to
+ *  here and from here with the entrance as the place. The station's name comes from the worker in the rider's
+ *  language; the bubble opens at once and fills in. */
+export async function doorPopup(m: MLMap, lngLat: [number, number], ref: string, station: string): Promise<void> {
+  if (nav.isOpen('picker')) return;
+  const my = ++pick.seq;
+  const title = (stn: string) =>
+    ref ? t('entranceOf', { ref, station: stn }) : t('entranceOfPlain', { station: stn });
+  const name = signal(title(station)),
+    sub = signal('');
+  const place = () => ({ name: name.value, lat: lngLat[1], lon: lngLat[0] });
+  openPopup(
+    m,
+    lngLat,
+    h(PlaceBubble, {
+      name,
+      sub,
+      to: closing(() => hooks.planTo(place())),
+      from: closing(() => hooks.planFrom(place())),
+    }),
+  );
+  try {
+    const info = await call('doorInfo', { lat: lngLat[1], lon: lngLat[0], station });
+    if (my !== pick.seq) return;
+    name.value = title(info.station);
+    sub.value = info.street;
+  } catch {
+    /* the file's own name stays */
+  }
+}
 /** Stop dots on a journey or line map answer a tap (stopPopup: a bubble, the sheet keeps the journey or line). */
 export function wireStopLayers(m: MLMap, layers: string[]): void {
   for (const layer of layers) {

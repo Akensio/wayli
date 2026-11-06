@@ -130,10 +130,21 @@ export function StopBubble({
 }
 
 /** A tapped place: its name (filled in when the reverse geocoding answers), to here and from here. */
-export function PlaceBubble({ name, to, from }: { name: Signal<string>; to: () => void; from: () => void }) {
+export function PlaceBubble({
+  name,
+  sub,
+  to,
+  from,
+}: {
+  name: Signal<string>;
+  sub?: Signal<string>; // a line under the name: an entrance's street
+  to: () => void;
+  from: () => void;
+}) {
   return (
     <div class="pop">
       <b>{name.value}</b>
+      {sub && sub.value && <div class="muted">{sub.value}</div>}
       <div class="row">
         <button type="button" class="primary slim" onClick={to}>
           {t('toHere')}

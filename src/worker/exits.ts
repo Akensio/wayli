@@ -7,6 +7,7 @@ import { reverseGeocode } from '../engine/places.ts';
 import { patternsAt } from '../engine/raptor.ts';
 import { route, type StreetMode } from '../engine/streets.ts';
 import { lang, onNewDay, pl, st, tt } from './data.ts';
+import { ssName } from './names.ts';
 import type { EntrancesFile, ExitOut, OpsPart } from './ops.ts';
 
 type Entrance = EntrancesFile['stations'][number]['entrances'][number];
@@ -100,4 +101,20 @@ export const exitsOps = {
     byStop = null;
     return true;
   },
-} satisfies OpsPart<'setEntrances'>;
+  /** An entrance tapped on the map: its station as the timetable names it in the rider's language (the file's own name
+   *  when no stop is tied), and the street it opens onto. */
+  doorInfo({ lat, lon, station }) {
+    const stn = file?.stations.find(
+      (s) => s.name === station && s.entrances.some((e) => e.lat === lat && e.lon === lon),
+    );
+    let name = station;
+    if (stn && tt) {
+      for (const [s, ents] of index())
+        if (ents === stn.entrances) {
+          name = ssName(s);
+          break;
+        }
+    }
+    return { station: name, street: streetOf(lat, lon) };
+  },
+} satisfies OpsPart<'setEntrances' | 'doorInfo'>;

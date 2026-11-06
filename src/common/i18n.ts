@@ -215,6 +215,8 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   entranceRef: ['כניסה {ref}', 'Entrance {ref}'],
   exitPlain: ['יציאה', 'Exit'],
   entrancePlain: ['כניסה', 'Entrance'],
+  entranceOf: ['כניסה {ref} לתחנת {station}', 'Entrance {ref} to {station}'],
+  entranceOfPlain: ['כניסה לתחנת {station}', 'Entrance to {station}'],
   bikeFrom: ["רכיבה {min} דק' מ{name} ליעד", 'bike {min} min from {name}'],
   pay: ['תשלום', 'Pay'],
   payHint: ['תשלום על הנסיעה באפליקציית הופאון (רב-פס)', 'Pay for the ride in the HopOn (Rav-Pass) app'],
