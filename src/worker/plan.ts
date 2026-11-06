@@ -223,10 +223,12 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
     const a2: PathPoint = out ? [out.exit.lat, out.exit.lon] : a,
       b2: PathPoint = into ? [into.exit.lat, into.exit.lon] : b;
     const path = streetPath(a2, b2, 'walk');
+    // the stretches inside the stations keep the line whole, from the ride drawn to one stop to the ride from the other
+    const whole: PathPoint[] = [...(out ? [a] : []), ...(path || [a2, b2]), ...(into ? [b] : [])];
     Object.assign(o, {
       from: stopOut(l.from),
       to: stopOut(l.to),
-      path: path || [a2, b2],
+      path: whole,
       pathKind: path ? 'street' : 'straight',
       ...(out ? { exit: out.exit } : {}),
       ...(into ? { entry: into.exit } : {}),

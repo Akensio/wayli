@@ -89,7 +89,8 @@ export function bestEntrance(
     lon: best.e.lon,
     street: streetOf(best.e.lat, best.e.lon),
   };
-  return { exit, path: fromStation ? best.path.reverse() : best.path };
+  const path: PathPoint[] = [...best.path, [tt!.stopLat[s], tt!.stopLon[s]]]; // and on to the stop, inside the station
+  return { exit, path: fromStation ? path.reverse() : path };
 }
 
 export const exitsOps = {
