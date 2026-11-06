@@ -346,7 +346,9 @@ function easierTransfers(j: RawJourney): void {
   j.walkSeconds = L.reduce((t, l) => t + (l.type === 'ride' ? 0 : l.seconds), 0);
 }
 /** Walks one after the other are one walk: to the first stop and on to the next is "walk 17 min to HaShalom", not two
- *  lines (2026-10-22); likewise a walk to another stop and on from it to the destination. */
+ *  lines (2026-10-22); likewise a walk to another stop and on from it to the destination. The station entrance the
+ *  whole walk comes out of is the first walk's, the one it goes in by the last's; a stop passed through between keeps
+ *  none (2026-11-06: a walk to Arlozorov through a nearer stop lost its entrance). */
 function mergeWalks(legs: LegOut[]): LegOut[] {
   const out: LegOut[] = [];
   const join = (a: PathPoint[] | undefined, b: PathPoint[] | undefined): PathPoint[] =>
@@ -361,6 +363,7 @@ function mergeWalks(legs: LegOut[]): LegOut[] {
         arrive: l.arrive,
         path: join(p.path, l.path),
         pathKind: p.pathKind === 'street' && l.pathKind === 'street' ? 'street' : 'straight',
+        entry: l.entry,
       };
     } else if (p && l.type === 'egress' && p.type === 'walk') {
       out[out.length - 1] = {
@@ -370,6 +373,7 @@ function mergeWalks(legs: LegOut[]): LegOut[] {
         depart: p.depart,
         path: join(p.path, l.path),
         pathKind: p.pathKind === 'street' && l.pathKind === 'street' ? 'street' : 'straight',
+        exit: p.exit,
       };
     } else out.push(l);
   }
