@@ -103,10 +103,12 @@ test('the road factor needs two buses and ignores swings within a tenth; at the 
   const v = { lat: stops[0].lat, lon: stops[0].lon, recordedAt: at(T0), rideId: 'me' };
   const t = at(T0).getTime();
   const timeAt1 = (runs: number[]): number => {
-    setRoadsNow(new Map([['101>102', runs.map((ratio) => ({ ratio, t, ride: 'other' }))]]));
+    setRoadsNow(new Map([['101>102', runs.map((ratio, i) => ({ ratio, t, ride: `other${i}` }))]])); // one bus each
     return liveAt(estimateDelay(v, stops, DAY)!, stops, 1)!.time;
   };
   expect(timeAt1([1.5])).toBe(T0 + 120); // one bus: no evidence
+  setRoadsNow(new Map([['101>102', [1.6, 1.6, 1.6].map((ratio) => ({ ratio, t, ride: 'same' }))]]));
+  expect(liveAt(estimateDelay(v, stops, DAY)!, stops, 1)!.time).toBe(T0 + 120); // one bus seen thrice: still one
   expect(timeAt1([1.05, 1.05])).toBe(T0 + 120); // within the band: as usual
   expect(timeAt1([1.6, 1.6])).toBe(T0 + 144); // 0.6 shrunk to 0.3 by two buses of four, the band of 0.1 taken out: 1.2
   setRoadsNow(new Map());

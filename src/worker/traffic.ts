@@ -4,7 +4,15 @@
 // now. Every section it covered gets that ratio. delays.ts applies them to the sections ahead of other buses
 // (roadFactor), and the map colours the sections by them (trafficIn).
 import { secondsOn } from '../engine/clock.ts';
-import { hasBusTimes, setRoadsNow, usualRun, freeRun, median, type RoadRun, type TimedStop } from '../engine/delays.ts';
+import {
+  hasBusTimes,
+  setRoadsNow,
+  usualRun,
+  freeRun,
+  rideMedian,
+  type RoadRun,
+  type TimedStop,
+} from '../engine/delays.ts';
 import type { Bounds, Fix } from '../engine/feed.ts';
 import { metres, scaleAt, nearestOnSegment, projectOnStops, type LatLon, type Projection } from '../engine/geo.ts';
 import type { PathPoint } from '../engine/geo.ts';
@@ -24,7 +32,9 @@ type Run = RoadRun & { p: number; k: number };
 type Section = { pts: PathPoint[]; cum: number[]; len: number; box: [number, number, number, number] };
 
 const TRACK_MS = 900e3,
-  PAIR_MS = 90e3;
+  PAIR_MS = 90e3,
+  PAIR_MAX_MS = 360e3, // two positions further apart in time say little about now (the bus may have stood in between)
+  COVER_S = 90; // a pair must cover a stretch the bus usually takes this long: a crawl out of a terminal is not the road
 const tracks = new Map<string, Track>();
 // ride -> { lineRef, start, pts: [[ms, lat, lon]] } oldest first
 let roads = new Map<string, Run[]>();
@@ -149,13 +159,13 @@ export function noteRoads(vehicles: RoadReport[]): void {
         continue;
       }
       if (at.t - a.t < PAIR_MS) continue;
-      if (at.x > a.x + 0.05 && at.x - a.x < 15) {
+      if (at.t - a.t <= PAIR_MAX_MS && at.x > a.x + 0.05 && at.x - a.x < 15) {
         // the usual time of the stretch covered: the parts of each section between the two positions
         const from = secondsOn(new Date(a.t), day);
         let usual = 0;
         for (let k = Math.floor(a.x); k < Math.min(stops.length - 1, Math.ceil(at.x)); k++)
           usual += (Math.min(at.x, k + 1) - Math.max(a.x, k)) * usualRun(stops, k, from, day);
-        if (usual >= 30 && a.x >= 0.05) {
+        if (usual >= COVER_S && a.x >= 0.05) {
           // a bus still at its first stop is waiting for its time, not in traffic
           const ratio = Math.max(0.3, Math.min(4, (at.t - a.t) / 1000 / usual));
           for (let k = Math.floor(a.x); k < Math.min(stops.length - 1, Math.ceil(at.x)); k++) {
@@ -171,6 +181,8 @@ export function noteRoads(vehicles: RoadReport[]): void {
   roads = out;
   setRoadsNow(out);
 }
+/** The runs behind the colours, by section ("code>code"), for measuring (measure/): what noteRoads last found. */
+export const roadRuns = (): ReadonlyMap<string, readonly Run[]> => roads;
 /**
  * Traffic in a box, from the buses: each section that at least two buses ran in the last 15 minutes, drawn along its
  * course, with how its time now (the median of their ratios to its usual time, times that) compares with its best in
@@ -205,7 +217,7 @@ function trafficIn(box: Bounds): GeoJSON.FeatureCollection {
       free = freeRun(c1, c2, day);
     if (!free) continue;
     const rs = recent.map((x) => x.ratio),
-      m = median(rs);
+      m = rideMedian(recent); // one vote per bus
     // the section's two stops by code, for its usual time (usualRun reads the codes and the times only; the position
     // TimedStop asks for is not used here)
     const stops: TimedStop[] = [

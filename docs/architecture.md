@@ -1155,11 +1155,15 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   of an hour of polling, `measure/trafficreplay.ts`, that cold start colours
   92% of the sections and agrees on the level 93% of the time, with no lean
   towards slower), and between two positions at least
-  90 s apart compares the time it took with the learned time of what it
-  covered. Each section it covered gets that ratio. A section's time ahead
+  90 s apart (and at most 6 minutes, and covering a stretch it usually
+  takes 90 s or more: a crawl out of a terminal is not the road) compares
+  the time it took with the learned time of what it covered. Each section
+  it covered gets that ratio. A section's time ahead
   of another bus is its learned time times the median ratio of the other
-  buses there, shrunk towards 1 when few (n / (n + 2)), with one bus no
-  evidence and a tenth either way taken out as noise (2026-11-07: as it
+  buses there, one vote per bus (the median of each bus's own runs, then
+  the median of those: a bus seen three times crawling out of its terminal
+  outvoted the other, 2026-11-07), shrunk towards 1 when few (n / (n + 2)),
+  with one bus no evidence and a tenth either way taken out as noise (2026-11-07: as it
   was, the factor moved the time shown in a third more of the minutes for
   2 to 3 points of accuracy; `measure/busbacktest.ts`), and fading to the
   learned time for sections reached more than half an hour on. Measured the

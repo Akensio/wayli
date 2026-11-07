@@ -325,6 +325,18 @@ export function median(xs: readonly number[]): number {
     n = s.length;
   return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
 }
+/** One vote per bus: the middle of each ride's own ratios, then the middle of those. A bus seen several times along a
+ *  long section gave ratios from 0.3 to 3.7 within a quarter of an hour (crawling out of its terminal, then catching
+ *  up), and three such readings from one bus outvoted the other (2026-11-07, the Levanda corridor red on a Saturday
+ *  with two buses on it). */
+export function rideMedian(runs: readonly RoadRun[]): number {
+  const by = new Map<string | number, number[]>();
+  for (const r of runs) {
+    if (!by.has(r.ride)) by.set(r.ride, []);
+    by.get(r.ride)!.push(r.ratio);
+  }
+  return median([...by.values()].map(median));
+}
 /** The live factor of a section for a vehicle seen at `seenMs` (its own runs left out). */
 function roadFactor(
   code1: TimedStop['code'],
@@ -334,9 +346,10 @@ function roadFactor(
 ): number {
   const v = roadsNow.get(`${code1}>${code2}`);
   if (!v) return 1;
-  const rs = v.filter((x) => x.ride !== ride && x.t <= seenMs + 120e3 && x.t > seenMs - ROADS_MS).map((x) => x.ratio);
-  if (rs.length < ROADS_MIN) return 1;
-  const dev = ((median(rs) - 1) * rs.length) / (rs.length + 2);
+  const rs = v.filter((x) => x.ride !== ride && x.t <= seenMs + 120e3 && x.t > seenMs - ROADS_MS);
+  const rides = new Set(rs.map((x) => x.ride)).size;
+  if (rides < ROADS_MIN) return 1;
+  const dev = ((rideMedian(rs) - 1) * rides) / (rides + 2);
   // the band taken out, not just cut off, so the factor moves smoothly as the median crosses it (measure/busbacktest.ts,
   // 2026-11-07: with the factor as it was, a third more of the minutes moved the time shown; it bought 2 to 3 points)
   return 1 + Math.sign(dev) * Math.max(0, Math.abs(dev) - ROADS_BAND);
