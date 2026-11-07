@@ -37,7 +37,8 @@ MERGE_M = 40   # two doors this close, with the same letter and name, are one en
 NEAR_BUILD_M = 700   # the buildings and walking ways read around a station node, for the bridges and tunnels out of it
 FORMAT = 4   # 1: lettered entrances of light rail and underground stations; 2: name_en, and train stations' doors (plain entrance nodes);
              # 3: rail stations only, doors only on a station building, entrances where walking ways meet it, twin doors merged;
-             # 4: a door or meeting on a bridge or in a tunnel is carried to where it comes out (follow)
+             # 4: a door or meeting on a bridge or in a tunnel is carried to where it comes out (follow); an underground
+             #    footprint keeps its doors
 
 
 def is_station(t):
@@ -109,7 +110,8 @@ def read_osm(path):
     building=train_station, not an underground footprint) its doors (entrance=* on the outline) and where an outdoor
     walking way meets the outline; a door or a meeting on a bridge or in a tunnel is carried to where that comes out
     (follow). Two passes: the first reads nodes, the station buildings and the other buildings near a station; the
-    second the walking ways near a station."""
+    second the walking ways near a station. An underground station's footprint keeps its doors but gets no meetings: a
+    footway crossing it above ground enters nothing."""
     import osmium  # BSD; a build-time tool, not part of the app
 
     class Near:
@@ -165,9 +167,10 @@ def read_osm(path):
                     for nid in outline:
                         self.others[nid] = t.get("name") or t.get("building")
                 return
-            if t.get("location") == "underground" or t.get("tunnel") or (t.get("layer") or "0").startswith("-") or (t.get("level") or "0").startswith("-"):
-                return   # an underground station's footprint: a footway crossing it above ground enters nothing
-            self.buildings.append({"name": t.get("name") or "", "outline": outline,
+            # an underground station's footprint (Tel Aviv University, in its trench): its doors on the outline are doors,
+            # but a footway crossing it above ground enters nothing
+            below = t.get("location") == "underground" or bool(t.get("tunnel")) or (t.get("layer") or "0").startswith("-") or (t.get("level") or "0").startswith("-")
+            self.buildings.append({"name": t.get("name") or "", "outline": outline, "below": below,
                                    "lat": sum(p[0] for p in outline.values()) / len(outline), "lon": sum(p[1] for p in outline.values()) / len(outline)})
 
         def relation(self, r):
@@ -205,7 +208,7 @@ def read_osm(path):
         outline = b["outline"]
         # the meetings: the doors on the outline, and the nodes where a walking way (not a deck) meets it
         meetings = {nid for nid in outline if nid in h.doors}
-        for nid in outline:
+        for nid in outline if not b["below"] else ():
             for wid in walks.by_node.get(nid, ()):
                 if not walks.ways[wid]["deck"]:
                     meetings.add(nid)
