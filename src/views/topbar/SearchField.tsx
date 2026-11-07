@@ -226,8 +226,15 @@ export function SearchField({
     // next back is the list's
     let tallest = window.visualViewport?.height || innerHeight,
       keysUp = false;
+    // not while a finger is on the list: a height changed under it ended the scroll (customers, 2026-11-07)
+    let touching = false;
+    const down = () => (touching = true),
+      upp = () => (touching = false);
+    dropRef.current?.addEventListener('touchstart', down, { passive: true });
+    dropRef.current?.addEventListener('touchend', upp);
+    dropRef.current?.addEventListener('touchcancel', upp);
     const refit = () => {
-      if (open.value && dropRef.current) fitDrop(dropRef.current);
+      if (open.value && dropRef.current && !touching) fitDrop(dropRef.current);
       const vv = window.visualViewport;
       if (!vv) return;
       tallest = Math.max(tallest, vv.height);
