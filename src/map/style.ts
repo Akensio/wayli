@@ -12,6 +12,8 @@ const cache: Partial<Record<string, LibertyStyle>> = {};
 type Layer = {
   id: string;
   type: string;
+  minzoom?: number;
+  maxzoom?: number;
   'source-layer'?: string;
   filter?: unknown;
   paint?: Record<string, unknown>;
@@ -65,21 +67,21 @@ const TEAL = {
     ice: '#1b2222',
     water: '#0d2628',
     waterLine: '#12393c',
-    building: '#202726',
-    buildingOutline: '#2a3331',
+    building: '#252d2c',
+    buildingOutline: '#2d3736',
     aeroway: '#1d2423',
-    motorway: '#4a6d67',
-    motorwayCasing: '#2a3e3b',
-    primary: '#404d4b',
-    primaryCasing: '#283231',
-    secondary: '#374240',
-    secondaryCasing: '#262f2e',
-    minor: '#2e3836',
-    minorCasing: '#22292a',
-    service: '#283130',
-    serviceCasing: '#1f2626',
-    path: '#303a38',
-    pathCasing: '#262e2d',
+    motorway: '#4f776f',
+    motorwayCasing: '#2d4541',
+    primary: '#4c5c59',
+    primaryCasing: '#2c3836',
+    secondary: '#434f4d',
+    secondaryCasing: '#293332',
+    minor: '#394442',
+    minorCasing: '#252d2c',
+    service: '#2f3937',
+    serviceCasing: '#212827',
+    path: '#36413f',
+    pathCasing: '#283130',
     rail: '#48544f',
     tunnel: '#1f2625',
     tunnelCasing: '#1b2120',
@@ -290,6 +292,20 @@ export async function styledLiberty(mode: Shade = 'light', tint: Tint = 'teal'):
         layer.filter || true,
         ['!', ['match', ['get', 'class'], ['bus', 'railway', 'rail', 'tram'], true, false]],
       ];
+    // buildings lighter on the eye: half see-through, so the land and the roads carry the picture (maintainer,
+    // 2026-11-07: "in dark mode the roads are not emphasized enough compared to the buildings"; buildings less opaque)
+    if (/^building/.test(layer.id) && layer.paint) {
+      // Liberty draws buildings flat to zoom 14 and as shaded blocks from there; the blocks only from 16 (close up),
+      // the flat fill until then
+      if (layer.type === 'fill') {
+        layer.paint['fill-opacity'] = 0.55;
+        layer.maxzoom = 16;
+      }
+      if (layer.type === 'fill-extrusion') {
+        layer.paint['fill-extrusion-opacity'] = 0.4;
+        layer.minzoom = 16;
+      }
+    }
     // the sprite's hatchings (construction sites, pedestrian areas, rail ties) are black and white: faint in the dark
     if (mode === 'dark' && layer.paint) {
       if (layer.paint['fill-pattern']) layer.paint['fill-opacity'] = 0.12;
