@@ -33,7 +33,7 @@ RAIL = {"train", "light_rail", "subway", "monorail", "funicular"}   # a station 
 DOOR = {"main", "yes", "exit", "entrance"}   # entrance=* on a station building's outline: a train station's doors (mapped so, not as railway=)
 WALK = {"footway", "steps", "path", "pedestrian", "corridor", "elevator", "living_street", "residential", "service", "unclassified", "cycleway"}
 NEAR_M = 200
-MERGE_M = 25   # two doors this close, with the same letter and name, are one entrance (a hall's double door)
+MERGE_M = 40   # two doors this close, with the same letter and name, are one entrance (a hall's double door, a deck's two stairways)
 NEAR_BUILD_M = 700   # the buildings and walking ways read around a station node, for the bridges and tunnels out of it
 FORMAT = 4   # 1: lettered entrances of light rail and underground stations; 2: name_en, and train stations' doors (plain entrance nodes);
              # 3: rail stations only, doors only on a station building, entrances where walking ways meet it, twin doors merged;
