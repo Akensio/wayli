@@ -40,7 +40,7 @@ if (!/^\d{8}$/.test(day || '')) {
 const SITE = opt('site', 'https://akensio.github.io/wayli/');
 (globalThis as any).self = { postMessage() {}, location: { href: SITE } };
 const { dataOps } = await import('../src/worker/data.ts');
-const { snapVehicles } = await import('../src/worker/vehicles.ts');
+const { snapVehicles, estimateFor } = await import('../src/worker/vehicles.ts');
 const { noteRoads } = await import('../src/worker/traffic.ts');
 const { tripFor, tripStopList } = await import('../src/worker/trips.ts');
 const delays = await import('../src/engine/delays.ts');
@@ -216,7 +216,7 @@ for (const { t, f } of minutes) {
     const stops = stopsOf(v.lineRef, v.scheduledStart),
       tru = truth.get(v.rideId);
     if (!stops || !tru) continue;
-    const est = delays.estimateDelay(v, stops, day);
+    const est = estimateFor(v, stops, day);
     if (!est) continue;
     for (let i = 0; i < stops.length; i++) {
       if (tru[i] == null) continue;

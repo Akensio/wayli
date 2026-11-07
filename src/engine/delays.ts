@@ -3,7 +3,7 @@
 // buses that just ran a section), the delay against the timetable, and a stop's live time for the rider.
 import { metres } from './geo.ts';
 import { secondsOn } from './clock.ts';
-import { projectOnStops, type Projection } from './geo.ts';
+import { nearestOnSegment, projectOnStops, scaleAt, type Projection } from './geo.ts';
 import type { Fix } from './feed.ts';
 
 /** A stop of a trip as the estimates read it (worker/trips.ts tripStopList; the page's TripStop carries more): where
@@ -316,7 +316,9 @@ export function setRoadsNow(m: RoadsNow): void {
   roadsNow = m;
 }
 const ROADS_MS = 900e3,
-  FADE_S = 1800;
+  FADE_S = 1800,
+  ROADS_MIN = 2, // one bus's run over a section is no evidence of how the road runs
+  ROADS_BAND = 0.1; // a factor within this of 1 is read as 1: small swings of the median are noise, not traffic
 /** The middle of the buses' ratios on a section (of two in the middle, their mean); the traffic on the map uses it too. */
 export function median(xs: readonly number[]): number {
   const s = [...xs].sort((a, b) => a - b),
@@ -333,9 +335,35 @@ function roadFactor(
   const v = roadsNow.get(`${code1}>${code2}`);
   if (!v) return 1;
   const rs = v.filter((x) => x.ride !== ride && x.t <= seenMs + 120e3 && x.t > seenMs - ROADS_MS).map((x) => x.ratio);
-  if (!rs.length) return 1;
-  const m = median(rs);
-  return 1 + ((m - 1) * rs.length) / (rs.length + 2);
+  if (rs.length < ROADS_MIN) return 1;
+  const dev = ((median(rs) - 1) * rs.length) / (rs.length + 2);
+  // the band taken out, not just cut off, so the factor moves smoothly as the median crosses it (measure/busbacktest.ts,
+  // 2026-11-07: with the factor as it was, a third more of the minutes moved the time shown; it bought 2 to 3 points)
+  return 1 + Math.sign(dev) * Math.max(0, Math.abs(dev) - ROADS_BAND);
+}
+/**
+ * Where a vehicle is along its trip (geo.ts projectOnStops), read from where it was last placed when that is known
+ * (`from`, the stretch of its last report; worker/vehicles.ts estimateFor): the earliest stretch from one before it on
+ * that is about as near (AMBIGUOUS_M) as the nearest of all. A looping trip passes the same spot twice: without memory
+ * a bus at its end read as at its start and the other way round, a third of the place jumps of 3 minutes or more
+ * (measure/busbacktest.ts, 2026-11-07). When no stretch from there on comes near, the memory was wrong (or the fix is
+ * off the trip), and the nearest of all stands.
+ */
+const AMBIGUOUS_M = 100;
+export function placeOn(lat: number, lon: number, stops: readonly TimedStop[], from?: number | null): Projection {
+  if (from == null || from < 1 || stops.length < 3) return projectOnStops(lat, lon, stops);
+  const { kx, ky } = scaleAt(lat);
+  const d: { f: number; d: number }[] = [];
+  let best = Infinity;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const ax = (stops[i].lon - lon) * kx,
+      ay = (stops[i].lat - lat) * ky;
+    d.push(nearestOnSegment(ax, ay, (stops[i + 1].lon - stops[i].lon) * kx, (stops[i + 1].lat - stops[i].lat) * ky));
+    if (d[i].d < best) best = d[i].d;
+  }
+  for (let i = Math.min(from - 1, stops.length - 2); i < stops.length - 1; i++)
+    if (d[i].d <= best + AMBIGUOUS_M) return { index: i, frac: d[i].f, metres: d[i].d };
+  return projectOnStops(lat, lon, stops);
 }
 /** A bus's arrival at each later stop, from where it is and the learned sections; null when none is known ahead. */
 function busAhead(
@@ -381,6 +409,7 @@ export type VehicleReport = {
   lon: number;
   recordedAt: Date | number | string; // when it reported: a Date, ms since the epoch, or an ISO string
   rideId?: string | number; // the ride, to leave a bus's own runs out of the road factor
+  lastIndex?: number | null; // the stretch the ride was last placed on (worker/vehicles.ts estimateFor), for placeOn
   trail?: readonly Fix[] | null; // a train's fixes of the last half hour, oldest first
   callSince?: number | null; // a train without GPS: ms when its call first named the station it is put at
   callSeenChange?: boolean; // and whether that change of call was itself seen
@@ -427,40 +456,43 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
   // seen before its trip begins: it waits to start it (at its terminal, or still finishing the trip before on roads
   // this one shares), and has not run any of it. Placed along the trip it read as up to 15 minutes early, 73 buses in a
   // snapshot of 2026-10-25 21:38, most of them at a loop's terminal, which is near its last stops as well as its first.
-  if (seen < stops[0].dep - 120)
-    return {
-      delay: 0,
-      late: 0,
-      index: 0,
-      frac: 0,
-      offPath: 0,
-      seen,
-      ageSec,
-      stale: ageSec > 240,
-      vehicle,
-      waiting: true,
-    };
-  const pr = projectOnStops(vehicle.lat, vehicle.lon, stops);
-  if (pr.metres > 600) return null; // not on this trip's path (or a very different route shape)
-  // placed further along than it could have gone since its start (in under half the scheduled time, starting up to two
-  // minutes early): it is at its start, which a loop shares with its end (2026-10-25 21:38: 62 buses, 2 minutes after
-  // their start, read as 15 minutes early 30 minutes along). It leaves when it leaves, late only once its time has passed.
-  const schedHere = stops[pr.index].dep + pr.frac * Math.max(0, stops[pr.index + 1].arr - stops[pr.index].dep);
-  if (schedHere - stops[0].dep > 300 && seen - (stops[0].dep - 120) < 0.5 * (schedHere - stops[0].dep)) {
-    const late = Math.max(0, seen - stops[0].dep);
+  // A bus waiting to start gets its times at the stops ahead from the same learned sections as one under way, from its
+  // listed departure or now if that has passed (busAhead at the first stop): shown the timetable's times until it moved,
+  // the time at every stop jumped the moment it did, 6 minutes later in the median (measure/busbacktest.ts, 2026-11-07:
+  // 39% of all jumps of 3 minutes or more).
+  const waiting = (late: number, offPath: number): DelayEstimate => {
+    const ahead = busTimes
+      ? busAhead(stops, { index: 0, frac: 0, metres: offPath }, seen, day, recordedAt.getTime(), vehicle.rideId)
+      : null;
     return {
       delay: late,
       late,
       index: 0,
       frac: 0,
-      offPath: pr.metres,
+      offPath,
       seen,
       ageSec,
       stale: ageSec > 240,
       vehicle,
       waiting: true,
+      arr: ahead ? ahead.arr : undefined,
+      dep: ahead ? ahead.dep : undefined,
     };
-  }
+  };
+  if (seen < stops[0].dep - 120) return waiting(0, 0);
+  const pr = placeOn(vehicle.lat, vehicle.lon, stops, vehicle.lastIndex);
+  if (pr.metres > 600) return null; // not on this trip's path (or a very different route shape)
+  // placed further along than it could have gone since its start (in under half the scheduled time, starting up to two
+  // minutes early): it is at its start, which a loop shares with its end (2026-10-25 21:38: 62 buses, 2 minutes after
+  // their start, read as 15 minutes early 30 minutes along). It leaves when it leaves, late only once its time has passed.
+  // Not for a bus already seen under way (`lastIndex`): one running early went back to waiting, and every time with it.
+  const schedHere = stops[pr.index].dep + pr.frac * Math.max(0, stops[pr.index + 1].arr - stops[pr.index].dep);
+  if (
+    !(vehicle.lastIndex != null && vehicle.lastIndex >= 1) &&
+    schedHere - stops[0].dep > 300 &&
+    seen - (stops[0].dep - 120) < 0.5 * (schedHere - stops[0].dep)
+  )
+    return waiting(Math.max(0, seen - stops[0].dep), pr.metres);
   // a train without GPS: when its call first named the station (or that station's time, when the change was not seen)
   let call: Call | null = null;
   if (vehicle.callSince != null && railTimes) {
@@ -543,6 +575,9 @@ export function liveAt(est: DelayEstimate | null, stops: readonly TimedStop[], s
   if (est.dep)
     own =
       est.at === stopIndex ? (est.dep[stopIndex] ?? est.arr![stopIndex]) : (est.arr![stopIndex] ?? est.dep[stopIndex]);
+  // at the stop itself (its own time there is behind the bus): it is there now, not at the listed time plus its
+  // lateness at the next stop, which read minutes off (measure/busbacktest.ts, 2026-11-07)
+  if (own == null && est.dep && est.index === stopIndex && !passed) own = est.seen;
   const time = own != null ? Math.round(own) : stops[stopIndex].dep + est.delay;
   return { time, delay: time - stops[stopIndex].dep, passed, stale: est.stale };
 }

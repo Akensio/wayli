@@ -1153,7 +1153,10 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   90 s apart compares the time it took with the learned time of what it
   covered. Each section it covered gets that ratio. A section's time ahead
   of another bus is its learned time times the median ratio of the other
-  buses there, shrunk towards 1 when few (n / (n + 2)) and fading to the
+  buses there, shrunk towards 1 when few (n / (n + 2)), with one bus no
+  evidence and a tenth either way taken out as noise (2026-11-07: as it
+  was, the factor moved the time shown in a third more of the minutes for
+  2 to 3 points of accuracy; `measure/busbacktest.ts`), and fading to the
   learned time for sections reached more than half an hour on. Measured the
   same way it trims the worst (90% within 3.9 min at 10 stops ahead against
   4.1 learned alone, every held-out day; 4.6 against 4.8 at the peaks) at
@@ -1346,14 +1349,18 @@ morning came from a number read as meaning something it did not.)
         ▼
  worker/vehicles.js  snapshot every 30 s; per ride it remembers
         │            posSince (frozen fixes dropped), callSince (a train's
-        │            station call), trails (a train's fixes, 30 min)
+        │            station call), trails (a train's fixes, 30 min),
+        │            places (the stretch it was last placed on, 10 min)
         ▼
- vehicle v = { lineRef, scheduledStart, lat, lon, recordedAt, trail?, callSince? }
+ vehicle v = { lineRef, scheduledStart, lat, lon, recordedAt, trail?, callSince?, lastIndex? }
         │  matched to a trip by (route id = lineRef, first departure = scheduledStart)
         ▼
- engine/delays.ts estimateDelay(v, stops)  ──►  est
+ engine/delays.ts estimateDelay(v, stops)  ──►  est      (the worker calls it through
+        │   placed by placeOn: from lastIndex on, so a    vehicles.ts estimateFor, which
+        │   looping trip is not read backwards            keeps places)
         │   train: railAhead (learned runs, stands, profile)
-        │   bus:   busAhead  (learned hourly sections × live road factor)
+        │   bus:   busAhead  (learned hourly sections × live road factor);
+        │          waiting to start: the same, from its listed departure
         │   else:  the timetable's pace
         ▼
  est = { late, delay, rail, index, frac, at, arr[], dep[], seen, stale }

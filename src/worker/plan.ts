@@ -23,7 +23,8 @@ import {
 } from '../engine/raptor.ts';
 import { accessStops, route, type StreetMode } from '../engine/streets.ts';
 import { secondsOn } from '../engine/clock.ts';
-import { estimateDelay, liveAt } from '../engine/delays.ts';
+import { liveAt } from '../engine/delays.ts';
+import { estimateFor } from './vehicles.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { haversine, type LatLon as Point } from '../engine/geo.ts';
 import type { PathPoint } from '../engine/geo.ts';
@@ -121,7 +122,7 @@ function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips
   }
   for (const [t, { v, rec }] of byTrip) {
     const { p, ns, base, stops } = tripStopList(t);
-    const est = estimateDelay(v, stops, day);
+    const est = estimateFor(v, stops, day);
     if (!est) continue;
     tripLive.set(t, { seen: rec.getTime(), stale: est.ageSec > 240 });
     if (!est.rail && !est.dep && Math.abs(est.delay) < 60) continue; // a bus about on time, with no learned sections

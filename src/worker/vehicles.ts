@@ -3,7 +3,13 @@
 // parsing it on the page would stall the screen), kept for 30 s, and every live question is answered from it.
 import { routeLabel } from '../engine/raptor.ts';
 import { secondsOn } from '../engine/clock.ts';
-import { estimateDelay, hasBusTimes } from '../engine/delays.ts';
+import {
+  estimateDelay,
+  hasBusTimes,
+  type DelayEstimate,
+  type TimedStop,
+  type VehicleReport,
+} from '../engine/delays.ts';
 import type { Fix, Vehicle } from '../engine/feed.ts';
 import { metres } from '../engine/geo.ts';
 import { tt, onBusTimes } from './data.ts';
@@ -55,6 +61,22 @@ let snap: Snapshot | null = null,
 const FROZEN_MS = 120e3,
   MOVING_KMH = 5;
 const posSince = new Map<string, { loc: string; since: number; seen: number }>();
+// Where each ride was last placed on its trip (estimateFor): the stretch and the report's time. The next report of the
+// ride within PLACE_MS is read from there on (delays.ts placeOn), so a looping trip is not read backwards or at its far
+// end, and a bus once under way is not read as waiting to start again.
+const PLACE_MS = 600e3;
+const places = new Map<string, { index: number; at: number }>();
+/** The vehicle's delay and its times ahead (delays.ts estimateDelay), read from where the ride was last placed, and
+ *  that place remembered: the one way the worker estimates a bus or train it has a ride for. */
+export function estimateFor(v: VehicleReport, stops: readonly TimedStop[], day: string): DelayEstimate | null {
+  const ride = v.rideId != null ? String(v.rideId) : '',
+    rec = new Date(v.recordedAt).getTime(),
+    o = ride ? places.get(ride) : undefined;
+  const known = o && rec >= o.at && rec - o.at <= PLACE_MS ? o.index : null;
+  const est = estimateDelay(known != null && v.lastIndex == null ? { ...v, lastIndex: known } : v, stops, day);
+  if (ride && est && !est.waiting && (!o || rec >= o.at)) places.set(ride, { index: est.index, at: rec });
+  return est;
+}
 // ride -> { loc, since: ms, seen: ms }
 // A train without GPS names only a station (its call), from about a kilometre before it until about a kilometre before
 // the next: when the call first named that station says when it got there (delays.ts railAhead). `change`: a different
@@ -111,6 +133,7 @@ function remember(j: SiriSnapshot, t: number): void {
   }
   for (const [k, o] of posSince) if (t - o.seen > SNAP_WINDOW_MS) posSince.delete(k);
   for (const [k, o] of callSince) if (t - o.seen > SNAP_WINDOW_MS) callSince.delete(k);
+  for (const [k, o] of places) if (t - o.at > SNAP_WINDOW_MS) places.delete(k);
   for (const [k, tr] of trails) {
     while (tr.length && t - tr[0][0] > SNAP_WINDOW_MS) tr.shift();
     if (!tr.length) trails.delete(k);
@@ -151,8 +174,8 @@ function handedOver(early: SnapVehicle, trains: SnapVehicle[]): SnapVehicle | nu
     if (t < 0) continue;
     const { stops } = tripStopList(t);
     if (secondsOn(early.recordedAt, day) > stops[stops.length - 1].arr + 3600) continue;
-    const was = estimateDelay(o, stops, day),
-      now = estimateDelay(early, stops, day);
+    const was = estimateFor(o, stops, day),
+      now = estimateFor(early, stops, day);
     if (!was || !now || now.index + now.frac < was.index + was.frac) continue; // and further along its trip
     const real = (d: number): boolean => d > -900 && d < 5400; // a delay at the estimate's bounds is no estimate (a trip far off its time)
     if (!real(was.late) || !real(now.late) || Math.abs(now.late - was.late) > 300) continue;
@@ -360,7 +383,7 @@ export const vehiclesOps = {
   },
   /** A vehicle's delay and its time at each stop ahead (delays.ts estimateDelay), made here where the learned times are. */
   estimate({ vehicle, stops, day }) {
-    return estimateDelay(vehicle, stops, day);
+    return estimateFor(vehicle, stops, day);
   },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {
@@ -369,7 +392,7 @@ export const vehiclesOps = {
       const t = tripFor(v.lineRef, secondsOn(new Date(v.scheduledStart), day));
       if (t < 0) return { trip: -1 };
       const { stops } = tripStopList(t);
-      const est = estimateDelay(v, stops, day);
+      const est = estimateFor(v, stops, day);
       const ri = tt!.patRoute[tt!.tripPat[t]];
       return {
         trip: t,
