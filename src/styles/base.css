@@ -7,17 +7,19 @@
   --rail-brand: #1b3a6b; --lrt-brand: #d7263d;   /* the operators' own colours, as widgets/lineColors.ts draws their lines (both themes) */
   --font: "Heebo", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
-/* the interface's dark colours: chosen in settings (data-theme) or the device's, unless light was chosen */
+/* the interface's dark colours: chosen in settings (data-theme) or the device's, unless light was chosen. The surface
+   sits a step above the dark map's ground (#171c1b) and its buildings, so the bar and the drawer read against them
+   (maintainer, 2026-11-07); the chip and the line keep their step above the surface. */
 :root[data-theme="dark"] {
-    --bg: #15181c; --surface: #1e2227; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #2d3339;
-    --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --late: #ff6b6b; --chip: #262b31;
+    --bg: #15181c; --surface: #23282e; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #343b43;
+    --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --late: #ff6b6b; --chip: #2d333a;
     --train: #6ea8ff; --bus: #6fcf97; --lrt: #c48fe0; --bike: #6ea8ff;
     color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #15181c; --surface: #1e2227; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #2d3339;
-    --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --late: #ff6b6b; --chip: #262b31;
+    --bg: #15181c; --surface: #23282e; --ink: #e9eae6; --ink-2: #9aa2ab; --line: #343b43;
+    --accent: #2fcfbc; --accent-ink: #15181c; --accent-text: #5fdccb; --ok: #5fc48c; --warn: #e0a84a; --late: #ff6b6b; --chip: #2d333a;
     --train: #6ea8ff; --bus: #6fcf97; --lrt: #c48fe0; --bike: #6ea8ff;
     color-scheme: dark;
   }

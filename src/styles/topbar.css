@@ -98,6 +98,9 @@ input[type=search]::-webkit-search-cancel-button, input[type=search]::-webkit-se
 #formBody { order: 3; }
 .topbar .field { flex: 1; margin: 0; }
 .topbar .field input[type=search] { background: var(--surface); border: 0; box-shadow: 0 4px 16px rgba(0,0,0,.18); height: 46px; font-size: 16px; border-radius: 23px; padding-inline-end: 44px; }
+/* in the dark the pill gets an edge and a deeper shadow: its surface is close to the map's ground */
+:root[data-theme="dark"] .topbar .field input[type=search] { box-shadow: 0 0 0 1px var(--line), 0 6px 20px rgba(0,0,0,.55); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .topbar .field input[type=search] { box-shadow: 0 0 0 1px var(--line), 0 6px 20px rgba(0,0,0,.55); } }
 .field.tagged input[type=search] { padding-inline-start: 70px; }
 .topbar:not(.two) .field.withuser .tag { display: none; }
 .topbar:not(.two) .field.withuser input[type=search] { padding-inline-start: 52px; padding-inline-end: 52px; }
