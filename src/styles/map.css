@@ -8,7 +8,9 @@
 .wayli-pin { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 .wayli-door { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 .wayli-door .i { width: 14px; height: 14px; stroke-width: 2.4; color: #1b1f24; }
-.wayli-me { width: 18px; height: 18px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(26,115,232,.25); }
+/* the rider's dot while following (map/vehicles.ts showRider): the app's turquoise, like the location dot below (it was
+   Google's blue, 2026-11-07) */
+.wayli-me { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent); }
 .wayli-bus { width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 2px solid #1b1f24; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 .wayli-bus.stale { opacity: .55; }
 .wayli-bus .i { width: 16px; height: 16px; stroke-width: 2.2; }

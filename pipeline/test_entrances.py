@@ -79,10 +79,10 @@ check("not followed further than its reach", out(1, {6: "the mall"}, follow_m=50
 hashalom = {"name": "תל אביב השלום", "lat": 32.073559, "lon": 34.793164, "entrances": [
     {"ref": "", "name": "", "lat": 32.074036, "lon": 34.792538}, {"ref": "", "name": "", "lat": 32.07314, "lon": 34.793157},
     {"ref": "", "name": "", "lat": 32.072621, "lon": 34.793146}, {"ref": "", "name": "", "lat": 32.0745, "lon": 34.7945}]}
-named = name_entrances(hashalom, load_names()["תל אביב השלום"])
+named = name_entrances(hashalom, load_names()["תל אביב השלום"]["entrances"])
 check("names by the point named", (named, [e.get("name_en", "") for e in hashalom["entrances"]]), (3, ["Azrieli entrance", "Northern entrance", "Southern entrance", ""]))
 two = {"name": "x", "lat": 32.0, "lon": 34.8, "entrances": [{"ref": "", "name": "", "lat": 32.0, "lon": 34.801}, {"ref": "", "name": "", "lat": 32.0, "lon": 34.799}, {"ref": "", "name": "", "lat": 32.0, "lon": 34.7995}]}
 check("names by side only when one entrance is on it", (name_entrances(two, [{"side": "E", "he": "מזרח", "en": "East"}, {"side": "W", "he": "מערב", "en": "West"}]), [e.get("name_en", "") for e in two["entrances"]]), (1, ["East", "", ""]))
-check("every station in entrance_names.json names a side or a point", all(("near" in e) != ("side" in e) and e["he"] and e["en"] for v in load_names().values() for e in v), True)
+check("every station in entrance_names.json names a side or a point, or the hall's side", all((("near" in e) != ("side" in e) and e["he"] and e["en"]) for v in load_names().values() for e in v["entrances"]) and all(v["entrances"] or v["sides"] for v in load_names().values()), True)
 
 sys.exit(1 if failures else 0)

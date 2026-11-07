@@ -1,79 +1,224 @@
 {
-  "_about": "Names of train stations' entrances, as riders and Israel Railways call them, for data/entrances.json (entrances.py names). Each entrance of a station is matched to the file's entrance nearest `near` (within 80 m) or, with `side`, to the station's only entrance on that side of its point. The sources are the Hebrew Wikipedia articles on the stations (and Moovit's station page for Savidor), read 2026-11-07; a station whose entrances the sources do not name is left out.",
+  "_about": "Names of train stations' entrances, as riders and Israel Railways call them, for data/entrances.json (entrances.py names). Each entrance of a station is matched to the file's entrance nearest `near` (within 80 m) or, with `side`, to the station's only entrance on that side of its point. The sources are the Hebrew Wikipedia articles on the stations (and Moovit's station page for Savidor), read 2026-11-07; a station whose entrances the sources do not name is left out. A station with `sides` and no named entrances has one hall, and the article says which side of the station it is on: the build's guess for a building with no door or footway drawn to it is taken on that side.",
   "stations": [
     {
       "station": "תל אביב השלום",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_תל_אביב_–_השלום",
       "entrances": [
-        { "near": [32.074036, 34.792538], "he": "כניסת עזריאלי", "en": "Azrieli entrance" },
-        { "near": [32.07314, 34.793157], "he": "הכניסה הצפונית", "en": "Northern entrance" },
-        { "near": [32.072621, 34.793146], "he": "הכניסה הדרומית", "en": "Southern entrance" }
+        {
+          "near": [32.074036, 34.792538],
+          "he": "כניסת עזריאלי",
+          "en": "Azrieli entrance"
+        },
+        {
+          "near": [32.07314, 34.793157],
+          "he": "הכניסה הצפונית",
+          "en": "Northern entrance"
+        },
+        {
+          "near": [32.072621, 34.793146],
+          "he": "הכניסה הדרומית",
+          "en": "Southern entrance"
+        }
       ]
     },
     {
       "station": "תל אביב סבידור מרכז",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_תל_אביב_–_סבידור_מרכז and https://moovitapp.com/index/en/public_transit-רכבת_תל_אביב_סבידור_מרכז-Israel-stop_2241757-1",
       "entrances": [
-        { "near": [32.08496, 34.798546], "he": "כניסת גשר מודעי", "en": "Moda'i Bridge entrance" },
-        { "near": [32.083664, 34.796944], "he": "הכניסה המערבית", "en": "Western entrance" },
-        { "near": [32.083316, 34.800086], "he": "כניסת הבורסה", "en": "Bursa entrance" }
+        {
+          "near": [32.08496, 34.798546],
+          "he": "כניסת גשר מודעי",
+          "en": "Moda'i Bridge entrance"
+        },
+        {
+          "near": [32.083664, 34.796944],
+          "he": "הכניסה המערבית",
+          "en": "Western entrance"
+        },
+        {
+          "near": [32.083316, 34.800086],
+          "he": "כניסת הבורסה",
+          "en": "Bursa entrance"
+        }
       ]
     },
     {
       "station": "ראשון לציון - משה דיין",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_ראשון_לציון_–_משה_דיין",
       "entrances": [
-        { "near": [31.987469, 34.757248], "he": "הכניסה הצפונית", "en": "Northern entrance" },
-        { "near": [31.987214, 34.757206], "he": "הכניסה הדרומית", "en": "Southern entrance" }
+        {
+          "near": [31.987469, 34.757248],
+          "he": "הכניסה הצפונית",
+          "en": "Northern entrance"
+        },
+        {
+          "near": [31.987214, 34.757206],
+          "he": "הכניסה הדרומית",
+          "en": "Southern entrance"
+        }
       ]
     },
     {
       "station": "רחובות (ע\"ש אהוד הדר)",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_רחובות",
       "entrances": [
-        { "near": [31.908862, 34.805885], "he": "הכניסה הצפונית", "en": "Northern entrance" },
-        { "near": [31.908526, 34.80637], "he": "הכניסה הדרומית", "en": "Southern entrance" }
+        {
+          "near": [31.908862, 34.805885],
+          "he": "הכניסה הצפונית",
+          "en": "Northern entrance"
+        },
+        {
+          "near": [31.908526, 34.80637],
+          "he": "הכניסה הדרומית",
+          "en": "Southern entrance"
+        }
       ]
     },
     {
       "station": "תל אביב אוניברסיטה",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_תל_אביב_–_האוניברסיטה_–_אקספו",
       "entrances": [
-        { "side": "W", "he": "הכניסה המערבית", "en": "Western entrance" },
-        { "side": "E", "he": "הכניסה המזרחית", "en": "Eastern entrance" }
+        {
+          "side": "W",
+          "he": "הכניסה המערבית",
+          "en": "Western entrance"
+        },
+        {
+          "side": "E",
+          "he": "הכניסה המזרחית",
+          "en": "Eastern entrance"
+        }
       ]
     },
     {
       "station": "נתניה",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_נתניה",
       "entrances": [
-        { "side": "W", "he": "הכניסה המערבית", "en": "Western entrance" },
-        { "side": "E", "he": "הכניסה המזרחית", "en": "Eastern entrance" }
+        {
+          "side": "W",
+          "he": "הכניסה המערבית",
+          "en": "Western entrance"
+        },
+        {
+          "side": "E",
+          "he": "הכניסה המזרחית",
+          "en": "Eastern entrance"
+        }
       ]
     },
     {
       "station": "קיסריה-פרדס חנה",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_קיסריה_–_פרדס_חנה",
       "entrances": [
-        { "side": "W", "he": "הכניסה המערבית", "en": "Western entrance" },
-        { "side": "E", "he": "הכניסה המזרחית", "en": "Eastern entrance" }
+        {
+          "side": "W",
+          "he": "הכניסה המערבית",
+          "en": "Western entrance"
+        },
+        {
+          "side": "E",
+          "he": "הכניסה המזרחית",
+          "en": "Eastern entrance"
+        }
       ]
     },
     {
       "station": "בית יהושע",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_בית_יהושע",
       "entrances": [
-        { "side": "E", "he": "הכניסה המזרחית", "en": "Eastern entrance" },
-        { "side": "W", "he": "הכניסה המערבית", "en": "Western entrance" }
+        {
+          "side": "E",
+          "he": "הכניסה המזרחית",
+          "en": "Eastern entrance"
+        },
+        {
+          "side": "W",
+          "he": "הכניסה המערבית",
+          "en": "Western entrance"
+        }
       ]
     },
     {
       "station": "חיפה-חוף הכרמל (ע״ש רזיאל)",
       "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_חיפה_–_חוף_הכרמל",
       "entrances": [
-        { "side": "E", "he": "הכניסה המזרחית", "en": "Eastern entrance" },
-        { "side": "W", "he": "הכניסה המערבית", "en": "Western entrance" }
+        {
+          "side": "E",
+          "he": "הכניסה המזרחית",
+          "en": "Eastern entrance"
+        },
+        {
+          "side": "W",
+          "he": "הכניסה המערבית",
+          "en": "Western entrance"
+        }
       ]
+    },
+    {
+      "station": "עכו",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_עכו",
+      "sides": ["W"]
+    },
+    {
+      "station": "קרית חיים",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_קריית_חיים",
+      "sides": ["E"]
+    },
+    {
+      "station": "אשקלון",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_אשקלון",
+      "sides": ["E"]
+    },
+    {
+      "station": "שדרות",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_שדרות",
+      "sides": ["E"]
+    },
+    {
+      "station": "כפר סבא-נורדאו",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_כפר_סבא_–_נורדאו",
+      "sides": ["N"]
+    },
+    {
+      "station": "רעננה מערב",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_רעננה_–_מערב",
+      "sides": ["N"]
+    },
+    {
+      "station": "ראש העין - צפון",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_ראש_העין_–_צפון",
+      "sides": ["N"]
+    },
+    {
+      "station": "אחיהוד",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_אחיהוד",
+      "sides": ["S"]
+    },
+    {
+      "station": "מגדל העמק - כפר ברוך",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_מגדל_העמק_–_כפר_ברוך",
+      "sides": ["N"]
+    },
+    {
+      "station": "מזכרת בתיה",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_מזכרת_בתיה",
+      "sides": ["W"]
+    },
+    {
+      "station": "נתניה – ספיר",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_נתניה_–_ספיר",
+      "sides": ["W"]
+    },
+    {
+      "station": "ירושלים - יצחק נבון",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_ירושלים_–_יצחק_נבון",
+      "sides": ["S"]
+    },
+    {
+      "station": "פתח תקווה – סגולה",
+      "source": "https://he.wikipedia.org/wiki/תחנת_הרכבת_פתח_תקווה_–_סגולה",
+      "sides": ["E"]
     }
   ]
 }
