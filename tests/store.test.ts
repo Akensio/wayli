@@ -36,7 +36,7 @@ test('text that is not JSON, or a record of the wrong kind, reads as nothing kep
 test('a setting of the wrong type falls back to its default; the others are kept', () => {
   put('wayli-settings', { maxWalk: '15', live: false, lang: 'fr', recentN: 20 });
   const s = store.settings.get();
-  expect(s.maxWalk).toBe(15); // the default, not the text
+  expect(s.maxWalk).toBe(20); // the default, not the text
   expect(s.live).toBe(false);
   expect(s.lang).toBeNull();
   expect(s.recentN).toBe(20);

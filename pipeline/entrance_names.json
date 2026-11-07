@@ -1,5 +1,5 @@
 {
-  "_about": "Names of train stations' entrances, as riders and Israel Railways call them, for data/entrances.json (entrances.py names). Each entrance of a station is matched to the file's entrance nearest `near` (within 80 m) or, with `side`, to the station's only entrance on that side of its point. The sources are the Hebrew Wikipedia articles on the stations (and Moovit's station page for Savidor), read 2026-11-07; a station whose entrances the sources do not name is left out. A station with `sides` and no named entrances has one hall, and the article says which side of the station it is on: the build's guess for a building with no door or footway drawn to it is taken on that side.",
+  "_about": "Names of train stations' entrances, as riders and Israel Railways call them, for data/entrances.json (entrances.py names). Each entrance of a station is matched to the file's entrance nearest `near` (within 80 m) or, with `side`, to the station's only entrance on that side of its point. The sources are the Hebrew Wikipedia articles on the stations (and Moovit's station page for Savidor), read 2026-11-07; a station whose entrances the sources do not name is left out. A station with `sides` and no named entrances has one hall, and the article says which side of the station it is on: the build's guess for a building with no door or footway drawn to it is taken on that side. An entrance with `add` is put at its point when the build finds none near it.",
   "stations": [
     {
       "station": "תל אביב השלום",
@@ -8,7 +8,8 @@
         {
           "near": [32.074036, 34.792538],
           "he": "כניסת עזריאלי",
-          "en": "Azrieli entrance"
+          "en": "Azrieli entrance",
+          "add": true
         },
         {
           "near": [32.07314, 34.793157],
@@ -39,7 +40,8 @@
         {
           "near": [32.083316, 34.800086],
           "he": "כניסת הבורסה",
-          "en": "Bursa entrance"
+          "en": "Bursa entrance",
+          "add": true
         }
       ]
     },

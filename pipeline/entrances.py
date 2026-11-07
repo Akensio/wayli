@@ -108,12 +108,12 @@ def follow(start, ways, by_node, coords, outline, buildings, follow_m=FOLLOW_M):
     return None
 
 
-def guesses(building, outline, walks, stations):
-    """For a station building with no door and no footway drawn to it: per side of the station's point (the nearest
-    station node), the outline node nearest a footpath within FALLBACK_M, else nearest a street: {side: (node, metres,
-    by a footpath)}."""
-    stn = min(stations.values(), key=lambda s: haversine(s["lat"], s["lon"], building["lat"], building["lon"]), default=None)
-    centre = stn or building
+def guesses(building, outline, walks):
+    """For a station building with no door and no footway drawn to it: per side of the building (its face to the north,
+    east, south or west of its middle), the outline node nearest a footpath within FALLBACK_M, else nearest a street:
+    {side: (node, metres, by a footpath)}. The side is the building's own, not the station point's: a hall beside the
+    tracks lies wholly to one side of that point, and its article names the face the street is on."""
+    centre = building
     out = {}
     for pedestrian in (True, False):
         for wid in walks.paths if pedestrian else walks.ground_ways:
@@ -239,43 +239,61 @@ def read_osm(path):
     h.apply_file(path, locations=True, idx="flex_mem")
     walks = Walks(h.near or Near(h.stations))
     walks.apply_file(path, locations=True, idx="flex_mem")
-    if os.environ.get("ENTRANCES_DEBUG"):   # the graph read, for looking into a station by hand
+    if os.environ.get("ENTRANCES_DEBUG"):   # the graph read, for looking into a station by hand (derive() runs on it)
         import pickle
         with open(os.environ["ENTRANCES_DEBUG"], "wb") as f:
             pickle.dump((h.stations, h.entrances, h.doors, h.areas, h.buildings, h.others, walks.ways, walks.coords, walks.by_node, walks.paths, walks.ground_ways), f)
-    station_nodes = set(nid for b in h.buildings for nid in b["outline"])
-    others = {nid: name for nid, name in h.others.items() if nid not in station_nodes}
-    carried = doors = met = guessed = 0
-    for b in h.buildings:
+    derive(h.entrances, h.doors, h.buildings, h.others, walks)
+    return h.stations, h.entrances, h.areas
+
+
+class Graph:
+    """What derive() needs of the walking ways (Walks, or a debug dump)."""
+    def __init__(self, ways, coords, by_node, paths, ground_ways):
+        self.ways, self.coords, self.by_node, self.paths, self.ground_ways = ways, coords, by_node, paths, ground_ways
+
+
+def derive(entrances, doors, buildings, others_all, walks):
+    """The station buildings' entrances into `entrances` (the railway=*_entrance nodes already there): the doors on their
+    outlines and the walking ways' meetings, carried over a bridge or tunnel to the building it reaches; and, for a
+    building with neither, a guess per side (guesses; group() keeps one)."""
+    station_nodes = set(nid for b in buildings for nid in b["outline"])
+    others = {nid: name for nid, name in others_all.items() if nid not in station_nodes}
+    carried = doors_n = met = guessed = 0
+    for bi, b in enumerate(buildings):
         outline = b["outline"]
         # the meetings: the doors on the outline, and the nodes where a walking way (not a deck) meets it
-        meetings = {nid for nid in outline if nid in h.doors}
+        meetings = {nid for nid in outline if nid in doors}
         for nid in outline if not b["below"] else ():
             for wid in walks.by_node.get(nid, ()):
                 if not walks.ways[wid]["deck"]:
                     meetings.add(nid)
+        found = 0
         for nid in meetings:
-            if nid in h.entrances:
+            if nid in entrances:
+                found += 1
                 continue
             up = any(walks.ways[wid]["up"] for wid in walks.by_node.get(nid, ()))
             out = follow(nid, walks.ways, walks.by_node, walks.coords, outline, others) if up else None
-            src = h.doors.get(nid) or {"ref": "", "name": "", "lat": outline[nid][0], "lon": outline[nid][1]}
+            src = doors.get(nid) or {"ref": "", "name": "", "lat": outline[nid][0], "lon": outline[nid][1]}
             if out is not None:
                 carried += 1
-                h.entrances[nid] = dict(src, lat=walks.coords[out][0], lon=walks.coords[out][1])
+                entrances[nid] = dict(src, lat=walks.coords[out][0], lon=walks.coords[out][1])
+            elif up and nid not in doors:
+                continue   # a footway bridge out of the hall that reaches no building: over the platforms, or ending in the air; no entrance
             else:
-                h.entrances[nid] = src
-            doors += nid in h.doors
-            met += nid not in h.doors
-        if not meetings and not b["below"] and not any(nid in h.entrances for nid in outline):
+                entrances[nid] = src
+            found += 1
+            doors_n += nid in doors
+            met += nid not in doors
+        if not found and not b["below"] and not any(nid in entrances for nid in outline):
             # a building with no door and no footway drawn to it (most of the country's small stations): a guess per
             # side of it, the point of its outline nearest to a footpath (else to a street) on that side, for group() to
             # choose from: the side the station's article names (entrance_names.json "sides"), else the nearest overall
-            for side, (nid, d, by_path) in guesses(b, outline, walks, h.stations).items():
-                h.entrances[nid] = {"ref": "", "name": "", "lat": outline[nid][0], "lon": outline[nid][1], "guess": side, "d": d if by_path else d + FALLBACK_M}
-                guessed += 1
-    log(f"{len(h.buildings)} station buildings, {doors} doors on them, {met} walking ways meeting them, {carried} of those carried over a bridge or through a tunnel to another building, {guessed} buildings given the side nearest a path")
-    return h.stations, h.entrances, h.areas
+            for side, (nid, d, by_path) in guesses(b, outline, walks).items():
+                entrances[nid] = {"ref": "", "name": "", "lat": outline[nid][0], "lon": outline[nid][1], "guess": side, "d": d if by_path else d + FALLBACK_M, "b": bi}
+            guessed += 1
+    log(f"{len(buildings)} station buildings, {doors_n} doors on them, {met} walking ways meeting them, {carried} of those carried over a bridge or through a tunnel to another building, {guessed} buildings with neither given the side nearest a path")
 
 
 def merge(entrances, merge_m=MERGE_M):
@@ -309,7 +327,9 @@ def side_of(station, e):
 def name_entrances(station, named):
     """Give the station's entrances the names riders know them by (entrance_names.json: [{near | side, he, en}]): each
     name to the entrance nearest its `near` point within NAME_M, or to the station's only entrance on its `side`; an
-    entrance already named keeps its name. Returns how many were named."""
+    entrance already named keeps its name. One with `add` and no entrance near its point is put there (an entrance
+    OpenStreetMap maps too loosely to find: Savidor's Bursa bridge lands on a mall drawn only lately). Returns how many
+    were named."""
     n = 0
     for want in named:
         free = [e for e in station["entrances"] if not e.get("name")]
@@ -318,6 +338,9 @@ def name_entrances(station, named):
             d = [(haversine(want["near"][0], want["near"][1], e["lat"], e["lon"]), e) for e in free]
             d = [x for x in d if x[0] <= NAME_M]
             best = min(d, key=lambda x: x[0])[1] if d else None
+            if best is None and want.get("add"):
+                best = {"ref": "", "name": "", "lat": want["near"][0], "lon": want["near"][1]}
+                station["entrances"].append(best)
         elif "side" in want:
             on = [e for e in free if side_of(station, e) == want["side"]]
             best = on[0] if len(on) == 1 else None
@@ -369,14 +392,27 @@ def group(stations, entrances, areas, near_m=NEAR_M, names=None):
         # a building's guessed sides: the ones its article names (names: "sides"), else the nearest to a path overall
         guessed = [e for e in st["entrances"] if e.get("guess")]
         if guessed:
+            # one guess per building, the nearest to a path; the article's side (names: "sides") chooses among the
+            # buildings first (the hall on the east of the station), then among a building's faces
             want = (names or {}).get(st["name"], {}).get("sides") if isinstance((names or {}).get(st["name"]), dict) else None
-            keep = [e for e in guessed if e["guess"] in want] if want else []
-            if not keep:
-                keep = [min(guessed, key=lambda e: e["d"])]
+            bis = sorted(set(e["b"] for e in guessed))
+            if want and len(bis) > 1:
+                # the building most to that side (the halls stand close to the station's point, so "the eastern one" is
+                # the one furthest east, whatever side of the point it is on)
+                axis = {"N": (1, 0), "S": (-1, 0), "E": (0, 1), "W": (0, -1)}
+                at = {bi: min((e for e in guessed if e["b"] == bi), key=lambda e: e["d"]) for bi in bis}
+                score = lambda bi: max(axis[w][0] * at[bi]["lat"] + axis[w][1] * at[bi]["lon"] for w in want if w in axis)
+                bis = [max(bis, key=score)]
+            keep = []
+            for bi in bis:
+                mine = [e for e in guessed if e["b"] == bi]
+                on = [e for e in mine if e["guess"] in want] if want else []
+                keep.append(min(on or mine, key=lambda e: e["d"]))
             st["entrances"] = [e for e in st["entrances"] if not e.get("guess")] + keep
         for e in st["entrances"]:
             e.pop("guess", None)
             e.pop("d", None)
+            e.pop("b", None)
         st["entrances"] = sorted(merge(st["entrances"]), key=lambda x: x["ref"])
         st["lat"], st["lon"] = round(st["lat"], 6), round(st["lon"], 6)
         if names and st["name"] in names:

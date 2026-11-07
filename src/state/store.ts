@@ -135,7 +135,7 @@ const DEFAULTS: Settings = {
   traffic: true,
   notify: true,
   sound: true,
-  maxWalk: 15,
+  maxWalk: 20, // minutes to the first stop and from the last (maintainer, 2026-11-07: 15 left good ways out)
   recentN: 10,
   lang: null,
   fDirect: false,

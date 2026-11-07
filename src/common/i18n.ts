@@ -111,6 +111,8 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   arriveBy: ['הגעה עד', 'Arrive by'],
   home: ['בית', 'Home'],
   work: ['עבודה', 'Work'],
+  setHome: ['הגדרת הבית', 'Set home'],
+  setWork: ['הגדרת העבודה', 'Set work'],
   tripsToday: ['{n} נסיעות היום', '{n} trips today'],
   lineNoMatch: ['אין קו כזה היום', 'No such line today'],
   kindTrip: ['נסיעה', 'Trip'],
@@ -441,11 +443,21 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   noDestStops: ['אין תחנה במרחק הליכה מהיעד.', 'No stop within walking distance of the destination.'],
 };
 
-function storedLang(): Lang {
+/** The phone's language on the first open: English for a phone in English, Hebrew for any other (the app has these two;
+ *  a rider in Israel on a phone in another language reads Hebrew sooner than English). A customer, 2026-11-07: "when
+ *  opening the app the first time, its language is not set to the phone language". */
+export function phoneLang(): Lang {
   try {
-    return (localStorage.getItem('wayli-lang') as Lang) || 'he';
+    return /^en\b/i.test(navigator.language || '') ? 'en' : 'he';
   } catch {
     return 'he';
+  }
+}
+function storedLang(): Lang {
+  try {
+    return (localStorage.getItem('wayli-lang') as Lang) || phoneLang();
+  } catch {
+    return phoneLang();
   }
 }
 /** The current language. */

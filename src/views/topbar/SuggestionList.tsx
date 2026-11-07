@@ -11,6 +11,7 @@ import { toast } from '../../widgets/toast';
 import { placeName } from '../../state/names';
 import { savedPlaces, recentPlaces } from '../../state/store.ts';
 import * as search from '../../state/search';
+import * as chooser from '../../state/chooser';
 import type { Place, LineGroup, StopGroup } from '../../state/search';
 import type { View } from '../../state/store.ts';
 import { agencyName } from '../../text/operators';
@@ -135,11 +136,20 @@ function slotIcon(slot: string): IconName {
   if (slot === 'work') return 'work';
   return 'star';
 }
-/** An empty trip box's list: my location, pick on the map, the saved places, then up to six recent places not saved
- *  (each with a star that saves it). Read from the phone's store as it draws. */
+/** An empty trip box's list: my location, pick on the map, the saved places (home and work with a row to set them while
+ *  they are not: customers, 2026-11-07, looked for them here), then up to six recent places not saved (each with a star
+ *  that saves it). Read from the phone's store as it draws. */
 function QuickRows({ a }: { a: ListActions }) {
   const saved = savedPlaces.all();
   const recent = recentPlaces.list().filter((r) => !savedPlaces.has(r));
+  const unset = (['home', 'work'] as const).filter((slot) => !saved.some((p) => p.slot === slot));
+  const choose = async (slot: 'home' | 'work') => {
+    const c = await chooser.open(t(slot === 'home' ? 'chooseHome' : 'chooseWork'));
+    if (!c) return;
+    savedPlaces.set(slot, c);
+    toast(t('saved'));
+    a.onStarred(); // the list draws again, with the place in its row
+  };
   return (
     <>
       <button key="locate" type="button" class="quick" onClick={a.onLocate}>
@@ -162,6 +172,17 @@ function QuickRows({ a }: { a: ListActions }) {
           <span class="txt">
             {p.slot === 'more' ? placeName(p) : t(p.slot)}
             <small>{p.slot === 'more' ? '' : placeName(p)}</small>
+          </span>
+        </button>
+      ))}
+      {unset.map((slot) => (
+        <button key={`set:${slot}`} type="button" class="quick unset" onClick={() => choose(slot)}>
+          <span class="ic">
+            <Icon name={slot} />
+          </span>
+          <span class="txt">
+            {t(slot)}
+            <small>{t(slot === 'home' ? 'setHome' : 'setWork')}</small>
           </span>
         </button>
       ))}
