@@ -191,8 +191,12 @@ export async function doorPopup(m: MLMap, lngLat: [number, number], ref: string,
   const my = ++pick.seq;
   // what the entrance leads to: the station's mode once the worker says, "station" until then
   const KIND = { lrt: 'Lrt', rail: 'Rail', subway: 'Subway', '': '' } as const;
-  const title = (stn: string, kind: keyof typeof KIND = '') =>
-    ref ? t(`entranceOf${KIND[kind]}`, { ref, station: stn }) : t(`entranceOf${KIND[kind]}Plain`, { station: stn });
+  const title = (stn: string, kind: keyof typeof KIND = '', own = '') => {
+    if (own) return t(`entranceNamed${KIND[kind]}`, { name: own, station: stn }); // "Azrieli entrance to HaShalom railway station"
+    return ref
+      ? t(`entranceOf${KIND[kind]}`, { ref, station: stn })
+      : t(`entranceOf${KIND[kind]}Plain`, { station: stn });
+  };
   const name = signal(title(lang.value === 'en' ? inLatin(station) : station)),
     sub = signal('');
   const place = () => ({ name: name.value, lat: lngLat[1], lon: lngLat[0] });
@@ -209,7 +213,7 @@ export async function doorPopup(m: MLMap, lngLat: [number, number], ref: string,
   try {
     const info = await call('doorInfo', { lat: lngLat[1], lon: lngLat[0], station, ref });
     if (my !== pick.seq) return;
-    name.value = title(info.station, info.kind);
+    name.value = title(info.station, info.kind, info.name);
     sub.value = info.street;
   } catch {
     /* the file's own name stays */

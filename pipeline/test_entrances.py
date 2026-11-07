@@ -7,7 +7,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from entrances import group, merge, is_station, follow  # noqa: E402
+from entrances import group, merge, is_station, follow, name_entrances, load_names  # noqa: E402
 
 failures = 0
 
@@ -48,8 +48,8 @@ check("a row of doors merges only within reach of each cluster's first door", le
 check("rail stations only", [is_station(t) for t in ({"railway": "station"}, {"public_transport": "station", "train": "yes"}, {"public_transport": "station", "station": "light_rail"},
                                                      {"public_transport": "station", "bus": "yes"}, {"public_transport": "station", "amenity": "taxi"})], [True, True, True, False, False])
 
-# a bridge or tunnel out of the station: the entrance is where it comes out, at another building (the bridge meets
-# Azrieli, where the tickets are) or on the ground; a bridge that comes to nothing (a road bridge's sidewalk) keeps the door
+# a bridge or tunnel out of the station: the entrance is at the building it reaches (the bridge meets Azrieli, where
+# the tickets are); one that only steps down to the street, or comes to nothing, keeps the door
 coords = {1: (32.0730, 34.7932), 2: (32.0732, 34.7930), 3: (32.0735, 34.7927), 4: (32.0738, 34.7925),   # the station wall, then west over the road
           5: (32.0728, 34.7934), 6: (32.0726, 34.7937), 7: (32.0731, 34.7933), 8: (32.0732, 34.7935)}
 ways = {
@@ -70,9 +70,19 @@ def out(start, buildings, without=(), **kw):
     return follow(start, ws, by_node, coords, outline, buildings, **kw)
 
 
-check("a bridge to the ground: its foot", out(1, {}, without=(12,)), 4)
+check("a bridge that only steps down to the street: the door stays", out(1, {}, without=(12,)), None)
 check("a bridge to another building: where it meets it", out(1, {6: "the mall"}), 6)
 check("a bridge to nothing: the door stays", out(7, {}), None)
-check("not followed further than its reach", out(1, {}, without=(12,), follow_m=50), None)
+check("not followed further than its reach", out(1, {6: "the mall"}, follow_m=50), None)
+
+# the names riders know entrances by: to the entrance nearest the point named, or the only one on that side
+hashalom = {"name": "תל אביב השלום", "lat": 32.073559, "lon": 34.793164, "entrances": [
+    {"ref": "", "name": "", "lat": 32.074036, "lon": 34.792538}, {"ref": "", "name": "", "lat": 32.07314, "lon": 34.793157},
+    {"ref": "", "name": "", "lat": 32.072621, "lon": 34.793146}, {"ref": "", "name": "", "lat": 32.0745, "lon": 34.7945}]}
+named = name_entrances(hashalom, load_names()["תל אביב השלום"])
+check("names by the point named", (named, [e.get("name_en", "") for e in hashalom["entrances"]]), (3, ["Azrieli entrance", "Northern entrance", "Southern entrance", ""]))
+two = {"name": "x", "lat": 32.0, "lon": 34.8, "entrances": [{"ref": "", "name": "", "lat": 32.0, "lon": 34.801}, {"ref": "", "name": "", "lat": 32.0, "lon": 34.799}, {"ref": "", "name": "", "lat": 32.0, "lon": 34.7995}]}
+check("names by side only when one entrance is on it", (name_entrances(two, [{"side": "E", "he": "מזרח", "en": "East"}, {"side": "W", "he": "מערב", "en": "West"}]), [e.get("name_en", "") for e in two["entrances"]]), (1, ["East", "", ""]))
+check("every station in entrance_names.json names a side or a point", all(("near" in e) != ("side" in e) and e["he"] and e["en"] for v in load_names().values() for e in v), True)
 
 sys.exit(1 if failures else 0)

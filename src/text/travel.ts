@@ -1,6 +1,6 @@
 // How a trip is made, in words: a line's name, how many stops and changes, the bicycle choice, and what trains or the
 // light rail are called between two stations.
-import { t } from '../common/i18n';
+import { lang, t } from '../common/i18n';
 import type { Exit } from '../trip/journey';
 
 export const lineText = (line?: string | null): string => (line === 'train' ? t('train') : line || '');
@@ -37,9 +37,11 @@ export const railWords = (mode: string | null | undefined) => RAIL_WORDS[mode ==
  *  '' for none. The Red Line's underground stations letter theirs; the Carmelit's and the train stations' have none. */
 export function exitText(e: Exit | undefined, entering: boolean): string {
   if (!e) return '';
-  const word = e.ref
-    ? t(entering ? 'entranceRef' : 'exitRef', { ref: e.ref })
-    : t(entering ? 'entrancePlain' : 'exitPlain');
-  const where = e.street || e.name;
+  // the name riders know it by where the build has one ("Azrieli entrance", name_en set), else its letter or the word
+  let word: string;
+  if (e.name_en) word = lang.value === 'en' ? e.name_en : e.name;
+  else if (e.ref) word = t(entering ? 'entranceRef' : 'exitRef', { ref: e.ref });
+  else word = t(entering ? 'entrancePlain' : 'exitPlain');
+  const where = e.street || (e.name_en ? '' : e.name);
   return where ? `${word} (${where})` : word;
 }

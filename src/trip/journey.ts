@@ -41,7 +41,7 @@ export type RideLeg = LegBase & {
 /** A way on foot or by bike: to the first stop (access), between stops (walk, transfer), from the last (egress). */
 /** An entrance of a station (data/entrances.json): its letter (A..D at the Red Line's underground stations, '' where
  *  the map gives none), its name where it has one, where it is, and the street it opens onto ('' when unknown). */
-export type Exit = { ref: string; name: string; lat: number; lon: number; street: string };
+export type Exit = { ref: string; name: string; name_en?: string; lat: number; lon: number; street: string };
 export type WalkLeg = LegBase & {
   type: 'walk' | 'access' | 'egress' | 'transfer';
   mode?: string; // 'walk' or 'bike'

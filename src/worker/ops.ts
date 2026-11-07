@@ -260,7 +260,10 @@ export type RideLegOut = {
 /** A way on foot or by bike as plan.ts dresses it: to the first stop (access), between stops (walk), from the last
  *  (egress); `path` along the streets ('street') or the two ends joined ('straight'). */
 /** A station entrance as a leg names it (trip/journey.ts Exit). */
-export type ExitOut = { ref: string; name: string; lat: number; lon: number; street: string };
+/** A station entrance on a walk (exits.ts bestEntrance): its letter, its name as riders know it where the build has one
+ *  (pipeline/entrance_names.json; `name_en` set only then; else OpenStreetMap's name, Hebrew, or ''), its point and the
+ *  street it opens onto. */
+export type ExitOut = { ref: string; name: string; name_en?: string; lat: number; lon: number; street: string };
 /** data/entrances.json (pipeline/entrances.py): stations with their entrances, tied to stops in the worker (exits.ts). */
 export type EntrancesFile = {
   built?: string;
@@ -270,7 +273,7 @@ export type EntrancesFile = {
     name_en?: string; // OpenStreetMap's, where it has one
     lat: number;
     lon: number;
-    entrances: { ref: string; name: string; lat: number; lon: number }[];
+    entrances: { ref: string; name: string; name_en?: string; lat: number; lon: number }[];
   }[];
 };
 export type WalkLegOut = {
@@ -334,10 +337,11 @@ export type Ops = {
   setRailTimes: { args: { m: RailTimes | null | undefined }; result: true };
   setEntrances: { args: { m: EntrancesFile | null | undefined }; result: true };
   /** An entrance tapped on the map (exits.ts doorInfo): its station's name in the rider's language, what kind of
-   *  station it is (light rail, underground, train, or '' when no stop is tied) and the street it opens onto. */
+   *  station it is (light rail, underground, train, or '' when no stop is tied), its own name in the rider's language
+   *  where riders have one for it ("Azrieli entrance"; '' else) and the street it opens onto. */
   doorInfo: {
     args: { lat: number; lon: number; station: string; ref: string };
-    result: { station: string; kind: 'lrt' | 'subway' | 'rail' | ''; street: string };
+    result: { station: string; kind: 'lrt' | 'subway' | 'rail' | ''; name: string; street: string };
   };
   setLang: { args: { lang: Lang }; result: Lang };
   // search.ts: places

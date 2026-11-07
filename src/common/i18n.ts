@@ -223,6 +223,11 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   entranceOfRailPlain: ['כניסה לתחנת הרכבת {station}', 'Entrance to {station} railway station'],
   entranceOfSubway: ['כניסה {ref} לתחנת הכרמלית {station}', 'Entrance {ref} to {station} Carmelit station'],
   entranceOfSubwayPlain: ['כניסה לתחנת הכרמלית {station}', 'Entrance to {station} Carmelit station'],
+  // an entrance riders have a name for (pipeline/entrance_names.json): "כניסת עזריאלי לתחנת הרכבת השלום"
+  entranceNamed: ['{name} לתחנת {station}', '{name} to {station} station'],
+  entranceNamedLrt: ['{name} לתחנת הרכבת הקלה {station}', '{name} to {station} light rail station'],
+  entranceNamedRail: ['{name} לתחנת הרכבת {station}', '{name} to {station} railway station'],
+  entranceNamedSubway: ['{name} לתחנת הכרמלית {station}', '{name} to {station} Carmelit station'],
   bikeFrom: ["רכיבה {min} דק' מ{name} ליעד", 'bike {min} min from {name}'],
   pay: ['תשלום', 'Pay'],
   payHint: ['תשלום על הנסיעה באפליקציית הופאון (רב-פס)', 'Pay for the ride in the HopOn (Rav-Pass) app'],

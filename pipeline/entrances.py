@@ -20,6 +20,7 @@ and the Carmelit call at) and picks the entrance nearest the rider's way (src/wo
 import argparse
 import datetime
 import json
+import math
 import os
 import sys
 import time
@@ -31,14 +32,15 @@ ENTRANCE = {"subway_entrance", "train_station_entrance"}
 STATION = {"station", "halt"}
 RAIL = {"train", "light_rail", "subway", "monorail", "funicular"}   # a station of these modes; a bus terminal is not a station here
 DOOR = {"main", "yes", "exit", "entrance"}   # entrance=* on a station building's outline: a train station's doors (mapped so, not as railway=)
-WALK = {"footway", "steps", "path", "pedestrian", "corridor", "elevator", "living_street", "residential", "service", "unclassified", "cycleway"}
+WALK = {"footway", "steps", "path", "pedestrian", "corridor", "elevator", "living_street", "residential", "service", "unclassified", "cycleway", "tertiary", "secondary"}
 NEAR_M = 200
-MERGE_M = 40   # two doors this close, with the same letter and name, are one entrance (a hall's double door, a deck's two stairways)
+MERGE_M = 25   # two doors this close, with the same letter and name, are one entrance (a hall's double door; Moshe Dayan's north and south doors are 29 m apart)
 NEAR_BUILD_M = 700   # the buildings and walking ways read around a station node, for the bridges and tunnels out of it
-FORMAT = 4   # 1: lettered entrances of light rail and underground stations; 2: name_en, and train stations' doors (plain entrance nodes);
+FORMAT = 5   # 1: lettered entrances of light rail and underground stations; 2: name_en, and train stations' doors (plain entrance nodes);
              # 3: rail stations only, doors only on a station building, entrances where walking ways meet it, twin doors merged;
-             # 4: a door or meeting on a bridge or in a tunnel is carried to where it comes out (follow); an underground
-             #    footprint keeps its doors
+             # 4: a door or meeting on a bridge or in a tunnel is carried to the building it reaches (follow); an underground
+             #    footprint keeps its doors; a building with neither gets its side nearest a path;
+             # 5: the names riders know the entrances by (entrance_names.json), name and name_en
 
 
 def is_station(t):
@@ -69,15 +71,17 @@ def is_ground(t):
     return is_walking(t) and not is_elevated(t) and t.get("highway") not in ("steps", "elevator") and (t.get("level") or "0") in ("0", "0.0")
 
 
-FOLLOW_M = 600   # how far a bridge or tunnel is followed from the station for its far end
+FOLLOW_M = 600   # how far a bridge or tunnel is followed from the station for the building it reaches
+FALLBACK_M = 60   # a building with no door or footway: its entrance is its point nearest a path or street this close
 
 
 def follow(start, ways, by_node, coords, outline, buildings, follow_m=FOLLOW_M):
-    """Where a rider on a bridge or in a tunnel from the station (`start`, a node on its outline) is out of it: the first
-    node, along the elevated walking ways (`ways`: id -> {nodes, up, ground, deck}; `by_node`: node -> way ids), that is
-    on another building's outline (`buildings`: node -> name; the bridge meets Azrieli, where the tickets are) or on a
-    walking way on the ground (its foot). None when it comes to nothing within follow_m (a sidewalk of a road bridge:
-    the door itself is the entrance). The station's own outline (`outline`) is walked along but never a hit."""
+    """Where a bridge or tunnel from the station (`start`, a node on its outline) reaches another building: the first
+    node, along the elevated walking ways (`ways`: id -> {nodes, up, deck}; `by_node`: node -> way ids), on a building's
+    outline (`buildings`: node -> name): the bridge meets Azrieli, the Bursa, and that is where the tickets are. None
+    when it reaches none within follow_m: a bridge that only steps down to the street, or a road bridge's sidewalk, has
+    its entrance at the door (Moshe Dayan, 2026-11-07: carried to the feet of its stairs, the doors were right). The
+    station's own outline (`outline`) is walked along but never a hit."""
     dist = {start: 0.0}
     queue = [start]
     while queue:
@@ -97,9 +101,8 @@ def follow(start, ways, by_node, coords, outline, buildings, follow_m=FOLLOW_M):
                     if d > follow_m:
                         continue
                     dist[v] = d
-                    if v not in outline:
-                        if v in buildings or any(ways[o]["ground"] for o in by_node.get(v, ())):
-                            return v
+                    if v not in outline and v in buildings:
+                        return v
                     queue.append(v)
     return None
 
@@ -129,6 +132,10 @@ def read_osm(path):
                         if haversine(lat, lon, slat, slon) <= NEAR_BUILD_M:
                             return True
             return False
+
+        def any(self, points):
+            """Whether any of the points is near a station (a bridge that starts far off may end at one)."""
+            return any(self(lat, lon) for lat, lon in points)
 
     class First(osmium.SimpleHandler):
         def __init__(self):
@@ -161,15 +168,15 @@ def read_osm(path):
                         outline[nd.ref] = (round(nd.location.lat, 6), round(nd.location.lon, 6))
             if not outline:
                 return
-            first = next(iter(outline.values()))
             if not station:
-                if self.near(first[0], first[1]):
+                if self.near.any(outline.values()):
                     for nid in outline:
                         self.others[nid] = t.get("name") or t.get("building")
                 return
             # an underground station's footprint (Tel Aviv University, in its trench): its doors on the outline are doors,
             # but a footway crossing it above ground enters nothing
-            below = t.get("location") == "underground" or bool(t.get("tunnel")) or (t.get("layer") or "0").startswith("-") or (t.get("level") or "0").startswith("-")
+            below = t.get("location") == "underground" or bool(t.get("tunnel")) or (
+                t.get("location") != "surface" and ((t.get("layer") or "0").startswith("-") or (t.get("level") or "0").startswith("-")))
             self.buildings.append({"name": t.get("name") or "", "outline": outline, "below": below,
                                    "lat": sum(p[0] for p in outline.values()) / len(outline), "lon": sum(p[1] for p in outline.values()) / len(outline)})
 
@@ -183,17 +190,19 @@ def read_osm(path):
         a meeting)}, every node's coordinates, and node -> way ids."""
         def __init__(self, near):
             super().__init__()
-            self.near, self.ways, self.coords, self.by_node = near, {}, {}, {}
+            self.near, self.ways, self.coords, self.by_node, self.ground_ways = near, {}, {}, {}, []
 
         def way(self, w):
             t = dict(w.tags)
-            if not is_walking(t) or not w.nodes or not w.nodes[0].location.valid() or not self.near(w.nodes[0].location.lat, w.nodes[0].location.lon):
+            if not is_walking(t) or not self.near.any((nd.location.lat, nd.location.lon) for nd in w.nodes if nd.location.valid()):
                 return
             ns = [nd.ref for nd in w.nodes]
             for nd in w.nodes:
                 if nd.location.valid():
                     self.coords[nd.ref] = (round(nd.location.lat, 6), round(nd.location.lon, 6))
             self.ways[w.id] = {"nodes": ns, "up": is_elevated(t), "ground": is_ground(t), "deck": t.get("area") == "yes" or ns[0] == ns[-1]}
+            if is_ground(t):
+                self.ground_ways.append(w.id)
             for nid in ns:
                 self.by_node.setdefault(nid, []).append(w.id)
 
@@ -203,7 +212,7 @@ def read_osm(path):
     walks.apply_file(path, locations=True, idx="flex_mem")
     station_nodes = set(nid for b in h.buildings for nid in b["outline"])
     others = {nid: name for nid, name in h.others.items() if nid not in station_nodes}
-    carried = doors = met = 0
+    carried = doors = met = guessed = 0
     for b in h.buildings:
         outline = b["outline"]
         # the meetings: the doors on the outline, and the nodes where a walking way (not a deck) meets it
@@ -225,7 +234,23 @@ def read_osm(path):
                 h.entrances[nid] = src
             doors += nid in h.doors
             met += nid not in h.doors
-    log(f"{len(h.buildings)} station buildings, {doors} doors on them, {met} walking ways meeting them, {carried} of those carried over a bridge or through a tunnel to where it comes out")
+        if not meetings and not b["below"] and not any(nid in h.entrances for nid in outline):
+            # a building with no door and no footway drawn to it (most of the country's small stations): its entrance is
+            # the point of its outline nearest to a path or street, so the rider is sent to the side one walks up to
+            best, bd = None, FALLBACK_M
+            for nid, (lat, lon) in outline.items():
+                for wid in walks.ground_ways:
+                    for n2 in walks.ways[wid]["nodes"]:
+                        c = walks.coords.get(n2)
+                        if not c or abs(c[0] - lat) > 0.001 or abs(c[1] - lon) > 0.001:
+                            continue
+                        d = haversine(lat, lon, c[0], c[1])
+                        if d < bd:
+                            best, bd = nid, d
+            if best is not None:
+                h.entrances[best] = {"ref": "", "name": "", "lat": outline[best][0], "lon": outline[best][1]}
+                guessed += 1
+    log(f"{len(h.buildings)} station buildings, {doors} doors on them, {met} walking ways meeting them, {carried} of those carried over a bridge or through a tunnel to another building, {guessed} buildings given the side nearest a path")
     return h.stations, h.entrances, h.areas
 
 
@@ -247,9 +272,41 @@ def merge(entrances, merge_m=MERGE_M):
     return out
 
 
-def group(stations, entrances, areas, near_m=NEAR_M):
+NAME_M = 80   # a named entrance (entrance_names.json `near`) is the file's entrance within this of the point named
+
+
+def side_of(station, e):
+    """Which side of the station's point an entrance is on: N, E, S or W."""
+    dy = (e["lat"] - station["lat"]) * 111000
+    dx = (e["lon"] - station["lon"]) * 111000 * math.cos(math.radians(station["lat"]))
+    return "NESW"[int(((math.degrees(math.atan2(dx, dy)) + 45) % 360) // 90)]
+
+
+def name_entrances(station, named):
+    """Give the station's entrances the names riders know them by (entrance_names.json: [{near | side, he, en}]): each
+    name to the entrance nearest its `near` point within NAME_M, or to the station's only entrance on its `side`; an
+    entrance already named keeps its name. Returns how many were named."""
+    n = 0
+    for want in named:
+        free = [e for e in station["entrances"] if not e.get("name")]
+        best = None
+        if "near" in want:
+            d = [(haversine(want["near"][0], want["near"][1], e["lat"], e["lon"]), e) for e in free]
+            d = [x for x in d if x[0] <= NAME_M]
+            best = min(d, key=lambda x: x[0])[1] if d else None
+        elif "side" in want:
+            on = [e for e in free if side_of(station, e) == want["side"]]
+            best = on[0] if len(on) == 1 else None
+        if best is not None:
+            best["name"], best["name_en"] = want["he"], want["en"]
+            n += 1
+    return n
+
+
+def group(stations, entrances, areas, near_m=NEAR_M, names=None):
     """Entrances by station: through the stop areas first, the rest to the nearest station within near_m; twin doors
-    merged (merge). Returns [{name, lat, lon, entrances}] for stations that have any."""
+    merged (merge); then the names riders know them by (name_entrances, `names`: {station name: [...]}). Returns
+    [{name, lat, lon, entrances}] for stations that have any."""
     by_station = {}
     placed = set()
     for name, members in areas:
@@ -287,8 +344,17 @@ def group(stations, entrances, areas, near_m=NEAR_M):
     for st in by_station.values():
         st["entrances"] = sorted(merge(st["entrances"]), key=lambda x: x["ref"])
         st["lat"], st["lon"] = round(st["lat"], 6), round(st["lon"], 6)
+        if names and st["name"] in names:
+            name_entrances(st, names[st["name"]])
         out.append(st)
     return sorted(out, key=lambda s: (s["lat"], s["lon"]))
+
+
+def load_names(path=None):
+    """entrance_names.json beside this script: {station name: [{near | side, he, en}]}."""
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "entrance_names.json")
+    with open(path, encoding="utf-8") as f:
+        return {s["station"]: s["entrances"] for s in json.load(f)["stations"]}
 
 
 def main():
@@ -308,7 +374,9 @@ def main():
     t0 = time.time()
     stations, entrances, areas = read_osm(args.pbf)
     log(f"OSM: {len(stations)} station nodes, {len(entrances)} entrances, {len(areas)} stop areas, {time.time() - t0:.0f}s")
-    out = group(stations, entrances, areas)
+    names = load_names()
+    out = group(stations, entrances, areas, names=names)
+    log(f"{sum(1 for s in out for e in s['entrances'] if e.get('name_en'))} entrances named (pipeline/entrance_names.json)")
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump({"format": FORMAT, "built": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "near_m": NEAR_M, "stations": out},

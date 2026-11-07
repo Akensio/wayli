@@ -87,6 +87,7 @@ export function bestEntrance(
   const exit: ExitOut = {
     ref: best.e.ref,
     name: best.e.name,
+    name_en: best.e.name_en,
     lat: best.e.lat,
     lon: best.e.lon,
     street: streetOf(best.e.lat, best.e.lon),
@@ -110,6 +111,12 @@ export const exitsOps = {
     const stn =
       file?.stations.find((s) => s.name === station && s.entrances.some((e) => e.ref === ref)) ||
       file?.stations.find((s) => s.entrances.some((e) => haversine(e.lat, e.lon, lat, lon) < 30));
+    // its own name where riders have one (name_en set, pipeline/entrance_names.json): the station's entrance nearest the tap
+    let door: EntrancesFile['stations'][number]['entrances'][number] | null = null;
+    for (const e of stn?.entrances || [])
+      if (!door || haversine(e.lat, e.lon, lat, lon) < haversine(door.lat, door.lon, lat, lon)) door = e;
+    let own = '';
+    if (door && door.name_en) own = lang === 'en' ? door.name_en : door.name;
     let name = (lang === 'en' && stn?.name_en) || station,
       kind: 'lrt' | 'subway' | 'rail' | '' = '';
     if (stn && tt)
@@ -122,6 +129,6 @@ export const exitsOps = {
           else if (types.includes(1)) kind = 'subway';
           break;
         }
-    return { station: lang === 'en' ? inLatin(name) : name, kind, street: streetOf(lat, lon) };
+    return { station: lang === 'en' ? inLatin(name) : name, kind, name: own, street: streetOf(lat, lon) };
   },
 } satisfies OpsPart<'setEntrances' | 'doorInfo'>;

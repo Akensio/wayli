@@ -580,9 +580,14 @@ different streets. `pipeline/entrances.py` reads them from OpenStreetMap:
 the lettered entrance nodes of the underground stations, and for train
 stations, which are mapped loosely, the doors tagged on a building that is
 a station and the places where an outdoor footway meets that building's
-outline (a hall's entrance is often no node at all), twin doors of one hall
-merged; rail stations only, so a bus terminal's neighbours' doors never
-appear. The router is unchanged; when the worker writes out a
+outline (a hall's entrance is often no node at all), a door on a bridge
+carried to the building the bridge reaches (Azrieli, the Bursa: where the
+tickets are), a building with neither given its side nearest a path, twin
+doors of one hall merged; rail stations only, so a bus terminal's
+neighbours' doors never appear. The names riders know entrances by
+(`pipeline/entrance_names.json`, from the stations' Wikipedia articles:
+"Azrieli entrance", "northern entrance") go to the file's entrance nearest a
+point named there. The router is unchanged; when the worker writes out a
 walk that ends at or starts from a station with entrances (`exits.ts`,
 from `plan.ts legOut`), it picks the entrance with the shortest street
 route to the rider's point (or to the other stop of a transfer walk; as the
