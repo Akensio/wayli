@@ -576,7 +576,13 @@ Hebrew letters reach an English screen (`docs/principles.md`, rule 3).
 
 Station entrances: the feed has one point per station, near its middle,
 while the Red Line's underground stations open up to 150 m away on
-different streets. The router is unchanged; when the worker writes out a
+different streets. `pipeline/entrances.py` reads them from OpenStreetMap:
+the lettered entrance nodes of the underground stations, and for train
+stations, which are mapped loosely, the doors tagged on a building that is
+a station and the places where an outdoor footway meets that building's
+outline (a hall's entrance is often no node at all), twin doors of one hall
+merged; rail stations only, so a bus terminal's neighbours' doors never
+appear. The router is unchanged; when the worker writes out a
 walk that ends at or starts from a station with entrances (`exits.ts`,
 from `plan.ts legOut`), it picks the entrance with the shortest street
 route to the rider's point (or to the other stop of a transfer walk; as the
