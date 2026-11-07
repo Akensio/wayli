@@ -2,12 +2,12 @@
 """Station entrances (entrances.py group): python3 -I pipeline/test_entrances.py (exits 1 on a failure; the build
 workflow runs it). The cases: an entrance in a stop area belongs to that area's station; one in no area goes to the
 nearest station within reach, and none when no station is near; the letter comes from `ref` alone, never cut from a
-name; entrances are listed by letter; twin doors are one entrance; a station is rail only."""
+name; entrances are listed by letter; twin doors are one entrance; a station is rail only; a bridge or tunnel out of the station is followed to where it comes out."""
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from entrances import group, merge, is_station  # noqa: E402
+from entrances import group, merge, is_station, follow  # noqa: E402
 
 failures = 0
 
@@ -47,5 +47,32 @@ check("a row of doors merges only within reach of each cluster's first door", le
 # a station is rail: railway=station, or public_transport=station of a rail mode; a bus terminal or taxi stand is not
 check("rail stations only", [is_station(t) for t in ({"railway": "station"}, {"public_transport": "station", "train": "yes"}, {"public_transport": "station", "station": "light_rail"},
                                                      {"public_transport": "station", "bus": "yes"}, {"public_transport": "station", "amenity": "taxi"})], [True, True, True, False, False])
+
+# a bridge or tunnel out of the station: the entrance is where it comes out, at another building (the bridge meets
+# Azrieli, where the tickets are) or on the ground; a bridge that comes to nothing (a road bridge's sidewalk) keeps the door
+coords = {1: (32.0730, 34.7932), 2: (32.0732, 34.7930), 3: (32.0735, 34.7927), 4: (32.0738, 34.7925),   # the station wall, then west over the road
+          5: (32.0728, 34.7934), 6: (32.0726, 34.7937), 7: (32.0731, 34.7933), 8: (32.0732, 34.7935)}
+ways = {
+    10: {"nodes": [1, 2, 3, 4], "up": True, "ground": False, "deck": False},     # a bridge from the station's door 1 to node 4
+    11: {"nodes": [4, 40], "up": False, "ground": True, "deck": False},           # a path on the ground from node 4 on
+    12: {"nodes": [1, 5, 6], "up": True, "ground": False, "deck": False},        # a bridge from door 1 east to the mall at 6
+    13: {"nodes": [7, 8], "up": True, "ground": False, "deck": False},           # a sidewalk of a road bridge from door 7, to nothing
+}
+outline = {1, 7}
+
+
+def out(start, buildings, without=(), **kw):
+    ws = {k: v for k, v in ways.items() if k not in without}
+    by_node = {}
+    for wid, w in ws.items():
+        for n in w["nodes"]:
+            by_node.setdefault(n, []).append(wid)
+    return follow(start, ws, by_node, coords, outline, buildings, **kw)
+
+
+check("a bridge to the ground: its foot", out(1, {}, without=(12,)), 4)
+check("a bridge to another building: where it meets it", out(1, {6: "the mall"}), 6)
+check("a bridge to nothing: the door stays", out(7, {}), None)
+check("not followed further than its reach", out(1, {}, without=(12,), follow_m=50), None)
 
 sys.exit(1 if failures else 0)
