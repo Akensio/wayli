@@ -275,14 +275,14 @@ def derive(entrances, doors, buildings, others_all, walks):
                 continue
             up = any(walks.ways[wid]["up"] for wid in walks.by_node.get(nid, ()))
             out = follow(nid, walks.ways, walks.by_node, walks.coords, outline, others) if up else None
-            src = doors.get(nid) or {"ref": "", "name": "", "lat": outline[nid][0], "lon": outline[nid][1]}
+            src = doors.get(nid) or {"ref": "", "name": "", "lat": outline[nid][0], "lon": outline[nid][1], "met": side_of(b, {"lat": outline[nid][0], "lon": outline[nid][1]})}
             if out is not None:
                 carried += 1
-                entrances[nid] = dict(src, lat=walks.coords[out][0], lon=walks.coords[out][1])
+                entrances[nid] = dict(src, lat=walks.coords[out][0], lon=walks.coords[out][1], met=None)
             elif up and nid not in doors:
                 continue   # a footway bridge out of the hall that reaches no building: over the platforms, or ending in the air; no entrance
             else:
-                entrances[nid] = src
+                entrances[nid] = dict(src, b=bi)
             found += 1
             doors_n += nid in doors
             met += nid not in doors
@@ -302,6 +302,8 @@ def merge(entrances, merge_m=MERGE_M):
     out = []   # each with its first door as the anchor, so a chain of doors cannot creep along a building
     for e in entrances:
         for o in out:
+            if o.get("b") is not None and e.get("b") is not None and o["b"] != e["b"]:
+                continue   # two halls on either side of the tracks stand close, and are two entrances
             if o["ref"] == e["ref"] and o["name"] == e["name"] and haversine(o["at"][0], o["at"][1], e["lat"], e["lon"]) <= merge_m:
                 n = o["n"]
                 o["lat"], o["lon"], o["n"] = (o["lat"] * n + e["lat"]) / (n + 1), (o["lon"] * n + e["lon"]) / (n + 1), n + 1
@@ -390,6 +392,13 @@ def group(stations, entrances, areas, near_m=NEAR_M, names=None):
     out = []
     for st in by_station.values():
         # a building's guessed sides: the ones its article names (names: "sides"), else the nearest to a path overall
+        want0 = (names or {}).get(st["name"], {}).get("sides") if isinstance((names or {}).get(st["name"]), dict) else None
+        if want0:
+            # a footway that only touches a hall on another face than the article's side is no entrance (a door is)
+            met = [e for e in st["entrances"] if e.get("met")]
+            on = [e for e in met if e["met"] in want0]
+            if on and len(on) < len(met):
+                st["entrances"] = [e for e in st["entrances"] if not e.get("met") or e in on]
         guessed = [e for e in st["entrances"] if e.get("guess")]
         if guessed:
             # one guess per building, the nearest to a path; the article's side (names: "sides") chooses among the
@@ -412,8 +421,10 @@ def group(stations, entrances, areas, near_m=NEAR_M, names=None):
         for e in st["entrances"]:
             e.pop("guess", None)
             e.pop("d", None)
-            e.pop("b", None)
+            e.pop("met", None)
         st["entrances"] = sorted(merge(st["entrances"]), key=lambda x: x["ref"])
+        for e in st["entrances"]:
+            e.pop("b", None)
         st["lat"], st["lon"] = round(st["lat"], 6), round(st["lon"], 6)
         if names and st["name"] in names:
             name_entrances(st, names[st["name"]]["entrances"] if isinstance(names[st["name"]], dict) else names[st["name"]])
