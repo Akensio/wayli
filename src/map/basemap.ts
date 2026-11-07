@@ -2,7 +2,7 @@
 // (style.ts); the interface theme and the status bar follow the map's ground colour. The labels follow
 // the rider's language.
 import type { Map as MLMap } from 'maplibre-gl';
-import { styledLiberty, PALETTES } from './style.ts';
+import { styledLiberty, PALETTES, BUILDING_3D_OPACITY } from './style.ts';
 import * as settings from '../state/settings';
 import { lang } from '../common/i18n';
 import { state } from './shared';
@@ -187,7 +187,7 @@ export function applySky(m: MLMap): void {
     );
     m.setLight({ anchor: 'viewport', color: '#ffffff', intensity: dark ? 0.35 : 0.55, position: [1.2, 215, 35] });
     if (m.getLayer('building-3d')) {
-      m.setPaintProperty('building-3d', 'fill-extrusion-opacity', 0.9);
+      m.setPaintProperty('building-3d', 'fill-extrusion-opacity', BUILDING_3D_OPACITY); // the style's number (style.ts)
       m.setPaintProperty('building-3d', 'fill-extrusion-vertical-gradient', true);
     }
   } catch {

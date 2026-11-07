@@ -12,13 +12,15 @@ const cache: Partial<Record<string, LibertyStyle>> = {};
 type Layer = {
   id: string;
   type: string;
-  minzoom?: number;
-  maxzoom?: number;
   'source-layer'?: string;
   filter?: unknown;
   paint?: Record<string, unknown>;
   layout?: Record<string, unknown>;
 };
+/** How solid the 3D buildings are, 0 to 1 (Liberty: 0.8; the sky-and-light setup in basemap.ts had put 0.9 over the
+ *  style, which is why they stayed heavy: maintainer, 2026-11-07, "they're very very opaque"). One number, read here
+ *  and there. */
+export const BUILDING_3D_OPACITY = 0.35;
 /** Liberty's style document, as fetched; only `layers` and `name` are read or written. */
 export type LibertyStyle = { name?: string; layers?: Layer[]; [k: string]: unknown };
 
@@ -295,16 +297,10 @@ export async function styledLiberty(mode: Shade = 'light', tint: Tint = 'teal'):
     // buildings lighter on the eye: half see-through, so the land and the roads carry the picture (maintainer,
     // 2026-11-07: "in dark mode the roads are not emphasized enough compared to the buildings"; buildings less opaque)
     if (/^building/.test(layer.id) && layer.paint) {
-      // Liberty draws buildings flat to zoom 14 and as shaded blocks from there; the blocks only from 16 (close up),
-      // the flat fill until then
-      if (layer.type === 'fill') {
-        layer.paint['fill-opacity'] = 0.55;
-        layer.maxzoom = 16;
-      }
-      if (layer.type === 'fill-extrusion') {
-        layer.paint['fill-extrusion-opacity'] = 0.4;
-        layer.minzoom = 16;
-      }
+      // Liberty draws buildings flat to zoom 14 and as shaded blocks from there (its zooms kept: the maintainer was
+      // fine with where the blocks begin); the blocks were 0.8 opaque, very heavy, and are 0.35
+      if (layer.type === 'fill') layer.paint['fill-opacity'] = 0.55;
+      if (layer.type === 'fill-extrusion') layer.paint['fill-extrusion-opacity'] = BUILDING_3D_OPACITY;
     }
     // the sprite's hatchings (construction sites, pedestrian areas, rail ties) are black and white: faint in the dark
     if (mode === 'dark' && layer.paint) {
