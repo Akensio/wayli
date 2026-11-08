@@ -234,6 +234,7 @@ export type StopAlongOut = { stop: number; name: string; lat: number; lon: numbe
  *  had live data; `schedDepart` and `schedArrive` keep the listed ones then. `seconds` is set only on a ride that
  *  easierTransfers or slowerSiblings rewrote: the router's ride legs carry none, so it is undefined on the rest
  *  (the page's LegBase.seconds reads it as always there). */
+export type NextDep = { depart: number; trip: number; live: RideLegOut['live'] };
 export type RideLegOut = {
   type: 'ride';
   depart: number;
@@ -255,6 +256,9 @@ export type RideLegOut = {
   /** The plan's live knowledge of the ride: how late it was planned at the boarding stop, whether its vehicle's report
    *  was stale, when it reported (ms), and `ahead`: the vehicle had not reached the boarding stop at that report. */
   live: { delay: number; stale: boolean; seen: number; ahead: boolean } | null;
+  /** A journey's first ride only: the departures of the same route from its boarding stop after it (plan.ts
+   *  nextDeparts), each with the plan's live knowledge of it, for the card's "leaves X: in 18, 21:22, 21:43". */
+  next?: NextDep[];
   schedDepart: number;
   schedArrive: number;
   pattern: number;

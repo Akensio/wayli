@@ -480,16 +480,21 @@ changing the day keeps the chosen time; bicycle choice; the longest walk to a st
 walk; between the same two vehicles the change is made where there is time to
 spare and the least walking, `easierTransfers` in the worker) is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
-("also at 08:17, 08:32"; a direct way also lists up to two earlier departures
-between the same stops that arrive later, marked "19:37→20:09", which the
-router drops as beaten but a rider at the platform wants) and the alternative lines of a leg shown together
-("5 / 18"); "leave in 4 min" counts down (green when the first ride's vehicle has a
-fresh live report, orange when its report is older than four minutes,
-plain with the schedule alone), under it when the first ride reaches its
-stop ("60 at the stop in 14 min", the time the plan was made with, marked
-live when its vehicle was seen; how late it runs is not said, since the
-card never shows the planned time it would be against), and departed
-options grey out. The cards are in the order chosen by the option each
+and the alternative lines of a leg shown together ("5 / 18"). Every card
+says when its first ride leaves its stop and the rides after it, the way
+Moovit does (maintainer, 2026-11-08): "Leaves Rehovot: now · 20:56 · 21:24",
+the chips being the card's options (a tap opens one; a direct way also keeps
+up to two earlier departures that arrive later, marked "→20:09", which the
+router drops as beaten but a rider at the platform wants) and the next
+departures of the same route from that stop that the plan listed
+(`plan.ts nextDeparts`, on the live-shifted timetable), one per trip, the
+own ride and up to three after it. A chip reads "now", "18 min" within the
+hour, else the time; its colour is how sure the time is (`text/live.ts
+sureness`: green a fresh live report, orange an old one or no vehicle seen
+for a ride due within 20 minutes, red an estimated line); a departure gone
+by greys out. There is no "leave in N min" for the rider's own setting out
+and no "at the stop in" line: the one time that includes the walk is the
+card's start. The cards are in the order chosen by the option each
 one shows (its first departure still ahead), so "by arrival" is the
 arrival on the card; each card's number on the map comes from its group's
 first option and does not change as departures pass;

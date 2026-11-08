@@ -66,3 +66,20 @@ test('by arrival, departure and speed: the order of what the cards show', () => 
   results.filters.value = { fDirect: false, fTrain: false, resultSort: 'fast' };
   expect(sortedLines()).toEqual(['60', '63']); // 12 minutes before 15
 });
+
+test("a card's departures: its options and the own ride's followers, one per trip, the own one and three after", () => {
+  const own = way(n + 120, n + 900, '164'),
+    later = way(n + 1500, n + 2300, '164'), // another option of the group: the same trip the followers list first
+    earlierSlower = { ...way(n - 60, n + 1000, '164'), slower: true }; // at the platform, arriving later: kept
+  (own.legs[0] as RideLeg).next = [
+    { depart: n + 1500, trip: n + 1500, live: null },
+    { depart: n + 2100, trip: n + 2100, live: { delay: 60, stale: false, seen: 0, ahead: true } },
+    { depart: n + 2700, trip: n + 2700, live: null },
+    { depart: n + 3300, trip: n + 3300, live: null },
+  ];
+  const d = results.departures(own, [earlierSlower, own, later]);
+  expect(d.map((x) => x.depart - n)).toEqual([-60, 120, 1500, 2100, 2700]); // one per trip; the fourth follower is off
+  expect(d[2].o).toBe(later); // the option, which opens, not the follower
+  expect(d[3].o).toBeUndefined();
+  expect(d[3].live).toMatchObject({ ahead: true });
+});

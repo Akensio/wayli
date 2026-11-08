@@ -8,7 +8,8 @@ import { settings } from './store.ts';
 import { lang } from '../common/i18n';
 import * as search from './search';
 import { now } from './clock';
-import type { Journey, PlanResult } from '../trip/journey';
+import type { Journey, PlanResult, RideLeg } from '../trip/journey';
+import { ridesOf } from '../trip/journey';
 import type { Query } from '../trip/query';
 import { unset } from '../common/unset';
 export type { View } from './store.ts';
@@ -47,6 +48,39 @@ search.onKind((k) => {
   recentTab.value = k;
 });
 
+/** One departure on the card's line: the card's own first ride, another option's (opened on a tap), or a later ride
+ *  of the same route the plan listed (RideLeg.next), with the stop it leaves and what is known of it live. */
+export type Dep = {
+  depart: number;
+  trip: number;
+  live?: RideLeg['live'];
+  estimated?: boolean;
+  stop?: string;
+  o?: Journey;
+};
+/** The departures a card lists: its options' first rides and the own ride's followers, one per trip, in time order,
+ *  the own one and up to three after it (an earlier option that arrives later, the train at the platform, stays). */
+export function departures(j: Journey, options: Journey[]): Dep[] {
+  const by = new Map<number, Dep>();
+  for (const o of options) {
+    const r = ridesOf(o.legs)[0];
+    if (r)
+      by.set(r.trip, { depart: r.depart, trip: r.trip, live: r.live, estimated: r.estimated, stop: r.from?.name, o });
+  }
+  const own = ridesOf(j.legs)[0];
+  for (const n of own?.next || [])
+    if (!by.has(n.trip))
+      by.set(n.trip, {
+        depart: n.depart,
+        trip: n.trip,
+        live: n.live,
+        estimated: own!.estimated,
+        stop: own!.from?.name,
+      });
+  const all = [...by.values()].sort((a, b) => a.depart - b.depart);
+  const i = all.findIndex((d) => d.o === j);
+  return all.filter((d, k) => k <= i + 3 && (k >= i || d.o?.slower));
+}
 /** The first ride's departure, or the journey's start. */
 export const rideDep = (j: Journey): number => {
   const fr = j.legs.find((l) => l.type === 'ride');
@@ -80,6 +114,9 @@ export function due(j: Journey, nowMs = Date.now()): boolean {
 export function leaveAt(j: Journey, n: number, nowMs = Date.now()): number {
   return j.depart + (due(j, nowMs) ? Math.max(0, n - rideDep(j)) : 0);
 }
+/** When the first ride leaves, as the list reads it now (leaveAt, for the ride). */
+export const rideAt = (j: Journey, n: number, nowMs = Date.now()): number =>
+  rideDep(j) + leaveAt(j, n, nowMs) - j.depart;
 export function standing(j: Journey, n: number, nowMs = Date.now()): Standing {
   if (!j.legs.some((l) => l.type === 'ride')) return 'ontime';
   const L = leaveAt(j, n, nowMs),

@@ -37,6 +37,8 @@ export type RideLeg = LegBase & {
   schedDepart?: number;
   schedArrive?: number;
   live?: LiveInfo | null;
+  /** A journey's first ride: the departures of its route from the boarding stop after it, as the plan knew them. */
+  next?: { depart: number; trip: number; live?: LiveInfo | null }[];
   pathKind?: 'shape' | 'stops'; // along its course, or its stops joined straight (drawn dashed)
 };
 /** A way on foot or by bike: to the first stop (access), between stops (walk, transfer), from the last (egress). */

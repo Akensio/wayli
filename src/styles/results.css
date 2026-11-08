@@ -23,9 +23,6 @@
 /* leaves earlier, arrives later: its arrival beside it */
 .journey .opt.slower small { margin-inline-start: 3px; font-size: 11px; }
 /* "leave in n min": green only when the first ride's vehicle is reporting live, plain otherwise */
-.journey .leave { margin-top: 6px; font-size: 13px; color: var(--ink); font-weight: 600; min-height: 0; }
-.journey .leave.live { color: var(--ok); }
-.journey .leave.unsure { color: var(--warn); }
 /* the strips above the list: what left in the last ten minutes (for the rider already on board), and what is still
    in reach with a hurry */
 .strip { margin: 2px 0 10px; }
@@ -42,8 +39,6 @@
 .strip.hurry .fold { color: var(--late); font-weight: 600; }
 .strip.hurry .strip-row { border-color: color-mix(in srgb, var(--late) 45%, var(--line)); }
 .strip-row .late { color: var(--late); font-size: 12px; font-weight: 600; }
-.journey .leave:empty { display: none; }
-.journey .leave.past { color: var(--ink-2); font-weight: 400; }
 .journey.past { opacity: .6; }
 .results-foot { display: flex; gap: 8px; justify-content: space-between; margin: 4px 0 16px; }
 .results-head { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; }
@@ -84,7 +79,6 @@
 .live.gone { background: var(--chip); color: var(--ink-2); text-decoration: line-through; }
 .dep .time.gone { text-decoration: line-through; color: var(--ink-2); }
 /* ---- live map */
-.journey .leave .live { margin-inline-start: 6px; font-size: 12px; border-radius: 10px; padding: 0 7px; }
 .results-head .live { font-size: 12px; border-radius: 10px; padding: 0 7px; }
 /* collapsed, every touch on the sheet is the app's: a pull up opens it, a pull down is the app's own pull-to-refresh,
    a sideways move on the chip strip scrolls the strip (by script); the browser never claims a gesture here */
@@ -99,7 +93,9 @@
 .journey { scroll-margin: 8px; } /* a card brought into view stops short of the list's edge */
 .peekline .times { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
 .peekline .leave { margin-inline-start: auto; font-weight: 600; }
-.peekline .leave.past { color: var(--ink-2); font-weight: 400; }
+.peekline .leave.sure { color: var(--ok); }
+.peekline .leave.unsure { color: var(--warn); }
+.peekline .leave.guess { color: var(--late); }
 .peekline > span { overflow: hidden; text-overflow: ellipsis; }
 .sheet[data-state="peek"] #screen-plan > :not(.peekline) { display: none; }
 .trainrow.gone { opacity: .45; }

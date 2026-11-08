@@ -26,12 +26,12 @@ import { secondsOn } from '../engine/clock.ts';
 import { FRESH_S, liveAt, passedStop } from '../engine/delays.ts';
 import { estimateFor } from './vehicles.ts';
 import type { Vehicle } from '../engine/feed.ts';
-import { haversine, type LatLon as Point } from '../engine/geo.ts';
+import type { LatLon as Point } from '../engine/geo.ts';
 import type { PathPoint } from '../engine/geo.ts';
 import { hasCourse, pathTo, ridePath, streetPath } from './courses.ts';
 import { st, tt } from './data.ts';
 import { headsign, liveId, sName, stopOut } from './names.ts';
-import type { JourneyOut, LegOut, OpsPart, PlanGroup, PlanOut, RideLegOut, WalkLegOut } from './ops.ts';
+import type { JourneyOut, LegOut, NextDep, OpsPart, PlanGroup, PlanOut, RideLegOut, WalkLegOut } from './ops.ts';
 import { railStops } from './stops.ts';
 import { bestEntrance } from './exits.ts';
 import { rawTimes, tripFor, tripStopList } from './trips.ts';
@@ -165,6 +165,22 @@ function revertLive(liveEdits: number[]): void {
 }
 /** A leg as the page shows it: the router's leg with its stops named, its course, and for a ride what identifies the
  *  trip and the times the plan used against the listed ones. */
+/** The departures of a route from a stop after a time, up to `n` within two hours, on the timetable as it stands (live-
+ *  shifted during a plan), each with what the plan knows live of its trip: the card's "leaves X: in 18, 21:22, 21:43"
+ *  (maintainer, 2026-11-08: every card says when its first ride leaves its stop and the ones after it, as Moovit does). */
+function nextDeparts(route: number, stop: number, after: number, q: Resolved, n = 3): NextDep[] {
+  const out: NextDep[] = [];
+  for (const { p, pos } of patternsAt(tt!, stop)) {
+    if (tt!.patRoute[p] !== route) continue;
+    const { first, end } = tripRange(tt!, p);
+    for (let t = first; t < end; t++) {
+      const d = tt!.dep[timesRow(tt!, t) + pos];
+      if (d <= after || d > after + 7200) continue;
+      out.push({ depart: d, trip: t, live: liveOut(q.live.get(t), d - rawTimes(p, t).dep[pos], pos) });
+    }
+  }
+  return out.sort((a, b) => a.depart - b.depart).slice(0, n);
+}
 /** A ride leg's live part (RideLegOut.live): null without a vehicle on its trip. */
 function liveOut(lv: ReturnType<LiveTrips['get']>, delay: number, boardPos: number): RideLegOut['live'] {
   if (!lv) return null;
@@ -571,6 +587,10 @@ export const planOps = {
         legs: mergeWalks(j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q))),
       }));
       if (!arriveBy) journeys.push(...slowerSiblings(journeys, fromTime, q));
+      for (const j of journeys) {
+        const r = j.legs.find((l): l is RideLegOut => l.type === 'ride');
+        if (r) r.next = nextDeparts(r.route, r.from.stop, r.depart, q);
+      }
       // nothing in the window: when the next way leaves (one search from the window's end finds the first ride after
       // it, however long the wait), or null when nothing more runs on this service day (a Friday evening)
       let nextAt: number | null = null;

@@ -11,14 +11,15 @@ export const dur = (sec: number): string => {
 };
 /** Minutes until a departure on a service day, from the real clock. */
 const minutesUntil = (sec: number, day: string): number => Math.round((sec - clock.nowOn(day)) / 60);
-/** "Leave now", "Leave in 5 min", "Departed", or nothing when it is hours away. */
-export function leaveText(sec: number, day: string): string {
+/** A departure as a card's chip says it: "now", "18 min" within the hour, the clock time beyond (and for one gone by). */
+export function soonText(sec: number, day: string): string {
   const n = minutesUntil(sec, day);
-  if (n > 180 || n < -180) return '';
-  if (n < -1) return t('departed');
-  if (n <= 0) return t('leaveNow');
-  return t('leaveIn', { n });
+  if (n < -1 || n >= 60) return fmt(sec);
+  if (n <= 0) return t('nowDep');
+  return `${n} ${t('min')}`;
 }
+/** Whether a departure has gone by (more than a minute ago). */
+export const goneBy = (sec: number, day: string): boolean => minutesUntil(sec, day) < -1;
 /** "in n min" for the near future only; beyond two hours the clock time says enough. */
 export const inShort = (n: number): string => (n > 120 || n < 0 ? '' : ` (${t('inMin', { n })})`);
 /** "now", "in n min" (up to two hours), or nothing. */
