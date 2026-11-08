@@ -1417,6 +1417,9 @@ same stop; a lateness at one stop is never shown beside a time at another.
    Tᵢ, a train boarded when it pulls in), so a plan and the screens agree;
    then, within a pattern, no trip later at a stop than the trip after it
    (RAPTOR needs the trips in order). Both keep each trip's times in order.
+   A stop the vehicle has not reached is never moved to before now: the
+   report is up to a minute old, so a bus a few hundred metres short of a
+   stop leaves it now at the earliest (`tests/planlive.test.ts`).
 6. A planned time already carries the live shift of its moment. Never add a
    delay to a planned time: compare it with a fresh `liveAt` instead.
 7. A label "+N" beside a time is that time minus σ at the same stop.
@@ -1459,6 +1462,14 @@ planned), its boarding time B the first ride's `depart`. With now n:
   and how many minutes late you are. Out of reach: with the ones just left.
 - Gone, n > B + 60 s: the "just left" line (a plan from now looks 10
   minutes back, so the ride you are on can still be followed).
+- Due (`results.due`): the first ride's vehicle, in a report fresh enough to
+  trust (four minutes, `FRESH_S`), was still short of the boarding stop
+  (`live.ahead`). The ride has not gone whatever the clock did to its planned
+  time: the way is read as leaving now at the earliest (B and L move on with
+  now), so a rider at the stop keeps the card and "leave now" until the bus
+  is seen past the stop or the report ages out. Found at Nordau, 2026-11-08: a
+  bus 300 m short of the station, planned 7 s before now, was filed under
+  "just left" while Moovit said "now". (`tests/planlive.test.ts`)
 
 ## Crowd reports
 

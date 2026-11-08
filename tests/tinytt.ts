@@ -58,14 +58,16 @@ export type TinySpec = {
   footpaths?: [number, number, number][];
   walk?: Partial<WalkParams>;
 };
-export function tinyTimetable({
+export const tinyTimetable = (spec: TinySpec): Timetable => parseTimetable(tinyContainer(spec));
+/** The same timetable as the file's bytes, for a test that loads it the way the data worker loads a real one. */
+export function tinyContainer({
   date = '20261029',
   stops,
   routes,
   patterns,
   footpaths = [],
   walk = {},
-}: TinySpec): Timetable {
+}: TinySpec): ArrayBuffer {
   const S = stops.length;
   const patStopsOff = [0],
     patStops: number[] = [],
@@ -168,5 +170,5 @@ export function tinyTimetable({
       ['stopParent', 'int32', stops.map(() => -1)],
     ] as [string, SectionType, number[]][]
   ).map(([name, dtype, data]) => ({ name, dtype, data }));
-  return parseTimetable(writeContainer(header, sections));
+  return writeContainer(header, sections);
 }

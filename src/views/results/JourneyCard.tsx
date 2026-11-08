@@ -8,6 +8,7 @@ import { LiveMark } from '../../widgets/LiveMark';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t } from '../../common/i18n';
 import { fmt } from '../../common/time';
+import { nowOn } from '../../engine/clock.ts';
 import { now } from '../../state/clock';
 import * as results from '../../state/results';
 import { dur, leaveText, inText } from '../../text/durations';
@@ -15,16 +16,17 @@ import { transfersText, lineText } from '../../text/travel';
 import { liveClass, sureness } from '../../text/live';
 import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
-import type { RideLeg } from '../../trip/journey';
+import type { Journey, RideLeg } from '../../trip/journey';
 import { ridesOf } from '../../trip/journey';
 import { openDetail } from '../../controllers/detail';
 import { Tappable } from '../../widgets/Tappable';
 
-/** The countdown line; it re-renders with the clock. */
-export function Leave({ sec, day, liveInfo }: { sec: number; day: string; liveInfo?: RideLeg['live'] }) {
+/** The countdown line; it re-renders with the clock. A due way (results.due: its bus still short of the stop) leaves
+ *  now at the earliest, whatever its planned time says. */
+export function Leave({ j, day }: { j: Journey; day: string }) {
   void now.value;
-  const txt = leaveText(sec, day);
-  const cls = liveClass(liveInfo);
+  const txt = leaveText(results.leaveAt(j, nowOn(day)), day);
+  const cls = liveClass(ridesOf(j.legs)[0]?.live);
   return <div class={`leave${cls}${txt === t('departed') ? ' past' : ''}`}>{txt}</div>;
 }
 /** When the first ride reaches the stop it is boarded at, counting down ("60 at the stop in 14 min"): the time the
@@ -107,7 +109,7 @@ export function JourneyCard({ card }: { card: Card }) {
               // an earlier one that arrives later (the train at the platform) says when it arrives
               <button
                 type="button"
-                class={`opt${sureness(r, q.day)}${o === j ? ' own' : ''}${o.slower ? ' slower' : ''}${leaveText(r.depart, q.day) === t('departed') ? ' past' : ''}`}
+                class={`opt${sureness(r, q.day)}${o === j ? ' own' : ''}${o.slower ? ' slower' : ''}${!results.due(o) && leaveText(r.depart, q.day) === t('departed') ? ' past' : ''}`}
                 title={o.slower ? t('arrivesLater') : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -122,7 +124,7 @@ export function JourneyCard({ card }: { card: Card }) {
         </div>
       )}
       {rides.some((l) => l.estimated) && <div class="muted est">{t('estNote')}</div>}
-      <Leave sec={j.depart} day={q.day} liveInfo={rides[0]?.live} />
+      <Leave j={j} day={q.day} />
       <RideIn l={rides[0]} day={q.day} />
       <button
         type="button"

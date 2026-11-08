@@ -7,8 +7,9 @@ import type { LiveTime } from '../engine/delays.ts';
  *  the report; null when no vehicle of the trip is seen), or `failed` when the live data could not be had. Data, not
  *  words: the views word it (text/live.ts rideBadge), in the language shown. */
 export type RideLive = { at: LiveTime | null } | 'failed';
-/** The lateness a plan used at a ride's boarding stop: against the listed time there, with how old the report was. */
-export type LiveInfo = { delay: number; stale?: boolean; seen?: number };
+/** The lateness a plan used at a ride's boarding stop: against the listed time there, with when the vehicle reported
+ *  (ms), whether that was stale, and `ahead`: it had not reached the boarding stop yet (state/results.ts due). */
+export type LiveInfo = { delay: number; stale?: boolean; seen?: number; ahead?: boolean };
 /** A stop as a leg's end (names.js stopOut): its name, and where it is for the map and the lists. */
 export type StopRef = { name: string; stop?: number; lat?: number; lon?: number; code?: string; city?: string };
 /** One stop of a ride with the trip's times there. */

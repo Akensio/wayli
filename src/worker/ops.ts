@@ -252,7 +252,9 @@ export type RideLegOut = {
   route: number;
   firstDep: number;
   boardPos: number;
-  live: { delay: number; stale: boolean; seen: number } | null;
+  /** The plan's live knowledge of the ride: how late it was planned at the boarding stop, whether its vehicle's report
+   *  was stale, when it reported (ms), and `ahead`: the vehicle had not reached the boarding stop at that report. */
+  live: { delay: number; stale: boolean; seen: number; ahead: boolean } | null;
   schedDepart: number;
   schedArrive: number;
   pattern: number;

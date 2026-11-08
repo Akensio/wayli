@@ -3,6 +3,7 @@
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
+import { FRESH_S } from '../engine/delays.ts';
 import { settings } from './store.ts';
 import { lang } from '../common/i18n';
 import * as search from './search';
@@ -66,9 +67,25 @@ const HURRIED = 0.6; // hurrying (a fast walk or a jog, 2 m/s against the planne
  *  hurried pace; gone after that (the ride left, or leaves before the rider can reach it). A way with no ride is never
  *  late. */
 export type Standing = 'ontime' | 'hurry' | 'gone';
-export function standing(j: Journey, n: number): Standing {
-  if (n <= j.depart || !j.legs.some((l) => l.type === 'ride')) return 'ontime';
-  return rideDep(j) - n >= HURRIED * toFirstRide(j) ? 'hurry' : 'gone';
+/** A journey whose first ride is due: its vehicle, in a report fresh enough to trust (FRESH_S), had not reached the
+ *  boarding stop. Its planned time may fall behind the clock (the report is a minute old, the way to the stop short),
+ *  but the ride has not gone: it leaves now at the earliest (the maintainer at Nordau, 2026-11-08, a bus 300 m short of
+ *  the stop filed under "just left" while Moovit said "now"). */
+export function due(j: Journey, nowMs = Date.now()): boolean {
+  const lv = j.legs.find((l) => l.type === 'ride')?.live;
+  return !!lv && !!lv.ahead && lv.seen != null && nowMs - lv.seen <= FRESH_S * 1000;
+}
+/** When a journey leaves, as the list reads it now: as planned, or for a due ride that the clock has caught up with,
+ *  moved on with it (the ride leaves now at the earliest, and the way to it with it). */
+export function leaveAt(j: Journey, n: number, nowMs = Date.now()): number {
+  return j.depart + (due(j, nowMs) ? Math.max(0, n - rideDep(j)) : 0);
+}
+export function standing(j: Journey, n: number, nowMs = Date.now()): Standing {
+  if (!j.legs.some((l) => l.type === 'ride')) return 'ontime';
+  const L = leaveAt(j, n, nowMs),
+    B = rideDep(j) + (L - j.depart);
+  if (n <= L) return 'ontime';
+  return B - n >= HURRIED * toFirstRide(j) ? 'hurry' : 'gone';
 }
 
 /** The cards in list order (idx is the group's place, so a card keeps its number on the map while its options move
@@ -94,7 +111,8 @@ function build(
   const byKey = (a: Journey, b: Journey) => sk(a) - sk(b) || sortKey.depart(a) - sortKey.depart(b);
   if (sorted) groups = groups.slice().sort((a, b) => byKey(first(a), first(b)));
   const nowSec = clock.nowOn(q.day);
-  const where = (j: Journey): Standing => (q.isNow ? standing(j, nowSec) : 'ontime'); // a plan for a set time is read as asked
+  const nowMs = Date.now(),
+    where = (j: Journey): Standing => (q.isNow ? standing(j, nowSec, nowMs) : 'ontime'); // a plan for a set time is read as asked
   const onStrip = (j: Journey) => rideDep(j) >= nowSec - 600 || (!!at && j.arrive > nowSec); // left lately, or (restored) still under way
   const add = (to: Journey[], j: Journey) => {
     if (!to.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) to.push(j);

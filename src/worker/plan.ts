@@ -23,7 +23,7 @@ import {
 } from '../engine/raptor.ts';
 import { accessStops, route, type StreetMode, airAccess } from '../engine/streets.ts';
 import { secondsOn } from '../engine/clock.ts';
-import { liveAt } from '../engine/delays.ts';
+import { FRESH_S, liveAt, passedStop } from '../engine/delays.ts';
 import { estimateFor } from './vehicles.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import { haversine, type LatLon as Point } from '../engine/geo.ts';
@@ -43,8 +43,10 @@ type Access = StopAccess & { mode?: StreetMode };
 /** A place as the planner takes it (resolvePlace): the stops it reaches, the point itself (null for a stop or station
  *  given without one), and whether the street graph found the stops. */
 type ResolvedPlace = { places: Access[]; point: Point | null; streets?: boolean };
-/** The trips a plan shifted for live delays: when each one's vehicle was last seen, and whether that was long ago. */
-type LiveTrips = Map<number, { seen: number; stale: boolean }>;
+/** The trips a plan shifted for live delays: when each one's vehicle was last seen (ms), whether that was long ago, and
+ *  where it was (the stretch from stop `index`, `frac` of the way along it), so a leg can say whether the vehicle had
+ *  reached its boarding stop (RideLegOut.live.ahead). */
+type LiveTrips = Map<number, { seen: number; stale: boolean; index: number; frac: number }>;
 type Resolved = { from: ResolvedPlace; to: ResolvedPlace; live: LiveTrips };
 /** A ride leg as this module sees it: the router's (RawRideLeg), which carries no `seconds`, or one easierTransfers or
  *  slowerSiblings rewrote, which does. legOut copies whatever is there (undefined for the router's own). */
@@ -104,6 +106,7 @@ function withLiveTimes<T>(vehicles: Vehicle[] | null, run: (live: LiveTrips, mat
 function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips): number {
   const day = tt!.header.date,
     now = Date.now(),
+    nowSec = secondsOn(new Date(now), day),
     touched = new Set<number>();
   const byTrip = new Map<number, { v: Vehicle; rec: Date }>(); // the latest report per trip
   for (const v of vehicles) {
@@ -120,17 +123,20 @@ function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips
     const { p, ns, base, stops } = tripStopList(t);
     const est = estimateFor(v, stops, day);
     if (!est) continue;
-    tripLive.set(t, { seen: rec.getTime(), stale: est.ageSec > 240 });
+    tripLive.set(t, { seen: rec.getTime(), stale: est.ageSec > FRESH_S, index: est.index, frac: est.frac });
     if (!est.rail && !est.dep && Math.abs(est.delay) < 60) continue; // a bus about on time, with no learned sections
     // the trip moves to the time the rider is shown at each stop from the vehicle on (liveAt; docs/architecture.md,
-    // "Live times, end to end", rules 1 and 5): a train boarded when it pulls in, never earlier than its time
+    // "Live times, end to end", rules 1 and 5): a train boarded when it pulls in, never earlier than its time. A stop
+    // the vehicle has not reached cannot have been left before now (rule 5): the report is up to a minute old, and a
+    // bus a few hundred metres short of the stop was otherwise planned as having left (Nordau, 2026-11-08)
     for (let i = est.index; i < ns; i++) {
       const at = liveAt(est, stops, i)!, // null only without an estimate
-        idx = base + i;
-      if (tt!.arr[idx] === at.time && tt!.dep[idx] === at.time) continue;
+        idx = base + i,
+        time = at.passed ? at.time : Math.max(at.time, nowSec);
+      if (tt!.arr[idx] === time && tt!.dep[idx] === time) continue;
       touched.add(p);
       liveEdits.push(idx, tt!.dep[idx], tt!.arr[idx]);
-      tt!.arr[idx] = tt!.dep[idx] = at.time;
+      tt!.arr[idx] = tt!.dep[idx] = time;
     }
   }
   // in order again: from the last trip back, none later at a stop than the one after it
@@ -159,6 +165,11 @@ function revertLive(liveEdits: number[]): void {
 }
 /** A leg as the page shows it: the router's leg with its stops named, its course, and for a ride what identifies the
  *  trip and the times the plan used against the listed ones. */
+/** A ride leg's live part (RideLegOut.live): null without a vehicle on its trip. */
+function liveOut(lv: ReturnType<LiveTrips['get']>, delay: number, boardPos: number): RideLegOut['live'] {
+  if (!lv) return null;
+  return { delay, stale: lv.stale, seen: lv.seen, ahead: boardPos >= 0 && !passedStop(lv.index, lv.frac, boardPos) };
+}
 function legOut(l: PlanLeg, q: Resolved): LegOut {
   // the router sets no `seconds` on a ride (easierTransfers and slowerSiblings do on the rides they build): its length
   const o = { type: l.type, depart: l.depart, arrive: l.arrive, seconds: l.seconds ?? l.arrive - l.depart };
@@ -187,14 +198,9 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
       route: tt!.patRoute[p],
       firstDep: raw.dep[0],
       boardPos: bp,
-      // the lateness the plan used at the boarding stop (rule 7: a "+N" beside a time is against the listed time there)
-      live: q.live.has(l.trip)
-        ? {
-            delay: l.depart - (bp >= 0 ? raw.dep[bp] : l.depart),
-            stale: q.live.get(l.trip)!.stale,
-            seen: q.live.get(l.trip)!.seen,
-          }
-        : null,
+      // the lateness the plan used at the boarding stop (rule 7: a "+N" beside a time is against the listed time there),
+      // and whether the vehicle was still short of that stop when it reported (the result list's "due")
+      live: liveOut(q.live.get(l.trip), l.depart - (bp >= 0 ? raw.dep[bp] : l.depart), bp),
       schedDepart: bp >= 0 ? raw.dep[bp] : l.depart,
       schedArrive: bp >= 0 ? raw.arr[bp + l.stops] : l.arrive,
       pattern: p,

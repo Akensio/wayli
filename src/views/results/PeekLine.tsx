@@ -29,7 +29,7 @@ export function PeekLine() {
           <span class="muted">
             {dur(c.j.arrive - c.j.depart)} · {transfersText(c.j.transfers)}
           </span>
-          <Leave sec={c.j.depart} day={c.q.day} />
+          <Leave j={c.j} day={c.q.day} />
         </>
       )}
     </button>

@@ -429,6 +429,9 @@ export type VehicleReport = {
 };
 /** How late a vehicle runs and where it is (estimateDelay). Seconds on the service day throughout; "late" is always
  *  against the listed time at the same stop (docs/architecture.md, "Live times, end to end"). */
+/** How old a report may be and still be trusted as it stands (seconds): a vehicle's report older than this is `stale`,
+ *  and the result list stops reading a ride as due on it (state/results.ts due). */
+export const FRESH_S = 240;
 export type DelayEstimate = {
   /** The lateness the rider is shown at the vehicle's next stop: a train's sure part only (sureLate), a bus's `late`. */
   delay: number;
@@ -440,7 +443,7 @@ export type DelayEstimate = {
   offPath: number; // how far it is off the straight line between those stops, metres
   seen: number; // when it reported, seconds on the service day
   ageSec: number; // how old the report is against the clock, seconds
-  stale: boolean; // older than four minutes
+  stale: boolean; // older than FRESH_S
   vehicle: VehicleReport; // the report it was made from
   waiting?: boolean; // seen before its trip begins, or back at its first stop: it waits to start, late only once its time has passed
   /** With learned sections: its predicted arrival and departure at each stop (by the stop's index), null behind it. */
@@ -485,7 +488,7 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
       offPath,
       seen,
       ageSec,
-      stale: ageSec > 240,
+      stale: ageSec > FRESH_S,
       vehicle,
       waiting: true,
       arr: ahead ? ahead.arr : undefined,
@@ -544,7 +547,7 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
       offPath: pr.metres,
       seen,
       ageSec,
-      stale: ageSec > 240,
+      stale: ageSec > FRESH_S,
       vehicle,
       arr: ahead.arr,
       dep: ahead.dep,
@@ -567,7 +570,7 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
     offPath: pr.metres,
     seen,
     ageSec,
-    stale: ageSec > 240,
+    stale: ageSec > FRESH_S,
     vehicle,
   };
 }
@@ -577,9 +580,12 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
 export type LiveTime = { time: number; delay: number; passed: boolean; stale: boolean };
 /** The live time at a stop of the trip, given a delay estimate; passed when the vehicle is beyond it. A train's time
  *  is its time at the station, late only by what we are sure of (sureLate; at the station it stands at, est.delay). */
+/** Whether a vehicle on the stretch from stop `index` (`frac` of the way along it) is past stop `i`: beyond it, or at it
+ *  and more than a fifth of the way on (liveAt's `passed`; the planner's `ahead` is its opposite at the boarding stop). */
+export const passedStop = (index: number, frac: number, i: number): boolean => index > i || (index === i && frac > 0.2);
 export function liveAt(est: DelayEstimate | null, stops: readonly TimedStop[], stopIndex: number): LiveTime | null {
   if (!est) return null;
-  const passed = est.index > stopIndex || (est.index === stopIndex && est.frac > 0.2);
+  const passed = passedStop(est.index, est.frac, stopIndex);
   if (est.rail) {
     const late = railShown(est, stops)[stopIndex] ?? est.delay;
     return { time: stops[stopIndex].arr + late, delay: late, passed, stale: est.stale };
