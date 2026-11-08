@@ -31,6 +31,24 @@ export function open(i: StopInfo, d: string, now: boolean): void {
   dests.value = null;
   hooks.show();
 }
+/** The departures as the page lists them: the ones due, and an early one (listed before now) only while the live data
+ *  says it is still to come; in the order they come, by the live time where there is one. */
+export function visibleDeps(
+  all: readonly Departure[],
+  live: Readonly<Record<string, LiveDep | undefined>>,
+): Departure[] {
+  const shownAt = (d: Departure): number => {
+    const lv = live[String(d.trip)];
+    return lv && !lv.passed ? lv.time : d.time;
+  };
+  return all
+    .filter((d) => {
+      if (!d.early) return true;
+      const lv = live[String(d.trip)];
+      return !!lv && !lv.passed;
+    })
+    .sort((a, b) => shownAt(a) - shownAt(b));
+}
 export function setLive(trip: number, lv: LiveDep): void {
   liveDeps.value = { ...liveDeps.value, [String(trip)]: lv };
 }

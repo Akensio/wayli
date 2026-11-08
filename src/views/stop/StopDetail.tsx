@@ -90,7 +90,7 @@ export function StopDetail() {
         </div>
         <div id="stopDeps">
           {deps && !deps.length && <div class="empty">{t('noDeps')}</div>}
-          {(deps || []).map((d) => {
+          {stop.visibleDeps(deps || [], stop.liveDeps.value).map((d) => {
             const lv = stop.liveDeps.value[String(d.trip)];
             const timeCls = lv && lv.passed ? 'time gone' : 'time' + liveClass(lv);
             return (

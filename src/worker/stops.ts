@@ -370,7 +370,7 @@ export const stopsOps = {
     }
     return Array.from(ids);
   },
-  departures({ stop, stops = null, fromTime, limit = 40 }) {
+  departures({ stop, stops = null, fromTime, limit = 40, back = 0 }) {
     const out: Departure[] = [];
     for (const st of stops && stops.length ? stops : [stop])
       for (const { p, pos } of patternsAt(tt!, st)) {
@@ -381,7 +381,7 @@ export const stopsOps = {
         for (let t = first; t < end; t++) {
           const row = timesRow(tt!, t),
             d = tt!.dep[row + pos];
-          if (d >= fromTime)
+          if (d >= fromTime - back)
             out.push({
               time: d,
               line: routeLabel(r),
@@ -392,11 +392,15 @@ export const stopsOps = {
               routeId: liveId(r),
               estimated: !!r[6],
               firstDep: tt!.dep[row],
+              ...(d < fromTime ? { early: true } : {}),
             });
         }
       }
     out.sort((a, b) => a.time - b.time);
-    return out.slice(0, limit);
+    // the limit counts the departures from the time asked; the earlier ones ride along (the last `back` only)
+    const early = out.filter((d) => d.early).slice(-12),
+      due = out.filter((d) => !d.early).slice(0, limit);
+    return [...early, ...due];
   },
 } satisfies OpsPart<
   'stopGroups' | 'stationReach' | 'stopRoutes' | 'findRecent' | 'stopsGeo' | 'stopInfo' | 'nearbyRoutes' | 'departures'

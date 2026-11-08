@@ -55,7 +55,9 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
       });
   let deps: Departure[];
   try {
-    deps = await call('departures', { stop, stops: members, fromTime: from, limit: 40 });
+    // the hour before too: a train listed earlier and still to come (delayed) belongs in the list, which the live
+    // data decides (an early departure shows only with a live time not yet passed: state/stop.ts visibleDeps)
+    deps = await call('departures', { stop, stops: members, fromTime: from, limit: 40, back: isNow ? 3600 : 0 });
   } catch {
     if (session.isCurrent(my)) stopPage.deps.value = []; // the page says there is nothing to show, not "loading" for ever
     return;
@@ -80,9 +82,9 @@ async function liveForStop(
   const soon = deps
     .filter(
       (d): d is Departure & { routeId: number | string; firstDep: number } =>
-        d.routeId != null && d.firstDep != null && d.time - now < 3600 && d.time - now > -300,
+        d.routeId != null && d.firstDep != null && d.time - now < 3600 && (d.time - now > -300 || !!d.early),
     )
-    .slice(0, 16);
+    .slice(0, 24);
   if (!soon.length) return undefined;
   let vs: Vehicle[] = await feed.vehiclesNear(info.lat, info.lon, 8);
   if (!session.isCurrent(my)) return undefined;

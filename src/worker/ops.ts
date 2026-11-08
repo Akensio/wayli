@@ -170,6 +170,9 @@ export type Departure = {
   routeId: number | string | null;
   estimated: boolean;
   firstDep: number;
+  /** Listed before the time asked for (within `back`): shown only when the live data says it is still to come (a
+   *  delayed train that has not left yet; maintainer, 2026-11-08). */
+  early?: boolean;
 };
 /** A direct trip between two places (trips.ts trainsBetween, rideOptions): when it leaves and arrives, its
  *  pattern and the positions boarded and left on it, the line, and what identifies the trip in the live data. */
@@ -394,7 +397,8 @@ export type Ops = {
   stopInfo: { args: { stop: number; station?: number; stops?: number[] | null }; result: StopInfo };
   nearbyRoutes: { args: { lat: number; lon: number; radius?: number }; result: string[] };
   departures: {
-    args: { stop: number; stops?: number[] | null; fromTime: number; limit?: number };
+    /** `back`: seconds before fromTime whose departures come too, marked `early`, for the live data to keep or drop. */
+    args: { stop: number; stops?: number[] | null; fromTime: number; limit?: number; back?: number };
     result: Departure[];
   };
   // lines.ts: lines
