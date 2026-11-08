@@ -12,7 +12,7 @@ import { now } from '../../state/clock';
 import * as results from '../../state/results';
 import { dur, leaveText, inText } from '../../text/durations';
 import { transfersText, lineText } from '../../text/travel';
-import { liveClass } from '../../text/live';
+import { liveClass, sureness } from '../../text/live';
 import { LegChips } from './LegChips';
 import type { Card } from '../../state/results';
 import type { RideLeg } from '../../trip/journey';
@@ -87,24 +87,35 @@ export function JourneyCard({ card }: { card: Card }) {
       <div class="sub">
         {rides.map((l) => `${lineText(l.line)} ${t('toward', { headsign: l.headsign || '' })}`).join(' · ')}
       </div>
-      {options.length > 1 && (
+      {options.length > 1 && rides[0] && (
+        // the departures the card offers: when each option's first ride leaves its boarding stop (not when to set out,
+        // which the leave line says for the card's own), each coloured by how sure its time is (text/live.ts sureness:
+        // green live and fresh, orange not certain, red an estimate); the boarding stop named once when they share it,
+        // else on each (maintainer, 2026-11-08)
         <div class="opts">
-          <span class="muted">{t('alsoAt')}</span>
+          <span class="muted">
+            {t('departsFrom', {
+              stop:
+                new Set(options.map((o) => ridesOf(o.legs)[0]?.from?.name)).size === 1 ? rides[0].from?.name || '' : '',
+            })}
+          </span>
           {options
-            .slice(1)
-            .sort((a, b) => a.depart - b.depart)
-            .map((o) => (
+            .map((o) => ({ o, r: ridesOf(o.legs)[0] }))
+            .filter((x) => x.r)
+            .sort((a, b) => a.r.depart - b.r.depart)
+            .map(({ o, r }) => (
               // an earlier one that arrives later (the train at the platform) says when it arrives
               <button
                 type="button"
-                class={`opt${o.slower ? ' slower' : ''}${leaveText(o.depart, q.day) === t('departed') ? ' past' : ''}`}
+                class={`opt${sureness(r, q.day)}${o === j ? ' own' : ''}${o.slower ? ' slower' : ''}${leaveText(r.depart, q.day) === t('departed') ? ' past' : ''}`}
                 title={o.slower ? t('arrivesLater') : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
                   openDetail(o, q);
                 }}
               >
-                {fmt(o.depart)}
+                {fmt(r.depart)}
+                {r.from?.name && r.from.name !== rides[0].from?.name && <small>{r.from.name}</small>}
                 {o.slower && <small dir="ltr">→{fmt(o.arrive)}</small>}
               </button>
             ))}

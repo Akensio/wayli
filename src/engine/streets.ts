@@ -369,6 +369,40 @@ export type ReachedStop = StopAccess & { mode: StreetMode };
  * Transit stops reachable from (lat, lon) by `mode` within maxSeconds.
  * stopNode: Int32Array from the timetable (stop -> street node). Returns [{stop, walk}].
  */
+/** Standing at a stop: within this of its point a rider is there, and the walk to it is nothing. A railway station is
+ *  one point in the feed but a big place (the hall, the platforms), so its reach is wider. The rule is one function for
+ *  both ways of finding the stops near a point (the street graph, and the straight line before it is loaded), after a
+ *  minute's walk showed at HaShalom's platform twice: 2026-10-18 and, the rule missing from the straight-line way and a
+ *  25-second walk rounded up to a minute, 2026-11-08 (tests/access.test.ts). */
+export const AT_STOP_M = 60,
+  AT_STATION_M = 150;
+/** The seconds to a stop `straight` metres away as the crow flies, for a rider standing at it: 0; null when further. */
+export const standingWalk = (straight: number, big: boolean): number | null =>
+  straight <= (big ? AT_STATION_M : AT_STOP_M) ? 0 : null;
+/** The stops near a point by the straight line with a detour factor, before the street graph is in (plan.ts): the
+ *  nearest `limit`, each with its walk (or ride) in seconds, a rider standing at a stop with none. */
+export function airAccess(
+  lat: number,
+  lon: number,
+  stopLat: ArrayLike<number>,
+  stopLon: ArrayLike<number>,
+  stopBig: ArrayLike<number> | null,
+  mode: StreetMode,
+  limit = 40,
+): ReachedStop[] {
+  const speed = mode === 'bike' ? 4.0 : 1.2,
+    reachM = mode === 'bike' ? 4000 : 800;
+  const out: ReachedStop[] = [];
+  for (let s = 0; s < stopLat.length; s++) {
+    const d = haversine(lat, lon, stopLat[s], stopLon[s]);
+    if (d > reachM) continue;
+    const standing = mode === 'walk' ? standingWalk(d, !!(stopBig && stopBig[s])) : null;
+    out.push({ stop: s, walk: standing ?? Math.round((d * 1.3) / speed + 30), mode });
+  }
+  out.sort((a, b) => a.walk - b.walk);
+  return out.slice(0, limit);
+}
+
 export function accessStops(
   g: Streets,
   stopNode: Int32Array,
@@ -404,8 +438,8 @@ export function accessStops(
       // Nearby, the straight walk with a detour factor caps a network path that wanders off to reach the node.
       if (mode === 'walk' && stopLat) {
         const straight = Math.hypot((stopLon![s] - lon) * kx, (stopLat[s] - lat) * ky); // given with stopLat
-        const at = stopBig && stopBig[s] ? 150 : 60; // a railway station is one point in the feed but a big place
-        if (straight <= at) walk = Math.min(straight / 1.2, 30);
+        const standing = standingWalk(straight, !!(stopBig && stopBig[s]));
+        if (standing != null) walk = standing;
         else if (straight <= 300) walk = Math.min(walk, (straight * 1.3) / 1.2 + extraPerStop);
       }
       out.push({ stop: s, walk: Math.round(walk), mode });

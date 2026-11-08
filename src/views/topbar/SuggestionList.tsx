@@ -104,13 +104,16 @@ function resultKind(g: SearchHit): string {
 const resultKey = (g: SearchHit): string =>
   g.kind === 'stop' ? g.key : `${g.kind}|${g.name}|${g.city}|${g.lat},${g.lon}`;
 
-/** A place matched by what is typed: its name, its kind, its city, how near the house number found is. */
+/** A place matched by what is typed: its name, its kind, its address where it has one, its city, how near the house
+ *  number found is. */
 function PlaceRow({ g, onPlace }: { g: SearchHit; onPlace: (p: Place) => void }) {
+  const address = g.kind !== 'stop' && g.address ? g.address : '';
   return (
     <button type="button" onClick={() => onPlace(fromResult(g))}>
       {g.name}
       <small>
         {resultKind(g)}
+        {address ? ' · ' + address : ''}
         {g.city ? ' · ' + g.city : ''}
         {g.kind !== 'stop' && g.approx != null ? ' · ' + t('approxNo', { n: g.approx }) : ''}
       </small>

@@ -139,6 +139,7 @@ export type SearchPlaceHit = {
   lon: number;
   approx: number | null;
   label: string | null;
+  address: string | null; // a place's street and number, the nearest address to it (search.ts); null for an address itself
   score: number;
   rank: number;
 };

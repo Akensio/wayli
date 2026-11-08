@@ -95,3 +95,14 @@ below the one before, so a Hebrew name can never reach an English screen:
   app's own carries none. A screen that shows a name another way gets the
   same test the day it is written.
 
+## 4. Standing at a stop is being there
+
+Within 60 m of a stop's point, or 150 m of a railway station's (one point
+in the feed for a hall and its platforms), the rider is at the stop: the
+walk to it is nothing, no chip, no minute, whichever way the stops near a
+point were found (the street graph, or the straight line before it is in).
+Broke twice (2026-10-18, 2026-11-08: a minute's walk shown on HaShalom's
+platform).
+
+- Owner: `engine/streets.ts` standingWalk, used by accessStops and airAccess.
+- Test: `tests/access.test.ts`.

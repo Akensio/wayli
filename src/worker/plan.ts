@@ -21,7 +21,7 @@ import {
   type StopAccess,
   patternsAt,
 } from '../engine/raptor.ts';
-import { accessStops, route, type StreetMode } from '../engine/streets.ts';
+import { accessStops, route, type StreetMode, airAccess } from '../engine/streets.ts';
 import { secondsOn } from '../engine/clock.ts';
 import { liveAt } from '../engine/delays.ts';
 import { estimateFor } from './vehicles.ts';
@@ -67,16 +67,12 @@ function resolvePlace(place: PlanPlace, mode: StreetMode, maxSeconds: number): R
     const places = accessStops(st, tt!.stopNode, lat, lon, mode, maxSeconds, 30, tt!.stopLat, tt!.stopLon, railStops());
     if (places.length) return { places, point: { lat, lon }, streets: true };
   }
-  // no street graph (yet): straight-line distance with a detour factor
-  const speed = mode === 'bike' ? 4.0 : 1.2;
-  const out: Access[] = [];
-  for (let s = 0; s < tt!.stops.length; s++) {
-    const d = haversine(lat, lon, tt!.stopLat[s], tt!.stopLon[s]);
-    if (d > (mode === 'bike' ? 4000 : 800)) continue;
-    out.push({ stop: s, walk: Math.round((d * 1.3) / speed + 30), mode });
-  }
-  out.sort((a, b) => a.walk - b.walk);
-  return { places: out.slice(0, 40), point: { lat, lon }, streets: false };
+  // no street graph (yet): the straight line with a detour factor, the same standing-at rule (streets.ts airAccess)
+  return {
+    places: airAccess(lat, lon, tt!.stopLat, tt!.stopLon, railStops(), mode),
+    point: { lat, lon },
+    streets: false,
+  };
 }
 /** The timetable's times a plan shifted with live data, in threes (index, dep, arr), to put back after it; and per
  *  trip shifted, when its vehicle reported and whether that was stale. */

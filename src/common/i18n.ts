@@ -195,6 +195,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   tryMoreWalk: ["לאפשר הליכה של 30 דק'", 'Allow a 30 min walk'],
   arriveByNote: ['הגעה עד {time} · המאוחר ביותר קודם', 'Arrive by {time} · latest first'],
   alsoAt: ['גם ב:', 'Also at:'],
+  departsFrom: ['יוצא מ{stop}:', 'Leaves {stop}:'], // the card's rides, by the first ride's boarding stop
   onTime: ['בזמן', 'on time'],
   arrivesLater: ['יוצאת קודם, מגיעה מאוחר יותר', 'Leaves earlier, arrives later'],
   livePlanned: ['זמני אמת מ-{time}', 'live times as of {time}'],

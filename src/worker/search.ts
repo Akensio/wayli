@@ -87,6 +87,13 @@ export const searchOps = {
     const hasDigit = /\d/.test(q);
     let places: SearchPlaceHit[] = [];
     if (pl) {
+      // a place's row says where it is: the nearest address within 120 m (the row had only the name and the kind;
+      // customers, 2026-11-08). The book's address itself is the row's name already.
+      const addressOf = (r: { kind: string; lat: number; lon: number }): string | null => {
+        if (r.kind !== 'poi') return null;
+        const near = reverseGeocode(pl!, r.lat, r.lon, L);
+        return near && near.kind === 'address' ? near.name : null;
+      };
       places = searchPlaces(pl, q, limit, near, L).map((r): SearchPlaceHit => ({
         kind: r.kind,
         name: r.name,
@@ -95,6 +102,7 @@ export const searchOps = {
         lon: r.lon,
         approx: r.approx ?? null,
         label: r.kind === 'poi' ? kindLabel(r.poiKind!, L) : null,
+        address: addressOf(r),
         score: r.score,
         rank: r.score + (hasDigit && r.kind === 'address' ? 3 : 0),
       }));
