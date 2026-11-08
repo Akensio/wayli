@@ -54,13 +54,6 @@ body:not(.booted) .pagelayer { transition: none; }
 .drawer { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; width: min(78vw, 320px); background: var(--surface); z-index: 60; display: flex; flex-direction: column; gap: 2px;
   padding: calc(env(safe-area-inset-top, 0px) + 10px) 10px calc(env(safe-area-inset-bottom, 0px) + 14px); box-shadow: 0 0 40px rgba(0,0,0,.3); transition: transform .2s ease; transform: translateX(100%); will-change: transform; }
 [dir="ltr"] .drawer { transform: translateX(-100%); }
-/* in the dark the drawer gets an edge, a deeper shadow and a darker map behind it (maintainer, 2026-11-07) */
-:root[data-theme="dark"] .drawer { box-shadow: 0 0 0 1px var(--line), 0 0 48px rgba(0,0,0,.65); }
-:root[data-theme="dark"] .backdrop { background: rgba(0,0,0,.6); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .drawer { box-shadow: 0 0 0 1px var(--line), 0 0 48px rgba(0,0,0,.65); }
-  :root:not([data-theme="light"]) .backdrop { background: rgba(0,0,0,.6); }
-}
 .drawer.open { transform: none; }
 .drawer, .pagelayer, .pagelayer .pagebody { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
 /* vertical scrolling stays the browser's; the sideways swipe closes (ui/swipeClose). The scrolling body says so too: a scroller starts touch-action afresh */

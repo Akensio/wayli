@@ -11,6 +11,9 @@ body.page .sheet-body { flex: 1; height: auto; }
 body.page .pagehead { display: flex; }
 /* always its full height, slid down by a transform so that only --sheet-h shows; the slide is composited */
 .sheet { position: fixed; inset-inline: 0; bottom: 0; height: var(--sheet-box); transform: translateY(calc(var(--sheet-box) - var(--sheet-h))); background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); z-index: 20; display: flex; flex-direction: column; transition: transform .28s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+/* in the dark the sheet gets an edge and a deeper shadow: its surface is close to the map's ground (maintainer, 2026-11-07) */
+:root[data-theme="dark"] .sheet { box-shadow: 0 0 0 1px var(--line), 0 -6px 28px rgba(0,0,0,.55); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sheet { box-shadow: 0 0 0 1px var(--line), 0 -6px 28px rgba(0,0,0,.55); } }
 .sheet.dragging { transition: none; }
 .sheet[hidden] { display: none; }
 /* the handle row: the grip in the middle (drags, a tap cycles the sizes); on a panel Back at the start and Close at the

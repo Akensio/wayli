@@ -115,6 +115,10 @@ export function SearchField({
   };
   const show = () => {
     open.value = true;
+    // once now, and once more when the keyboard has finished rising (it takes about a third of a second)
+    setTimeout(() => {
+      if (open.value && dropRef.current) fitDrop(dropRef.current);
+    }, 400);
     requestAnimationFrame(() => {
       if (dropRef.current) fitDrop(dropRef.current);
     });
@@ -226,15 +230,15 @@ export function SearchField({
     // next back is the list's
     let tallest = window.visualViewport?.height || innerHeight,
       keysUp = false;
-    // not while a finger is on the list: a height changed under it ended the scroll (customers, 2026-11-07)
-    let touching = false;
-    const down = () => (touching = true),
-      upp = () => (touching = false);
+    // the list fitted again the moment a finger lands on it: measured while the keyboard was still rising, it was
+    // taller than the room above the keyboard, had nothing to scroll, and the first swipe panned the page instead
+    // (customers, 2026-11-07: "to scroll the list I need to try twice")
+    const down = () => {
+      if (open.value && dropRef.current) fitDrop(dropRef.current);
+    };
     dropRef.current?.addEventListener('touchstart', down, { passive: true });
-    dropRef.current?.addEventListener('touchend', upp);
-    dropRef.current?.addEventListener('touchcancel', upp);
     const refit = () => {
-      if (open.value && dropRef.current && !touching) fitDrop(dropRef.current);
+      if (open.value && dropRef.current) fitDrop(dropRef.current);
       const vv = window.visualViewport;
       if (!vv) return;
       tallest = Math.max(tallest, vv.height);
@@ -299,12 +303,13 @@ export function SearchField({
     }
     wasOpen.current = o;
   });
+  // Enter finishes the typing: the keyboard goes, the list stays and takes the room it freed (maintainer, 2026-11-07:
+  // it must not choose an option). With both places chosen it plans.
   const onKey = (e: KeyboardEvent) => {
     if (e.key !== 'Enter') return;
-    const first = dropRef.current?.querySelector('button:not(:disabled)') as HTMLButtonElement | null;
-    if (open.value && first && text.value.trim()) {
-      first.click();
+    if (open.value && text.value.trim()) {
       e.preventDefault();
+      inputRef.current?.blur();
     } else if (search.from.value && search.to.value) {
       planFromBar();
       e.preventDefault();
