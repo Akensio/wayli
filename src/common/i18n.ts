@@ -235,6 +235,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   share: ['שיתוף', 'Share'],
   liveNoVehicle: ['אין רכב בשידור', 'no vehicle reporting'],
   livePassed: ['עבר', 'passed'],
+  liveHeld: ['מעוכבת בתחנה', 'held at the station'], // a train standing HELD_S past its due departure (delays.ts)
   liveFail: ['זמני אמת לא זמינים כרגע', 'Live times unavailable right now'],
   showStops: ['הצגת התחנות', 'Show stops'],
   hideStops: ['הסתרת התחנות', 'Hide stops'],

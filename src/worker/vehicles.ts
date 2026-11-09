@@ -92,7 +92,7 @@ export const snapTime = (id: string): number => {
   const m = /^(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)\/(\d\d)$/.exec(id || '');
   return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : NaN;
 };
-function remember(j: SiriSnapshot, t: number): void {
+export function remember(j: SiriSnapshot, t: number): void {
   for (const d of (j && j.Siri && j.Siri.ServiceDelivery && j.Siri.ServiceDelivery.StopMonitoringDelivery) || []) {
     for (const x of d.MonitoredStopVisit || []) {
       const m = x.MonitoredVehicleJourney;

@@ -6,19 +6,23 @@
 import { test, expect, vi, beforeAll, afterAll } from 'vitest';
 import { tinyContainer, T } from './tinytt.ts';
 import { secondsOn } from '../src/engine/clock.ts';
-import { FRESH_S } from '../src/engine/delays.ts';
+import { FRESH_S, setRailTimes } from '../src/engine/delays.ts';
 import type { Vehicle } from '../src/engine/feed.ts';
 import type { Journey } from '../src/trip/journey';
 
 const DAY = '20261105'; // a Thursday; Israel is at UTC+2 in November
 const at = (sec: number): number => Date.parse('2026-11-05T00:00:00+02:00') + sec * 1000;
 const NOW = at(T(9, 19, 30));
-// four stops 500 m apart along a street; line 8 (route 9768) runs them in two minutes a stretch, at 9:10 and 9:30
-const stops = [0, 1, 2, 3].map((i) => ({ name: `s${i}`, lat: 32.08, lon: 34.78 + i * 0.0053 }));
+// four stops 500 m apart along a street; line 8 (route 9768) runs them in two minutes a stretch, at 9:10 and 9:30;
+// train 9 (route 9900) too, at 9:00
+const stops = [0, 1, 2, 3].map((i) => ({ name: `s${i}`, lat: 32.08, lon: 34.78 + i * 0.0053, code: `c${i}` }));
 const container = tinyContainer({
   date: DAY,
   stops,
-  routes: [{ short: '8', id: '9768' }],
+  routes: [
+    { short: '8', id: '9768' },
+    { short: '9', id: '9900', type: 2 },
+  ],
   patterns: [
     {
       route: 0,
@@ -28,6 +32,7 @@ const container = tinyContainer({
         [T(9, 30), T(9, 32), T(9, 34), T(9, 36)],
       ],
     },
+    { route: 1, stops: [0, 1, 2, 3], trips: [[T(9, 0), T(9, 2), T(9, 4), T(9, 6)]] },
   ],
 });
 const bus = (lon: number, recordedAt: number): Vehicle => ({
@@ -40,7 +45,10 @@ const bus = (lon: number, recordedAt: number): Vehicle => ({
   scheduledStart: new Date(at(T(9, 10))),
   rideId: 'r1',
 });
-let planOps: typeof import('../src/worker/plan.ts').planOps, results: typeof import('../src/state/results');
+let planOps: typeof import('../src/worker/plan.ts').planOps,
+  results: typeof import('../src/state/results'),
+  estimateFor: typeof import('../src/worker/vehicles.ts').estimateFor,
+  tripStopList: typeof import('../src/worker/trips.ts').tripStopList;
 beforeAll(async () => {
   vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
   (globalThis as { self?: unknown }).self = { postMessage() {}, location: { href: 'http://test/' } };
@@ -49,6 +57,8 @@ beforeAll(async () => {
   await data.dataOps.loadTimetable({ url: 'http://test/tiny.bin' });
   planOps = (await import('../src/worker/plan.ts')).planOps;
   results = await import('../src/state/results');
+  estimateFor = (await import('../src/worker/vehicles.ts')).estimateFor;
+  tripStopList = (await import('../src/worker/trips.ts')).tripStopList;
 });
 afterAll(() => {
   vi.useRealTimers();
@@ -91,4 +101,40 @@ test('a bus seen past the stop has gone, however fresh its report', () => {
   expect(ride.depart).toBeLessThan(n);
   expect(ride.live).toMatchObject({ ahead: false });
   expect(results.standing(j, n, NOW)).toBe('gone');
+});
+
+test('a train held at the stop (standing ten minutes past its due departure) is not boarded, and says so', () => {
+  const even = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+  setRailTimes({ s: { 'c0>c1': [120, ...even], 'c1>c2': [120, ...even], 'c2>c3': [120, ...even] }, d: { c1: 60 } });
+  // the 9:00 train at the second stop (due away 9:02) since 8:58, by its trail, still there at 9:19:20
+  const trail = Array.from(
+    { length: 22 },
+    (_, i) => [NOW - (21 - i) * 60e3, stops[1].lat, stops[1].lon] as [number, number, number],
+  );
+  const train: Vehicle = {
+    ...bus(stops[1].lon, NOW - 10e3),
+    lineRef: '9900',
+    scheduledStart: new Date(at(T(9, 0))),
+    rideId: 'tr',
+    operator: 2,
+    trail,
+  };
+  const r = planOps.plan({
+    from: { name: 'at s1', lat: stops[1].lat, lon: stops[1].lon },
+    to: { name: 'at s3', lat: stops[3].lat, lon: stops[3].lon },
+    fromTime: T(9, 19, 30) - 600,
+    toTime: T(9, 19, 30) + 3600,
+    vehicles: [train],
+  });
+  // the estimate says held, and no journey boards the train (left on its timetable, 9:02, it is gone)
+  const t9 = r.journeys.flatMap((j) => j.legs).find((l) => l.type === 'ride' && l.line === '9');
+  expect(t9).toBeUndefined();
+  const trips = r.journeys
+    .flatMap((j) => j.legs)
+    .filter((l) => l.type === 'ride')
+    .map((l) => (l as { trip: number }).trip);
+  expect(trips.length).toBeGreaterThan(0); // the buses are still offered
+  const est = estimateFor(train, tripStopList(2).stops, DAY)!; // the train's trip: the third row (two bus trips first)
+  expect(est.held).toBe(true);
+  setRailTimes(null);
 });

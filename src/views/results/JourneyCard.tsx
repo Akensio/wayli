@@ -30,7 +30,7 @@ function DepChip({ d, j, q, stop }: { d: results.Dep; j: Journey; q: Card['q']; 
     <>
       {soonText(own ? results.rideAt(j, nowOn(q.day)) : d.depart, q.day)}
       {d.stop && d.stop !== stop && <small>{d.stop}</small>}
-      {d.o?.slower && <small dir="ltr">→{fmt(d.o.arrive)}</small>}
+      {d.o?.slower && <small>{t('arrivesAt', { time: fmt(d.o.arrive) })}</small>}
     </>
   );
   if (!d.o) return <span class={cls}>{body}</span>;

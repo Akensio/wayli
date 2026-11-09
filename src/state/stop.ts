@@ -7,7 +7,7 @@ export type { SavedStop } from './store.ts';
 import type { StopInfo, Departure } from '../worker/ops.ts';
 import { unset } from '../common/unset';
 
-type LiveDep = { passed: true } | { passed: false; time: number; stale?: boolean; delayMin: number };
+type LiveDep = { passed: true } | { passed: false; time: number; stale?: boolean; delayMin: number; held?: boolean };
 
 export const info = signal<StopInfo | null>(null);
 export const day = signal('');

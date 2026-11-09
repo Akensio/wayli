@@ -115,7 +115,7 @@ async function liveForStop(
       d.trip,
       at.passed
         ? { passed: true }
-        : { passed: false, time: at.time, stale: !!at.stale, delayMin: delays.delayMinutes(at.delay) },
+        : { passed: false, time: at.time, stale: !!at.stale, delayMin: delays.delayMinutes(at.delay), held: !!at.held },
     );
   }
   return feed.newest(vs);
