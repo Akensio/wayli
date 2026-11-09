@@ -122,7 +122,7 @@ function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips
   for (const [t, { v, rec }] of byTrip) {
     const { p, ns, base, stops } = tripStopList(t);
     const est = estimateFor(v, stops, day);
-    if (!est || est.held) continue; // held at a station (delays.ts HELD_S): when it leaves is not known, so it is not boarded
+    if (!est) continue;
     tripLive.set(t, { seen: rec.getTime(), stale: est.ageSec > FRESH_S, index: est.index, frac: est.frac });
     if (!est.rail && !est.dep && Math.abs(est.delay) < 60) continue; // a bus about on time, with no learned sections
     // the trip moves to the time the rider is shown at each stop from the vehicle on (liveAt; docs/architecture.md,

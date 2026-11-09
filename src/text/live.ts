@@ -34,7 +34,6 @@ export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: n
 export function liveBadge(at: LiveAt): Badge {
   if (!at) return { text: t('liveNoVehicle'), cls: '' };
   if (at.passed) return { text: t('livePassed'), cls: 'gone' };
-  if (at.held) return { text: `⦿ ${t('liveHeld')}`, cls: 'unsure', time: at.time, delayText: `⦿ ${t('liveHeld')}` };
   const d = delays.delayMinutes(at.delay);
   const badgeDelay = `⦿ ${d === 0 ? t('onTime') : signed(d)}${at.stale ? ' ?' : ''}`;
   const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${signed(d)})`}${at.stale ? ' ?' : ''}`;

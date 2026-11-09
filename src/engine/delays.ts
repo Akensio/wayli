@@ -60,15 +60,7 @@ type Ahead = {
   at?: number;
   late?: number;
   rail?: boolean;
-  held?: boolean; // a train standing at a station HELD_S past its due departure: when it leaves is not known
 };
-/** A train standing at a station this long past its due departure (its time, or its stand after it came, whichever
- *  is later) is held: its departure is not predicted, so the planner does not board it and the screens say "held"
- *  instead of a time that moves on with the clock. Measured on a morning's minute files (2026-11-06, 05:00-11:00 UTC):
- *  of the trains still reported standing 10 minutes past due, 27 of 38 never moved on; past 15 minutes, 18 of 19
- *  (train 233 stood at HaShalom from 09:39 to past 10:05 on 2026-11-09, shown as leaving now, +31). Known only from
- *  the train's trail, so a train the app has just started watching takes up to this long to be called held. */
-export const HELD_S = 600;
 /** A train's times from here on, from the learned sections: arrival and departure at each later station. A train
  *  without GPS (`call`) is put at the station its call names, and not as standing there now: the call names a station
  *  from about a kilometre before it until about a kilometre before the next, so a train still named after one may
@@ -106,11 +98,7 @@ function railAhead(
   };
   const arr: (number | null)[] = new Array(n).fill(null),
     dep: (number | null)[] = new Array(n).fill(null);
-  let i: number,
-    t: number,
-    index: number,
-    frac: number,
-    held = false;
+  let i: number, t: number, index: number, frac: number;
   if (at >= 0 && call) {
     // without GPS: reached it then, stands, and is not at the next one before now + the last km
     arr[at] = seen;
@@ -121,14 +109,11 @@ function railAhead(
     index = at;
     frac = 0;
   } else if (at >= 0) {
-    // standing at a station: it leaves after its stand (at its first station, at its time); standing HELD_S past that,
-    // by its trail, it is held
+    // standing at a station: it leaves after its stand (at its first station, at its time)
     const came = cameAtStation(stops[at]);
     arr[at] = came != null ? Math.min(came, seen) : Math.min(seen, stops[at].arr);
     if (at === n - 1) return { arr, dep, index: n - 2, frac: 1, next: at };
-    const due = Math.max(stops[at].dep, at > 0 ? arr[at]! + stand(at) : 0);
-    held = came != null && seen - due >= HELD_S;
-    dep[at] = Math.max(due, seen);
+    dep[at] = Math.max(stops[at].dep, at > 0 ? arr[at]! + stand(at) : 0, seen);
     t = dep[at]! + run(at);
     i = at + 1;
     index = at;
@@ -157,7 +142,7 @@ function railAhead(
     at >= 0 && at < n - 1
       ? Math.max(arr[at]! - stops[at].arr, dep[at]! - Math.max(stops[at].dep, at > 0 ? stops[at].arr + stand(at) : 0))
       : arr[j]! - stops[j].arr;
-  return { arr, dep, index, frac, next: j, at, late, rail: true, held };
+  return { arr, dep, index, frac, next: j, at, late, rail: true };
 }
 // A train's lateness is shown only as far as we are sure of it. Most small train delays are made up on the way (the
 // timetable has slack), and a train does not leave a station before its time, so the rider is shown the timetable's
@@ -465,7 +450,6 @@ export type DelayEstimate = {
   arr?: (number | null)[];
   dep?: (number | null)[];
   at?: number; // a train: the station it stands at, -1 between two
-  held?: boolean; // a train standing at a station HELD_S past its due departure: when it leaves is not known
   shown?: (number | null)[]; // a train: the lateness shown at each station, kept from the first liveAt (railShown)
 };
 /**
@@ -568,7 +552,6 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
       arr: ahead.arr,
       dep: ahead.dep,
       at: ahead.at,
-      held: ahead.held,
     };
   }
   let delay: number;
@@ -594,7 +577,7 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
 /** A vehicle's time at one stop of its trip, the one time shown everywhere (liveAt): when (seconds on the service
  *  day), how late that is against the listed time there (s; a train's sure part only), whether the vehicle is past the
  *  stop, and whether its report is stale. */
-export type LiveTime = { time: number; delay: number; passed: boolean; stale: boolean; held?: boolean };
+export type LiveTime = { time: number; delay: number; passed: boolean; stale: boolean };
 /** The live time at a stop of the trip, given a delay estimate; passed when the vehicle is beyond it. A train's time
  *  is its time at the station, late only by what we are sure of (sureLate; at the station it stands at, est.delay). */
 /** Whether a vehicle on the stretch from stop `index` (`frac` of the way along it) is past stop `i`: beyond it, or at it
@@ -605,7 +588,7 @@ export function liveAt(est: DelayEstimate | null, stops: readonly TimedStop[], s
   const passed = passedStop(est.index, est.frac, stopIndex);
   if (est.rail) {
     const late = railShown(est, stops)[stopIndex] ?? est.delay;
-    return { time: stops[stopIndex].arr + late, delay: late, passed, stale: est.stale, held: !!est.held && !passed };
+    return { time: stops[stopIndex].arr + late, delay: late, passed, stale: est.stale };
   }
   let own: number | null = null;
   if (est.dep)

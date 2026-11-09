@@ -22,24 +22,20 @@ export function InCell({
   day,
   counting,
 }: {
-  live?: { passed: boolean; stale?: boolean; delayMin?: number | null; held?: boolean } | null;
+  live?: { passed: boolean; stale?: boolean; delayMin?: number | null } | null;
   time: number;
   day: string;
   counting: boolean;
 }) {
   if (live && live.passed) return <span class="in">{t('livePassed')}</span>;
-  // a train held at a station (delays.ts HELD_S): no countdown, which would read "now" for as long as it stands
-  let words = '';
-  if (live && live.held) words = t('liveHeld');
-  else if (counting || live) words = inText(time, day);
   return (
     <span class="in">
       {live && (
         <>
-          <LiveMark delayMin={live.held ? null : live.delayMin} stale={live.stale || live.held} />{' '}
+          <LiveMark delayMin={live.delayMin} stale={live.stale} />{' '}
         </>
       )}
-      {words}
+      {counting || live ? inText(time, day) : ''}
     </span>
   );
 }

@@ -56,8 +56,10 @@ let snap: Snapshot | null = null,
   snapLoading: Promise<Snapshot> | null = null;
 // Frozen positions: a vehicle that reports speed but the same position for 2 minutes is repeating an old fix (37% of
 // trains with GPS did, and no bus, 2026-10-21 19:26; the stop it names froze with it). Read as current, it adds every
-// minute to its delay, so it is dropped and its trip shows the timetable. Each ride's position is remembered with when
-// it was first seen there; the first load also reads the snapshot of 3 minutes before, so this works at once.
+// minute to its delay, so it is dropped and its trip shows the timetable. A train whose call moves on while its
+// position stays (at any speed, 0 included) is placed by its call instead (snapVehicles). Each ride's position is
+// remembered with when it was first seen there; the first load also reads the snapshot of 3 minutes before, so this
+// works at once.
 const FROZEN_MS = 120e3,
   MOVING_KMH = 5;
 const posSince = new Map<string, { loc: string; since: number; seen: number }>();
@@ -203,17 +205,27 @@ export function snapVehicles(j: SiriSnapshot, t: number): SnapVehicle[] {
       // a report stamped after the snapshot was taken is a vehicle's wrong clock (2026-10-22: 13 of 8,915, from a minute
       // to two days ahead): read as the newest, it made every true report in its area look old, and the map hid them
       if (rt > t + 120e3) continue; // t: the snapshot's minute, the source's own clock
-      if (m.VehicleLocation && Number(m.Velocity) > MOVING_KMH) {
-        const o = posSince.get(`${m.LineRef}/${m.OriginAimedDepartureTime}`);
-        if (o && t - o.since >= FROZEN_MS) continue; // t: the snapshot's minute
-      }
+      const key = `${m.LineRef}/${m.OriginAimedDepartureTime}`;
       let lat = Number(m.VehicleLocation && m.VehicleLocation.Latitude),
         lon = Number(m.VehicleLocation && m.VehicleLocation.Longitude),
         atStop = false;
+      // a train whose position has not changed while its call (the station it comes to next) has moved on since: the
+      // position is dead, the call is live, so it is placed by its call like a train with no GPS (train 233, 2026-11-09:
+      // its unit sent the same fix at HaShalom for 40 minutes, speed 0, while its call went on to Kfar Chabad, Lod and
+      // Beer Yaakov; read as standing there, it was "leaving now" a minute later every minute)
+      if (lat && lon && String(m.OperatorRef) === '2') {
+        const o = posSince.get(key),
+          k = callSince.get(key);
+        if (o && k && k.change && k.since > o.since && t - o.since >= FROZEN_MS) lat = lon = 0;
+      }
+      if (lat && lon && Number(m.Velocity) > MOVING_KMH) {
+        const o = posSince.get(key);
+        if (o && t - o.since >= FROZEN_MS) continue; // t: the snapshot's minute
+      }
       if (!lat || !lon) {
         const c = m.MonitoredCall,
           s = codes && c ? codes.get(String(c.StopPointRef)) : undefined;
-        if (s === undefined || Number(c!.DistanceFromStop) > 0) continue; // s was found through c
+        if (s === undefined || (!m.VehicleLocation && Number(c!.DistanceFromStop) > 0)) continue; // s was found through c
         lat = tt!.stopLat[s];
         lon = tt!.stopLon[s];
         atStop = true;
@@ -226,7 +238,7 @@ export function snapVehicles(j: SiriSnapshot, t: number): SnapVehicle[] {
         velocity: Number(m.Velocity) || 0,
         recordedAt,
         scheduledStart: new Date(m.OriginAimedDepartureTime),
-        rideId: `${m.LineRef}/${m.OriginAimedDepartureTime}`,
+        rideId: key,
         vehicleRef: m.VehicleRef,
         operator: Number(m.OperatorRef),
         atStop,

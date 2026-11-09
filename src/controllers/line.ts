@@ -164,7 +164,7 @@ async function selLive(my = session.current()): Promise<void> {
     (ts.stops as { stop: number; name: string }[]).forEach((s, i) => {
       const at = delays.liveAt(est, ts.stops, i);
       if (!at) return;
-      const lt = { time: at.time, delay: at.delay, passed: at.passed, stale: !!at.stale, held: !!at.held };
+      const lt = { time: at.time, delay: at.delay, passed: at.passed, stale: !!at.stale };
       byStop.set(s.stop, lt);
       byName.set(s.name, lt);
     });

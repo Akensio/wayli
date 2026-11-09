@@ -1429,14 +1429,14 @@ same stop; a lateness at one stop is never shown beside a time at another.
 6. A planned time already carries the live shift of its moment. Never add a
    delay to a planned time: compare it with a fresh `liveAt` instead.
 7. A label "+N" beside a time is that time minus σ at the same stop.
-8. A train standing at a station ten minutes past its due departure (its
-   time, or its stand after it came, whichever is later; known from its
-   trail) is held: its departure is not predicted. The planner leaves its
-   trip on the timetable (so it is not boarded), the badges and the stop
-   page say "held at the station" instead of a time that would read "now"
-   every minute it stands. Measured 2026-11-06 (a morning): past 10
-   minutes 27 of 38 such trains never went on, past 15 minutes 18 of 19
-   (`delays.ts HELD_S`; `tests/railtimes.test.mjs`, `tests/planlive.test.ts`).
+8. A train's position is dead once its call (the station it comes to
+   next) has moved on while the position has not changed for two minutes,
+   at any speed. Such a train is placed by its call, as a train with no
+   GPS is (`worker/vehicles.ts snapVehicles`), never read as standing where
+   its fix stands. (Train 233, 2026-11-09: one fix at HaShalom for forty
+   minutes, speed 0, while its call went on to Kfar Chabad, Lod and Beer
+   Yaakov; read as standing there, it was "leaving now" a minute later every
+   minute. `tests/planlive.test.ts`.)
 
 ### Who reads what
 

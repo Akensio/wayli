@@ -1,7 +1,7 @@
 // Train delays from learned section times (src/engine/delays.ts, railAhead).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { setRailTimes, estimateDelay, liveAt, sureLate, HELD_S } from '../src/engine/delays.ts';
+import { setRailTimes, estimateDelay, liveAt, sureLate } from '../src/engine/delays.ts';
 
 test('railtimes: train delays from learned section times', () => {
   const T = (h, m, s = 0) => h * 3600 + m * 60 + s;
@@ -115,34 +115,4 @@ test('railtimes: train delays from learned section times', () => {
   for (let i = 1; i < shownAt.length; i++)
     assert.ok(shownAt[i] > shownAt[i - 1], 'times along the trip never go backwards');
   assert.ok(liveAt(e, far, 5).delay >= 3000, 'still most of an hour late beyond half an hour ahead');
-});
-
-test('a train standing at a station ten minutes past its due departure is held: no time moves on with the clock', () => {
-  const T = (h, m, s = 0) => h * 3600 + m * 60 + s;
-  const day = '20261021';
-  const ms = (sec) => Date.UTC(2026, 9, 21, 0, 0, sec) - 3 * 3600e3;
-  const stops = [
-    { code: 1, lat: 32.0, lon: 34.8, arr: T(10, 0), dep: T(10, 0) },
-    { code: 2, lat: 32.05, lon: 34.8, arr: T(10, 6), dep: T(10, 7) },
-    { code: 3, lat: 32.1, lon: 34.8, arr: T(10, 13), dep: T(10, 14) },
-  ];
-  const even = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
-  setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60 } });
-  // standing at station 2 since 10:05 (its trail says so), due away at 10:07: seen at 10:16 it is late, not held yet
-  const trail = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => [ms(T(10, from + i)), 32.05, 34.8]);
-  const standing = (sec, tr) =>
-    estimateDelay({ lat: 32.05, lon: 34.8, recordedAt: new Date(ms(sec)), trail: tr }, stops, day);
-  let e = standing(T(10, 16), trail(5, 16));
-  assert.equal(!!e.held, false);
-  assert.equal(!!liveAt(e, stops, 1).held, false);
-  // at 10:17, ten minutes past due: held; its times at this station and the next are not predicted
-  e = standing(T(10, 17), trail(5, 17));
-  assert.equal(e.held, true);
-  assert.equal(HELD_S, 600);
-  assert.equal(liveAt(e, stops, 1).held, true);
-  assert.equal(liveAt(e, stops, 2).held, true);
-  assert.equal(!!liveAt(e, stops, 0).held, false); // behind it: passed, not held
-  // without a trail nothing says how long it has stood: never called held
-  assert.equal(!!standing(T(10, 30), null).held, false);
-  setRailTimes(null);
 });

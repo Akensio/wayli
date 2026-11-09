@@ -9,6 +9,7 @@ import { secondsOn } from '../src/engine/clock.ts';
 import { FRESH_S, setRailTimes } from '../src/engine/delays.ts';
 import type { Vehicle } from '../src/engine/feed.ts';
 import type { Journey } from '../src/trip/journey';
+import type { RideLegOut } from '../src/worker/ops.ts';
 
 const DAY = '20261105'; // a Thursday; Israel is at UTC+2 in November
 const at = (sec: number): number => Date.parse('2026-11-05T00:00:00+02:00') + sec * 1000;
@@ -47,8 +48,8 @@ const bus = (lon: number, recordedAt: number): Vehicle => ({
 });
 let planOps: typeof import('../src/worker/plan.ts').planOps,
   results: typeof import('../src/state/results'),
-  estimateFor: typeof import('../src/worker/vehicles.ts').estimateFor,
-  tripStopList: typeof import('../src/worker/trips.ts').tripStopList;
+  snapVehicles: typeof import('../src/worker/vehicles.ts').snapVehicles,
+  remember: typeof import('../src/worker/vehicles.ts').remember;
 beforeAll(async () => {
   vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
   (globalThis as { self?: unknown }).self = { postMessage() {}, location: { href: 'http://test/' } };
@@ -57,8 +58,7 @@ beforeAll(async () => {
   await data.dataOps.loadTimetable({ url: 'http://test/tiny.bin' });
   planOps = (await import('../src/worker/plan.ts')).planOps;
   results = await import('../src/state/results');
-  estimateFor = (await import('../src/worker/vehicles.ts')).estimateFor;
-  tripStopList = (await import('../src/worker/trips.ts')).tripStopList;
+  ({ snapVehicles, remember } = await import('../src/worker/vehicles.ts'));
 });
 afterAll(() => {
   vi.useRealTimers();
@@ -103,38 +103,65 @@ test('a bus seen past the stop has gone, however fresh its report', () => {
   expect(results.standing(j, n, NOW)).toBe('gone');
 });
 
-test('a train held at the stop (standing ten minutes past its due departure) is not boarded, and says so', () => {
+test('a train whose position froze while its call moved on is placed by its call, not boarded where its fix stands', () => {
   const even = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
-  setRailTimes({ s: { 'c0>c1': [120, ...even], 'c1>c2': [120, ...even], 'c2>c3': [120, ...even] }, d: { c1: 60 } });
-  // the 9:00 train at the second stop (due away 9:02) since 8:58, by its trail, still there at 9:19:20
-  const trail = Array.from(
-    { length: 22 },
-    (_, i) => [NOW - (21 - i) * 60e3, stops[1].lat, stops[1].lon] as [number, number, number],
-  );
-  const train: Vehicle = {
-    ...bus(stops[1].lon, NOW - 10e3),
-    lineRef: '9900',
-    scheduledStart: new Date(at(T(9, 0))),
-    rideId: 'tr',
-    operator: 2,
-    trail,
-  };
+  setRailTimes({
+    s: { 'c0>c1': [120, ...even], 'c1>c2': [120, ...even], 'c2>c3': [120, ...even] },
+    d: { c1: 60, c2: 60 },
+  });
+  // the 9:00 train's unit sends the same fix at the second stop in every snapshot; its call (the stop it comes to
+  // next) names the second stop, then the third: it has gone on with a dead position
+  const snap = (t: number, call: string) => ({
+    Siri: {
+      ServiceDelivery: {
+        StopMonitoringDelivery: [
+          {
+            MonitoredStopVisit: [
+              {
+                RecordedAtTime: new Date(t + 10e3).toISOString(),
+                MonitoredVehicleJourney: {
+                  LineRef: '9900',
+                  OriginAimedDepartureTime: '2026-11-05T09:00:00+02:00',
+                  OperatorRef: '2',
+                  VehicleRef: '9',
+                  Bearing: '0',
+                  Velocity: '0',
+                  VehicleLocation: { Latitude: String(stops[1].lat), Longitude: String(stops[1].lon) },
+                  MonitoredCall: { StopPointRef: call, DistanceFromStop: '4000' },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  });
+  const minutes: [number, string][] = [
+    [NOW - 240e3, 'c1'],
+    [NOW - 180e3, 'c1'],
+    [NOW - 120e3, 'c2'],
+    [NOW - 60e3, 'c2'],
+  ];
+  let vs: ReturnType<typeof snapVehicles> = [];
+  for (const [t, call] of minutes) {
+    remember(snap(t, call), t);
+    vs = snapVehicles(snap(t, call), t);
+  }
+  const v = vs.find((x) => x.lineRef === '9900')!;
+  expect(v.atStop).toBe(true); // by its call: at the third stop, not where its fix stands
+  expect(v.lat).toBeCloseTo(stops[2].lat, 4); // the timetable keeps float32 coordinates
+  expect(v.lon).toBeCloseTo(stops[2].lon, 4);
+  expect(v.callSince).toBe(NOW - 120e3 + 10e3);
   const r = planOps.plan({
     from: { name: 'at s1', lat: stops[1].lat, lon: stops[1].lon },
     to: { name: 'at s3', lat: stops[3].lat, lon: stops[3].lon },
     fromTime: T(9, 19, 30) - 600,
     toTime: T(9, 19, 30) + 3600,
-    vehicles: [train],
+    vehicles: [v],
   });
-  // the estimate says held, and no journey boards the train (left on its timetable, 9:02, it is gone)
-  const t9 = r.journeys.flatMap((j) => j.legs).find((l) => l.type === 'ride' && l.line === '9');
-  expect(t9).toBeUndefined();
-  const trips = r.journeys
-    .flatMap((j) => j.legs)
-    .filter((l) => l.type === 'ride')
-    .map((l) => (l as { trip: number }).trip);
-  expect(trips.length).toBeGreaterThan(0); // the buses are still offered
-  const est = estimateFor(train, tripStopList(2).stops, DAY)!; // the train's trip: the third row (two bus trips first)
-  expect(est.held).toBe(true);
+  // not boarded at the second stop, where its fix stands and it has left; a walk on to the third stop may still catch it
+  const rides9 = r.journeys.flatMap((j) => j.legs).filter((l): l is RideLegOut => l.type === 'ride' && l.line === '9');
+  expect(rides9.find((l) => l.from.name === 's1')).toBeUndefined();
+  expect(r.journeys.length).toBeGreaterThan(0); // the buses are still offered
   setRailTimes(null);
 });
