@@ -6,7 +6,6 @@ import { useSignalEffect } from '@preact/signals';
 import { Icon } from '../../widgets/Icon';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t } from '../../common/i18n';
-import { fmt } from '../../common/time';
 import { now } from '../../state/clock';
 import { nowOn } from '../../engine/clock.ts';
 import * as results from '../../state/results';
