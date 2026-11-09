@@ -21,7 +21,8 @@ import { openDetail } from '../../controllers/detail';
 import { Tappable } from '../../widgets/Tappable';
 
 /** A departure's chip: "now", "18 min" or the time, in the colour of how sure it is (text/live.ts sureness); an option
- *  opens on a tap, a later ride of the route is told only. */
+ *  opens on a tap, a later ride of the route is told only. An earlier departure that arrives later than the card's own
+ *  (the train at the platform) is dashed, its arrival not written on it (maintainer, 2026-11-09). */
 function DepChip({ d, j, q, stop }: { d: results.Dep; j: Journey; q: Card['q']; stop: string }) {
   const own = d.o === j,
     past = !own && !(d.o && results.due(d.o)) && goneBy(d.depart, q.day);
@@ -30,7 +31,6 @@ function DepChip({ d, j, q, stop }: { d: results.Dep; j: Journey; q: Card['q']; 
     <>
       {soonText(own ? results.rideAt(j, nowOn(q.day)) : d.depart, q.day)}
       {d.stop && d.stop !== stop && <small>{d.stop}</small>}
-      {d.o?.slower && <small>{t('arrivesAt', { time: fmt(d.o.arrive) })}</small>}
     </>
   );
   if (!d.o) return <span class={cls}>{body}</span>;

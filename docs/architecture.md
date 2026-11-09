@@ -484,8 +484,9 @@ and the alternative lines of a leg shown together ("5 / 18"). Every card
 says when its first ride leaves its stop and the rides after it, the way
 Moovit does (maintainer, 2026-11-08): "Leaves Rehovot: now · 20:56 · 21:24",
 the chips being the card's options (a tap opens one; a direct way also keeps
-up to two earlier departures that arrive later, marked "→20:09", which the
-router drops as beaten but a rider at the platform wants) and the next
+up to two earlier departures that arrive later, dashed, their arrival not
+written on the chip, which the router drops as beaten but a rider at the
+platform wants, 2026-10-22) and the next
 departures of the same route from that stop that the plan listed
 (`plan.ts nextDeparts`, on the live-shifted timetable), one per trip, the
 own ride and up to three after it. A chip reads "now", "18 min" within the
