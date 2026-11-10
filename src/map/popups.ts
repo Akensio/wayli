@@ -32,9 +32,6 @@ export const vehiclesForWorker = (vs: readonly Vehicle[]) =>
     lat: v.lat,
     lon: v.lon,
     recordedAt: v.recordedAt.getTime(),
-    callSince: v.callSince,
-    callSeenChange: v.callSeenChange,
-    trail: v.trail,
   }));
 export const closePopup = (): void => {
   if (popupState.current) {

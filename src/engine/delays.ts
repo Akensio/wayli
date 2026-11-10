@@ -4,7 +4,6 @@
 import { metres } from './geo.ts';
 import { secondsOn } from './clock.ts';
 import { nearestOnSegment, projectOnStops, scaleAt, type Projection } from './geo.ts';
-import type { Fix } from './feed.ts';
 
 /** A stop of a trip as the estimates read it (worker/trips.ts tripStopList; the page's TripStop carries more): where
  *  it is (degrees), its listed times there (seconds on the service day; a train's arr = dep), and its code in the feed,
@@ -43,9 +42,6 @@ const along = (g: number[], x: number): number => {
     i = Math.min(9, Math.floor(p));
   return g[i + 1] + (g[i + 2] - g[i + 1]) * (p - i);
 }; // g[0] is the run
-/** A train known by its call only: when it reached the station the call names (`at`) and now (`now`), seconds on the
- *  service day. */
-type Call = { at: number; now: number };
 /** A vehicle's times from where it is on (railAhead, busAhead): `arr[i]` and `dep[i]`, seconds on the service day at
  *  stop i, null at the stops behind it; where it is (`index`: the stretch from that stop to the next, `frac`: how far
  *  along it); `next`, the stop it comes to next (a train standing at a station: that station). A train adds `at` (the
@@ -63,26 +59,11 @@ type Ahead = {
   due?: number; // a train standing at a station: when it was due away (its time, or its usual stand after it came)
 };
 /** A train's times from here on, from the learned sections: arrival and departure at each later station. A train
- *  without GPS (`call`) is put at the station its call names, and not as standing there now: the call names a station
- *  from about a kilometre before it until about a kilometre before the next, so a train still named after one may
- *  well have left it (2026-10-25: named Herzliya at 09:08, it had left at 09:04 and was on time). It reached that
- *  station when the call first named it (`call.at`), stands its usual stand, and has not reached the next one yet:
- *  it gets there no sooner than `call.now` plus the last kilometre (45 s).
- *  A train standing at a station (`came`: when it pulled in, from its trail; else the earlier of now and the station's
- *  time) leaves as at any station ahead: not before its time, nor before its usual stand is over, nor before now. The
- *  feed's one time per station is about when a train pulls in, and at Tel Aviv Center it then stands some 4 minutes:
- *  taken as leaving at its time, a train standing there read a minute later every minute it stood, and the next station
- *  early first, then late (2026-10-26, train 959: 08:18, then 08:23 for 08:21; it came at 08:21:20). */
-const LAST_KM = 45;
-function railAhead(
-  stops: readonly TimedStop[],
-  pr: Projection,
-  seen: number,
-  lat: number,
-  lon: number,
-  call: Call | null = null,
-  cameAtStation: (st: TimedStop) => number | null = () => null,
-): Ahead | null {
+ *  standing at a station (taken as having come at its time, or now if that is earlier) leaves as at any station ahead:
+ *  not before its time, nor before its usual stand is over, nor before now. The feed's one time per station is about when a train pulls in, and at Tel Aviv Center it then stands some 4
+ *  minutes: taken as leaving at its time, a train standing there read a minute later every minute it stood, and the
+ *  next station early first, then late (2026-10-26, train 959: 08:18, then 08:23 for 08:21; it came at 08:21:20). */
+function railAhead(stops: readonly TimedStop[], pr: Projection, seen: number, lat: number, lon: number): Ahead | null {
   const n = stops.length,
     k = pr.index;
   let at = -1;
@@ -100,19 +81,9 @@ function railAhead(
   const arr: (number | null)[] = new Array(n).fill(null),
     dep: (number | null)[] = new Array(n).fill(null);
   let i: number, t: number, index: number, frac: number, due: number | undefined;
-  if (at >= 0 && call) {
-    // without GPS: reached it then, stands, and is not at the next one before now + the last km
-    arr[at] = seen;
-    if (at === n - 1) return { arr, dep, index: n - 2, frac: 1, next: at };
-    dep[at] = Math.max(stops[at].dep, seen + stand(at), call.now + LAST_KM - run(at));
-    t = dep[at]! + run(at);
-    i = at + 1;
-    index = at;
-    frac = 0;
-  } else if (at >= 0) {
+  if (at >= 0) {
     // standing at a station: it leaves after its stand (at its first station, at its time)
-    const came = cameAtStation(stops[at]);
-    arr[at] = came != null ? Math.min(came, seen) : Math.min(seen, stops[at].arr);
+    arr[at] = Math.min(seen, stops[at].arr);
     if (at === n - 1) return { arr, dep, index: n - 2, frac: 1, next: at };
     due = Math.max(stops[at].dep, at > 0 ? arr[at]! + stand(at) : 0);
     dep[at] = Math.max(due, seen);
@@ -199,17 +170,6 @@ function railShown(est: DelayEstimate, stops: readonly TimedStop[]): (number | n
   }
   est.shown = out;
   return out;
-}
-/** When a train standing at a station pulled in, from its trail of recent fixes ([ms, lat, lon], oldest first, the last
- *  one now): halfway between its first fix there and the one before, as pipeline/railtimes.py measures stands; its first
- *  fix there when the trail starts at the station; null when the train is not at it. Seconds on `day`. */
-function cameAt(trail: readonly Fix[] | null | undefined, st: TimedStop, day: string): number | null {
-  if (!trail || !trail.length) return null;
-  const inside = (f: Fix): boolean => metres(f[1], f[2], st.lat, st.lon) <= AT_STATION;
-  let i = trail.length - 1;
-  if (!inside(trail[i])) return null;
-  while (i > 0 && inside(trail[i - 1])) i--;
-  return secondsOn(new Date(i > 0 ? (trail[i - 1][0] + trail[i][0]) / 2 : trail[i][0]), day);
 }
 
 // ------------------------------------------------------------------ buses: learned running times
@@ -425,11 +385,8 @@ export type VehicleReport = {
   recordedAt: Date | number | string; // when it reported: a Date, ms since the epoch, or an ISO string
   rideId?: string | number; // the ride, to leave a bus's own runs out of the road factor
   lastIndex?: number | null; // the stretch the ride was last placed on (worker/vehicles.ts estimateFor), for placeOn
-  stillSince?: number | null; // ms since when it has stayed within 100 m of where it is (worker/vehicles.ts), if known
-  stoodBefore?: boolean; // and it may have stood there longer than that (never seen elsewhere, reporting no speed)
-  trail?: readonly Fix[] | null; // a train's fixes of the last half hour, oldest first
-  callSince?: number | null; // a train without GPS: ms when its call first named the station it is put at
-  callSeenChange?: boolean; // and whether that change of call was itself seen
+  sameSince?: number | null; // ms since when its position has been exactly the same (worker/vehicles.ts), if known
+  stillSince?: number | null; // and since when it has stayed within 100 m of where it is
 };
 /** How late a vehicle runs and where it is (estimateDelay). Seconds on the service day throughout; "late" is always
  *  against the listed time at the same stop (docs/architecture.md, "Live times, end to end"). */
@@ -437,49 +394,28 @@ export type VehicleReport = {
  *  and the result list stops reading a ride as due on it (state/results.ts due). */
 export const FRESH_S = 240;
 /**
- * Stillness past due, the one measure of how far a standing vehicle's report can be trusted. A vehicle that stays where
- * it is after the moment it was due to move on (`still`, seconds: since the later of when it got there and when its
- * trip has it leave that place) is not about to leave "now": the longer it has stood, the longer it goes on standing,
- * and the less likely it is to be running at all. Measured on every vehicle in two days of minute files (2026-11-06
- * 05:00-11:00 and 2026-11-10 10:00-15:00 UTC, 360,000 still spans, dead positions set aside): of the buses still
- * standing 5 minutes past due 86% moved on, after a median 2 more minutes; 10 minutes, 71% and 4.5 more; 20 minutes, 52%
- * and 8 more; 25 minutes, 48%; 30 minutes, 45% and 13 more. No train seen leaving its first station left later than 22
- * minutes after its time (253 of them). So, for every vehicle at every stop:
- *  - up to UNSURE_STILL_S nothing changes: a light or a stop is inside what the estimate allows for;
- *  - past it, its times are not certain (`stale`, shown as any old report is), and it is expected to stand half as
- *    long again as it already has (`wait` = still / 2): every time still to come moves by that;
- *  - past GONE_STILL_S it is more likely than not that it is not running: no estimate, the timetable stands.
- * Nothing here knows a bus from a train or a first stop from a later one. Without `stillSince` (no memory of the
- * vehicle) nothing is claimed; with a history that may be too short (`stoodBefore`: never seen elsewhere, reporting
- * no speed) its times are not certain once it is UNSURE_STILL_S past due, however briefly it has been watched.
+ * No news past due: the one measure of how far a report can be trusted. Once a vehicle was due to move on from where it
+ * is (`due`: when its trip has it leave that place), a report that shows no movement is less and less a report of a
+ * running ride. Two signs, for every vehicle at every stop; nothing here knows a bus from a train or a first stop from
+ * a later one, and without the worker's memory of the vehicle nothing is claimed.
+ *  - The same position exactly (`sameSince`) for DEAD_S past due: a live GPS jitters even while the vehicle stands, so
+ *    this is a unit repeating itself (a parked set, a dead receiver, a train that never ran). No estimate. Half of all
+ *    train rides do it at some point and one bus ride in a thousand (2026-11-06, 2026-11-10); a train read from such a
+ *    position, or placed by its next-stop field instead, was predicted worse than by the timetable alone
+ *    (measure/trainbacktest.mjs).
+ *  - Staying within 100 m (`stillSince`): past UNSURE_STILL_S its times are not certain (`stale`), past GONE_STILL_S
+ *    it is more likely than not that it is not running, and it gets no estimate. Of the buses still standing 5 minutes
+ *    past due 86% moved on; 10 minutes, 71%; 20 minutes, 52%; 25 minutes, 48% (two days of minute files, 360,000 still
+ *    spans).
  */
-export const UNSURE_STILL_S = 300,
+export const DEAD_S = 120,
+  UNSURE_STILL_S = 300,
   GONE_STILL_S = 1500;
-function stillness(est: DelayEstimate, due: number, v: VehicleReport, day: string): DelayEstimate | null {
-  if (v.stillSince == null) return est;
-  const still = Math.max(0, est.seen - Math.max(due, secondsOn(new Date(v.stillSince), day)));
-  if (still > GONE_STILL_S) return null;
-  // what is not known is not shown as certain: a vehicle that may have stood here longer than its history tells
-  const maybe = v.stoodBefore ? est.seen - due : still;
-  const stale = est.stale || maybe > UNSURE_STILL_S;
-  // a short stand (a red light, a stop) is inside what the estimate already allows for. Adding the wait from the first
-  // minute was tried (measure/busbacktest.ts, 2026-11-06 08:00-08:40): 2 points more of the times within 2 minutes of
-  // the truth, and 28% of watched stops going back and forth by a minute against 20%; from UNSURE_STILL_S on, both as
-  // they were
-  if (still <= UNSURE_STILL_S) return { ...est, still: still || undefined, stale };
-  const wait = Math.round(still / 2),
-    on = (ts?: (number | null)[]): (number | null)[] | undefined =>
-      ts && ts.map((x) => (x != null && x >= est.seen ? x + wait : x));
-  return {
-    ...est,
-    still,
-    wait,
-    late: est.late + wait,
-    delay: est.delay + wait,
-    arr: on(est.arr),
-    dep: on(est.dep),
-    stale,
-  };
+function noNews(est: DelayEstimate, due: number, v: VehicleReport, day: string): DelayEstimate | null {
+  const since = (ms: number | null | undefined): number =>
+    ms == null ? 0 : est.seen - Math.max(due, secondsOn(new Date(ms), day));
+  if (since(v.sameSince) >= DEAD_S || since(v.stillSince) > GONE_STILL_S) return null;
+  return since(v.stillSince) > UNSURE_STILL_S ? { ...est, stale: true } : est;
 }
 export type DelayEstimate = {
   /** The lateness the rider is shown at the vehicle's next stop: a train's sure part only (sureLate), a bus's `late`. */
@@ -491,8 +427,6 @@ export type DelayEstimate = {
   frac: number; // and how far along it, 0 to 1
   offPath: number; // how far it is off the straight line between those stops, metres
   seen: number; // when it reported, seconds on the service day
-  still?: number; // how long it has stood past when it was due to move on, seconds (stillness)
-  wait?: number; // and how much longer it is expected to stand: every time still to come has it added
   ageSec: number; // how old the report is against the clock, seconds
   stale: boolean; // not certain: its report older than FRESH_S, or standing UNSURE_STILL_S past due
   vehicle: VehicleReport; // the report it was made from
@@ -527,8 +461,8 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
   // listed departure or now if that has passed (busAhead at the first stop): shown the timetable's times until it moved,
   // the time at every stop jumped the moment it did, 6 minutes later in the median (measure/busbacktest.ts, 2026-11-07:
   // 39% of all jumps of 3 minutes or more).
-  // every estimate leaves through `done` with when, standing where it is, the vehicle was due to move on (stillness)
-  const done = (est: DelayEstimate, due: number): DelayEstimate | null => stillness(est, due, vehicle, day);
+  // every estimate leaves through `done` with when, standing where it is, the vehicle was due to move on (noNews)
+  const done = (est: DelayEstimate, due: number): DelayEstimate | null => noNews(est, due, vehicle, day);
   const waiting = (late: number, offPath: number): DelayEstimate | null => {
     const ahead = busTimes
       ? busAhead(stops, { index: 0, frac: 0, metres: offPath }, seen, day, recordedAt.getTime(), vehicle.rideId)
@@ -563,20 +497,8 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
     seen - (stops[0].dep - 120) < 0.5 * (schedHere - stops[0].dep)
   )
     return waiting(Math.max(0, seen - stops[0].dep), pr.metres);
-  // a train without GPS: when its call first named the station (or that station's time, when the change was not seen)
-  let call: Call | null = null;
-  if (vehicle.callSince != null && railTimes) {
-    const k = stops.findIndex((s) => metres(s.lat, s.lon, vehicle.lat, vehicle.lon) <= AT_STATION);
-    if (k >= 0) {
-      const since = secondsOn(new Date(vehicle.callSince), day) + LAST_KM;
-      call = { at: vehicle.callSeenChange ? since : Math.min(since, stops[k].arr), now: seen };
-    }
-  }
   const ahead =
-    (railTimes &&
-      railAhead(stops, pr, call ? call.at : seen, vehicle.lat, vehicle.lon, call, (st) =>
-        cameAt(vehicle.trail, st, day),
-      )) ||
+    (railTimes && railAhead(stops, pr, seen, vehicle.lat, vehicle.lon)) ||
     (busTimes && busAhead(stops, pr, seen, day, recordedAt.getTime(), vehicle.rideId));
   if (ahead) {
     // late is when it comes, against the one time the feed lists per station: arriving on time and standing its usual
@@ -659,7 +581,7 @@ export function liveAt(est: DelayEstimate | null, stops: readonly TimedStop[], s
       est.at === stopIndex ? (est.dep[stopIndex] ?? est.arr![stopIndex]) : (est.arr![stopIndex] ?? est.dep[stopIndex]);
   // at the stop itself (its own time there is behind the bus): it is there now, not at the listed time plus its
   // lateness at the next stop, which read minutes off (measure/busbacktest.ts, 2026-11-07)
-  if (own == null && est.dep && est.index === stopIndex && !passed) own = est.seen + (est.wait ?? 0);
+  if (own == null && est.dep && est.index === stopIndex && !passed) own = est.seen;
   const time = own != null ? Math.round(own) : stops[stopIndex].dep + est.delay;
   return { time, delay: time - stops[stopIndex].dep, passed, stale: est.stale };
 }

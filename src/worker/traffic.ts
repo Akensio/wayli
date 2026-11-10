@@ -123,13 +123,12 @@ export type RoadReport = {
   lat: number;
   lon: number;
   operator: number;
-  atStop: boolean;
 };
 export function noteRoads(vehicles: RoadReport[]): void {
   if (!tt || !hasBusTimes()) return; // without the learned times there is nothing to compare with
   let newest = 0;
   for (const v of vehicles) {
-    if (v.operator === 2 || v.atStop) continue;
+    if (v.operator === 2) continue;
     const t = v.recordedAt.getTime();
     if (t > newest) newest = t;
     let tr = tracks.get(v.rideId);

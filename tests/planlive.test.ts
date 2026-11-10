@@ -6,7 +6,7 @@
 import { test, expect, vi, beforeAll, afterAll } from 'vitest';
 import { tinyContainer, T } from './tinytt.ts';
 import { secondsOn } from '../src/engine/clock.ts';
-import { FRESH_S, setRailTimes } from '../src/engine/delays.ts';
+import { FRESH_S } from '../src/engine/delays.ts';
 import type { Vehicle } from '../src/engine/feed.ts';
 import type { Journey } from '../src/trip/journey';
 import type { RideLegOut } from '../src/worker/ops.ts';
@@ -15,11 +15,12 @@ const DAY = '20261105'; // a Thursday; Israel is at UTC+2 in November
 const at = (sec: number): number => Date.parse('2026-11-05T00:00:00+02:00') + sec * 1000;
 const NOW = at(T(9, 19, 30));
 // four stops 500 m apart along a street; line 8 (route 9768) runs them in two minutes a stretch, at 9:10 and 9:30;
-// train 9 (route 9900) too, at 9:00
+// train 9 (route 9900) runs its own four stations a kilometre north the same way, at 9:00, 9:10 and 9:18
 const stops = [0, 1, 2, 3].map((i) => ({ name: `s${i}`, lat: 32.08, lon: 34.78 + i * 0.0053, code: `c${i}` }));
+const stations = [0, 1, 2, 3].map((i) => ({ name: `t${i}`, lat: 32.09, lon: 34.78 + i * 0.0053, code: `d${i}` }));
 const container = tinyContainer({
   date: DAY,
-  stops,
+  stops: [...stops, ...stations],
   routes: [
     { short: '8', id: '9768' },
     { short: '9', id: '9900', type: 2 },
@@ -33,7 +34,15 @@ const container = tinyContainer({
         [T(9, 30), T(9, 32), T(9, 34), T(9, 36)],
       ],
     },
-    { route: 1, stops: [0, 1, 2, 3], trips: [[T(9, 0), T(9, 2), T(9, 4), T(9, 6)]] },
+    {
+      route: 1,
+      stops: [4, 5, 6, 7],
+      trips: [
+        [T(9, 0), T(9, 2), T(9, 4), T(9, 6)],
+        [T(9, 10), T(9, 12), T(9, 14), T(9, 16)],
+        [T(9, 18), T(9, 20), T(9, 22), T(9, 24)],
+      ],
+    },
   ],
 });
 const bus = (lon: number, recordedAt: number): Vehicle => ({
@@ -49,7 +58,10 @@ const bus = (lon: number, recordedAt: number): Vehicle => ({
 let planOps: typeof import('../src/worker/plan.ts').planOps,
   results: typeof import('../src/state/results'),
   snapVehicles: typeof import('../src/worker/vehicles.ts').snapVehicles,
-  remember: typeof import('../src/worker/vehicles.ts').remember;
+  remember: typeof import('../src/worker/vehicles.ts').remember,
+  estimateFor: typeof import('../src/worker/vehicles.ts').estimateFor,
+  tripFor: typeof import('../src/worker/trips.ts').tripFor,
+  tripStopList: typeof import('../src/worker/trips.ts').tripStopList;
 beforeAll(async () => {
   vi.useFakeTimers({ now: NOW, toFake: ['Date'] });
   (globalThis as { self?: unknown }).self = { postMessage() {}, location: { href: 'http://test/' } };
@@ -58,7 +70,8 @@ beforeAll(async () => {
   await data.dataOps.loadTimetable({ url: 'http://test/tiny.bin' });
   planOps = (await import('../src/worker/plan.ts')).planOps;
   results = await import('../src/state/results');
-  ({ snapVehicles, remember } = await import('../src/worker/vehicles.ts'));
+  ({ snapVehicles, remember, estimateFor } = await import('../src/worker/vehicles.ts'));
+  ({ tripFor, tripStopList } = await import('../src/worker/trips.ts'));
 });
 afterAll(() => {
   vi.useRealTimers();
@@ -103,113 +116,100 @@ test('a bus seen past the stop has gone, however fresh its report', () => {
   expect(results.standing(j, n, NOW)).toBe('gone');
 });
 
-test('a train whose position froze while its call moved on is placed by its call, not boarded where its fix stands', () => {
-  const even = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
-  setRailTimes({
-    s: { 'c0>c1': [120, ...even], 'c1>c2': [120, ...even], 'c2>c3': [120, ...even] },
-    d: { c1: 60, c2: 60 },
-  });
-  // the 9:00 train's unit sends the same fix at the second stop in every snapshot; its call (the stop it comes to
-  // next) names the second stop, then the third: it has gone on with a dead position
-  const snap = (t: number, call: string) => ({
-    Siri: {
-      ServiceDelivery: {
-        StopMonitoringDelivery: [
-          {
-            MonitoredStopVisit: [
-              {
-                RecordedAtTime: new Date(t + 10e3).toISOString(),
-                MonitoredVehicleJourney: {
-                  LineRef: '9900',
-                  OriginAimedDepartureTime: '2026-11-05T09:00:00+02:00',
-                  OperatorRef: '2',
-                  VehicleRef: '9',
-                  Bearing: '0',
-                  Velocity: '0',
-                  VehicleLocation: { Latitude: String(stops[1].lat), Longitude: String(stops[1].lon) },
-                  MonitoredCall: { StopPointRef: call, DistanceFromStop: '4000' },
-                },
-              },
-            ],
-          },
-        ],
-      },
+// One report as the feed gives it, and a minute's snapshot of several
+type Rep = { line: string; start: string; lat: number; lon: number; operator?: string };
+const snapOf = (t: number, reps: Rep[]) => ({
+  Siri: {
+    ServiceDelivery: {
+      StopMonitoringDelivery: [
+        {
+          MonitoredStopVisit: reps.map((r) => ({
+            RecordedAtTime: new Date(t - 10e3).toISOString(),
+            MonitoredVehicleJourney: {
+              LineRef: r.line,
+              OriginAimedDepartureTime: r.start,
+              OperatorRef: r.operator ?? '2',
+              VehicleRef: r.line + r.start,
+              Velocity: '0',
+              VehicleLocation: { Latitude: String(r.lat), Longitude: String(r.lon) },
+            },
+          })),
+        },
+      ],
     },
+  },
+});
+const MIN = 60e3;
+const see = (t: number, reps: Rep[]) => {
+  const j = snapOf(t, reps);
+  remember(j, t);
+  return snapVehicles(j, t);
+};
+
+test('a position that does not change at all says nothing once the train was due to move; one standing with a live GPS is read', () => {
+  // The week's two trains, on the tiny line. Like train 970 (2026-11-10: on Rehovot's platform from 15:15 to past 17:01,
+  // never ran): the 9:00 at its first stop, the very same fix every minute. Like train 233 (2026-11-09: one fix at
+  // HaShalom for forty minutes while it ran on to Lod): the 9:10 at the second stop, the very same fix. And like train
+  // 268 beside the 970, waiting for its time: the 9:18 at the first stop, a live GPS, a few metres apart each minute.
+  const start = (hm: string) => `2026-11-05T${hm}:00+02:00`;
+  const parked: Rep = { line: '9900', start: start('09:00'), lat: stations[0].lat, lon: stations[0].lon + 0.0001 };
+  const dead: Rep = { line: '9900', start: start('09:10'), lat: stations[1].lat, lon: stations[1].lon };
+  const live = (k: number): Rep => ({
+    line: '9900',
+    start: start('09:18'),
+    lat: stations[0].lat,
+    lon: stations[0].lon + 0.00001 * (k % 3),
   });
-  const minutes: [number, string][] = [
-    [NOW - 240e3, 'c1'],
-    [NOW - 180e3, 'c1'],
-    [NOW - 120e3, 'c2'],
-    [NOW - 60e3, 'c2'],
-  ];
   let vs: ReturnType<typeof snapVehicles> = [];
-  for (const [t, call] of minutes) {
-    remember(snap(t, call), t);
-    vs = snapVehicles(snap(t, call), t);
-  }
-  const v = vs.find((x) => x.lineRef === '9900')!;
-  expect(v.atStop).toBe(true); // by its call: at the third stop, not where its fix stands
-  expect(v.lat).toBeCloseTo(stops[2].lat, 4); // the timetable keeps float32 coordinates
-  expect(v.lon).toBeCloseTo(stops[2].lon, 4);
-  expect(v.callSince).toBe(NOW - 120e3 + 10e3);
-  const r = planOps.plan({
-    from: { name: 'at s1', lat: stops[1].lat, lon: stops[1].lon },
-    to: { name: 'at s3', lat: stops[3].lat, lon: stops[3].lon },
-    fromTime: T(9, 19, 30) - 600,
-    toTime: T(9, 19, 30) + 3600,
-    vehicles: [v],
-  });
-  // not boarded at the second stop, where its fix stands and it has left; a walk on to the third stop may still catch it
-  const rides9 = r.journeys.flatMap((j) => j.legs).filter((l): l is RideLegOut => l.type === 'ride' && l.line === '9');
-  expect(rides9.find((l) => l.from.name === 's1')).toBeUndefined();
-  expect(r.journeys.length).toBeGreaterThan(0); // the buses are still offered
-  setRailTimes(null);
+  for (let k = 10; k >= 0; k--) vs = see(NOW - k * MIN, [parked, dead, live(k)]);
+  const estimate = (hm: string) => {
+    const v = vs.find((x) => x.scheduledStart.getTime() === Date.parse(start(hm)))!;
+    return estimateFor(v, tripStopList(tripFor('9900', secondsOn(v.scheduledStart, DAY))).stops, DAY);
+  };
+  expect(estimate('09:00')).toBeNull(); // nineteen minutes past its time, not a metre of news
+  expect(estimate('09:10')).toBeNull();
+  expect(estimate('09:18')).toMatchObject({ index: 0, stale: false }); // a minute and a half past its time, standing: late, live
+  // and so the plan from the first station: the 9:10 on its timetable (no news of it), the 9:18 leaving now at the
+  // earliest, never the 9:00
+  const rides = planOps
+    .plan({
+      from: { name: 'at t0', lat: stations[0].lat, lon: stations[0].lon },
+      to: { name: 'at t3', lat: stations[3].lat, lon: stations[3].lon },
+      fromTime: T(9, 19, 30) - 600,
+      toTime: T(9, 19, 30) + 3600,
+      vehicles: vs,
+    })
+    .journeys.flatMap((j) => j.legs)
+    .filter((l): l is RideLegOut => l.type === 'ride' && l.line === '9');
+  expect(rides.map((l) => [l.schedDepart, l.depart])).toEqual([
+    [T(9, 10), T(9, 10)],
+    [T(9, 18), T(9, 19, 30)],
+  ]);
+  // the 9:10's unit wakes up further on: believed again at once
+  vs = see(NOW + MIN, [{ ...dead, lat: stations[2].lat, lon: stations[2].lon + 0.002 }]);
+  expect(estimate('09:10')).toMatchObject({ index: 2 });
 });
 
-test('since when a vehicle has stood where it is: older snapshots read late take it back, unless it was elsewhere between', () => {
-  const snap = (t: number, ride: string, lon: number) => ({
-    Siri: {
-      ServiceDelivery: {
-        StopMonitoringDelivery: [
-          {
-            MonitoredStopVisit: [
-              {
-                RecordedAtTime: new Date(t).toISOString(),
-                MonitoredVehicleJourney: {
-                  LineRef: ride,
-                  OriginAimedDepartureTime: '2026-11-05T09:10:00+02:00',
-                  OperatorRef: '3',
-                  VehicleRef: ride,
-                  Velocity: '0',
-                  VehicleLocation: { Latitude: '32.08', Longitude: String(lon) },
-                  MonitoredCall: { StopPointRef: 'c0', DistanceFromStop: '0' },
-                },
-              },
-            ],
-          },
-        ],
-      },
-    },
+test('a fresh open knows at once: the snapshots of 3 and 10 minutes before, read late, take the memory back', () => {
+  const rep = (line: string, lon: number): Rep => ({
+    line,
+    start: '2026-11-05T09:10:00+02:00',
+    lat: 32.08,
+    lon,
+    operator: '3',
   });
-  const min = 60e3,
-    here = 34.78,
-    far = 34.79; // 940 m off
-  const since = (ride: string) => snapVehicles(snap(NOW, ride, here), NOW).find((v) => v.lineRef === ride)!.stillSince;
-  // as on a fresh open: now, then 3, 10 and 25 minutes before, each the same place
-  for (const ago of [0, 3, 10, 25]) remember(snap(NOW - ago * min, 'a', here), NOW - ago * min);
-  expect(since('a')).toBe(NOW - 25 * min);
-  expect(snapVehicles(snap(NOW, 'a', here), NOW).find((v) => v.lineRef === 'a')!.stoodBefore).toBe(true); // maybe longer
-  // elsewhere 10 minutes ago: it has stood here since the snapshot of 3 minutes ago, whatever came before
-  for (const [ago, lon] of [
-    [0, here],
-    [3, here],
-    [10, far],
-    [25, here],
-  ] as const)
-    remember(snap(NOW - ago * min, 'b', lon), NOW - ago * min);
-  expect(since('b')).toBe(NOW - 3 * min);
-  expect(snapVehicles(snap(NOW, 'b', here), NOW).find((v) => v.lineRef === 'b')!.stoodBefore).toBe(false); // seen arriving
+  const T0 = NOW + 60 * MIN; // away from the test above
+  vi.setSystemTime(T0);
+  // now, then 3 and 10 minutes before: 'same' reports the very same position each time, 'here' stands with a live GPS
+  // (a metre or two apart), 'came' was 900 m away ten minutes ago
+  see(T0, [rep('same', 34.78), rep('here', 34.78001), rep('came', 34.78002)]);
+  see(T0 - 3 * MIN, [rep('same', 34.78), rep('here', 34.78002), rep('came', 34.78003)]);
+  see(T0 - 10 * MIN, [rep('same', 34.78), rep('here', 34.78003), rep('came', 34.79)]);
+  const [same, here, came] = see(T0, [rep('same', 34.78), rep('here', 34.78001), rep('came', 34.78002)]);
+  expect([same.sameSince, same.stillSince]).toEqual([T0 - 10 * MIN, T0 - 10 * MIN]);
+  expect([here.sameSince, here.stillSince]).toEqual([T0, T0 - 10 * MIN]); // a live GPS, standing for ten minutes at least
+  expect(came.stillSince).toBe(T0 - 3 * MIN); // elsewhere ten minutes ago: here since the snapshot of three
   // and when it moves on, it stands at the new place from then
-  remember(snap(NOW + min, 'a', far), NOW + min);
-  expect(snapVehicles(snap(NOW + min, 'a', far), NOW + min).find((v) => v.lineRef === 'a')!.stillSince).toBe(NOW + min);
+  expect(see(T0 + MIN, [rep('here', 34.79)])[0].stillSince).toBe(T0 + MIN);
+  vi.setSystemTime(NOW);
 });

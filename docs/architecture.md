@@ -1083,9 +1083,8 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   at each station. From a train's position the app then works out when it
   reaches the next station and, leaving each station no earlier than the
   timetable after its usual stand, every later one; a train standing at a
-  station leaves after its stand from when it pulled in (the worker keeps
-  each train's fixes of the last half hour, its trail), not at the listed
-  time: the feed's one time per station is about when a train pulls in.
+  station leaves after its usual stand, not at the listed time: the feed's
+  one time per station is about when a train pulls in.
   Its predicted lateness is its arrival at the next station against that
   listed time (a departure-based delay made every train late by its stand).
   What the rider is shown, everywhere a train's time appears (a trip, ride
@@ -1105,12 +1104,12 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   that came on time as late in a fifth of predictions; shown this way, in
   under 1%, while a time 2 minutes or more after the train came is about
   as rare as with the timetable alone (`measure/trainbacktest.mjs`, last
-  line). A train without
-  GPS names only a station (its call), from about a kilometre before it until
-  about a kilometre before the next: it reached that station when the call
-  first named it (the worker remembers when; on opening, no later than that
-  station's time) and has not reached the next one yet. Read as standing
-  there now, a train on time was shown 6 minutes late (Herzliya, 2026-10-25).
+  line). A train's
+  position is read only while it is believed (rule 8 of "Live times, end to
+  end"): one in ten train reports names no position and half of all train
+  rides repeat a dead one at some point, and such a train shows the
+  timetable. Placing it by the station its report names next was tried and
+  dropped: it predicted worse than the timetable alone.
   `measure/trainbacktest.mjs` runs this code on a morning's raw minute files
   and scores every prediction against when the train's GPS reached the
   station: 07:30-10:30 on 2026-10-25, a typical miss of 2.1 minutes (the
@@ -1318,15 +1317,9 @@ directly: no key, no relay, no server of ours. Measured facts (2026-10-17):
   asks for N minutes earlier. The data worker downloads it, keeps it 30 s
   and answers every live question from it (a line, a box, all trains);
   Hasadna's API answers when the relay fails or its snapshot is over 10
-  minutes old. Two things only the raw file allows: a train with no GPS
-  (about one in eight; the database drops them) is placed at the station
-  it reports, which steps along its route (and when it first reported that
-  station is kept: see Trains above); and a frozen position, the same
-  fix repeated with a speed above 5 km/h for 2 minutes (37% of trains with
-  GPS, no bus, at 19:26 that day; read as current it added a minute of
-  delay every minute, +37 min on one), is dropped so its trip shows the
-  timetable. The first load also reads the snapshot of 3 minutes before so
-  that works at once.
+  minutes old. The first load also reads the snapshots of 3 and 10
+  minutes before, so what the worker remembers of each vehicle (how long
+  its position has been the same, how long it has stood) is known at once.
 - Privacy: while on, the phone downloads every vehicle's position in the
   country through the relay (which sees its IP, as any website does, and
   nothing else: the request carries no place or line), and when that
@@ -1363,12 +1356,11 @@ morning came from a number read as meaning something it did not.)
         │
         ▼
  worker/vehicles.js  snapshot every 30 s; per ride it remembers
-        │            posSince (frozen fixes dropped), still (since when
-        │            it has stood where it is), callSince (a train's
-        │            station call), trails (a train's fixes, 30 min),
-        │            places (the stretch it was last placed on, 10 min)
+        │            since when its position has been the same and since
+        │            when it has stood within 100 m (rule 8), and places
+        │            (the stretch it was last placed on, 10 min)
         ▼
- vehicle v = { lineRef, scheduledStart, lat, lon, recordedAt, trail?, callSince?, lastIndex? }
+ vehicle v = { lineRef, scheduledStart, lat, lon, recordedAt, sameSince?, stillSince?, lastIndex? }
         │  matched to a trip by (route id = lineRef, first departure = scheduledStart)
         ▼
  engine/delays.ts estimateDelay(v, stops)  ──►  est      (the worker calls it through
@@ -1430,33 +1422,33 @@ same stop; a lateness at one stop is never shown beside a time at another.
 6. A planned time already carries the live shift of its moment. Never add a
    delay to a planned time: compare it with a fresh `liveAt` instead.
 7. A label "+N" beside a time is that time minus σ at the same stop.
-8. A report is believed as far as its evidence goes, for every vehicle at
-   every stop; nothing here knows a bus from a train or a first stop from a
-   later one.
-   - A position is dead when the report's other signals contradict it: it
-     has not changed for two minutes while the speed says moving, or while
-     the call (the stop it comes to next) has moved on. A dead position is
-     never read as a vehicle standing there: a train is placed by its call,
-     as one with no GPS is, anything else is left out
-     (`worker/vehicles.ts snapVehicles`). Train 233, 2026-11-09: one fix at
-     HaShalom for forty minutes while its call went on to Lod.
-   - Stillness past due. `still` is how long a vehicle has stayed within
-     100 m of where it is since it was due to move on (the later of when it
-     got there and when its trip has it leave that place). Up to 5 minutes
-     nothing changes (a light, a stop). Past 5 its times are not certain and
-     it is expected to stand half as long again (every time still to come
-     moves by `still`/2). Past 25 it is more likely than not that it is not
-     running: no estimate, the timetable stands (`delays.ts stillness`). Measured on every vehicle in two days of
-     minute files, 360,000 still spans: of buses still standing 5 minutes
-     past due 86% moved on, after a median 2 more minutes; 10 minutes, 71%
-     and 4.5; 20 minutes, 52% and 8; 30 minutes, 45% and 13; no train seen
-     leaving its first station left later than 22 minutes after its time.
-     Train 970, 2026-11-10: on Rehovot's platform for 88 minutes after its
-     15:34, shown as "leaving now, +83".
-   - The worker keeps since when each ride has stood where it is. On a fresh
-     open it reads the snapshots of 3, 10 and 27 minutes before, so this is
-     known at once; until then a standing vehicle that may have stood longer
-     than its history tells is shown as not certain, not as leaving now.
+8. No news past due. A report is believed while it shows the ride going on.
+   Once a vehicle was due to move on from where it is (when its trip has
+   it leave that place), two signs say it is not a report of a running
+   ride, for every vehicle at every stop (`delays.ts noNews`); nothing here
+   knows a bus from a train or a first stop from a later one.
+   - The very same position for two minutes past due. A live GPS jitters
+     even while the vehicle stands, so this is a unit repeating itself (a
+     parked set, a dead receiver, a train that never ran): no estimate, the
+     timetable stands. Half of all train rides do it at some point and one
+     bus ride in a thousand (2026-11-06, 2026-11-10). Train 233, 2026-11-09:
+     one fix at HaShalom for forty minutes while it ran on to Lod. Train
+     970, 2026-11-10: on Rehovot's platform for 88 minutes after its 15:34,
+     shown as "leaving now, +83".
+   - Staying within 100 m: its times are not certain past 5 minutes, and
+     past 25 it is more likely than not that it is not running and it gets
+     no estimate. Of buses still standing 5 minutes past due 86% moved on;
+     10 minutes, 71%; 20 minutes, 52%; 25 minutes, 48% (360,000 still spans
+     in two days of minute files).
+   Tried and dropped, each measured on `measure/trainbacktest.mjs`: placing
+   a train by the station its report names next (worse than the timetable
+   alone), a trail of each train's fixes to know when it pulled in (6 points
+   of the nearest predictions for 60 lines), handing a train's early report
+   back to the trip it is finishing, and moving a standing vehicle's times
+   by half of how long it has stood (no more accurate, less steady). With
+   them gone the trains' typical miss went from 1.4 to 1.3 minutes, a train
+   that came on time shown late from 0.6% to 0.2%, real delays of three
+   minutes or more shown from 27% to 34%; buses as before.
    (`tests/delays.test.ts`, `tests/railtimes.test.mjs`,
    `tests/planlive.test.ts`.)
 

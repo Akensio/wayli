@@ -213,7 +213,7 @@ for (const { t, f } of minutes) {
     }
   }
   for (const v of vehicles) {
-    if (v.operator === 2 || v.atStop) continue;
+    if (v.operator === 2) continue;
     const stops = stopsOf(v.lineRef, v.scheduledStart),
       tru = truth.get(v.rideId);
     if (!stops || !tru) continue;

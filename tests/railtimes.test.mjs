@@ -49,21 +49,9 @@ test('railtimes: train delays from learned section times', () => {
   assert.equal(liveAt(e, stops, 1).time, T(10, 6));
   assert.equal(liveAt(e, stops, 2).time, T(10, 13));
   assert.equal(liveAt(e, stops, 1).passed, false, 'standing at the station: not passed yet');
-  // standing at 2 since 10:05:40 (its trail), where trains stand 4 minutes: it leaves at 10:09:40, not at its time, nor
-  // a minute later each minute it stands (2026-10-26, train 959 at Tel Aviv Center); without the trail, from its time
+  // standing at 2 at 10:08:30, where trains stand 4 minutes: taken as in at its time (10:06), it leaves at 10:10, not at
+  // its time, nor a minute later each minute it stands (2026-10-26, train 959 at Tel Aviv Center)
   setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 240, 3: 60 } });
-  const ms = (sec) => at(sec).getTime(),
-    trail = [
-      [ms(T(10, 4, 50)), 32.04, 34.8],
-      [ms(T(10, 6, 30)), 32.05, 34.8],
-      [ms(T(10, 8, 30)), 32.05, 34.8],
-    ];
-  e = estimateDelay({ ...train(32.05, T(10, 8, 30)), trail }, stops, day);
-  assert.equal(e.arr[1], T(10, 5, 40));
-  assert.equal(e.dep[1], T(10, 9, 40));
-  assert.equal(e.arr[2], T(10, 14, 40));
-  assert.equal(e.late, -20); // in 20 s early, out as an on-time train would be
-  assert.equal(e.delay, 0);
   e = estimateDelay(train(32.05, T(10, 8, 30)), stops, day);
   assert.equal(e.dep[1], T(10, 10));
   setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60, 3: 60 } });
@@ -80,25 +68,6 @@ test('railtimes: train delays from learned section times', () => {
   e = estimateDelay(train(32.025, T(10, 6)), stops, day);
   assert.equal(e.arr[2], T(10, 14, 30));
 
-  // a train without GPS, put at the station its call names (2). It is not standing there now: it reached it when the call
-  // first named it (a kilometre out: 45 s later) and has not reached 3 yet (Herzliya at 09:08, 2026-10-25)
-  const nofix = (now, since, seenChange) => ({
-    lat: 32.05,
-    lon: 34.8,
-    recordedAt: at(now),
-    callSince: at(since).getTime(),
-    callSeenChange: seenChange,
-  });
-  setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60, 3: 60 } });
-  e = estimateDelay(nofix(T(10, 9), T(10, 5, 30), true), stops, day);
-  // at 2 by 10:06:15, away after its minute at 10:07:15, at 3 by 10:12:15 (it was read as leaving 2 now, at 10:09)
-  assert.equal(e.arr[2], T(10, 12, 15));
-  // the change of call not seen (the app just opened): it reached 2 no later than its time there
-  e = estimateDelay(nofix(T(10, 9), T(10, 8), false), stops, day);
-  assert.equal(e.arr[2], T(10, 12));
-  // still named after 2 at 10:13:30: not at 3 before 10:14:15, whatever its time
-  e = estimateDelay(nofix(T(10, 13, 30), T(10, 5, 30), true), stops, day);
-  assert.equal(e.arr[2], T(10, 14, 15));
   // a train an hour late: every station ahead stays late, beyond the 30 minutes too (each station alone, those beyond read
   // on time, and a plan boarded the train late and left it "on time" before it had boarded; 2026-10-26)
   const far = [0, 1, 2, 3, 4, 5].map((k) => ({
@@ -117,7 +86,7 @@ test('railtimes: train delays from learned section times', () => {
   assert.ok(liveAt(e, far, 5).delay >= 3000, 'still most of an hour late beyond half an hour ahead');
 });
 
-test('a train is under the same stillness rule: at its first station or a later one, past due', () => {
+test('a train is under the same stillness rule as a bus: standing past due, at its first station or a later one', () => {
   const T = (h, m, s = 0) => h * 3600 + m * 60 + s;
   const day = '20261021';
   const ms = (sec) => Date.UTC(2026, 9, 21, 0, 0, sec) - 3 * 3600e3;
@@ -130,18 +99,14 @@ test('a train is under the same stillness rule: at its first station or a later 
   setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60 } });
   const at = (lat, sec, since) =>
     estimateDelay({ lat, lon: 34.8, recordedAt: new Date(ms(sec)), stillSince: ms(since) }, stops, day);
-  // at its first station since 9:30, ten minutes past its time: still 600 s, five more expected, the next station with it
-  let e = at(32.0, T(10, 10), T(9, 30));
-  assert.equal(e.still, 600);
-  assert.equal(e.dep[0], T(10, 15));
-  assert.equal(e.arr[1], T(10, 20));
-  // twenty-six minutes past its time (train 970 sat at Rehovot for 88, 2026-11-10): not a train about to leave
+  // at its first station since 9:30, twenty minutes past its time: late, leaving now at the earliest
+  assert.equal(at(32.0, T(10, 20), T(9, 30)).dep[0], T(10, 20));
+  // twenty-six minutes past: more likely than not it is not running
   assert.equal(at(32.0, T(10, 26), T(9, 30)), null);
-  // at the second station, there since 10:06 and due away at 10:07: at 10:13 six minutes still, three more to come
-  e = at(32.05, T(10, 13), T(10, 6));
-  assert.equal(e.still, 360);
-  assert.equal(e.dep[1], T(10, 16));
-  // just pulled in, late: nothing claimed
-  assert.equal(at(32.05, T(10, 13), T(10, 13)).still, undefined);
+  // the same at a later station: due away at 10:07, still there at 10:33
+  assert.notEqual(at(32.05, T(10, 20), T(10, 6)), null);
+  assert.equal(at(32.05, T(10, 33), T(10, 6)), null);
+  // just pulled in, half an hour late: nothing against it
+  assert.notEqual(at(32.05, T(10, 36), T(10, 36)), null);
   setRailTimes(null);
 });
