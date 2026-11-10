@@ -1363,7 +1363,8 @@ morning came from a number read as meaning something it did not.)
         │
         ▼
  worker/vehicles.js  snapshot every 30 s; per ride it remembers
-        │            posSince (frozen fixes dropped), callSince (a train's
+        │            posSince (frozen fixes dropped), still (since when
+        │            it has stood where it is), callSince (a train's
         │            station call), trails (a train's fixes, 30 min),
         │            places (the stretch it was last placed on, 10 min)
         ▼
@@ -1429,14 +1430,35 @@ same stop; a lateness at one stop is never shown beside a time at another.
 6. A planned time already carries the live shift of its moment. Never add a
    delay to a planned time: compare it with a fresh `liveAt` instead.
 7. A label "+N" beside a time is that time minus σ at the same stop.
-8. A train's position is dead once its call (the station it comes to
-   next) has moved on while the position has not changed for two minutes,
-   at any speed. Such a train is placed by its call, as a train with no
-   GPS is (`worker/vehicles.ts snapVehicles`), never read as standing where
-   its fix stands. (Train 233, 2026-11-09: one fix at HaShalom for forty
-   minutes, speed 0, while its call went on to Kfar Chabad, Lod and Beer
-   Yaakov; read as standing there, it was "leaving now" a minute later every
-   minute. `tests/planlive.test.ts`.)
+8. A report is believed as far as its evidence goes, for every vehicle at
+   every stop; nothing here knows a bus from a train or a first stop from a
+   later one.
+   - A position is dead when the report's other signals contradict it: it
+     has not changed for two minutes while the speed says moving, or while
+     the call (the stop it comes to next) has moved on. A dead position is
+     never read as a vehicle standing there: a train is placed by its call,
+     as one with no GPS is, anything else is left out
+     (`worker/vehicles.ts snapVehicles`). Train 233, 2026-11-09: one fix at
+     HaShalom for forty minutes while its call went on to Lod.
+   - Stillness past due. `still` is how long a vehicle has stayed within
+     100 m of where it is since it was due to move on (the later of when it
+     got there and when its trip has it leave that place). Up to 5 minutes
+     nothing changes (a light, a stop). Past 5 its times are not certain and
+     it is expected to stand half as long again (every time still to come
+     moves by `still`/2). Past 25 it is more likely than not that it is not
+     running: no estimate, the timetable stands (`delays.ts stillness`). Measured on every vehicle in two days of
+     minute files, 360,000 still spans: of buses still standing 5 minutes
+     past due 86% moved on, after a median 2 more minutes; 10 minutes, 71%
+     and 4.5; 20 minutes, 52% and 8; 30 minutes, 45% and 13; no train seen
+     leaving its first station left later than 22 minutes after its time.
+     Train 970, 2026-11-10: on Rehovot's platform for 88 minutes after its
+     15:34, shown as "leaving now, +83".
+   - The worker keeps since when each ride has stood where it is. On a fresh
+     open it reads the snapshots of 3, 10 and 27 minutes before, so this is
+     known at once; until then a standing vehicle that may have stood longer
+     than its history tells is shown as not certain, not as leaving now.
+   (`tests/delays.test.ts`, `tests/railtimes.test.mjs`,
+   `tests/planlive.test.ts`.)
 
 ### Who reads what
 

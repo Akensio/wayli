@@ -3,8 +3,9 @@
 // (https://open-bus-siri-requester.hasadna.org.il/, YYYY/MM/DD/HH/MM.br in UTC), about a minute old, while their
 // database runs up to 15 minutes behind at rush hour (measured 2026-10-21). The files carry no CORS header, so a
 // browser cannot read them. This passes the newest file through untouched, labelled as brotli-encoded JSON so the
-// browser unpacks it itself, with the header added. Nothing about the rider is sent: the one parameter, ?ago=N (0-10),
-// asks for the snapshot N minutes before the newest (the app compares two to spot positions that froze).
+// browser unpacks it itself, with the header added. Nothing about the rider is sent: the one parameter, ?ago=N (0-30),
+// asks for the snapshot N minutes before the newest (the app compares them to spot positions that froze and to know
+// how long a vehicle has stood where it is).
 const BASE = 'https://open-bus-siri-requester.hasadna.org.il';
 const CORS = { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'x-snapshot' };
 const fail = (status, text) => new Response(text, { status, headers: { ...CORS, 'content-type': 'text/plain' } });
@@ -15,7 +16,7 @@ export default {
       return new Response(null, { headers: { ...CORS, 'access-control-allow-methods': 'GET' } });
     const url = new URL(req.url);
     if (req.method !== 'GET' || url.pathname !== '/siri/latest') return fail(404, 'not found');
-    const ago = Math.max(0, Math.min(10, parseInt(url.searchParams.get('ago') || '0', 10) || 0));
+    const ago = Math.max(0, Math.min(30, parseInt(url.searchParams.get('ago') || '0', 10) || 0));
     // which minute is the newest (rewritten by Hasadna's requester every minute)
     const st = await fetch(`${BASE}/daemon_status.json`, { cf: { cacheTtl: 10, cacheEverything: true } });
     if (!st.ok) return fail(502, 'status unavailable');

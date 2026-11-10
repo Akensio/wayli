@@ -11,7 +11,7 @@ import {
   type VehicleReport,
 } from '../engine/delays.ts';
 import type { Fix, Vehicle } from '../engine/feed.ts';
-import { metres } from '../engine/geo.ts';
+import { haversine, metres } from '../engine/geo.ts';
 import { tt, onBusTimes } from './data.ts';
 import { headsign } from './names.ts';
 import { codeIndex } from './stops.ts';
@@ -68,6 +68,31 @@ const posSince = new Map<string, { loc: string; since: number; seen: number }>()
 // end, and a bus once under way is not read as waiting to start again.
 const PLACE_MS = 600e3;
 const places = new Map<string, { index: number; at: number }>();
+// Since when each ride has stood where it is: the place it settled at, since when it has stayed within STILL_M of it,
+// and the latest time it is known to have been elsewhere (`away`). The estimate reads it as `stillSince` (delays.ts
+// stillness: a vehicle standing past when it was due to move is trusted less the longer it stands). On a fresh open the
+// snapshots of 3, 10 and STILL_BACK_MIN minutes before are read in, newest first, each taking `since` further back
+// while the ride was at the same place then, so a vehicle that has stood there all along is known as such at once.
+const STILL_M = 100,
+  STILL_BACK_MIN = 27; // a little past delays.ts GONE_STILL_S (25 minutes): as far back as the rule looks
+const still = new Map<string, { lat: number; lon: number; since: number; seen: number; away: number }>();
+function noteStill(key: string, lat: number, lon: number, t: number): void {
+  const o = still.get(key);
+  if (!o) {
+    still.set(key, { lat, lon, since: t, seen: t, away: 0 });
+    return;
+  }
+  const here = haversine(lat, lon, o.lat, o.lon) <= STILL_M;
+  if (t >= o.seen) {
+    if (here) o.seen = t;
+    else still.set(key, { lat, lon, since: t, seen: t, away: o.seen }); // it moved: it stands here from now
+  } else if (here) {
+    if (t > o.away && t < o.since) o.since = t; // an older snapshot read late: it was here then too
+  } else {
+    o.away = Math.max(o.away, t); // elsewhere then: no older snapshot takes `since` back past this
+    if (o.since < t) o.since = o.seen; // (read out of order: what was taken back too far is given up)
+  }
+}
 /** The vehicle's delay and its times ahead (delays.ts estimateDelay), read from where the ride was last placed, and
  *  that place remembered: the one way the worker estimates a bus or train it has a ride for. */
 export function estimateFor(v: VehicleReport, stops: readonly TimedStop[], day: string): DelayEstimate | null {
@@ -115,6 +140,7 @@ export function remember(j: SiriSnapshot, t: number): void {
       }
       const l = m.VehicleLocation;
       if (!l) continue;
+      noteStill(key, Number(l.Latitude), Number(l.Longitude), t);
       if (String(m.OperatorRef) === '2') {
         const rt = Date.parse(x.RecordedAtTime),
           tr = trails.get(key) || [];
@@ -126,16 +152,18 @@ export function remember(j: SiriSnapshot, t: number): void {
       }
       const loc = `${l.Latitude},${l.Longitude}`,
         o = posSince.get(key);
-      // snapshots can come in out of order (the earlier one follows in the background): keep the earliest time at this place
+      // snapshots can come in out of order (the earlier ones follow in the background): keep the earliest time at this
+      // place, and let no older snapshot put an older place over the one the ride is at now
       if (o && o.loc === loc) {
         o.since = Math.min(o.since, t);
         o.seen = Math.max(o.seen, t);
-      } else posSince.set(key, { loc, since: t, seen: t });
+      } else if (!o || t >= o.seen) posSince.set(key, { loc, since: t, seen: t });
     }
   }
   for (const [k, o] of posSince) if (t - o.seen > SNAP_WINDOW_MS) posSince.delete(k);
   for (const [k, o] of callSince) if (t - o.seen > SNAP_WINDOW_MS) callSince.delete(k);
   for (const [k, o] of places) if (t - o.at > SNAP_WINDOW_MS) places.delete(k);
+  for (const [k, o] of still) if (t - o.seen > SNAP_WINDOW_MS) still.delete(k);
   for (const [k, tr] of trails) {
     while (tr.length && t - tr[0][0] > SNAP_WINDOW_MS) tr.shift();
     if (!tr.length) trails.delete(k);
@@ -243,6 +271,12 @@ export function snapVehicles(j: SiriSnapshot, t: number): SnapVehicle[] {
         operator: Number(m.OperatorRef),
         atStop,
       };
+      const st = atStop ? undefined : still.get(key);
+      if (st) {
+        v.stillSince = st.since;
+        // never seen anywhere else, and not reporting that it moves: it may have stood here longer than is known
+        v.stoodBefore = st.away === 0 && v.velocity <= MOVING_KMH;
+      }
       if (!atStop && v.operator === 2) v.trail = trails.get(v.rideId) || null;
       if (atStop && v.operator === 2) {
         // a train known only by its call: when the call first named this station
@@ -355,25 +389,36 @@ async function snapshot(urls: string[]): Promise<Snapshot> {
       remember(cur.j, cur.t);
       snap = { at: Date.now(), id: cur.id, vehicles: snapVehicles(cur.j, cur.t) };
       noteRoads(snap.vehicles);
-      // the first time, the snapshot of 3 minutes before follows in the background, so frozen positions show at once:
-      // its positions count as seen first then, and the current vehicles are filtered again
+      // the first time, the snapshots of minutes before follow in the background, newest first, so what the memory is
+      // for shows at once and not after minutes of use: frozen positions (3 minutes before: its positions count as
+      // seen first then), how the roads run (10, with the 3-minute one between them: finer pairs, more sections,
+      // measure/trafficreplay.ts), and how long each vehicle has stood where it is (STILL_BACK_MIN). The current
+      // vehicles are filtered again after each.
       if (first)
-        get(3)
-          .then((before) => {
-            if (!(before.t < cur.t)) return;
-            remember(before.j, before.t);
-            remember(cur.j, cur.t);
+        (async () => {
+          const again = () => {
             if (snap && snap.id === cur.id) snap = { ...snap, vehicles: snapVehicles(cur.j, cur.t) };
-            // and the one of 10 minutes before: how the roads run is known at once, not after minutes of use (with
-            // the 3-minute one between them: finer pairs, more sections, measure/trafficreplay.ts)
-            if (hasBusTimes())
-              return get(10).then((older) => {
-                noteRoads(snapVehicles(older.j, older.t));
-                noteRoads(snapVehicles(before.j, before.t));
-                noteRoads(snap ? snap.vehicles : []);
-              });
-          })
-          .catch(() => {});
+          };
+          const before = await get(3);
+          if (!(before.t < cur.t)) return;
+          remember(before.j, before.t);
+          again();
+          const older = await get(10).catch(() => null);
+          if (older && older.t < before.t) {
+            remember(older.j, older.t);
+            again();
+            if (hasBusTimes()) {
+              noteRoads(snapVehicles(older.j, older.t));
+              noteRoads(snapVehicles(before.j, before.t));
+              noteRoads(snap ? snap.vehicles : []);
+            }
+          }
+          const oldest = await get(STILL_BACK_MIN).catch(() => null);
+          if (oldest && older && oldest.t < older.t) {
+            remember(oldest.j, oldest.t);
+            again();
+          }
+        })().catch(() => {});
       return snap;
     })().finally(() => {
       snapLoading = null;
@@ -409,7 +454,7 @@ export const vehiclesOps = {
       return {
         trip: t,
         delay: est ? est.delay : null,
-        stale: est ? est.ageSec > 240 : true,
+        stale: est ? est.stale : true,
         index: est ? est.index : -1,
         headsign: headsign(ri),
         route: ri,

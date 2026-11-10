@@ -1,9 +1,12 @@
 // The bus delay model's steadiness rules (measure/busbacktest.ts, 2026-11-07): a bus waiting to start gets the same
 // learned times as one under way; a ride is placed from where it was last placed, so a looping trip is not read
 // backwards or at its far end; one bus's run and small swings do not move the road factor; a bus at a stop is there now.
-import { test, expect } from 'vitest';
+// And stillness past due (2026-11-10): a vehicle standing after it was due to move is expected to stand half as long
+// again, is not certain past five minutes, and past twenty-five is no estimate at all, whatever it is and wherever.
+import { test, expect, vi } from 'vitest';
 import {
   estimateDelay,
+  GONE_STILL_S,
   liveAt,
   parseBusTimes,
   placeOn,
@@ -122,4 +125,46 @@ test('the road factor needs two buses and ignores swings within a tenth; at the 
   expect(liveAt(here, stops, 1)!.passed).toBe(false);
   expect(liveAt(here, stops, 1)!.time).toBe(T0 + 300);
   setBusTimes(null);
+});
+
+test('stillness past due: half as long again, not certain past five minutes, no estimate past twenty-five', () => {
+  setBusTimes(null);
+  // half way between the second and third stops, where the timetable has it at T0 + 90
+  const mid = { lat: stops[1].lat, lon: (stops[1].lon + stops[2].lon) / 2, rideId: 'r' };
+  const seen = T0 + 90 + 600; // ten minutes late
+  const now = vi.spyOn(Date, 'now').mockReturnValue(at(seen).getTime() + 20e3);
+  const est = (stillFor: number | null, sec = seen, v = mid) =>
+    estimateDelay(
+      { ...v, recordedAt: at(sec), stillSince: stillFor == null ? null : at(sec - stillFor).getTime() },
+      stops,
+      DAY,
+    );
+  // no memory of it, or it only just got here: late by its place, nothing more claimed
+  expect(est(null)!.delay).toBe(600);
+  expect(est(0)!.delay).toBe(600);
+  // standing there two minutes (a light, a stop): noted, and nothing moves; still certain
+  const two = est(120)!;
+  expect([two.still, two.wait, two.delay, two.stale]).toEqual([120, undefined, 600, false]);
+  // eight minutes: four more to come, on every time ahead, and not certain
+  const eight = est(480)!;
+  expect([eight.wait, eight.delay, eight.stale]).toEqual([240, 840, true]);
+  expect(liveAt(eight, stops, 3)!.time).toBe(stops[3].dep + 840);
+  // past twenty-five: more likely than not it is not running
+  expect(est(GONE_STILL_S + 60, T0 + 90 + GONE_STILL_S + 60)).toBeNull();
+  // before it is due nothing counts: twenty minutes at its first stop, its time still to come
+  const early = est(1200, T0 - 300, { lat: stops[0].lat, lon: stops[0].lon, rideId: 'w' })!;
+  expect([early.waiting, early.still, early.delay]).toEqual([true, undefined, 0]);
+  // at its first stop ten minutes past its time, there all along: the same rule, from its time
+  const late = est(3600, T0 + 600, { lat: stops[0].lat, lon: stops[0].lon, rideId: 'w' })!;
+  expect([late.still, late.wait, late.delay, late.stale]).toEqual([600, 300, 900, true]);
+  expect(est(3600, T0 + GONE_STILL_S + 60, { lat: stops[0].lat, lon: stops[0].lon, rideId: 'w' })).toBeNull();
+  // a short history that may not be the whole of it (never seen elsewhere, no speed): ten minutes past due and watched
+  // for one, a minute is what is known; its times stay and are not certain
+  const unknown = estimateDelay(
+    { ...mid, recordedAt: at(seen), stillSince: at(seen - 60).getTime(), stoodBefore: true },
+    stops,
+    DAY,
+  )!;
+  expect([unknown.still, unknown.wait, unknown.stale]).toEqual([60, undefined, true]);
+  now.mockRestore();
 });

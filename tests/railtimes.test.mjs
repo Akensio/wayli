@@ -116,3 +116,32 @@ test('railtimes: train delays from learned section times', () => {
     assert.ok(shownAt[i] > shownAt[i - 1], 'times along the trip never go backwards');
   assert.ok(liveAt(e, far, 5).delay >= 3000, 'still most of an hour late beyond half an hour ahead');
 });
+
+test('a train is under the same stillness rule: at its first station or a later one, past due', () => {
+  const T = (h, m, s = 0) => h * 3600 + m * 60 + s;
+  const day = '20261021';
+  const ms = (sec) => Date.UTC(2026, 9, 21, 0, 0, sec) - 3 * 3600e3;
+  const stops = [
+    { code: 1, lat: 32.0, lon: 34.8, arr: T(10, 0), dep: T(10, 0) },
+    { code: 2, lat: 32.05, lon: 34.8, arr: T(10, 6), dep: T(10, 7) },
+    { code: 3, lat: 32.1, lon: 34.8, arr: T(10, 13), dep: T(10, 14) },
+  ];
+  const even = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+  setRailTimes({ s: { '1>2': [300, ...even], '2>3': [300, ...even] }, d: { 2: 60 } });
+  const at = (lat, sec, since) =>
+    estimateDelay({ lat, lon: 34.8, recordedAt: new Date(ms(sec)), stillSince: ms(since) }, stops, day);
+  // at its first station since 9:30, ten minutes past its time: still 600 s, five more expected, the next station with it
+  let e = at(32.0, T(10, 10), T(9, 30));
+  assert.equal(e.still, 600);
+  assert.equal(e.dep[0], T(10, 15));
+  assert.equal(e.arr[1], T(10, 20));
+  // twenty-six minutes past its time (train 970 sat at Rehovot for 88, 2026-11-10): not a train about to leave
+  assert.equal(at(32.0, T(10, 26), T(9, 30)), null);
+  // at the second station, there since 10:06 and due away at 10:07: at 10:13 six minutes still, three more to come
+  e = at(32.05, T(10, 13), T(10, 6));
+  assert.equal(e.still, 360);
+  assert.equal(e.dep[1], T(10, 16));
+  // just pulled in, late: nothing claimed
+  assert.equal(at(32.05, T(10, 13), T(10, 13)).still, undefined);
+  setRailTimes(null);
+});

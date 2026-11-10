@@ -29,6 +29,8 @@ export type Vehicle = {
   atStop?: boolean; // the snapshot only: no GPS; put at the stop its call names
   /** A train's fixes of the last half hour, oldest first (when it pulled in to the station it stands at). */
   trail?: Fix[] | null;
+  stillSince?: number | null; // the snapshot only: ms since when it has stayed within 100 m of where it is
+  stoodBefore?: boolean; // and that it may have stood there longer (never seen elsewhere, reporting no speed)
   callSince?: number; // a train without GPS: ms when its call first named the station it is put at
   callSeenChange?: boolean; // and whether that change of call was itself seen (else the app had just opened)
   handedOver?: boolean; // a train finishing its trip under its next number, given back to that trip

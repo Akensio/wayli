@@ -165,3 +165,51 @@ test('a train whose position froze while its call moved on is placed by its call
   expect(r.journeys.length).toBeGreaterThan(0); // the buses are still offered
   setRailTimes(null);
 });
+
+test('since when a vehicle has stood where it is: older snapshots read late take it back, unless it was elsewhere between', () => {
+  const snap = (t: number, ride: string, lon: number) => ({
+    Siri: {
+      ServiceDelivery: {
+        StopMonitoringDelivery: [
+          {
+            MonitoredStopVisit: [
+              {
+                RecordedAtTime: new Date(t).toISOString(),
+                MonitoredVehicleJourney: {
+                  LineRef: ride,
+                  OriginAimedDepartureTime: '2026-11-05T09:10:00+02:00',
+                  OperatorRef: '3',
+                  VehicleRef: ride,
+                  Velocity: '0',
+                  VehicleLocation: { Latitude: '32.08', Longitude: String(lon) },
+                  MonitoredCall: { StopPointRef: 'c0', DistanceFromStop: '0' },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+  });
+  const min = 60e3,
+    here = 34.78,
+    far = 34.79; // 940 m off
+  const since = (ride: string) => snapVehicles(snap(NOW, ride, here), NOW).find((v) => v.lineRef === ride)!.stillSince;
+  // as on a fresh open: now, then 3, 10 and 25 minutes before, each the same place
+  for (const ago of [0, 3, 10, 25]) remember(snap(NOW - ago * min, 'a', here), NOW - ago * min);
+  expect(since('a')).toBe(NOW - 25 * min);
+  expect(snapVehicles(snap(NOW, 'a', here), NOW).find((v) => v.lineRef === 'a')!.stoodBefore).toBe(true); // maybe longer
+  // elsewhere 10 minutes ago: it has stood here since the snapshot of 3 minutes ago, whatever came before
+  for (const [ago, lon] of [
+    [0, here],
+    [3, here],
+    [10, far],
+    [25, here],
+  ] as const)
+    remember(snap(NOW - ago * min, 'b', lon), NOW - ago * min);
+  expect(since('b')).toBe(NOW - 3 * min);
+  expect(snapVehicles(snap(NOW, 'b', here), NOW).find((v) => v.lineRef === 'b')!.stoodBefore).toBe(false); // seen arriving
+  // and when it moves on, it stands at the new place from then
+  remember(snap(NOW + min, 'a', far), NOW + min);
+  expect(snapVehicles(snap(NOW + min, 'a', far), NOW + min).find((v) => v.lineRef === 'a')!.stillSince).toBe(NOW + min);
+});

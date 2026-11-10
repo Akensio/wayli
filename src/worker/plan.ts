@@ -23,7 +23,7 @@ import {
 } from '../engine/raptor.ts';
 import { accessStops, route, type StreetMode, airAccess } from '../engine/streets.ts';
 import { secondsOn } from '../engine/clock.ts';
-import { FRESH_S, liveAt, passedStop } from '../engine/delays.ts';
+import { liveAt, passedStop } from '../engine/delays.ts';
 import { estimateFor } from './vehicles.ts';
 import type { Vehicle } from '../engine/feed.ts';
 import type { LatLon as Point } from '../engine/geo.ts';
@@ -123,7 +123,7 @@ function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips
     const { p, ns, base, stops } = tripStopList(t);
     const est = estimateFor(v, stops, day);
     if (!est) continue;
-    tripLive.set(t, { seen: rec.getTime(), stale: est.ageSec > FRESH_S, index: est.index, frac: est.frac });
+    tripLive.set(t, { seen: rec.getTime(), stale: est.stale, index: est.index, frac: est.frac });
     if (!est.rail && !est.dep && Math.abs(est.delay) < 60) continue; // a bus about on time, with no learned sections
     // the trip moves to the time the rider is shown at each stop from the vehicle on (liveAt; docs/architecture.md,
     // "Live times, end to end", rules 1 and 5): a train boarded when it pulls in, never earlier than its time. A stop
