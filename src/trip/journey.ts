@@ -1,23 +1,29 @@
-// A journey as the page holds it: its legs (rides on a trip, ways on foot or by bike), what the plan knew live at each
-// ride, how the map draws a leg, and the answer to a plan. Shapes and two pure helpers; nothing here does anything.
+// A journey as the page holds it: its legs (rides on a trip, ways on foot or by bike), how the map draws a leg, and the
+// answer to a plan. Shapes and two pure helpers; nothing here does anything. A journey from the planner is a plan: its
+// rides' `schedDepart` and `schedArrive` are the listed times. The same journey as it stands now is made by trip/now.ts
+// (tripNow), which sets every `depart` and `arrive` and each ride's `live`.
 import type { PathPoint } from '../engine/geo.ts';
-import type { LiveTime } from '../engine/delays.ts';
+import type { LiveTrips } from '../worker/ops.ts';
 
-/** What the live data says about a ride's vehicle at a stop, as it comes in: its time there (late by, passed, how old
- *  the report; null when no vehicle of the trip is seen), or `failed` when the live data could not be had. Data, not
- *  words: the views word it (text/live.ts rideBadge), in the language shown. */
-export type RideLive = { at: LiveTime | null } | 'failed';
-/** The lateness a plan used at a ride's boarding stop: against the listed time there, with when the vehicle reported
- *  (ms), whether that was stale, and `ahead`: it had not reached the boarding stop yet (state/results.ts due). */
-export type LiveInfo = { delay: number; stale?: boolean; seen?: number; ahead?: boolean };
 /** A stop as a leg's end (names.js stopOut): its name, and where it is for the map and the lists. */
 export type StopRef = { name: string; stop?: number; lat?: number; lon?: number; code?: string; city?: string };
-/** One stop of a ride with the trip's times there. */
-export type StopAlong = { stop: number; name: string; lat: number; lon: number; arr: number; dep?: number };
+/** One stop of a ride with the trip's time there; from tripNow, `arr` is the time as it stands now beside the listed
+ *  one (`sched`), and `passed` says the vehicle is past it. */
+export type StopAlong = {
+  stop: number;
+  name: string;
+  lat: number;
+  lon: number;
+  arr: number;
+  dep?: number;
+  sched?: number;
+  passed?: boolean;
+};
 type LegBase = { seconds: number; depart: number; arrive: number; from?: StopRef; to?: StopRef; path?: PathPoint[] };
-/** A ride on one trip from a boarding stop to an alighting stop (plan.js legOut; follow.js builds the rest of a ride
- *  the same way). The times are the ones the plan used, live-shifted when it had live data; `schedDepart` and
- *  `schedArrive` keep the listed ones then. */
+/** A ride on one trip from a boarding stop to an alighting stop (plan.ts legOut; follow.ts builds the rest of a ride
+ *  the same way). `schedDepart` and `schedArrive` are the listed times; `depart` and `arrive` the ones the plan was
+ *  routed on, or from tripNow the ones that stand now, with `live`: what is known of its vehicle at the boarding stop
+ *  (null: nothing, the times are the timetable's). */
 export type RideLeg = LegBase & {
   type: 'ride';
   line: string;
@@ -36,9 +42,10 @@ export type RideLeg = LegBase & {
   stopsAlong?: StopAlong[];
   schedDepart?: number;
   schedArrive?: number;
-  live?: LiveInfo | null;
-  /** A journey's first ride: the departures of its route from the boarding stop after it, as the plan knew them. */
-  next?: { depart: number; trip: number; live?: LiveInfo | null }[];
+  live?: { sure: boolean; passed: boolean } | null;
+  /** A journey's first ride: the departures of its route from the boarding stop after it (the trip, where the stop is
+   *  on it, its listed time). */
+  next?: { trip: number; pos: number; sched: number }[];
   pathKind?: 'shape' | 'stops'; // along its course, or its stops joined straight (drawn dashed)
 };
 /** A way on foot or by bike: to the first stop (access), between stops (walk, transfer), from the last (egress). */
@@ -82,6 +89,7 @@ export type Journey = {
   legs: Leg[];
   walkSeconds?: number;
   slower?: boolean; // an earlier departure that arrives later than the card's first option (the train at the platform)
+  missed?: boolean; // from tripNow: one of its rides now leaves before the rider can be there
   to?: { name: string; lat: number; lon: number } | null; // the destination as a point, kept when the trip is followed
 };
 type Group = { options: number[]; lines: string[][] | null };
@@ -92,5 +100,6 @@ export type PlanResult = {
   nextAt?: number | null; // no journey in the window: when the next way leaves, or null for none more on that day
   streets?: boolean;
   bikeOnly?: { seconds: number; metres: number; path: PathPoint[] } | null;
+  live?: LiveTrips | null; // the live times the plan was routed on
   [k: string]: unknown;
 };

@@ -16,7 +16,11 @@ import { useEffect, useState } from 'preact/hooks';
 import { LineChip } from '../../widgets/LineChip';
 import { favs, stored } from '../../state/store.ts';
 import { LiveMark } from '../../widgets/LiveMark';
-import * as delays from '../../engine/delays.ts';
+import * as clock from '../../engine/clock.ts';
+import { nowOn } from '../../engine/clock.ts';
+import * as live from '../../state/live';
+import { now as clockNow } from '../../state/clock';
+import { timeAt } from '../../trip/now';
 import { openOtherDirection, chooseTime, chooseAnchor } from '../../controllers/line';
 import { openStop } from '../../controllers/stop';
 import { Tappable } from '../../widgets/Tappable';
@@ -53,17 +57,20 @@ export function LineDetail() {
       mode: info.mode,
     });
   };
-  // the chosen trip's time at each stop: live when its vehicle is seen (the time a trip with that ride shows too)
+  // the chosen trip's time at each stop as it stands now (the same answer a journey with that ride shows)
+  void clockNow.value;
+  void live.trips.value;
   const ai = line.anchor.value,
     a = info.stops[ai],
     times = line.times.value,
-    sel = line.selTimes.value,
-    live = line.selLive.value;
-  const when = (i: number) => {
-    const l = live[i];
-    return l && !l.passed ? l.time : (sel[i] ?? null);
-  };
-  const base = when(ai);
+    trip = line.sel.value,
+    nowS = line.today.value ? nowOn(clock.serviceDay().day) : null;
+  const sel = line.selTimes.value.map((x) => {
+    if (!x || trip == null) return null;
+    const now = nowS == null ? { time: x.time, live: null } : timeAt(live.at, trip, x.pos, x.time, nowS);
+    return { listed: x.time, ...now };
+  });
+  const base = sel[ai]?.listed ?? null;
   return (
     <>
       <div class="bar">
@@ -109,7 +116,7 @@ export function LineDetail() {
                 {times !== null && times.length > 0 && (
                   <Timetable
                     rows={times}
-                    now={line.now.value}
+                    now={nowS}
                     sel={line.sel.value}
                     onPick={chooseTime}
                     dim={line.loading.value}
@@ -121,10 +128,9 @@ export function LineDetail() {
         )}
         <div id="lineStops">
           {info.stops.map((st, i) => {
-            const at = when(i),
-              rel = at != null && base != null ? Math.round((at - base) / 60) : null,
-              l = live[i];
-            const late = l && !l.passed && l.delay > 0 && sel[i] != null;
+            // how long before or after the rider's stop, by the timetable: a fact of the trip, not of how late it runs
+            const x = sel[i],
+              rel = x && base != null ? Math.round((x.listed - base) / 60) : null;
             return (
               <Tappable
                 class={`linerow${i === ai ? ' anchor' : ''}${i < ai ? ' before' : ''}`}
@@ -136,10 +142,10 @@ export function LineDetail() {
                   {st.name}
                   <small class="muted"> {st.city || ''}</small>
                   {i === ai && <small class="tag">{t('yourStop')}</small>}
-                  {i === ai && l && !l.passed && (
+                  {i === ai && x && x.live && !x.live.passed && (
                     <>
                       {' '}
-                      <LiveMark delayMin={delays.delayMinutes(l.delay)} stale={l.stale} />
+                      <LiveMark delayMin={Math.round((x.time - x.listed) / 60)} unsure={!x.live.sure} />
                     </>
                   )}
                 </span>
@@ -162,7 +168,7 @@ export function LineDetail() {
                     </span>
                   )
                 )}
-                {at != null && <ShownTime planned={late ? sel[i]! : at} live={late ? at : null} class="at" />}
+                {x && <ShownTime planned={x.listed} live={x.live && !x.live.passed ? x.time : null} class="at" />}
               </Tappable>
             );
           })}

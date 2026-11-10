@@ -317,13 +317,10 @@ export function replanOrigin(journey: Journey, state: FollowState, nowSec: numbe
 /** A change between two rides (connections): the seconds to spare, negative when missed; when the rider reaches the
  *  stop (`arr`) and when the ride leaves (`dep`), seconds on the service day, live where a vehicle was seen. */
 export type Connection = { sec: number; arr: number; dep: number };
-/** What the live data says of the rides' vehicles, by leg index: its arrival at the stop to get off at, its departure
- *  from the boarding stop (seconds on the service day); absent, the planned time stands. */
-export type LiveTimes = Record<number, { arrive?: number; depart?: number }>;
 /** The changes ahead: for each ride after the first remaining one, the seconds between reaching its stop (the ride
- *  before's arrival, live when known, plus the walks between) and its departure (live when known), with both times.
- *  `live`: by leg index, { arrive?, depart? } of the vehicles seen. Negative: the change is missed. */
-export function connections(legs: readonly Leg[], step: number, live: LiveTimes = {}): Record<number, Connection> {
+ *  before's arrival plus the walks between) and its departure, with both times. Given the trip as it stands now
+ *  (trip/now.ts), these are the live ones. Negative: the change is missed. */
+export function connections(legs: readonly Leg[], step: number): Record<number, Connection> {
   const out: Record<number, Connection> = {};
   let prev = -1;
   for (let i = step; i < legs.length; i++) {
@@ -332,11 +329,8 @@ export function connections(legs: readonly Leg[], step: number, live: LiveTimes 
     if (prev >= 0) {
       let walk = 0;
       for (let k = prev + 1; k < i; k++) walk += legs[k].seconds || 0;
-      const lp = live[prev],
-        li = live[i];
-      const arr = (lp && lp.arrive != null ? lp.arrive : legs[prev].arrive) + walk;
-      const dep = li && li.depart != null ? li.depart : l.depart;
-      out[i] = { sec: dep - arr, arr, dep };
+      const arr = legs[prev].arrive + walk;
+      out[i] = { sec: l.depart - arr, arr, dep: l.depart };
     }
     prev = i;
   }

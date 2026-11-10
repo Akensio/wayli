@@ -232,7 +232,7 @@ export function install(): void {
       }
       if (key === 'lineDetail') {
         const i = line.info.value?.stops.findIndex((s) => s.stop === stop) ?? -1;
-        return i >= 0 ? (line.selTimes.value[i] ?? null) : null;
+        return i >= 0 ? (line.selTimes.value[i]?.time ?? null) : null;
       }
       return null;
     },

@@ -1,9 +1,8 @@
-// Following a trip, as the screen sees it: the trip in progress (its journey, its state machine's state, the
-// day), the rider's position, what the live data says about the next ride, and a faster way when one was
-// found. The controller (timers, the position watch, the live polls, the re-planning) is controllers/follow.ts
+// Following a trip, as the screen sees it: the trip in progress (its journey as it stands now, trip/now.ts; its state
+// machine's state, the day), the rider's position, the changes ahead, and a faster way when one was found. The controller (timers, the position watch, the live polls, the re-planning) is controllers/follow.ts
 // and publishes here; the screen renders from these and asks through `hooks`.
 import { signal } from '@preact/signals';
-import type { Journey, RideLive } from '../trip/journey';
+import type { Journey } from '../trip/journey';
 import type {
   FollowState,
   Position as EnginePosition,
@@ -25,15 +24,9 @@ export type Alt = {
 
 export const active = signal<ActiveTrip | null>(null); // the trip being followed, while the screen is up
 export const pos = signal<Position | null>(null);
-export const nextLive = signal<RideLive | null>(null); // the next ride's vehicle, while one is followed
-/** What the live data says of each remaining ride, by leg index: its vehicle at the boarding stop, the change into it
- *  (seconds to spare, negative when missed; with the times), and its stops at their shown times, passed ones marked. */
-export type LegLive = {
-  live: RideLive | null; // its vehicle at the boarding stop; null while nothing was asked
-  change: Connection | null;
-  stops: { time: number; passed: boolean }[] | null;
-};
-export const legLive = signal<Record<number, LegLive>>({});
+/** The changes ahead, by the leg index of the ride changed into: seconds to spare (negative when missed), with the
+ *  two times. */
+export const changes = signal<Record<number, Connection>>({});
 export const alt = signal<Alt | null>(null); // a faster way, proposed
 export const resumable = signal<ActiveTrip | null>(null); // a trip in progress whose screen is hidden
 

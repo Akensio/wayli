@@ -1,6 +1,6 @@
 // The data worker (worker.ts) holds the timetable, the street graph and the address book and answers every
 // query, so the UI never blocks. This is the UI's end: one promise per request.
-import type { OpName, Ops, OpArgs, Estimate, Vehicle, TripStop, TripStops } from './ops';
+import type { OpName, Ops, OpArgs, TripStops } from './ops';
 export type Progress = { label: string; got: number; total?: number; unpacking?: boolean };
 const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 /** Data files are addressed from the page, not from the worker's own folder under assets/. */
@@ -56,7 +56,3 @@ export const tripStopsCached = (trip: number): Promise<TripStops> => {
 export const resetCaches = (): void => {
   tsCache.clear();
 };
-/** A vehicle's delay and its time at each stop ahead, made in the worker where the learned section times are
- *  (delays.ts estimateDelay); null when it cannot be told. */
-export const estimate = (vehicle: Vehicle, stops: TripStop[], day: string): Promise<Estimate> =>
-  call('estimate', { vehicle: { ...vehicle }, stops, day }).catch(() => null);

@@ -565,12 +565,10 @@ export function estimateDelay(vehicle: VehicleReport, stops: readonly TimedStop[
 export type LiveTime = { time: number; delay: number; passed: boolean; stale: boolean };
 /** The live time at a stop of the trip, given a delay estimate; passed when the vehicle is beyond it. A train's time
  *  is its time at the station, late only by what we are sure of (sureLate; at the station it stands at, est.delay). */
-/** Whether a vehicle on the stretch from stop `index` (`frac` of the way along it) is past stop `i`: beyond it, or at it
- *  and more than a fifth of the way on (liveAt's `passed`; the planner's `ahead` is its opposite at the boarding stop). */
-export const passedStop = (index: number, frac: number, i: number): boolean => index > i || (index === i && frac > 0.2);
 export function liveAt(est: DelayEstimate | null, stops: readonly TimedStop[], stopIndex: number): LiveTime | null {
   if (!est) return null;
-  const passed = passedStop(est.index, est.frac, stopIndex);
+  // past the stop: beyond it, or at it and more than a fifth of the way on
+  const passed = est.index > stopIndex || (est.index === stopIndex && est.frac > 0.2);
   if (est.rail) {
     const late = railShown(est, stops)[stopIndex] ?? est.delay;
     return { time: stops[stopIndex].arr + late, delay: late, passed, stale: est.stale };

@@ -7,7 +7,6 @@ import { Icon } from '../../widgets/Icon';
 import { TimeRange } from '../../widgets/TimeRange';
 import { t } from '../../common/i18n';
 import { now } from '../../state/clock';
-import { nowOn } from '../../engine/clock.ts';
 import * as results from '../../state/results';
 import { dur, soonText, goneBy } from '../../text/durations';
 import { transfersText, lineText } from '../../text/travel';
@@ -24,11 +23,11 @@ import { Tappable } from '../../widgets/Tappable';
  *  (the train at the platform) is dashed, its arrival not written on it (maintainer, 2026-11-09). */
 function DepChip({ d, j, q, stop }: { d: results.Dep; j: Journey; q: Card['q']; stop: string }) {
   const own = d.o === j,
-    past = !own && !(d.o && results.due(d.o)) && goneBy(d.depart, q.day);
+    past = !own && (d.live ? d.live.passed : goneBy(d.depart, q.day));
   const cls = `opt${sureness(d, q.day)}${own ? ' own' : ''}${d.o?.slower ? ' slower' : ''}${past ? ' past' : ''}`;
   const body = (
     <>
-      {soonText(own ? results.rideAt(j, nowOn(q.day)) : d.depart, q.day)}
+      {soonText(d.depart, q.day)}
       {d.stop && d.stop !== stop && <small>{d.stop}</small>}
     </>
   );
@@ -69,7 +68,7 @@ export function JourneyCard({ card }: { card: Card }) {
     }, 60);
     return () => clearTimeout(t);
   });
-  const { j, q, options, lines, idx } = card;
+  const { j, q, deps, lines, idx } = card;
   const rides = ridesOf(j.legs);
   const shown = results.altShown.value.has(idx),
     sel = shown && results.altSel.value === idx;
@@ -94,7 +93,7 @@ export function JourneyCard({ card }: { card: Card }) {
         // departures, not when to set out), the stop named once when they share it, else on each chip
         <div class="opts">
           <span class="muted">{t('departsFrom', { stop: rides[0].from?.name || '' })}</span>
-          {results.departures(j, options).map((d) => (
+          {deps.map((d) => (
             <DepChip key={d.trip} d={d} j={j} q={q} stop={rides[0].from?.name || ''} />
           ))}
         </div>

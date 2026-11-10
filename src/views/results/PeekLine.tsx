@@ -10,7 +10,6 @@ import { dur, soonText } from '../../text/durations';
 import { transfersText, lineText } from '../../text/travel';
 import { sureness } from '../../text/live';
 import { now } from '../../state/clock';
-import { nowOn } from '../../engine/clock.ts';
 import { ridesOf } from '../../trip/journey';
 import * as sheet from '../../state/sheet';
 import { revealCard } from '../../controllers/planner';
@@ -20,10 +19,9 @@ function FirstRide({ j, day }: { j: Journey; day: string }) {
   void now.value;
   const r = ridesOf(j.legs)[0];
   if (!r) return null;
-  const at = results.rideAt(j, nowOn(day)); // a due ride leaves now at the earliest
   return (
     <span class={`leave${sureness(r, day)}`}>
-      {lineText(r.line)} · {soonText(at, day)}
+      {lineText(r.line)} · {soonText(r.depart, day)}
     </span>
   );
 }

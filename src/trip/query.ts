@@ -14,7 +14,6 @@ export type Query = {
   arriveBy: boolean;
   isNow?: boolean;
   maxWalk?: number;
-  liveAsOf?: number | null;
   liveTried?: boolean;
 };
 

@@ -8,6 +8,9 @@ import { t, lang } from '../../common/i18n';
 import { fmt } from '../../common/time';
 import { favs, stored } from '../../state/store.ts';
 import * as stop from '../../state/stop';
+import * as live from '../../state/live';
+import { nowOn } from '../../engine/clock.ts';
+import { LiveNote } from '../../widgets/LiveNote';
 import { now } from '../../state/clock';
 import { dur } from '../../text/durations';
 import { liveClass } from '../../text/live';
@@ -25,6 +28,7 @@ export function StopDetail() {
   void lang.value;
   void now.value;
   void stored.value;
+  void live.trips.value;
   const info = stop.info.value;
   if (!info) return null;
   const key = 'stop:' + info.stop,
@@ -84,32 +88,26 @@ export function StopDetail() {
           <h2 class="sec" style="margin:8px 0">
             {t('nextDeps')}
           </h2>
-          <span class="muted" id="stopLiveNote">
-            {stop.liveNote.value}
-          </span>
+          {isNow && <LiveNote id="stopLiveNote" />}
         </div>
         <div id="stopDeps">
           {deps && !deps.length && <div class="empty">{t('noDeps')}</div>}
-          {stop.visibleDeps(deps || [], stop.liveDeps.value).map((d) => {
-            const lv = stop.liveDeps.value[String(d.trip)];
-            const timeCls = lv && lv.passed ? 'time gone' : 'time' + liveClass(lv);
-            return (
-              <Tappable class="dep" key={d.trip} onClick={() => openTrip(d.trip, info.stop)}>
-                <ShownTime
-                  planned={d.time}
-                  live={lv && !lv.passed ? lv.time : null}
-                  class={timeCls}
-                  prefix={d.estimated ? '~' : ''}
-                />
-                <LineChip line={d.line} routeType={d.routeType} agency={d.agency} />
-                <span class="head">
-                  {d.headsign}
-                  {d.estimated && <small class="est">{t('estShort')}</small>}
-                </span>
-                <InCell live={lv} time={lv && !lv.passed ? lv.time : d.time} day={day} counting={isNow} />
-              </Tappable>
-            );
-          })}
+          {stop.visibleDeps(deps || [], live.at, isNow ? nowOn(day) : null).map((d) => (
+            <Tappable class="dep" key={d.trip} onClick={() => openTrip(d.trip, info.stop)}>
+              <ShownTime
+                planned={d.time}
+                live={d.live ? d.at : null}
+                class={'time' + liveClass(d.live)}
+                prefix={d.estimated ? '~' : ''}
+              />
+              <LineChip line={d.line} routeType={d.routeType} agency={d.agency} />
+              <span class="head">
+                {d.headsign}
+                {d.estimated && <small class="est">{t('estShort')}</small>}
+              </span>
+              <InCell live={d.live} time={d.at} listed={d.time} day={day} counting={isNow} />
+            </Tappable>
+          ))}
         </div>
         {info.reach && (
           <>

@@ -1,13 +1,10 @@
 // A stop in the sheet, the one view of a stop wherever it was opened (the map, a search, a line, a trip): its lines,
-// next departures (from now, or from the bar's time on another day) refreshed with live times every 45 s while it is
-// open, from here and to here; a station is all its platforms, and where its trains go without a change.
+// next departures (from now, or from the bar's time on another day), looked up live while it is open, from here and
+// to here; a station is all its platforms, and where its trains go without a change.
 import * as clock from '../engine/clock.ts';
-import * as delays from '../engine/delays.ts';
-import * as feed from '../engine/feed.ts';
-import type { Vehicle } from '../engine/feed.ts';
 import { isNowDay } from '../common/time';
-import { call, tripStopsCached, estimate } from '../worker/client';
-import { livePoll } from './livepoll';
+import { call } from '../worker/client';
+import * as liveTimes from './live';
 import { toast } from '../widgets/toast';
 import { t } from '../common/i18n';
 import * as nav from '../state/nav';
@@ -56,69 +53,25 @@ export async function openStop(stop: number, where: { station?: number; stops?: 
   let deps: Departure[];
   try {
     // the hour before too: a train listed earlier and still to come (delayed) belongs in the list, which the live
-    // data decides (an early departure shows only with a live time not yet passed: state/stop.ts visibleDeps)
-    deps = await call('departures', { stop, stops: members, fromTime: from, limit: 40, back: isNow ? 3600 : 0 });
+    // times decide (state/stop.ts visibleDeps)
+    deps = await call('departures', {
+      stop,
+      stops: members,
+      fromTime: from,
+      limit: 40,
+      back: isNow ? liveTimes.LOOK_BACK_S : 0,
+    });
   } catch {
     if (session.isCurrent(my)) stopPage.deps.value = []; // the page says there is nothing to show, not "loading" for ever
     return;
   }
   if (!session.isCurrent(my)) return;
   stopPage.deps.value = deps;
-  if (isNow) session.poll(livePoll('stopDetail', stopPage.liveNote, () => liveForStop(info, deps, day, my)));
+  liveTimes.watch('stop', isNow ? deps.map((d) => d.trip) : []);
 }
 export function closeStop(): void {
   session.end();
-}
-
-/** Live times for the departures of a stop: one request for the vehicles around it, then by line for what it missed.
- *  The newest report seen, for the note (livePoll). */
-async function liveForStop(
-  info: StopInfo,
-  deps: Departure[],
-  day: string,
-  my: number,
-): Promise<Date | null | undefined> {
-  const now = clock.nowOn(day);
-  const soon = deps
-    .filter(
-      (d): d is Departure & { routeId: number | string; firstDep: number } =>
-        d.routeId != null && d.firstDep != null && d.time - now < 3600 && (d.time - now > -300 || !!d.early),
-    )
-    .slice(0, 24);
-  if (!soon.length) return undefined;
-  let vs: Vehicle[] = await feed.vehiclesNear(info.lat, info.lon, 8);
-  if (!session.isCurrent(my)) return undefined;
-  const unmatched = new Set(
-    soon.filter((d) => !feed.matchTrip(vs, d.routeId, d.firstDep, day) && d.time - now < 1800).map((d) => d.routeId),
-  );
-  if (unmatched.size) {
-    const more = await Promise.all(
-      Array.from(unmatched)
-        .slice(0, 6)
-        .map((r) => feed.vehiclesByLine(r).catch(() => [])),
-    );
-    vs = vs.concat(more.flat());
-  }
-  if (!session.isCurrent(my)) return undefined;
-  for (const d of soon) {
-    const v = feed.matchTrip(vs, d.routeId, d.firstDep, day);
-    if (!v) continue;
-    const ts = await tripStopsCached(d.trip);
-    if (!session.isCurrent(my)) return undefined;
-    const at0 = info.stops && info.stops.length ? info.stops : [info.stop]; // any platform of a station
-    const idx = ts.stops.findIndex((s: { stop: number; dep: number }) => at0.includes(s.stop) && s.dep === d.time);
-    const est = await estimate(v, ts.stops, day);
-    if (!session.isCurrent(my)) return undefined;
-    const at = delays.liveAt(est, ts.stops, idx < 0 ? 0 : idx);
-    if (!at) continue;
-    stopPage.setLive(
-      d.trip,
-      at.passed
-        ? { passed: true }
-        : { passed: false, time: at.time, stale: !!at.stale, delayMin: delays.delayMinutes(at.delay) },
-    );
-  }
-  return feed.newest(vs);
+  liveTimes.unwatch('stop');
 }
 
 /** The live times asked again. */

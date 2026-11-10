@@ -1,4 +1,5 @@
-// The notification's line while following (src/following/status.ts): the live time when there is one, none once arrived.
+// The notification's line while following (src/following/status.ts): the times of the trip as it stands now, none once
+// arrived.
 import { test, expect } from 'vitest';
 import { statusLine } from '../src/following/status.ts';
 import type { FollowView } from '../src/following/follow.ts';
@@ -14,7 +15,7 @@ const leg = {
 } as RideLeg;
 const stop = { stop: 2, name: 'B', lat: 0, lon: 0, arr: 36_900 };
 
-test('on board: where to get off and when, the live time over the planned one', () => {
+test('on board: where to get off and when, as the trip stands now', () => {
   const v: FollowView = {
     kind: 'ride',
     leg,
@@ -25,15 +26,15 @@ test('on board: where to get off and when, the live time over the planned one', 
     after: null,
     nextRide: undefined,
   };
-  const planned = statusLine(v, 'Home', null, 36_100)!;
-  const live = statusLine(v, 'Home', 37_020, 36_100)!;
-  expect(planned[1]).toContain('10:15'); // the planned arrival, 36,900 s
-  expect(live[1]).toContain('10:17'); // the live one, 37,020 s
-  expect(live[0]).toContain('Home');
+  const listed = statusLine(v, 'Home', 36_100)!;
+  const late = statusLine({ ...v, leg: { ...leg, arrive: 37_020 } }, 'Home', 36_100)!;
+  expect(listed[1]).toContain('10:15'); // the listed arrival, 36,900 s
+  expect(late[1]).toContain('10:17'); // two minutes late now, 37,020 s
+  expect(late[0]).toContain('Home');
 });
 
-test('waiting: the live departure; arrived: no line at all', () => {
-  const wait: FollowView = { kind: 'wait', leg, departsIn: 2, stopsLeft: 3 };
-  expect(statusLine(wait, 'Home', 36_060, 35_900)![1]).toContain('10:01');
-  expect(statusLine({ kind: 'done' }, 'Home', null, 40_000)).toBeNull();
+test('waiting: the departure as it stands; arrived: no line at all', () => {
+  const wait: FollowView = { kind: 'wait', leg: { ...leg, depart: 36_060 }, departsIn: 2, stopsLeft: 3 };
+  expect(statusLine(wait, 'Home', 35_900)![1]).toContain('10:01');
+  expect(statusLine({ kind: 'done' }, 'Home', 40_000)).toBeNull();
 });

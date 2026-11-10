@@ -1,22 +1,15 @@
 // The direct trains between two stations: when each leaves and arrives (live when known), how long it takes, where
 // it heads (the way back: the swap between the two boxes at the top). A tap opens the train's stops.
-import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../common/i18n';
 
 import * as st from '../../state/station';
-import { dur } from '../../text/durations';
-import { liveClass } from '../../text/live';
 import { railWords } from '../../text/travel';
-import { now } from '../../state/clock';
-import { LineChip } from '../../widgets/LineChip';
-import { ShownTime } from '../../widgets/ShownTime';
-import { InCell } from '../../widgets/LiveMark';
 import { openTrip } from '../../controllers/line';
-import { Tappable } from '../../widgets/Tappable';
+import { LiveNote } from '../../widgets/LiveNote';
+import { RideRows } from './RideRows';
 
 export function TrainTimes() {
   void lang.value;
-  void now.value;
   const p = st.pair.value;
   if (!p) return null;
   const rows = st.trains.value,
@@ -33,41 +26,12 @@ export function TrainTimes() {
           <h2 class="sec" style="margin:8px 0">
             {t(railWords(st.mode.value).direct)}
           </h2>
-          <span class="muted" id="trainsLive">
-            {st.liveNote.value}
-          </span>
+          {st.isNow.value && <LiveNote id="trainsLive" />}
         </div>
         {rows === null && <div class="empty">{t('loading')}</div>}
         {rows && !rows.length && <div class="empty">{t(railWords(st.mode.value).noDirect)}</div>}
         <div id="trainRows">
-          {(rows || []).map((r) => {
-            const lv = st.live.value[String(r.trip)];
-            const dep = lv ? lv.dep : r.dep,
-              arr = lv ? lv.arr : r.arr;
-            return (
-              <Tappable
-                class={`trainrow${lv && lv.passed ? ' gone' : ''}`}
-                key={r.trip}
-                onClick={() => openTrip(r.trip, r.fromStop)}
-              >
-                <ShownTime planned={r.dep} live={lv ? lv.dep : null} class={`time${liveClass(lv)}`} />
-                <span class="arrow">
-                  <Icon name="chevronEnd" class="chev" />
-                </span>
-                <ShownTime planned={r.arr} live={lv ? lv.arr : null} class={`time${liveClass(lv)}`} />
-                <span class="what">
-                  <span>
-                    <LineChip line={r.line} routeType={r.routeType} agency={r.agency} /> {dur(arr - dep)} ·{' '}
-                    {r.stops === 1 ? t('stops1') : t('stopsN', { n: r.stops })}
-                  </span>
-                  <small>
-                    <bdi>{t('toward', { headsign: r.headsign })}</bdi>
-                  </small>
-                </span>
-                <InCell live={lv} time={dep} day={day} counting={st.isNow.value} />
-              </Tappable>
-            );
-          })}
+          <RideRows rows={rows || []} day={day} counting={st.isNow.value} stops onOpen={openTrip} />
         </div>
       </div>
     </>

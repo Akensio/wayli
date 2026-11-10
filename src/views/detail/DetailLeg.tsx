@@ -1,4 +1,4 @@
-// One leg in the journey detail (Detail): a ride with both its times (struck and live when the vehicle moved them), its
+// One leg in the journey detail (Detail), as it stands now: a ride with both its times (the listed one struck when the vehicle moved it), its
 // headsign and live badge, from, to, stops and operator, its stops along as a fold, and the other rides doing the same
 // leg as a fold (RideOptions); a walk or bicycle ride in words. A tap on a ride focuses it on the map, on its chip
 // opens the line.
@@ -14,12 +14,11 @@ import { stopsText } from '../../text/travel';
 import { agencyName } from '../../text/operators';
 import { isRide } from '../../trip/journey';
 import type { Leg, RideLeg } from '../../trip/journey';
-import type { Badge } from '../../text/live';
+import { liveBadge } from '../../text/live';
 
 type Props = {
   l: Leg;
   focus?: boolean; // the leg focused on the map
-  badge?: Badge | null; // a ride's vehicle, live
   onChip?: () => void; // a ride's chip opens the line
   onFocus?: () => void; // a tap on a ride focuses it on the map
   // every line that does this ride, from its stop to the one it is left at, with live times
@@ -27,18 +26,16 @@ type Props = {
 };
 
 /** A ride's times down the side: boarding, and under it getting off, which says so ("to 21:48"), since the walk after
- *  starts at that same minute and shows it too (maintainer: two times with no cue read as two different things). The boarding
- *  time is the newest live look at the vehicle (`live`) when there is one, else the planned one; a live time a minute or
- *  more off the listed one stands under it struck. */
-function rideTimes(l: RideLeg, live: number | null): ComponentChildren {
+ *  starts at that same minute and shows it too (maintainer: two times with no cue read as two different things). The
+ *  times are the ones that stand now; a boarding time a minute or more off the listed one has that one struck above it. */
+function rideTimes(l: RideLeg): ComponentChildren {
   const till = <small class="till">{t('till', { time: legTime(l, l.arrive) })}</small>;
-  const dep = live ?? l.depart;
-  if (l.schedDepart != null && Math.abs(l.schedDepart - dep) >= 60)
+  if (l.schedDepart != null && Math.abs(l.schedDepart - l.depart) >= 60)
     return (
       <>
         <s>{fmt(l.schedDepart)}</s>
         <br />
-        <b>{fmt(dep)}</b>
+        <b>{fmt(l.depart)}</b>
         <br />
         {till}
       </>
@@ -52,29 +49,26 @@ function rideTimes(l: RideLeg, live: number | null): ComponentChildren {
   );
 }
 
-export function DetailLeg({ l, focus, badge, onChip, onFocus, options }: Props) {
+export function DetailLeg({ l, focus, onChip, onFocus, options }: Props) {
   const [optsOpen, setOptsOpen] = useState(false);
   const cls = focus ? 'focus' : '';
   if (!isRide(l)) return <LegFrame l={l} cls={cls} times={legTime(l, l.depart)} />;
   const stopsAlong = l.stopsAlong || [];
-  // one departure time: the newest live look at the vehicle (the badge) when there is one, else the planned one; the
-  // badge then says only how late, so the planned and the live time never stand side by side (2026-10-22)
-  const liveTime = badge && badge.time != null ? badge.time : null;
-  let badgeText = '';
-  if (badge) badgeText = liveTime != null && badge.delayText ? badge.delayText : badge.text;
+  // the time stands beside it, so the badge says only how late: the two never stand side by side (2026-10-22)
+  const badge = liveBadge(l.live, l.depart, l.schedDepart ?? l.depart);
   const stops = stopsAlong.length > 2;
   return (
     <LegFrame
       l={l}
       cls={cls}
-      times={rideTimes(l, liveTime)}
+      times={rideTimes(l)}
       onClick={onFocus}
       onChip={onChip}
       head={
         <>
           {l.headsign}
           <span class={`live${badge ? ' ' + badge.cls : ''}`} data-live={String(l.trip ?? '')}>
-            {badgeText}
+            {badge ? badge.short : ''}
           </span>
           <small>
             <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops)} ·{' '}

@@ -81,7 +81,7 @@ test('follow: the manual steps of a followed trip', () => {
     assert.ok(r.events.includes('getOffNext'), 'now: the next stop is the one');
   }
 
-  // the changes ahead: planned, then with the ride before late, then with the next ride late too
+  // the changes ahead: as planned, then with the ride before late, then with the next ride late too
   {
     const legs = [
       { type: 'ride', depart: T(17, 24), arrive: T(17, 54), seconds: 1800 },
@@ -93,12 +93,15 @@ test('follow: the manual steps of a followed trip', () => {
     assert.equal(c[0], undefined, 'the first remaining ride has no change before it');
     assert.equal(c[2].sec, 180, 'planned: 3 minutes after the walk');
     assert.equal(c[3].sec, 300);
-    c = connections(legs, 0, { 0: { arrive: T(17, 58) } });
+    // the legs are given as they stand now (trip/now.ts): the ride before 4 minutes late
+    legs[0] = { ...legs[0], arrive: T(17, 58) };
+    c = connections(legs, 0);
     assert.equal(c[2].sec, -60, 'the ride before 4 min late: the change is missed');
     assert.equal(c[2].arr, T(18, 3));
-    c = connections(legs, 0, { 0: { arrive: T(17, 58) }, 2: { depart: T(18, 6) } });
+    legs[2] = { ...legs[2], depart: T(18, 6) };
+    c = connections(legs, 0);
     assert.equal(c[2].sec, 180, 'the next ride 4 min late too: made again');
-    assert.equal(c[3].sec, 300, 'a ride with no vehicle keeps its planned times');
+    assert.equal(c[3].sec, 300, 'a ride on its timetable keeps its times');
     assert.deepEqual(
       connections(legs, 2),
       { 3: { sec: 300, arr: T(18, 30), dep: T(18, 35) } },

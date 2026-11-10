@@ -1,10 +1,9 @@
-// Following a trip: the state machine (follow.js, pure) advanced by the position and the clock every 5 s, the
-// remaining rides' vehicles every 30 s (the current or next one for the step card and the map; every one for its
-// row, its stops and the change into it), a look for a faster way every minute when there is reason to; alerts on
-// the way; the trip kept in the store so it survives a reload, with a bar to come back to it when hidden. The
-// screen (features/follow) draws what is published into state/follow.ts.
+// Following a trip: the state machine (following/follow.ts, pure) advanced by the position and the clock every 5 s on
+// the trip as it stands now (trip/now.ts: the plan's legs with the live times of the one store), the current ride's
+// vehicles on the map every 30 s, a look for a faster way every minute when there is reason to; alerts on the way; the
+// trip kept in the store so it survives a reload, with a bar to come back to it when hidden. The screen (views/follow)
+// draws what is published into state/follow.ts.
 import * as clock from '../engine/clock.ts';
-import * as delays from '../engine/delays.ts';
 import * as feed from '../engine/feed.ts';
 import {
   initialState,
@@ -32,22 +31,18 @@ import * as map from '../map/index';
 import { lineText } from '../text/travel';
 import type { Journey, RideLeg } from '../trip/journey';
 import type { Query } from '../trip/query';
-import type { ActiveTrip, Alt, Position, LegLive } from '../state/follow';
+import type { ActiveTrip, Alt, Position } from '../state/follow';
 import type { FollowView, ReplanOrigin } from '../following/follow.ts';
-import type { LiveTime } from '../engine/delays.ts';
-import type { Vehicle } from '../engine/feed.ts';
-import { seeRide } from './liverides';
+import * as live from '../state/live';
+import { tripNow } from '../trip/now';
+import * as liveTimes from './live';
+import { effect } from '@preact/signals';
 import { ensureAudio, requestAlertPermission, alertUser, tripStatus } from './alerts';
 import { whyReplan, pickAlternative, REPLAN } from '../following/replan.ts';
 import { statusLine } from '../following/status.ts';
 import { isRide } from '../trip/journey';
 import { debug } from '../common/debug';
 
-type LiveEst = {
-  est: { delay: number; [k: string]: unknown } | null;
-  at: LiveTime | null;
-  shift: number;
-} | null;
 /** The trip being followed, with everything that runs while it is. */
 type Following = {
   a: ActiveTrip;
@@ -55,9 +50,6 @@ type Following = {
   watch: number | null;
   timers: number[];
   wake: WakeLockSentinel | null;
-  liveEst: LiveEst;
-  legLive: Record<number, LegLive>;
-  liveChecked: boolean;
   alt: Alt | null;
   dismissed: Record<string, number>;
   replanAt: number;
@@ -68,6 +60,10 @@ let fol: Following | null = null;
 let replanGain = REPLAN.gainSec; // s: changeable from the console for trying (wayliDebug.setReplanGain)
 
 export const isFollowing = (): boolean => fol != null;
+/** The followed trip as it stands now: the plan kept in `a.journey` with the live times of the store. Everything
+ *  below (the state machine, the screen, the notification, the changes, the look for a faster way) reads this. */
+const nowTrip = (a: ActiveTrip): Journey => tripNow(a.journey, live.at, clock.nowOn(a.day));
+const rideTrips = (j: Journey): number[] => j.legs.filter(isRide).map((l) => l.trip);
 /** A trip over by 45 minutes, or started 12 hours ago, is not resumed. */
 const tripStale = (a: ActiveTrip): boolean => isTripOver(a, clock.nowOn(a.day), Date.now());
 const stored = (): ActiveTrip | null => activeTrip.get();
@@ -117,9 +113,6 @@ function openFollow(trip: ActiveTrip): void {
       watch: null,
       timers: [],
       wake: null,
-      liveEst: null,
-      legLive: {},
-      liveChecked: false,
       alt: null,
       dismissed: {},
       replanAt: 0,
@@ -147,7 +140,8 @@ function openFollow(trip: ActiveTrip): void {
     requestWake();
   }
   activeTrip.set(fol!.a);
-  follow.publish(fol!.a, follow.alt.value); // the map draws the trip from here (map/render.ts)
+  liveTimes.watch('follow', rideTrips(fol!.a.journey));
+  follow.publish({ ...fol!.a, journey: nowTrip(fol!.a) }, follow.alt.value); // the map draws the trip from here (map/render.ts)
   // started from the detail, the panel is already 'follow' (swapped in before its trip was published), and a plain
   // redraw would see the same panel and skip it: draw it now
   if (nav.isOpen('follow')) map.redrawMap(true);
@@ -170,7 +164,7 @@ function stepFollow(): void {
   if (!fol) return;
   const a = fol.a;
   const pos = fol.pos && Date.now() - fol.pos.at < 90000 ? fol.pos : null;
-  const { state, events } = advance(a.journey, a.state, pos, clock.nowOn(a.day));
+  const { state, events } = advance(nowTrip(a), a.state, pos, clock.nowOn(a.day));
   // saved on the phone only when the machine moved (every 5 s and every fix it mostly does not)
   if (JSON.stringify(state) !== JSON.stringify(a.state)) {
     const moved = setTrip(fol, { state }, true);
@@ -179,7 +173,7 @@ function stepFollow(): void {
   publish();
 }
 function onFollowEvent(e: string, a: ActiveTrip): void {
-  const v: FollowView = followView(a.journey, a.state, clock.nowOn(a.day));
+  const v: FollowView = followView(nowTrip(a), a.state, clock.nowOn(a.day));
   if (e === 'getOffNext') {
     const leg = a.journey.legs[a.state.step];
     alertUser(t('alertSoon'), t('getOffAt', { name: leg.to ? leg.to.name : '' }));
@@ -190,10 +184,11 @@ function onFollowEvent(e: string, a: ActiveTrip): void {
 }
 function publish(): void {
   if (!fol) return;
-  follow.publish(fol.a, fol.alt);
-  const live = fol.liveEst?.at && !fol.liveEst.at.passed ? fol.liveEst.at.time : null; // the stop that matters now
-  const now = clock.nowOn(fol.a.day);
-  const sl = statusLine(followView(fol.a.journey, fol.a.state, now), fol.a.q.to.name, live, now);
+  const now = clock.nowOn(fol.a.day),
+    journey = nowTrip(fol.a);
+  follow.publish({ ...fol.a, journey }, fol.alt);
+  follow.changes.value = connections(journey.legs, fol.a.state.step);
+  const sl = statusLine(followView(journey, fol.a.state, now), fol.a.q.to.name, now);
   tripStatus(sl ? sl[0] : null, sl ? sl[1] : '');
   map.showRider(fol.pos);
   if (fol.a.state.done)
@@ -206,84 +201,14 @@ function publish(): void {
     }, 15000);
 }
 
-/** The remaining rides' vehicles, every 30 s. The current or next ride's: on the map, as the step card's badge, and its
- *  shift for re-planning. Every ride's (at most three): its badge at the boarding stop, its stops at their shown times,
- *  and the change into it from the ride before (connections), so a late connecting bus shows, and a missed change
- *  starts a re-plan (2026-10-29, the maintainer). */
+/** The current or next ride's vehicles on the map, every 30 s; then a look at whether a faster way is worth asking for. */
 async function followLive(): Promise<void> {
-  if (!fol || !map.liveOn()) return;
-  const a = fol.a,
-    now = clock.nowOn(a.day),
-    legs = a.journey.legs;
-  // the rides whose vehicle may be out (within the hour); the changes are computed for every remaining ride regardless,
-  // from the planned times where no vehicle is seen
-  const rides = legs
-    .map((l, i) => ({ l, i }))
-    .filter(
-      (x): x is { l: RideLeg & { routeId: number | string; firstDep: number }; i: number } =>
-        x.i >= a.state.step && isRide(x.l) && x.l.routeId != null && x.l.firstDep != null && x.l.depart - now <= 3600,
-    )
-    .slice(0, 3);
-  const polling = rides.length > 0 && !!data.dayInfo.value && data.dayInfo.value.date === a.day;
-  if (!polling) fol.liveEst = null;
-  else fol.liveChecked = true;
-  const legLive: Record<number, LegLive> = {},
-    times: Record<number, { arrive?: number; depart?: number }> = {};
-  let first = true;
-  for (const { l: leg, i } of polling ? rides : []) {
-    const seen = await seeRide(leg, a.day, first);
-    if (!fol) return;
-    if (!seen) {
-      // the network or the worker failed for this ride: it keeps what it showed, and its change reads from the plan
-      if (fol.legLive[i]) legLive[i] = { ...fol.legLive[i], change: null };
-      first = false;
-      continue;
-    }
-    const { vs, statuses, v, ts, est } = seen;
-    if (first)
-      map.showVehicles('follow', 'ride', {
-        vs,
-        statuses,
-        routeType: leg.routeType,
-        mine: leg.trip,
-        fallback: { line: leg.line, headsign: leg.headsign, agency: leg.agency, route: leg.route },
-      });
-    const atBoard = est && ts ? delays.liveAt(est, ts.stops, leg.boardPos) : null;
-    const atAlight = est && ts ? delays.liveAt(est, ts.stops, leg.alightPos) : null;
-    if (first) {
-      // waiting: its time at the stop to board; on board: at the stop to get off at. The shift is how much that moved
-      // since the plan, against the planned time at the same stop (docs/architecture.md, "Live times, end to end", rule 6)
-      const aboard = a.state.onBoard,
-        at = aboard ? atAlight : atBoard;
-      fol.liveEst = est && at ? { est, at, shift: at.time - (aboard ? leg.arrive : leg.depart) } : null;
-      follow.nextLive.value = v ? { at } : null;
-    }
-    // the ride's stops at their shown times, the ones the vehicle has passed marked (the current ride's list opens)
-    const along = leg.stopsAlong || [];
-    const stops =
-      est && ts && along.length === leg.alightPos - leg.boardPos + 1
-        ? along.map((s, k) => {
-            const x = delays.liveAt(est, ts.stops, leg.boardPos + k);
-            return { time: x ? x.time : s.arr, passed: !!x && x.passed };
-          })
-        : null;
-    legLive[i] = { live: { at: atBoard }, change: null, stops };
-    times[i] = {
-      depart: atBoard ? atBoard.time : undefined,
-      arrive: atAlight && !atAlight.passed ? atAlight.time : undefined,
-    };
-    first = false;
-  }
-  const ch = connections(legs, a.state.step, times) as Record<number, { sec: number; arr: number; dep: number }>;
-  for (const k of Object.keys(ch)) {
-    const i = +k;
-    if (legLive[i]) legLive[i].change = ch[i];
-    else legLive[i] = { live: null, change: ch[i], stops: null };
-  }
-  fol.legLive = legLive;
-  follow.legLive.value = legLive;
-  publish();
-  if (polling) replanCheck();
+  const f = fol;
+  if (!f || !map.liveOn()) return;
+  const now = clock.nowOn(f.a.day);
+  const ride = f.a.journey.legs.find((l, i): l is RideLeg => i >= f.a.state.step && isRide(l));
+  if (ride && ride.depart - now <= 3600) await liveTimes.showRideVehicles('follow', 'ride', ride, () => fol === f);
+  if (fol === f) void replanCheck();
 }
 
 // ---- re-planning on the way: when delays make another way faster, say so and offer to switch
@@ -301,9 +226,10 @@ async function replanCheck(force = false): Promise<void> {
   }
   const f = fol,
     a = f.a,
-    now = clock.nowOn(a.day);
-  const shift = f.liveEst ? f.liveEst.shift : 0; // how much the ride moved since it was planned
-  const origin: ReplanOrigin | null = replanOrigin(a.journey, a.state, now, shift);
+    now = clock.nowOn(a.day),
+    journey = nowTrip(a);
+  const shift = journey.arrive - a.journey.arrive; // how much later the trip now arrives than when it was started
+  const origin: ReplanOrigin | null = replanOrigin(journey, a.state, now, 0);
   if (!origin) {
     replanSkip('nothing left to change');
     if (f.alt) {
@@ -314,13 +240,13 @@ async function replanCheck(force = false): Promise<void> {
   }
   // reasons to look (following/replan.ts): the ride is late, a change ahead is missed, its vehicle is missing close to
   // departure, or five minutes passed
-  const nextRide = a.journey.legs.slice(origin.rideStep).find((l) => l.type === 'ride');
+  const nextRide = journey.legs.slice(origin.rideStep).find(isRide);
   const decision = whyReplan({
     force,
     shiftSec: shift,
-    missedChange: Object.values(f.legLive).some((x) => x.change != null && x.change.sec < 0),
-    liveChecked: f.liveChecked,
-    vehicleSeen: !!f.liveEst,
+    missedChange: !!journey.missed,
+    liveChecked: live.state.value === 'ok',
+    vehicleSeen: !!(nextRide && nextRide.live),
     nextRideInSec: nextRide ? nextRide.depart - now : null,
     sinceLastMs: Date.now() - f.replanAt,
   });
@@ -331,13 +257,6 @@ async function replanCheck(force = false): Promise<void> {
   f.replanning = true;
   f.replanAt = Date.now();
   try {
-    let vehicles: Vehicle[] | null = null;
-    try {
-      vehicles = await feed.vehiclesForPlanning(origin.from.lat, origin.from.lon, { timeoutMs: 8000, radiusKm: 8 });
-    } catch {
-      vehicles = null;
-    }
-    if (fol !== f) return;
     const q = a.q;
     const r = await call('plan', {
       from: origin.from,
@@ -348,16 +267,16 @@ async function replanCheck(force = false): Promise<void> {
       folding: !!q.folding,
       weekday: dateOf(a.day).getDay() <= 4,
       maxWalk: settings.get().maxWalk * 60,
-      vehicles,
+      urls: feed.RELAY_URLS,
     });
     if (fol !== f) return;
     const picked = pickAlternative(
       r.journeys,
       {
         key: remainingKey(a.journey, a.state),
-        arrive: a.journey.arrive,
+        arrive: journey.arrive, // as it stands now: nothing to add to it
         rides: a.journey.legs.slice(a.state.step).filter((l) => l.type === 'ride').length,
-        shiftSec: shift,
+        shiftSec: 0,
       },
       { gainSec: replanGain, dismissed: f.dismissed, nowMs: Date.now() },
     );
@@ -395,10 +314,9 @@ export function switchJourney(alt: Alt): void {
   const { journey, state } = spliceJourney(a.journey, a.state, alt.journey, alt.origin);
   setTrip(fol, { journey, state, replanned: (a.replanned || 0) + 1 }, true);
   fol.alt = null;
-  fol.liveEst = null;
   fol.toldKey = null;
   fol.replanAt = Date.now();
-  follow.nextLive.value = null;
+  liveTimes.watch('follow', rideTrips(journey));
   map.redrawMap(true);
   stepFollow();
   followLive();
@@ -427,7 +345,7 @@ export function closeFollow(end: boolean): void {
     else activeTrip.set({ ...fol.a, view: 'hidden' });
     fol = null;
     follow.publish(null);
-    follow.nextLive.value = null;
+    liveTimes.unwatch('follow');
     tripStatus(null);
   }
   map.showVehicles('follow', 'ride', null);
@@ -481,6 +399,11 @@ export function dismissAlt(alt: Alt): void {
 
 /** Start: the screen kept on and the trip stepped when the phone is looked at again; the resume bar kept current; the followed vehicle once the map has drawn the trip; the console's re-plan helpers. */
 export function install(): void {
+  // new live times: the trip as it stands now has moved
+  effect(() => {
+    void live.trips.value;
+    if (fol) stepFollow();
+  });
   document.addEventListener('visibilitychange', () => {
     if (fol && document.visibilityState === 'visible') {
       requestWake();

@@ -71,15 +71,13 @@ test("a card's departures: its options and the own ride's followers, one per tri
   const own = way(n + 120, n + 900, '164'),
     later = way(n + 1500, n + 2300, '164'), // another option of the group: the same trip the followers list first
     earlierSlower = { ...way(n - 60, n + 1000, '164'), slower: true }; // at the platform, arriving later: kept
-  (own.legs[0] as RideLeg).next = [
-    { depart: n + 1500, trip: n + 1500, live: null },
-    { depart: n + 2100, trip: n + 2100, live: { delay: 60, stale: false, seen: 0, ahead: true } },
-    { depart: n + 2700, trip: n + 2700, live: null },
-    { depart: n + 3300, trip: n + 3300, live: null },
-  ];
-  const d = results.departures(own, [earlierSlower, own, later]);
-  expect(d.map((x) => x.depart - n)).toEqual([-60, 120, 1500, 2100, 2700]); // one per trip; the fourth follower is off
+  (own.legs[0] as RideLeg).next = [1500, 2100, 2700, 3300].map((d) => ({ trip: n + d, pos: 4, sched: n + d }));
+  // the second follower runs a minute late, by a report that is not certain
+  const at = (trip: number, pos: number) =>
+    trip === n + 2100 && pos === 4 ? { time: n + 2160, sure: false, passed: false } : null;
+  const d = results.departures(own, [earlierSlower, own, later], at, n);
+  expect(d.map((x) => x.depart - n)).toEqual([-60, 120, 1500, 2160, 2700]); // one per trip; the fourth follower is off
   expect(d[2].o).toBe(later); // the option, which opens, not the follower
-  expect(d[3].o).toBeUndefined();
-  expect(d[3].live).toMatchObject({ ahead: true });
+  expect([d[3].o, d[3].live]).toEqual([undefined, { sure: false, passed: false }]);
+  expect(d[4].live).toBeNull();
 });

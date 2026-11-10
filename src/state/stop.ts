@@ -1,20 +1,17 @@
-// A stop in the sheet, any stop or a whole station: the stop, its next departures, what the live data says about each
-// as it comes in, and for a station where its trains go.
+// A stop in the sheet, any stop or a whole station: the stop, its next departures (their live times are the one
+// store's, state/live.ts), and for a station where its trains go.
 import { signal } from '@preact/signals';
 import type { Dest } from '../worker/ops.ts';
 export type { StopLine, StopInfo, Departure } from '../worker/ops.ts';
 export type { SavedStop } from './store.ts';
 import type { StopInfo, Departure } from '../worker/ops.ts';
 import { unset } from '../common/unset';
-
-type LiveDep = { passed: true } | { passed: false; time: number; stale?: boolean; delayMin: number };
+import { timeAt, toCome, type At } from '../trip/now';
 
 export const info = signal<StopInfo | null>(null);
 export const day = signal('');
 export const isNow = signal(false); // departures from now: countdowns and live times
 export const deps = signal<Departure[] | null>(null); // null while loading
-export const liveDeps = signal<Record<string, LiveDep>>({});
-export const liveNote = signal('');
 export const dests = signal<Dest[] | null>(null); // a station's: where its trains go without a change (null while loading)
 
 /** What the page's own flow needs from the controllers: its history entry. */
@@ -26,29 +23,19 @@ export function open(i: StopInfo, d: string, now: boolean): void {
   day.value = d;
   isNow.value = now;
   deps.value = null;
-  liveDeps.value = {};
-  liveNote.value = '';
   dests.value = null;
   hooks.show();
 }
-/** The departures as the page lists them: the ones due, and an early one (listed before now) only while the live data
- *  says it is still to come; in the order they come, by the live time where there is one. */
-export function visibleDeps(
-  all: readonly Departure[],
-  live: Readonly<Record<string, LiveDep | undefined>>,
-): Departure[] {
-  const shownAt = (d: Departure): number => {
-    const lv = live[String(d.trip)];
-    return lv && !lv.passed ? lv.time : d.time;
-  };
+/** A departure as it stands now: its time (the live one, else the listed one) and what is known of it live. */
+export type DepNow = Departure & { at: number; live: { sure: boolean; passed: boolean } | null };
+/** The departures as the page lists them: each as it stands now, and only those still to come (trip/now.ts toCome: a
+ *  train listed earlier and running late is in the list, one that left is not), in the order they come. A list for
+ *  another time than now is the timetable's, whole. */
+export function visibleDeps(all: readonly Departure[], at: At, now: number | null): DepNow[] {
+  if (now == null) return all.map((d) => ({ ...d, at: d.time, live: null }));
   return all
-    .filter((d) => {
-      if (!d.early) return true;
-      const lv = live[String(d.trip)];
-      return !!lv && !lv.passed;
-    })
-    .sort((a, b) => shownAt(a) - shownAt(b));
-}
-export function setLive(trip: number, lv: LiveDep): void {
-  liveDeps.value = { ...liveDeps.value, [String(trip)]: lv };
+    .map((d) => ({ d, x: timeAt(at, d.trip, d.pos, d.time, now) }))
+    .filter(({ x }) => toCome(x, now))
+    .map(({ d, x }): DepNow => ({ ...d, at: x.time, live: x.live && { sure: x.live.sure, passed: x.live.passed } }))
+    .sort((a, b) => a.at - b.at);
 }

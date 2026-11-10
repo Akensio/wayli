@@ -4,7 +4,6 @@
 // key), 15 minutes behind at rush hour. What leaves the phone: the line numbers and the area the rider looks at. One
 // switch in settings turns live data off. SIRI's line_ref is the GTFS route_id and a ride is known by its scheduled
 // start, so a vehicle is matched to a timetable trip by (route, first departure) with no extra data.
-import { secondsOn } from './clock.ts';
 
 const STRIDE = 'https://open-bus-stride-api.hasadna.org.il';
 
@@ -180,12 +179,6 @@ export async function vehiclesInBounds(
   );
   return latest(rows);
 }
-/** Vehicles around a point. */
-export function vehiclesNear(lat: number, lon: number, radiusKm = 6, opts: QueryOpts = {}): Promise<Vehicle[]> {
-  const dlat = radiusKm / 110.5,
-    dlon = radiusKm / (111.3 * Math.cos((lat * Math.PI) / 180));
-  return vehiclesInBounds({ south: lat - dlat, north: lat + dlat, west: lon - dlon, east: lon + dlon }, opts);
-}
 /** Every train in the country (Israel Railways is SIRI operator 2): one cheap query. */
 export async function trains({ sinceSec = 1800, limit = 500, timeoutMs }: QueryOpts = {}): Promise<Vehicle[]> {
   const s = await fromSnapshot({ operator: 2 });
@@ -196,24 +189,6 @@ export async function trains({ sinceSec = 1800, limit = 500, timeoutMs }: QueryO
     timeoutMs,
   );
   return latest(rows);
-}
-/** What a plan from here needs: the vehicles around the origin plus every train, each query on its own. */
-export async function vehiclesForPlanning(
-  lat: number,
-  lon: number,
-  { timeoutMs = 8000, radiusKm = 12 }: { timeoutMs?: number; radiusKm?: number } = {},
-): Promise<Vehicle[]> {
-  const [near, rail] = await Promise.all([
-    vehiclesNear(lat, lon, radiusKm, { sinceSec: 1800, limit: 1200, timeoutMs }).catch(() => null),
-    trains({ timeoutMs }).catch(() => null),
-  ]);
-  if (!near && !rail) throw new Error('live unavailable');
-  const by = new Map<string | number, Vehicle>();
-  for (const v of [...(near || []), ...(rail || [])]) {
-    const o = by.get(v.rideId);
-    if (!o || v.recordedAt > o.recordedAt) by.set(v.rideId, v);
-  }
-  return Array.from(by.values());
 }
 /** When the newest of these vehicles was seen, or null. */
 export function newest(vehicles: readonly Vehicle[]): Date | null {
@@ -226,22 +201,4 @@ export function newest(vehicles: readonly Vehicle[]): Date | null {
   let i = 0;
   while (i < ts.length - 1 && ts[i] - ts[i + 1] > 120e3) i++;
   return ts.length ? new Date(ts[i]) : null;
-}
-
-// ------------------------------------------------------------------ matching vehicles to trips
-/** The vehicle running a given trip: same line, scheduled start equal to the trip's first departure. */
-export function matchTrip(
-  vehicles: readonly Vehicle[],
-  routeId: number | string | null | undefined,
-  firstDep: number,
-  day: string,
-): Vehicle | null {
-  let best: Vehicle | null = null;
-  for (const v of vehicles) {
-    if (String(v.lineRef) !== String(routeId)) continue;
-    const start = secondsOn(v.scheduledStart, day);
-    if (Math.abs(start - firstDep) > 90) continue;
-    if (!best || v.recordedAt > best.recordedAt) best = v;
-  }
-  return best;
 }

@@ -22,19 +22,26 @@ import {
   patternsAt,
 } from '../engine/raptor.ts';
 import { accessStops, route, type StreetMode, airAccess } from '../engine/streets.ts';
-import { secondsOn } from '../engine/clock.ts';
-import { liveAt, passedStop } from '../engine/delays.ts';
-import { estimateFor } from './vehicles.ts';
-import type { Vehicle } from '../engine/feed.ts';
-import type { LatLon as Point } from '../engine/geo.ts';
+import { liveTrips, vehiclesNow, type SnapVehicle } from './vehicles.ts';
+import { haversine, type LatLon as Point } from '../engine/geo.ts';
 import type { PathPoint } from '../engine/geo.ts';
 import { hasCourse, pathTo, ridePath, streetPath } from './courses.ts';
 import { st, tt } from './data.ts';
 import { headsign, liveId, sName, stopOut } from './names.ts';
-import type { JourneyOut, LegOut, NextDep, OpsPart, PlanGroup, PlanOut, RideLegOut, WalkLegOut } from './ops.ts';
+import type {
+  JourneyOut,
+  LegOut,
+  LiveTrips,
+  NextDep,
+  OpsPart,
+  PlanGroup,
+  PlanOut,
+  RideLegOut,
+  WalkLegOut,
+} from './ops.ts';
 import { railStops } from './stops.ts';
 import { bestEntrance } from './exits.ts';
-import { rawTimes, tripFor, tripStopList } from './trips.ts';
+import { rawTimes, tripStopList } from './trips.ts';
 import type { PlanPlace } from './ops.ts';
 
 /** A stop the planner may start or end at: the router's StopAccess, with how the rider gets there when the streets
@@ -43,11 +50,7 @@ type Access = StopAccess & { mode?: StreetMode };
 /** A place as the planner takes it (resolvePlace): the stops it reaches, the point itself (null for a stop or station
  *  given without one), and whether the street graph found the stops. */
 type ResolvedPlace = { places: Access[]; point: Point | null; streets?: boolean };
-/** The trips a plan shifted for live delays: when each one's vehicle was last seen (ms), whether that was long ago, and
- *  where it was (the stretch from stop `index`, `frac` of the way along it), so a leg can say whether the vehicle had
- *  reached its boarding stop (RideLegOut.live.ahead). */
-type LiveTrips = Map<number, { seen: number; stale: boolean; index: number; frac: number }>;
-type Resolved = { from: ResolvedPlace; to: ResolvedPlace; live: LiveTrips };
+type Resolved = { from: ResolvedPlace; to: ResolvedPlace };
 /** A ride leg as this module sees it: the router's (RawRideLeg), which carries no `seconds`, or one easierTransfers or
  *  slowerSiblings rewrote, which does. legOut copies whatever is there (undefined for the router's own). */
 type RideIn = RawRideLeg & { seconds?: number };
@@ -76,70 +79,45 @@ function resolvePlace(place: PlanPlace, mode: StreetMode, maxSeconds: number): R
     streets: false,
   };
 }
-/** The timetable's times a plan shifted with live data, in threes (index, dep, arr), to put back after it; and per
- *  trip shifted, when its vehicle reported and whether that was stale. */
 /**
- * Live delays, for one search: the trips with a vehicle on the road move to the times the rider is shown (and stay in
- * order), the search runs, and every time moved is put back. The times are the timetable's own arrays, shifted in place:
- * a copy for each plan would be 36 MB. That is safe because nothing runs in between: the worker answers one question at a
- * time and `run` cannot await. Matching a vehicle to its trip reads the schedule (`tripStart`), never these times.
+ * Live times, for one search: every trip with a vehicle on the road moves to the times the rider is shown for it
+ * (vehicles.ts liveTrips, the same answer the screens draw), the trips stay in order, the search runs, and every time
+ * moved is put back. The times are the timetable's own arrays, shifted in place: a copy for each plan would be 36 MB.
+ * That is safe because nothing runs in between: the worker answers one question at a time and `run` cannot await.
+ * Matching a vehicle to its trip reads the schedule (`tripStart`), never these times.
  */
-function withLiveTimes<T>(vehicles: Vehicle[] | null, run: (live: LiveTrips, matched: number | null) => T): T {
-  const edits: number[] = [],
-    live: LiveTrips = new Map();
+function withLiveTimes<T>(vehicles: SnapVehicle[] | null, run: (live: LiveTrips | null) => T): T {
+  const edits: number[] = [];
   try {
-    let matched: number | null = null;
+    let live: LiveTrips | null = null;
     if (vehicles)
       try {
-        matched = applyLive(vehicles, edits, live);
+        live = applyLive(vehicles, edits);
       } catch {
         revertLive(edits); // a failure half-way: plan on the timetable as it is
         edits.length = 0;
-        live.clear();
       }
-    return run(live, matched);
+    return run(live);
   } finally {
     revertLive(edits);
   }
 }
-/** Shift the trips the vehicles are on; every time moved goes into `edits` (index, departure, arrival) to be put back. */
-function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips): number {
-  const day = tt!.header.date,
-    now = Date.now(),
-    nowSec = secondsOn(new Date(now), day),
+/** Move the vehicles' trips to their live times; every time moved goes into `edits` (index, departure, arrival) to be
+ *  put back. */
+function applyLive(vehicles: SnapVehicle[], liveEdits: number[]): LiveTrips {
+  const live = liveTrips(vehicles, null),
     touched = new Set<number>();
-  const byTrip = new Map<number, { v: Vehicle; rec: Date }>(); // the latest report per trip
-  for (const v of vehicles) {
-    const rec = new Date(v.recordedAt),
-      start = new Date(v.scheduledStart);
-    const age = (now - rec.getTime()) / 1000;
-    if (Number.isNaN(age) || age > 1800 || age < -120) continue;
-    const t = tripFor(v.lineRef, secondsOn(start, day));
-    if (t < 0) continue;
-    const o = byTrip.get(t);
-    if (!o || rec > o.rec) byTrip.set(t, { v, rec });
-  }
-  for (const [t, { v, rec }] of byTrip) {
-    const { p, ns, base, stops } = tripStopList(t);
-    const est = estimateFor(v, stops, day);
-    if (!est) continue;
-    tripLive.set(t, { seen: rec.getTime(), stale: est.stale, index: est.index, frac: est.frac });
-    if (!est.rail && !est.dep && Math.abs(est.delay) < 60) continue; // a bus about on time, with no learned sections
-    // the trip moves to the time the rider is shown at each stop from the vehicle on (liveAt; docs/architecture.md,
-    // "Live times, end to end", rules 1 and 5): a train boarded when it pulls in, never earlier than its time. A stop
-    // the vehicle has not reached cannot have been left before now (rule 5): the report is up to a minute old, and a
-    // bus a few hundred metres short of the stop was otherwise planned as having left (Nordau, 2026-11-08)
-    for (let i = est.index; i < ns; i++) {
-      const at = liveAt(est, stops, i)!, // null only without an estimate
-        idx = base + i,
-        time = at.passed ? at.time : Math.max(at.time, nowSec);
-      if (tt!.arr[idx] === time && tt!.dep[idx] === time) continue;
+  for (const [key, { from, times }] of Object.entries(live.trips)) {
+    const { p, base } = tripStopList(+key);
+    times.forEach((time, k) => {
+      const idx = base + from + k;
+      if (tt!.arr[idx] === time && tt!.dep[idx] === time) return;
       touched.add(p);
       liveEdits.push(idx, tt!.dep[idx], tt!.arr[idx]);
       tt!.arr[idx] = tt!.dep[idx] = time;
-    }
+    });
   }
-  // in order again: from the last trip back, none later at a stop than the one after it
+  // in order again: from the last trip back, none later at a stop than the one after it (RAPTOR needs them so)
   for (const p of touched) {
     const ns = patternLength(tt!, p),
       { first, end } = tripRange(tt!, p);
@@ -155,8 +133,19 @@ function applyLive(vehicles: Vehicle[], liveEdits: number[], tripLive: LiveTrips
       }
     }
   }
-  return tripLive.size;
+  return live;
 }
+/** Of the live times a plan routed on, those of the trips its journeys ride and of the departures after them: what the
+ *  page needs to draw them as the plan saw them. */
+function pick(trips: LiveTrips['trips'], journeys: JourneyOut[]): LiveTrips['trips'] {
+  const out: LiveTrips['trips'] = {};
+  for (const j of journeys)
+    for (const l of j.legs)
+      if (l.type === 'ride')
+        for (const t of [l.trip, ...(l.next || []).map((n) => n.trip)]) if (trips[t]) out[t] = trips[t];
+  return out;
+}
+const LIVE_NEAR_M = 12000;
 function revertLive(liveEdits: number[]): void {
   for (let i = liveEdits.length - 3; i >= 0; i -= 3) {
     tt!.dep[liveEdits[i]] = liveEdits[i + 1];
@@ -165,26 +154,23 @@ function revertLive(liveEdits: number[]): void {
 }
 /** A leg as the page shows it: the router's leg with its stops named, its course, and for a ride what identifies the
  *  trip and the times the plan used against the listed ones. */
-/** The departures of a route from a stop after a time, up to `n` within two hours, on the timetable as it stands (live-
- *  shifted during a plan), each with what the plan knows live of its trip: the card's "leaves X: in 18, 21:22, 21:43"
- *  (maintainer, 2026-11-08: every card says when its first ride leaves its stop and the ones after it, as Moovit does). */
-function nextDeparts(route: number, stop: number, after: number, q: Resolved, n = 3): NextDep[] {
-  const out: NextDep[] = [];
+/** The departures of a route from a stop after a time, up to `n` within two hours, in the order they come on the
+ *  timetable as it stands (live-shifted during a plan): the card's "leaves X: in 18, 21:22, 21:43" (maintainer,
+ *  2026-11-08: every card says when its first ride leaves its stop and the ones after it, as Moovit does). */
+function nextDeparts(route: number, stop: number, after: number, n = 3): NextDep[] {
+  const out: { d: number; p: number; t: number; pos: number }[] = [];
   for (const { p, pos } of patternsAt(tt!, stop)) {
     if (tt!.patRoute[p] !== route) continue;
     const { first, end } = tripRange(tt!, p);
     for (let t = first; t < end; t++) {
       const d = tt!.dep[timesRow(tt!, t) + pos];
-      if (d <= after || d > after + 7200) continue;
-      out.push({ depart: d, trip: t, live: liveOut(q.live.get(t), d - rawTimes(p, t).dep[pos], pos) });
+      if (d > after && d <= after + 7200) out.push({ d, p, t, pos });
     }
   }
-  return out.sort((a, b) => a.depart - b.depart).slice(0, n);
-}
-/** A ride leg's live part (RideLegOut.live): null without a vehicle on its trip. */
-function liveOut(lv: ReturnType<LiveTrips['get']>, delay: number, boardPos: number): RideLegOut['live'] {
-  if (!lv) return null;
-  return { delay, stale: lv.stale, seen: lv.seen, ahead: boardPos >= 0 && !passedStop(lv.index, lv.frac, boardPos) };
+  return out
+    .sort((a, b) => a.d - b.d)
+    .slice(0, n)
+    .map(({ p, t, pos }) => ({ trip: t, pos, sched: rawTimes(p, t).dep[pos] }));
 }
 function legOut(l: PlanLeg, q: Resolved): LegOut {
   // the router sets no `seconds` on a ride (easierTransfers and slowerSiblings do on the rides they build): its length
@@ -214,9 +200,6 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
       route: tt!.patRoute[p],
       firstDep: raw.dep[0],
       boardPos: bp,
-      // the lateness the plan used at the boarding stop (rule 7: a "+N" beside a time is against the listed time there),
-      // and whether the vehicle was still short of that stop when it reported (the result list's "due")
-      live: liveOut(q.live.get(l.trip), l.depart - (bp >= 0 ? raw.dep[bp] : l.depart), bp),
       schedDepart: bp >= 0 ? raw.dep[bp] : l.depart,
       schedArrive: bp >= 0 ? raw.arr[bp + l.stops] : l.arrive,
       pattern: p,
@@ -229,8 +212,8 @@ function legOut(l: PlanLeg, q: Resolved): LegOut {
         name: sName(s),
         lat: tt!.stopLat[s],
         lon: tt!.stopLon[s],
-        arr: tt!.arr[base + bp + i],
-        dep: tt!.dep[base + bp + i],
+        arr: raw.arr[bp + i],
+        dep: raw.dep[bp + i],
       })),
     } satisfies Rest<RideLegOut>);
   } else if (l.type === 'walk') {
@@ -517,7 +500,7 @@ export const planOps = {
    * Journeys between two places in a departure window; with arriveBy, the window ends at toTime and
    * only journeys arriving by then are kept. maxWalk (s) bounds the walk to the first and from the last stop.
    */
-  plan({
+  async plan({
     from,
     to,
     fromTime,
@@ -528,15 +511,16 @@ export const planOps = {
     maxTransfers = 3,
     maxWalk = 900,
     arriveBy = false,
-    vehicles = null,
+    urls = null,
   }) {
     const t0 = performance.now();
-    return withLiveTimes(vehicles, (tripLive, matched) =>
-      planNow(tripLive, matched == null ? null : { matched, vehicles: vehicles!.length }),
-    );
-    function planNow(tripLive: LiveTrips, live: PlanOut['live']): PlanOut {
+    // the vehicles around the origin and every train: enough for what a plan from here can ride, a fifth of the country's
+    const all = await vehiclesNow(urls),
+      near = (v: SnapVehicle): boolean =>
+        v.operator === 2 || from.lat == null || haversine(v.lat, v.lon, from.lat, from.lon!) <= LIVE_NEAR_M;
+    return withLiveTimes(all && all.filter(near), planNow);
+    function planNow(lived: LiveTrips | null): PlanOut {
       const q: Resolved = {
-        live: tripLive,
         from: resolvePlace(
           from,
           bike === 'none' ? 'walk' : 'bike',
@@ -549,7 +533,7 @@ export const planOps = {
           journeys: [],
           groups: [],
           reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops',
-          live,
+          live: null,
           ms: 0,
         };
       // Two searches: everything, and trains only. The first keeps, per departure, only the earliest arrival, so a bus
@@ -589,7 +573,7 @@ export const planOps = {
       if (!arriveBy) journeys.push(...slowerSiblings(journeys, fromTime, q));
       for (const j of journeys) {
         const r = j.legs.find((l): l is RideLegOut => l.type === 'ride');
-        if (r) r.next = nextDeparts(r.route, r.from.stop, r.depart, q);
+        if (r) r.next = nextDeparts(r.route, r.from.stop, r.depart);
       }
       // nothing in the window: when the next way leaves (one search from the window's end finds the first ride after
       // it, however long the wait), or null when nothing more runs on this service day (a Friday evening)
@@ -615,7 +599,7 @@ export const planOps = {
         bikeOnly,
         candidates: r.candidates,
         streets: !!st,
-        live,
+        live: lived && { asOf: lived.asOf, trips: pick(lived.trips, journeys) },
         ms: performance.now() - t0,
       };
     }

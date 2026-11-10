@@ -10,13 +10,14 @@ import * as detail from '../../state/detail';
 import { now } from '../../state/clock';
 import { dur } from '../../text/durations';
 import { tripKey } from '../../state/store.ts';
-import { liveBadge, rideBadge } from '../../text/live';
+import * as live from '../../state/live';
+import { tripNow } from '../../trip/now';
 import { shareJourney } from './share';
 import { DetailLeg } from './DetailLeg';
 import { payLink } from './pay';
 import { isRide } from '../../trip/journey';
 import type { RideLeg } from '../../trip/journey';
-import { rideOptions, rideLive } from '../../controllers/detail';
+import { rideOptions } from '../../controllers/detail';
 import { openLine, openTrip } from '../../controllers/line';
 import { startTrip } from '../../controllers/follow';
 import { placeName } from '../../state/names';
@@ -28,22 +29,17 @@ const openRideLine = (l: RideLeg) => {
   return openLine(l.route, s != null ? { stop: s } : {});
 };
 
-/** A ride's live badge: the newest look at its vehicle, else the lateness the plan used at its boarding stop. */
-/** A ride's badge: what the live data says now, else the lateness the plan used, else none. */
-function badgeOf(l: RideLeg) {
-  const r = detail.live.value[String(l.trip)];
-  if (r) return rideBadge(r);
-  return l.live ? liveBadge({ time: l.depart, delay: l.live.delay, passed: false, stale: !!l.live.stale }) : null;
-}
 export function Detail() {
   void lang.value;
   void now.value;
   void stored.value;
-  const j = detail.journey.value,
+  const plan = detail.journey.value,
     q = detail.query.value,
     bikeOnly = detail.bikeOnly.value,
     focus = detail.focus.value;
-  if (!j || !q) return null;
+  if (!plan || !q) return null;
+  void live.trips.value;
+  const j = bikeOnly ? plan : tripNow(plan, live.at, clock.nowOn(q.day)); // the journey as it stands now
   // which journey this is: the rows below are keyed by it, so another journey's rows never reuse their state
   const jkey = `${j.depart}|${j.arrive}|${j.legs.map((l) => (isRide(l) ? l.trip : l.type)).join(',')}`;
   const key = tripKey(q),
@@ -105,16 +101,14 @@ export function Detail() {
             key={`${jkey}:${i}`}
             l={l}
             focus={i === focus}
-            badge={isRide(l) ? badgeOf(l) : null}
             onChip={isRide(l) ? () => openRideLine(l) : undefined}
             onFocus={() => detail.focusLeg(i)}
             options={
               isRide(l) && (l.stopsAlong?.length ?? 0) >= 2
                 ? {
                     load: () => rideOptions(l, q),
-                    liveFor: (rows) => rideLive(rows, q.day),
                     day: q.day,
-                    now: q.isNow ? clock.nowOn(q.day) : null,
+                    counting: !!q.isNow,
                     onOpen: openTrip,
                   }
                 : undefined

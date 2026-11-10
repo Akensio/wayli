@@ -1,43 +1,45 @@
-// A vehicle's live standing as the rider reads it: how late, its badge (its time at the stop, passed, or not seen), and
-// the class a time carries for it.
-import * as delays from '../engine/delays.ts';
-import type { LiveTime } from '../engine/delays.ts';
+// A ride's live standing as the rider reads it: how late, its badge, and the class a time carries for it. All of it is
+// said from the same two facts every screen is given (trip/now.ts, state/live.ts): whether the time is sure, and whether
+// the vehicle is past the stop.
 import { t } from '../common/i18n';
 import { fmt } from '../common/time';
 import { nowOn } from '../engine/clock.ts';
-import type { RideLive } from '../trip/journey';
 
+/** What is known live of a ride at a stop; null or undefined: nothing, the time is the timetable's. */
+export type Live = { sure: boolean; passed: boolean } | null | undefined;
 /** Minutes late as the rider reads them: +3, -2, 0. */
 export const signed = (n: number): string => (n > 0 ? '+' : '') + n;
 /** How late a vehicle runs: "on time" or "+3 min late". */
 export const delayText = (d: number): string => (d === 0 ? t('onTime') : t('liveDelay', { d: signed(d) }));
-/** The class a time or a countdown carries for its live standing: live, unsure when the report is old, none without. */
-export function liveClass(live?: { stale?: boolean } | null): '' | ' live' | ' unsure' {
+/** The class a time or a countdown carries for its live standing: live, unsure when it is not certain, none without. */
+export const liveClass = (live: Live): '' | ' live' | ' unsure' => {
   if (!live) return '';
-  return live.stale ? ' unsure' : ' live';
-}
-/** How sure a ride's departure time is, as a class for its chip (maintainer, 2026-11-08): ' sure' (green) when its
- *  vehicle reported within the last four minutes, whatever the shift from the timetable; ' unsure' (orange) when the
- *  report is older, or no vehicle is seen for a ride that leaves within 20 minutes (one should be reporting by then);
- *  ' guess' (red) for a line whose times are estimates; '' for the timetable's time of a ride still far off. */
+  return live.sure ? ' live' : ' unsure';
+};
+/** How sure a ride's departure time is, as a class for its chip (maintainer, 2026-11-08): ' sure' (green) for a live
+ *  time, whatever the shift from the timetable; ' unsure' (orange) when the live time is not certain, or no vehicle is
+ *  seen for a ride that leaves within 20 minutes (one should be reporting by then); ' guess' (red) for a line whose
+ *  times are estimates; '' for the timetable's time of a ride still far off. */
 export function sureness(
-  r: { depart: number; estimated?: boolean; live?: { stale?: boolean } | null },
+  r: { depart: number; estimated?: boolean; live?: Live },
   day: string,
 ): '' | ' sure' | ' unsure' | ' guess' {
   if (r.estimated) return ' guess';
-  if (r.live) return r.live.stale ? ' unsure' : ' sure';
+  if (r.live) return r.live.sure ? ' sure' : ' unsure';
   return r.depart - nowOn(day) <= 20 * 60 ? ' unsure' : '';
 }
-type LiveAt = LiveTime | null;
-export type Badge = { text: string; cls: '' | 'ok' | 'unsure' | 'gone'; time?: number; delayText?: string }; // time: the live departure
-/** A live vehicle's standing as a badge: its time at the stop and how late, passed, or no vehicle found. */
-export function liveBadge(at: LiveAt): Badge {
-  if (!at) return { text: t('liveNoVehicle'), cls: '' };
-  if (at.passed) return { text: t('livePassed'), cls: 'gone' };
-  const d = delays.delayMinutes(at.delay);
-  const badgeDelay = `⦿ ${d === 0 ? t('onTime') : signed(d)}${at.stale ? ' ?' : ''}`;
-  const text = `⦿ ${fmt(at.time)}${d === 0 ? ' · ' + t('onTime') : ` (${signed(d)})`}${at.stale ? ' ?' : ''}`;
-  return { text, cls: at.stale ? 'unsure' : 'ok', time: at.time, delayText: badgeDelay };
+/** A badge: its words in full and in short, and its class. */
+export type Badge = { text: string; short: string; cls: 'ok' | 'unsure' | 'gone' };
+/** A ride's live standing at a stop as a badge: passed, or its time there with how late that is against the listed
+ *  one ("⦿ 16:56 (+5)", in short "⦿ +5"; a "?" when not certain). Null without live: nothing is claimed. */
+export function liveBadge(live: Live, time: number, listed: number): Badge | null {
+  if (!live) return null;
+  if (live.passed) return { text: t('livePassed'), short: t('livePassed'), cls: 'gone' };
+  const d = Math.round((time - listed) / 60),
+    q = live.sure ? '' : ' ?';
+  return {
+    text: `⦿ ${fmt(time)}${d === 0 ? ' · ' + t('onTime') : ` (${signed(d)})`}${q}`,
+    short: `⦿ ${d === 0 ? t('onTime') : signed(d)}${q}`,
+    cls: live.sure ? 'ok' : 'unsure',
+  };
 }
-/** A ride's live standing as a badge: as liveBadge, or that the live data could not be had. */
-export const rideBadge = (r: RideLive): Badge => (r === 'failed' ? { text: t('liveFail'), cls: '' } : liveBadge(r.at));

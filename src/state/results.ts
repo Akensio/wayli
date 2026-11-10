@@ -3,13 +3,13 @@
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
-import { FRESH_S } from '../engine/delays.ts';
 import { settings } from './store.ts';
 import { lang } from '../common/i18n';
 import * as search from './search';
 import { now } from './clock';
 import type { Journey, PlanResult, RideLeg } from '../trip/journey';
-import { ridesOf } from '../trip/journey';
+import { firstRide, timeAt, tripNow, type At } from '../trip/now';
+import * as live from './live';
 import type { Query } from '../trip/query';
 import { unset } from '../common/unset';
 export type { View } from './store.ts';
@@ -18,7 +18,14 @@ type Status = 'idle' | 'planning' | 'locating';
 export type Sort = 'depart' | 'arrive' | 'fast' | 'changes';
 export type Filters = { fDirect: boolean; fTrain: boolean; resultSort: Sort };
 /** One card: the first option of a group, the other departures of the same lines. */
-export type Card = { idx: number; j: Journey; q: Query; options: Journey[]; lines: string[][] | null };
+export type Card = {
+  idx: number;
+  j: Journey;
+  q: Query;
+  options: Journey[];
+  lines: string[][] | null;
+  deps: Dep[]; // when its first ride leaves its stop, and the rides after it
+};
 
 export const SORTS: Sort[] = ['arrive', 'depart', 'fast', 'changes']; // by arrival first: every plan starts so (maintainer)
 const sortKey: Record<Sort, (j: Journey) => number> = {
@@ -35,7 +42,6 @@ const readFilters = (sort: Sort = 'arrive'): Filters => {
 
 export const result = signal<PlanResult | null>(null);
 export const query = signal<Query | null>(null);
-export const resultsAt = signal<number | null>(null); // when the results were restored from an earlier session
 export const status = signal<Status>('idle'); // the list gives way to "planning…" or "locating…"
 export const error = signal('');
 export const filters = signal<Filters>(readFilters());
@@ -53,39 +59,39 @@ search.onKind((k) => {
 export type Dep = {
   depart: number;
   trip: number;
-  live?: RideLeg['live'];
+  live: RideLeg['live'];
   estimated?: boolean;
   stop?: string;
   o?: Journey;
 };
 /** The departures a card lists: its options' first rides and the own ride's followers, one per trip, in time order,
- *  the own one and up to three after it (an earlier option that arrives later, the train at the platform, stays). */
-export function departures(j: Journey, options: Journey[]): Dep[] {
+ *  the own one and up to three after it (an earlier option that arrives later, the train at the platform, stays). The
+ *  journeys are as they stand now (tripNow); the followers' times are asked the same way. */
+export function departures(j: Journey, options: Journey[], at: At, now: number): Dep[] {
   const by = new Map<number, Dep>();
   for (const o of options) {
-    const r = ridesOf(o.legs)[0];
+    const r = firstRide(o);
     if (r)
       by.set(r.trip, { depart: r.depart, trip: r.trip, live: r.live, estimated: r.estimated, stop: r.from?.name, o });
   }
-  const own = ridesOf(j.legs)[0];
-  for (const n of own?.next || [])
-    if (!by.has(n.trip))
-      by.set(n.trip, {
-        depart: n.depart,
-        trip: n.trip,
-        live: n.live,
-        estimated: own!.estimated,
-        stop: own!.from?.name,
-      });
+  const own = firstRide(j);
+  for (const n of own?.next || []) {
+    if (by.has(n.trip)) continue;
+    const x = timeAt(at, n.trip, n.pos, n.sched, now);
+    by.set(n.trip, {
+      depart: x.time,
+      trip: n.trip,
+      live: x.live && { sure: x.live.sure, passed: x.live.passed },
+      estimated: own!.estimated,
+      stop: own!.from?.name,
+    });
+  }
   const all = [...by.values()].sort((a, b) => a.depart - b.depart);
   const i = all.findIndex((d) => d.o === j);
   return all.filter((d, k) => k <= i + 3 && (k >= i || d.o?.slower));
 }
 /** The first ride's departure, or the journey's start. */
-export const rideDep = (j: Journey): number => {
-  const fr = j.legs.find((l) => l.type === 'ride');
-  return fr ? fr.depart! : j.depart;
-};
+export const rideDep = (j: Journey): number => firstRide(j)?.depart ?? j.depart;
 /** The way to the first ride, as planned: everything covered on foot (or by bike) before boarding. */
 const toFirstRide = (j: Journey): number => {
   let s = 0;
@@ -96,33 +102,18 @@ const toFirstRide = (j: Journey): number => {
   return s;
 };
 const HURRIED = 0.6; // hurrying (a fast walk or a jog, 2 m/s against the planned 1.2) takes 0.6 of the time; an estimate
-/** Where a journey stands now (docs/architecture.md, "When to leave: the result list"). With L its start, B its first
- *  ride and n now: on time while n <= L; "hurry" while the time left before B still covers the way to the ride at a
- *  hurried pace; gone after that (the ride left, or leaves before the rider can reach it). A way with no ride is never
- *  late. */
+/** Where a journey stands (docs/architecture.md, "When to leave: the result list"), given as it stands now (tripNow)
+ *  with L its start, B its first ride and n now: on time while n <= L; "hurry" while the time left before B still
+ *  covers the way to the ride at a hurried pace; gone after that, or once the ride's vehicle is past the stop, or a
+ *  change in it is missed. A ride whose vehicle has not reached the stop never leaves before now (tripNow), so the
+ *  rider standing there keeps its card. A way with no ride is never late. */
 export type Standing = 'ontime' | 'hurry' | 'gone';
-/** A journey whose first ride is due: its vehicle, in a report fresh enough to trust (FRESH_S), had not reached the
- *  boarding stop. Its planned time may fall behind the clock (the report is a minute old, the way to the stop short),
- *  but the ride has not gone: it leaves now at the earliest (the maintainer at Nordau, 2026-11-08, a bus 300 m short of
- *  the stop filed under "just left" while Moovit said "now"). */
-export function due(j: Journey, nowMs = Date.now()): boolean {
-  const lv = j.legs.find((l) => l.type === 'ride')?.live;
-  return !!lv && !!lv.ahead && lv.seen != null && nowMs - lv.seen <= FRESH_S * 1000;
-}
-/** When a journey leaves, as the list reads it now: as planned, or for a due ride that the clock has caught up with,
- *  moved on with it (the ride leaves now at the earliest, and the way to it with it). */
-export function leaveAt(j: Journey, n: number, nowMs = Date.now()): number {
-  return j.depart + (due(j, nowMs) ? Math.max(0, n - rideDep(j)) : 0);
-}
-/** When the first ride leaves, as the list reads it now (leaveAt, for the ride). */
-export const rideAt = (j: Journey, n: number, nowMs = Date.now()): number =>
-  rideDep(j) + leaveAt(j, n, nowMs) - j.depart;
-export function standing(j: Journey, n: number, nowMs = Date.now()): Standing {
-  if (!j.legs.some((l) => l.type === 'ride')) return 'ontime';
-  const L = leaveAt(j, n, nowMs),
-    B = rideDep(j) + (L - j.depart);
-  if (n <= L) return 'ontime';
-  return B - n >= HURRIED * toFirstRide(j) ? 'hurry' : 'gone';
+export function standing(j: Journey, n: number): Standing {
+  const r = firstRide(j);
+  if (!r) return 'ontime';
+  if (j.missed || r.live?.passed) return 'gone';
+  if (n <= j.depart) return 'ontime';
+  return r.depart - n >= HURRIED * toFirstRide(j) ? 'hurry' : 'gone';
 }
 
 /** The cards in list order (idx is the group's place, so a card keeps its number on the map while its options move
@@ -130,10 +121,13 @@ export function standing(j: Journey, n: number, nowMs = Date.now()): Standing {
 function build(
   r: PlanResult | null,
   q: Query | null,
-  at: number | null,
   f: Filters,
+  at: At,
 ): { cards: Card[]; hurry: Journey[]; gone: Journey[]; filteredOut: boolean } {
   if (!r || !q || !r.journeys.length) return { cards: [], hurry: [], gone: [], filteredOut: false };
+  // every journey as it stands now: the one place the plan's listed times meet the live ones
+  const nowSec = clock.nowOn(q.day),
+    nowJ = r.journeys.map((j) => tripNow(j, at, nowSec));
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
   // the option a card shows: the earliest departure from the time asked, or for arrive-by the latest that is in time
   const first = (g: { options: number[] }) => r.journeys[q.arriveBy ? g.options[g.options.length - 1] : g.options[0]];
@@ -147,10 +141,8 @@ function build(
     sk = sortKey[f.resultSort];
   const byKey = (a: Journey, b: Journey) => sk(a) - sk(b) || sortKey.depart(a) - sortKey.depart(b);
   if (sorted) groups = groups.slice().sort((a, b) => byKey(first(a), first(b)));
-  const nowSec = clock.nowOn(q.day);
-  const nowMs = Date.now(),
-    where = (j: Journey): Standing => (q.isNow ? standing(j, nowSec, nowMs) : 'ontime'); // a plan for a set time is read as asked
-  const onStrip = (j: Journey) => rideDep(j) >= nowSec - 600 || (!!at && j.arrive > nowSec); // left lately, or (restored) still under way
+  const where = (j: Journey): Standing => (q.isNow ? standing(j, nowSec) : 'ontime'); // a plan for a set time is read as asked
+  const onStrip = (j: Journey) => rideDep(j) >= nowSec - 600; // left lately
   const add = (to: Journey[], j: Journey) => {
     if (!to.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) to.push(j);
   };
@@ -158,7 +150,7 @@ function build(
     hurry: Journey[] = [],
     gone: Journey[] = [];
   groups.forEach((g, idx) => {
-    let opts = g.options.map((i) => r.journeys[i]);
+    let opts = g.options.map((i) => nowJ[i]);
     if (q.arriveBy) opts = opts.slice().reverse();
     for (const j of opts) {
       const w = where(j);
@@ -166,7 +158,15 @@ function build(
       else if (w === 'gone' && onStrip(j)) add(gone, j);
     }
     opts = opts.filter((j) => where(j) === 'ontime');
-    if (opts.length) cards.push({ idx, j: opts[0], q, options: opts, lines: g.lines });
+    if (opts.length)
+      cards.push({
+        idx,
+        j: opts[0],
+        q,
+        options: opts,
+        lines: g.lines,
+        deps: departures(opts[0], opts, at, nowSec),
+      });
   });
   if (sorted) cards.sort((a, b) => byKey(a.j, b.j)); // "by arrival" means the arrival the card shows
   hurry.sort((a, b) => rideDep(a) - rideDep(b));
@@ -175,7 +175,8 @@ function build(
 export const list = computed(() => {
   void lang.value;
   void now.value;
-  return build(result.value, query.value, resultsAt.value, filters.value);
+  void live.trips.value;
+  return build(result.value, query.value, filters.value, live.at);
 });
 /** A way's card to bring into view with a flash (its index; `n` makes asking again for the same card a change). */
 export const reveal = signal<{ idx: number; n: number } | null>(null);
@@ -200,12 +201,11 @@ function resetAlts(): void {
   altShown.value = new Set(cards.slice(0, 3).map((c) => c.idx));
   altSel.value = cards.length ? cards[0].idx : -1;
 }
-export function setResults(r: PlanResult, q: Query, at: number | null = null): void {
+export function setResults(r: PlanResult, q: Query): void {
   // the boxes stay open: picking a destination plans at once, and the time or the bike may still change (a change
   // plans again). They fold when the rider moves on: a tap on the map, a result opened, the sheet dragged, X or back.
   result.value = r;
   query.value = q;
-  resultsAt.value = at;
   status.value = 'idle';
   error.value = '';
   if (filters.value.resultSort !== 'arrive') filters.value = { ...filters.value, resultSort: 'arrive' };
@@ -215,7 +215,6 @@ export function setResults(r: PlanResult, q: Query, at: number | null = null): v
 export function clear(): void {
   result.value = null;
   query.value = null;
-  resultsAt.value = null;
   status.value = 'idle';
   altShown.value = new Set();
   altSel.value = -1;

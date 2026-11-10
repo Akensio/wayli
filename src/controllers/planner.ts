@@ -4,7 +4,6 @@
 import { effect } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.ts';
-import type { Vehicle } from '../engine/feed.ts';
 import { settings, recentPlaces, recentTrips, lastSearch } from '../state/store.ts';
 import { t, lang } from '../common/i18n';
 import { dateOf } from '../common/time';
@@ -26,6 +25,8 @@ import { openStop } from './stop';
 import { chooseStation, openStation, openTrains } from './station';
 import * as stopPage from '../state/stop';
 import { openDetail } from './detail';
+import * as liveTimes from './live';
+import { isRide } from '../trip/journey';
 import * as query from '../state/query';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
@@ -116,18 +117,6 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   // a plan from now takes the delays of the vehicles on the road into account
   const svc = clock.serviceDay();
   const liveTried = withLive({ liveOn: map.liveOn(), arriveBy, day, at, now: { day: svc.day, seconds: svc.seconds } });
-  let vehicles: Vehicle[] | null = null,
-    liveAsOf: Date | null = null;
-  if (liveTried && from.lat != null && from.lon != null) {
-    try {
-      vehicles = await feed.vehiclesForPlanning(from.lat, from.lon, { timeoutMs: 8000 });
-      liveAsOf = feed.newest(vehicles);
-    } catch {
-      vehicles = null;
-    }
-    if (my !== planSeq) return;
-  }
-  q.liveAsOf = liveAsOf ? liveAsOf.getTime() : null;
   q.liveTried = liveTried;
   try {
     const r = await call('plan', {
@@ -140,9 +129,10 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
       weekday,
       maxWalk,
       arriveBy,
-      vehicles,
+      urls: liveTried ? feed.RELAY_URLS : null,
     });
     if (my !== planSeq) return;
+    liveTimes.seed(r.live); // the times it was routed on: the results are drawn as planned at once
     recentTrips.add(q);
     recentPlaces.add(from);
     recentPlaces.add(to);
@@ -342,6 +332,15 @@ export function toHere(): void {
 
 /** Start: a plan waiting for its day's timetable is made when it comes; the bar's and the results' hooks. */
 export function install(): void {
+  // the results' rides, and the departures after each first ride, are looked up live for as long as they are shown
+  effect(() => {
+    const r = results.result.value;
+    const rides = (r ? r.journeys : []).flatMap((j) => j.legs.filter(isRide));
+    liveTimes.watch('results', [
+      ...rides.map((l) => l.trip),
+      ...rides.flatMap((l) => (l.next || []).map((n) => n.trip)),
+    ]);
+  });
   effect(() => {
     if (data.ttReady.value && waiting) plan();
   });

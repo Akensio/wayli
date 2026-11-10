@@ -16,10 +16,9 @@ first paint.
 | `suggest` | What a search box's list holds for its kind and text, each box's answers in the order it asked. |
 | `loading` | The manifest, the day's timetable, then the address book, the street graph and the courses. |
 | `planner` | From the bar to results: planning, "my location", a destination from anywhere, the last search, opening history items. |
-| `detail` | A journey's detail: live badges on its rides, the ride options of each ride. |
-| `stop`, `line`, `station` | A stop's page, a line's page, the trains between two stations: their worker calls and live polls. |
-| `liverides` | Live times for rides between two stops (shared by `station` and `detail`). |
-| `livepoll` | A panel's live times every 45 s while it is open, and its note (the stop page, the trains between two stations). |
-| `follow`, `alerts` | Following a trip: position, timers, the live vehicle, a faster way; get-off alerts and notifications. |
+| `live` | The one look for live times: each screen says which trips it shows (`watch`), one timer asks the worker for all of them every 30 s and fills `state/live`; a ride's line on the map. No other controller fetches live times. |
+| `detail` | A journey's detail: its rides watched live, the ride options of each ride. |
+| `stop`, `line`, `station` | A stop's page, a line's page, the trains between two stations: their worker calls, and which trips they watch. |
+| `follow`, `alerts` | Following a trip as it stands now (`trip/now`): position, timers, a faster way; get-off alerts and notifications. |
 | `shell` | Around the screens: Back on Android, install, online/offline, the menu's actions, what closing each panel stops. |
 | `lang`, `status` | Switching language; the status pill. |

@@ -11,6 +11,7 @@ import { t, lang } from '../../common/i18n';
 import * as clock from '../../engine/clock.ts';
 import { fmt, secOf, timeOf } from '../../common/time';
 import * as results from '../../state/results';
+import * as live from '../../state/live';
 import { describePlace } from '../../text/placeNames';
 import { LegChips } from './LegChips';
 import { JourneyCard } from './JourneyCard';
@@ -24,14 +25,13 @@ import { startTrip } from '../../controllers/follow';
 import * as query from '../../state/query';
 import { Tappable } from '../../widgets/Tappable';
 
-function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
+function Head({ q, n }: { q: Query; n: number }) {
   let note = '';
   if (q.bike === 'along') note = q.folding ? t('foldingNote') : t('withBikeOnBoard');
   else if (q.bike === 'park') note = t('parkNote');
   return (
     <div class="results-head muted">
       <span>
-        {at ? t('resultsFrom', { time: timeOf(at) }) + ' · ' : ''}
         {t('found', { n })}
         {note}
         {q.arriveBy ? ' · ' + t('arriveByNote', { time: fmt(secOf(q.at)) }) : ''}
@@ -39,25 +39,13 @@ function Head({ q, n, at }: { q: Query; n: number; at: number | null }) {
           <>
             {' '}
             ·{' '}
-            <span class={`live${q.liveAsOf ? ' ok' : ''}`}>
-              {q.liveAsOf ? t('livePlanned', { time: timeOf(q.liveAsOf) }) : t('schedOnly')}
+            <span class={`live${live.asOf.value ? ' ok' : ''}`}>
+              {live.asOf.value ? t('livePlanned', { time: timeOf(live.asOf.value) }) : t('schedOnly')}
             </span>
           </>
         )}
       </span>
       <span class="spacer" />
-      {at && (
-        <button
-          type="button"
-          class="linkbtn"
-          onClick={() => {
-            query.resetNow();
-            plan();
-          }}
-        >
-          {t('planAgain')}
-        </button>
-      )}
     </div>
   );
 }
@@ -85,29 +73,15 @@ function Filters() {
 }
 
 /** A quiet line that opens on a tap to a few compact ways, each with a word on where it stands and a button (the ways
- *  in reach if the rider hurries, and the rides that just left, share it). `fixed` shows the rows under a plain title. */
-function Strip({
-  cls,
-  hint,
-  fixed,
-  children,
-}: {
-  cls: string;
-  hint: string;
-  fixed?: boolean;
-  children: ComponentChildren;
-}) {
+ *  in reach if the rider hurries, and the rides that just left, share it). */
+function Strip({ cls, hint, children }: { cls: string; hint: string; children: ComponentChildren }) {
   const [open, setOpen] = useState(false);
   return (
     <div class={`strip ${cls}`}>
-      {fixed ? (
-        <div class="muted">{hint}</div>
-      ) : (
-        <Fold class="strip-hint" open={open} onClick={() => setOpen(!open)}>
-          {hint}
-        </Fold>
-      )}
-      <div class="strip-rows" hidden={!fixed && !open}>
+      <Fold class="strip-hint" open={open} onClick={() => setOpen(!open)}>
+        {hint}
+      </Fold>
+      <div class="strip-rows" hidden={!open}>
         {children}
       </div>
     </div>
@@ -159,15 +133,11 @@ function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
     </Strip>
   );
 }
-/** Rides that just left: on a fresh plan one quiet line that opens on a tap (most riders want the next departures);
- *  on a plan restored from earlier they are shown, since the rider is likely on the way already. */
-function GoneStrip({ gone, q, restored }: { gone: Journey[]; q: Query; restored: boolean }) {
+/** Rides that just left: one quiet line that opens on a tap (most riders want the next departures). */
+function GoneStrip({ gone, q }: { gone: Journey[]; q: Query }) {
   const nowSec = clock.nowOn(q.day);
-  let hint = t('goneHint', { n: gone.length });
-  if (restored) hint = t('goneTitle');
-  else if (gone.length === 1) hint = t('goneHint1');
   return (
-    <Strip cls="gone" fixed={restored} hint={hint}>
+    <Strip cls="gone" hint={gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length })}>
       {gone
         .slice()
         .sort((a, b) => b.depart - a.depart)
@@ -260,8 +230,7 @@ export function Results() {
   void lang.value;
   const st = results.status.value,
     r = results.result.value,
-    q = results.query.value,
-    at = results.resultsAt.value;
+    q = results.query.value;
   if (st !== 'idle')
     return (
       <div id="results">
@@ -273,8 +242,8 @@ export function Results() {
   const bikeOnly = r.bikeOnly;
   return (
     <div id="results">
-      <Head q={q} n={(r.groups || r.journeys).length} at={at} />
-      {gone.length > 0 && <GoneStrip gone={gone} q={q} restored={!!at} />}
+      <Head q={q} n={(r.groups || r.journeys).length} />
+      {gone.length > 0 && <GoneStrip gone={gone} q={q} />}
       {hurry.length > 0 && <HurryStrip hurry={hurry} q={q} />}
       {bikeOnly && (
         <Tappable

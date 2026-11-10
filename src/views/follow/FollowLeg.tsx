@@ -1,7 +1,7 @@
 // One leg of the trip being followed (Follow), the detail's frame (detail/LegFrame) with what following needs: the
 // departure alone down the side; a ride's from, to and stops with its vehicle's badge, the change into it from the ride
-// before (to spare, tight, or missed), and its stops along, open by themselves on the current ride, each at its live
-// time with the passed ones marked; a walk or bicycle ride in words.
+// before (to spare, tight, or missed), and its stops along, open by themselves on the current ride, each at its time
+// as it stands now with the passed ones marked; a walk or bicycle ride in words.
 import { LegFrame, StopsAlongFold, legTime } from '../detail/LegFrame';
 import { t } from '../../common/i18n';
 import { fmt } from '../../common/time';
@@ -9,17 +9,14 @@ import { FromTo } from '../../widgets/FromTo';
 import { stopsText } from '../../text/travel';
 import { isRide } from '../../trip/journey';
 import type { Leg } from '../../trip/journey';
-import type { Badge } from '../../text/live';
-import type { LegLive } from '../../state/follow';
+import { liveBadge } from '../../text/live';
+import type { Connection as Change } from '../../state/follow';
 
-type Change = NonNullable<LegLive['change']>;
 type Props = {
   l: Leg;
   stage?: 'done' | 'current'; // behind the rider, or the step they are on
-  badge?: Badge | null; // a ride's vehicle at its boarding stop
   change?: Change | null; // the change into this ride from the ride before
   stopsOpen?: boolean; // the stops open by themselves: the current ride, or the next one while walking or waiting
-  stopLive?: LegLive['stops']; // each stop at its shown time, passed ones marked (the vehicle's word)
   passedUpTo?: number | null; // on board: the rider's own stop index, which outranks the vehicle's word
 };
 
@@ -34,10 +31,11 @@ function changeText(change: Change): string {
   return t(change.sec < 120 ? 'changeTight' : 'changeOk', { n: Math.round(change.sec / 60) });
 }
 
-export function FollowLeg({ l, stage, badge, change, stopsOpen, stopLive, passedUpTo }: Props) {
+export function FollowLeg({ l, stage, change, stopsOpen, passedUpTo }: Props) {
   const times = legTime(l, l.depart);
   if (!isRide(l)) return <LegFrame l={l} cls={stage} times={times} />;
-  const stopsAlong = l.stopsAlong || [];
+  const stopsAlong = l.stopsAlong || [],
+    badge = liveBadge(l.live, l.depart, l.schedDepart ?? l.depart); // its vehicle at the boarding stop
   return (
     <LegFrame
       l={l}
@@ -46,15 +44,11 @@ export function FollowLeg({ l, stage, badge, change, stopsOpen, stopLive, passed
       head={
         <>
           <FromTo from={l.from!.name} to={l.to!.name} /> · {stopsText(l.stops)}
-          {badge && <span class={`live ${badge.cls}`}>{badge.text}</span>}
+          {badge && <span class={`live ${badge.cls}`}>{badge.short}</span>}
           {change && <small class={`change ${changeClass(change.sec)}`}>{changeText(change)}</small>}
         </>
       }
-      folds={
-        stopsAlong.length > 1 && (
-          <StopsAlongFold stops={stopsAlong} opens={stopsOpen} live={stopLive} passedUpTo={passedUpTo} />
-        )
-      }
+      folds={stopsAlong.length > 1 && <StopsAlongFold stops={stopsAlong} opens={stopsOpen} passedUpTo={passedUpTo} />}
     />
   );
 }

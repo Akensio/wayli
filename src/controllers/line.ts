@@ -11,8 +11,8 @@ import type { LineInfo } from '../state/line';
 import { recentViews } from '../state/store.ts';
 import * as data from '../state/data';
 import { lastPos } from '../state/position';
-import { tripStopsCached, estimate } from '../worker/client';
-import * as delays from '../engine/delays.ts';
+import { tripStopsCached } from '../worker/client';
+import * as liveTimes from './live';
 import type { LineTime } from '../state/line';
 import { metres } from '../engine/geo.ts';
 import { timeOf } from '../common/time';
@@ -20,7 +20,6 @@ import { panelSession, whileVisible } from './session';
 
 const session = panelSession(); // the line shown: older answers dropped, its vehicles' poll stopped with it
 let current: LineInfo | null = null;
-let seenNow: { vs: any[]; st: any[] } = { vs: [], st: [] }; // the line's vehicles at the last look, and which trip each runs
 
 /** A line, as a timetable at `stop` when it calls there (the stop the rider came from: a stop's view, a ride's boarding
  *  stop), else at its stop nearest the rider, else its first; with `trip`, that trip chosen (a departure, a vehicle). */
@@ -90,7 +89,7 @@ async function setAnchor(i: number, my = session.current(), trip?: number): Prom
     svc = clock.serviceDay(),
     today = day === svc.day;
   const now = today ? clock.nowOn(day) : null;
-  linePage.now.value = now;
+  linePage.today.value = today;
   try {
     const rows = await call('lineTimes', { route: info.route, from: [info.stops[i].stop] });
     if (!session.isCurrent(my) || linePage.anchor.value !== i) return;
@@ -117,18 +116,17 @@ async function pick(r: LineTime, my = session.current()): Promise<void> {
   const info = current;
   if (!info) return;
   linePage.sel.value = r.trip;
-  linePage.selLive.value = [];
-  void selLive(my);
+  liveTimes.watch('line', [r.trip]);
   try {
     const ts = await tripStopsCached(r.trip);
     if (!session.isCurrent(my) || linePage.sel.value !== r.trip) return;
     // by stop, and by name for a train calling at another platform of the same station
-    const byStop = new Map<number, number>(),
-      byName = new Map<string, number>();
-    for (const s of ts.stops as { stop: number; name: string; dep: number }[]) {
-      byStop.set(s.stop, s.dep);
-      byName.set(s.name, s.dep);
-    }
+    const byStop = new Map<number, { time: number; pos: number }>(),
+      byName = new Map<string, { time: number; pos: number }>();
+    (ts.stops as { stop: number; name: string; dep: number }[]).forEach((s, pos) => {
+      byStop.set(s.stop, { time: s.dep, pos });
+      byName.set(s.name, { time: s.dep, pos });
+    });
     linePage.selTimes.value = info.stops.map((s) => byStop.get(s.stop) ?? byName.get(s.name) ?? null);
   } catch {
     /* the times at the stop stay */
@@ -136,44 +134,9 @@ async function pick(r: LineTime, my = session.current()): Promise<void> {
 }
 export function closeLine(): void {
   session.end();
+  liveTimes.unwatch('line');
   current = null;
-  seenNow = { vs: [], st: [] };
 }
-/** The chosen trip's live time at each stop of the list, when its vehicle is among the line's: the time the rider is
- *  shown everywhere (delays.js liveAt), so the line and a trip with that ride say the same. By stop, and by name for a
- *  train calling at another platform of the same station. */
-async function selLive(my = session.current()): Promise<void> {
-  const info = current,
-    trip = linePage.sel.value,
-    k = seenNow.st.findIndex((s) => s && s.trip === trip);
-  if (!info || trip == null || k < 0) {
-    linePage.selLive.value = [];
-    return;
-  }
-  const day = data.dayInfo.value?.date || '';
-  try {
-    const ts = await tripStopsCached(trip);
-    const est = await estimate(seenNow.vs[k], ts.stops, day);
-    if (!session.isCurrent(my) || linePage.sel.value !== trip) return;
-    if (!est) {
-      linePage.selLive.value = [];
-      return;
-    }
-    const byStop = new Map<number, linePage.LiveTime>(),
-      byName = new Map<string, linePage.LiveTime>();
-    (ts.stops as { stop: number; name: string }[]).forEach((s, i) => {
-      const at = delays.liveAt(est, ts.stops, i);
-      if (!at) return;
-      const lt = { time: at.time, delay: at.delay, passed: at.passed, stale: !!at.stale };
-      byStop.set(s.stop, lt);
-      byName.set(s.name, lt);
-    });
-    linePage.selLive.value = info.stops.map((s) => byStop.get(s.stop) ?? byName.get(s.name) ?? null);
-  } catch (e) {
-    console.warn('line: live times of the trip chosen', e); // the timetable stays
-  }
-}
-
 /** The line's vehicles on its map, with how late each runs. */
 async function lineLive(): Promise<void> {
   const info = current;
@@ -198,8 +161,6 @@ async function lineLive(): Promise<void> {
       mine: null,
       fallback: { line: info.line, headsign: info.headsign, agency: info.agency, route: info.route },
     });
-    seenNow = { vs, st };
-    void selLive(my);
     const nw = feed.newest(vs);
     linePage.liveText.value =
       vs.length && nw ? `${t('vehiclesOnLine', { n: vs.length })} · ${timeOf(nw)}` : t('noLineVehicles');

@@ -101,13 +101,12 @@ export function LegFrame({ l, cls = '', times, onClick, onChip, head, folds, wid
 type StopsProps = {
   stops: StopAlong[];
   opens?: boolean; // opens by itself when this turns true (following: the current ride)
-  live?: { time: number; passed: boolean }[] | null; // following: each stop's shown time, passed ones marked
   passedUpTo?: number | null; // following on board: the rider's own stop index, which outranks the vehicle's word
 };
 
-/** A ride's stops as a fold: each at its time (a live one beside the struck listed one when a minute or more apart),
- *  the passed ones dimmed, the next one tagged, the last one in bold. */
-export function StopsAlongFold({ stops, opens, live, passedUpTo }: StopsProps) {
+/** A ride's stops as a fold: each at its time as it stands now (the listed one struck beside it when a minute or more
+ *  apart), the passed ones dimmed, the next one tagged, the last one in bold. */
+export function StopsAlongFold({ stops, opens, passedUpTo }: StopsProps) {
   const [open, setOpen] = useState(!!opens);
   useEffect(() => {
     if (opens) setOpen(true);
@@ -119,21 +118,20 @@ export function StopsAlongFold({ stops, opens, live, passedUpTo }: StopsProps) {
       </Fold>
       <div class="stoplist" hidden={!open}>
         {stops.map((s, k) => {
-          const lv = live ? live[k] : null,
-            time = lv ? lv.time : s.arr;
-          const passed = passedUpTo != null ? k <= passedUpTo : !!(lv && lv.passed),
+          const listed = s.sched ?? s.arr;
+          const passed = passedUpTo != null ? k <= passedUpTo : !!s.passed,
             next = passedUpTo != null && k === passedUpTo + 1,
             last = k === stops.length - 1;
           return (
             // a loop line can call at a stop twice: its place along the ride tells the two apart
             <div key={`${k}:${s.stop}`} class={`${passed ? 'passed' : ''}${next ? ' next' : ''}${last ? ' last' : ''}`}>
               <span>
-                {lv && Math.abs(time - s.arr) >= 60 ? (
+                {Math.abs(s.arr - listed) >= 60 ? (
                   <>
-                    <s>{fmt(s.arr)}</s> {fmt(time)}
+                    <s>{fmt(listed)}</s> {fmt(s.arr)}
                   </>
                 ) : (
-                  fmt(time)
+                  fmt(s.arr)
                 )}
               </span>
               <span>

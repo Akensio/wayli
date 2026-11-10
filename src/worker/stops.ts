@@ -384,6 +384,7 @@ export const stopsOps = {
           if (d >= fromTime - back)
             out.push({
               time: d,
+              pos,
               line: routeLabel(r),
               headsign: headsign(tt!.patRoute[p]),
               routeType: r[3],
@@ -392,15 +393,15 @@ export const stopsOps = {
               routeId: liveId(r),
               estimated: !!r[6],
               firstDep: tt!.dep[row],
-              ...(d < fromTime ? { early: true } : {}),
             });
         }
       }
     out.sort((a, b) => a.time - b.time);
-    // the limit counts the departures from the time asked; the earlier ones ride along (the last `back` only)
-    const early = out.filter((d) => d.early).slice(-12),
-      due = out.filter((d) => !d.early).slice(0, limit);
-    return [...early, ...due];
+    // the limit counts the departures from the time asked; the earlier ones ride along (the last `back` only): one
+    // listed earlier shows while the live times say it is still to come (state/stop.ts visibleDeps)
+    const k = out.findIndex((d) => d.time >= fromTime),
+      from = k < 0 ? out.length : k;
+    return out.slice(Math.max(0, from - 12), from + limit);
   },
 } satisfies OpsPart<
   'stopGroups' | 'stationReach' | 'stopRoutes' | 'findRecent' | 'stopsGeo' | 'stopInfo' | 'nearbyRoutes' | 'departures'

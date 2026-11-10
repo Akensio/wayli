@@ -6,17 +6,18 @@ import { secondsOn } from '../engine/clock.ts';
 import {
   estimateDelay,
   hasBusTimes,
+  liveAt,
   type DelayEstimate,
   type TimedStop,
   type VehicleReport,
 } from '../engine/delays.ts';
-import type { Vehicle } from '../engine/feed.ts';
+import { newest, type Vehicle } from '../engine/feed.ts';
 import { haversine } from '../engine/geo.ts';
 import { tt, onBusTimes } from './data.ts';
 import { headsign } from './names.ts';
 import { noteRoads } from './traffic.ts';
 import { tripFor, tripStopList } from './trips.ts';
-import type { OpsPart, VehicleStatus } from './ops.ts';
+import type { LiveTrips, OpsPart, TripLive, VehicleStatus } from './ops.ts';
 
 /** A vehicle as the snapshot gives it (snapVehicles): feed.ts's Vehicle with everything the relay's SIRI carries set:
  *  its line ref as a string, a number for its bearing and speed (0 when it reports none) and its operator. */
@@ -93,6 +94,43 @@ export function estimateFor(v: VehicleReport, stops: readonly TimedStop[], day: 
   if (ride && est && !est.waiting && (!o || rec >= o.at)) places.set(ride, { index: est.index, at: rec });
   return est;
 }
+/** A trip's times as they stand now, from its vehicle's report: the time the rider is shown at each stop from the
+ *  vehicle on (delays.ts liveAt), and how many stops it is past. A stop the vehicle has not passed cannot have been left
+ *  before now: the report is up to a minute old, and a bus a few hundred metres short of a stop was otherwise planned
+ *  and listed as gone (Nordau, 2026-11-08). Null when the report says nothing of the trip (estimateDelay). */
+export function tripLive(t: number, v: VehicleReport, nowSec: number): TripLive | null {
+  const { stops } = tripStopList(t),
+    est = estimateFor(v, stops, tt!.header.date);
+  if (!est) return null;
+  const times: number[] = [];
+  let passed = est.index;
+  for (let i = est.index; i < stops.length; i++) {
+    const at = liveAt(est, stops, i)!; // null only without an estimate
+    if (at.passed) passed = i + 1;
+    times.push(at.passed ? at.time : Math.max(at.time, nowSec));
+  }
+  return { seen: new Date(v.recordedAt).getTime(), sure: !est.stale, from: est.index, times, passed };
+}
+/** The live times of the trips asked for (of every trip a vehicle runs, when `want` is null), each from the newest
+ *  report of its ride. A vehicle is its trip's by its line and scheduled start (trips.ts tripFor): the one matcher. */
+export function liveTrips(vs: readonly SnapVehicle[], want: ReadonlySet<number> | null): LiveTrips {
+  const day = tt!.header.date,
+    nowSec = secondsOn(new Date(), day),
+    by = new Map<number, SnapVehicle>();
+  for (const v of vs) {
+    const t = tripFor(v.lineRef, secondsOn(v.scheduledStart, day));
+    if (t < 0 || (want && !want.has(t))) continue;
+    const o = by.get(t);
+    if (!o || v.recordedAt > o.recordedAt) by.set(t, v);
+  }
+  const trips: Record<number, TripLive> = {};
+  for (const [t, v] of by) {
+    const live = tripLive(t, v, nowSec);
+    if (live) trips[t] = live;
+  }
+  const nw = newest(vs);
+  return { asOf: nw ? nw.getTime() : null, trips };
+}
 /** A snapshot's minute from its id ("2026/11/05/20/31", UTC). Exported for measure/trafficreplay.ts. */
 export const snapTime = (id: string): number => {
   const m = /^(\d{4})\/(\d\d)\/(\d\d)\/(\d\d)\/(\d\d)$/.exec(id || '');
@@ -103,6 +141,12 @@ const visitsOf = (j: SiriSnapshot): SiriVisit[] =>
     (d) => d.MonitoredStopVisit || [],
   );
 const rideOf = (m: SiriJourney): string => `${m.LineRef}/${m.OriginAimedDepartureTime}`;
+/** A snapshot (of minute `t`, ms) taken as the current one: into the memory, its vehicles kept. The poll does this;
+ *  the replays in measure/ and the tests do too. */
+export function take(j: SiriSnapshot, t: number, id = ''): Snapshot {
+  remember(j, t);
+  return (snap = { at: Date.now(), id, vehicles: snapVehicles(j, t) });
+}
 /** Take a snapshot (of minute `t`, ms) into the memory. Exported for the replays in measure/ and the tests. */
 export function remember(j: SiriSnapshot, t: number): void {
   for (const x of visitsOf(j)) {
@@ -229,9 +273,8 @@ async function snapshot(urls: string[]): Promise<Snapshot> {
       const cur = await get(0);
       // a feed that stalled is no better than the database: then Hasadna's API answers instead
       if (!(Date.now() - cur.t <= 600e3)) throw new Error(`relay snapshot ${cur.id || '?'} is old`);
-      remember(cur.j, cur.t);
-      snap = { at: Date.now(), id: cur.id, vehicles: snapVehicles(cur.j, cur.t) };
-      noteRoads(snap.vehicles);
+      const now = take(cur.j, cur.t, cur.id);
+      noteRoads(now.vehicles);
       // the first time, the snapshots of 3 and 10 minutes before follow in the background, newest first, so what the
       // memory is for shows at once and not after minutes of use: dead positions, how long each vehicle has stood
       // where it is, and how the roads run (three snapshots, not two: finer pairs, more sections,
@@ -248,12 +291,22 @@ async function snapshot(urls: string[]): Promise<Snapshot> {
           }
           if (hasBusTimes()) for (const vs of [...older, snap ? snap.vehicles : []]) noteRoads(vs);
         })().catch(() => {});
-      return snap;
+      return now;
     })().finally(() => {
       snapLoading = null;
     });
   return snapLoading;
 }
+
+/** The newest snapshot's vehicles, or null when live times are not asked for (`urls`) or cannot be had: the planner
+ *  then routes on the timetable alone. */
+export const vehiclesNow = (urls: string[] | null | undefined): Promise<SnapVehicle[] | null> =>
+  urls
+    ? snapshot(urls).then(
+        (s) => s.vehicles,
+        () => null,
+      )
+    : Promise.resolve(null);
 
 export const vehiclesOps = {
   /** Live vehicles from the newest snapshot: of a line ({line}), in a box ({box}) or of an operator ({operator}). */
@@ -267,9 +320,9 @@ export const vehiclesOps = {
     } else if ('operator' in filter && filter.operator != null) vs = vs.filter((v) => v.operator === filter.operator);
     return vs;
   },
-  /** A vehicle's delay and its time at each stop ahead (delays.ts estimateDelay), made here where the learned times are. */
-  estimate({ vehicle, stops, day }) {
-    return estimateFor(vehicle, stops, day);
+  /** The live times of some trips (liveTrips): what every screen that shows a ride's time asks. */
+  async live({ urls, trips }) {
+    return liveTrips((await snapshot(urls)).vehicles, new Set(trips));
   },
   /** Which trip each reported vehicle runs and how late it is (for the line page's map). */
   vehiclesStatus({ vehicles }) {
@@ -293,4 +346,4 @@ export const vehiclesOps = {
       };
     });
   },
-} satisfies OpsPart<'liveQuery' | 'estimate' | 'vehiclesStatus'>;
+} satisfies OpsPart<'liveQuery' | 'live' | 'vehiclesStatus'>;

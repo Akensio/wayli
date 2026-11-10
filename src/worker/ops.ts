@@ -9,7 +9,7 @@ import type { TimetableHeader } from '../engine/raptor.ts';
 import type { StreetMode } from '../engine/streets.ts';
 import type { Lang, PlaceKind, PlacesHeader } from '../engine/places.ts';
 import type { Vehicle, Bounds, SnapshotFilter } from '../engine/feed.ts';
-import type { DelayEstimate, RailTimes, VehicleReport } from '../engine/delays.ts';
+import type { RailTimes, VehicleReport } from '../engine/delays.ts';
 import type { Mode } from '../engine/modes.ts';
 
 /** A place as the worker takes it to plan from or to, or to name: its name, the point when it has one, a stop's or a
@@ -66,10 +66,8 @@ export type StopGroup = {
   dist: number | null;
   lines: { label: string; type: number; agency: string; route: number }[];
 };
-/** A reported vehicle (engine/feed.ts), as liveQuery hands them out; client.ts estimate takes one. */
+/** A reported vehicle (engine/feed.ts), as liveQuery hands them out. */
 export type { Vehicle } from '../engine/feed.ts';
-/** A delay estimate for one vehicle (engine/delays.ts estimateDelay), null when it cannot be told. */
-export type Estimate = DelayEstimate | null;
 /** A point to search near, or to measure from. */
 export type Near = { lat: number; lon: number } | null;
 /** A stop as the worker hands it out (names.ts stopOut), in the rider's language: its index in the day's timetable,
@@ -170,9 +168,8 @@ export type Departure = {
   routeId: number | string | null;
   estimated: boolean;
   firstDep: number;
-  /** Listed before the time asked for (within `back`): shown only when the live data says it is still to come (a
-   *  delayed train that has not left yet; maintainer, 2026-11-08). */
-  early?: boolean;
+  /** Where the stop is on the trip (its index among the trip's stops), to ask the trip's live time there. */
+  pos: number;
 };
 /** A direct trip between two places (trips.ts trainsBetween, rideOptions): when it leaves and arrives, its
  *  pattern and the positions boarded and left on it, the line, and what identifies the trip in the live data. */
@@ -234,7 +231,15 @@ export type StopAlongOut = { stop: number; name: string; lat: number; lon: numbe
  *  had live data; `schedDepart` and `schedArrive` keep the listed ones then. `seconds` is set only on a ride that
  *  easierTransfers or slowerSiblings rewrote: the router's ride legs carry none, so it is undefined on the rest
  *  (the page's LegBase.seconds reads it as always there). */
-export type NextDep = { depart: number; trip: number; live: RideLegOut['live'] };
+/** A later departure of a ride's route from its boarding stop: the trip, where that stop is on it, and its listed time. */
+export type NextDep = { trip: number; pos: number; sched: number };
+/** One trip's times as they stand now (vehicles.ts tripLive): the one answer every screen draws and the planner routes
+ *  on. `times[k]` is the time at stop `from + k` of the trip, seconds on the service day (a stop the vehicle has not
+ *  passed is never before now); `passed` is how many of the trip's stops the vehicle is past; `sure` is false when
+ *  the report is old or shows no movement (delays.ts noNews); `seen` is when the vehicle reported, ms. */
+export type TripLive = { seen: number; sure: boolean; from: number; times: number[]; passed: number };
+/** The live times of some trips, by trip, and when the newest vehicle of the snapshot reported (ms; null: none did). */
+export type LiveTrips = { asOf: number | null; trips: Record<number, TripLive> };
 export type RideLegOut = {
   type: 'ride';
   depart: number;
@@ -253,11 +258,8 @@ export type RideLegOut = {
   route: number;
   firstDep: number;
   boardPos: number;
-  /** The plan's live knowledge of the ride: how late it was planned at the boarding stop, whether its vehicle's report
-   *  was stale, when it reported (ms), and `ahead`: the vehicle had not reached the boarding stop at that report. */
-  live: { delay: number; stale: boolean; seen: number; ahead: boolean } | null;
   /** A journey's first ride only: the departures of the same route from its boarding stop after it (plan.ts
-   *  nextDeparts), each with the plan's live knowledge of it, for the card's "leaves X: in 18, 21:22, 21:43". */
+   *  nextDeparts), for the card's "leaves X: in 18, 21:22, 21:43". */
   next?: NextDep[];
   schedDepart: number;
   schedArrive: number;
@@ -314,7 +316,8 @@ export type JourneyOut = {
 export type PlanGroup = { options: number[]; lines: string[][] };
 /** What a plan answers (plan.ts plan; the page's PlanResult): the journeys and their groups; with none in the window,
  *  `reason` when a place reaches no stop, else `nextAt`, when the next way leaves (null for none more that day);
- *  `bikeOnly` the way by bike alone; `live` how many vehicles the plan was given and how many it matched to trips. */
+ *  `bikeOnly` the way by bike alone; `live` the live times the plan routed on, for the trips its journeys ride (null
+ *  when it was planned on the timetable alone). */
 export type PlanOut = {
   journeys: JourneyOut[];
   groups: PlanGroup[];
@@ -323,7 +326,7 @@ export type PlanOut = {
   bikeOnly?: { seconds: number; metres: number; path: PathPoint[] } | null;
   candidates?: number;
   streets?: boolean;
-  live: { matched: number; vehicles: number } | null;
+  live: LiveTrips | null;
   ms: number;
 };
 /** A data file to load: its address and, when known, its size (fetched in pieces then). */
@@ -374,7 +377,8 @@ export type Ops = {
       maxTransfers?: number;
       maxWalk?: number;
       arriveBy?: boolean;
-      vehicles?: Vehicle[] | null;
+      /** The relay's addresses, for a plan that takes the live times into account; none for the timetable alone. */
+      urls?: string[] | null;
     };
     result: PlanOut;
   };
@@ -430,7 +434,7 @@ export type Ops = {
   patternCourse: { args: { patterns: number[] }; result: PatternCourse[] };
   // vehicles.ts: live vehicles
   liveQuery: { args: { urls: string[]; filter: SnapshotFilter }; result: Vehicle[] };
-  estimate: { args: { vehicle: VehicleReport; stops: TripStop[]; day: string }; result: Estimate };
+  live: { args: { urls: string[]; trips: number[] }; result: LiveTrips };
   vehiclesStatus: { args: { vehicles: RideReport[] }; result: VehicleStatus[] };
   // traffic.ts: how the roads run
   traffic: { args: { box: Bounds }; result: GeoJSON.FeatureCollection };

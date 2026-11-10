@@ -1,5 +1,5 @@
-// The trip in progress: what to do now (walk, wait, ride, get off), the next ride's vehicle, a faster way when
-// one was found, and the legs ahead. The state machine (follow.js) is pure; this draws its view.
+// The trip in progress, as it stands now: what to do now (walk, wait, ride, get off), the next ride's vehicle, a faster
+// way when one was found, and the legs ahead. The state machine (following/follow.ts) is pure; this draws its view.
 import { Icon } from '../../widgets/Icon';
 import { t, lang } from '../../common/i18n';
 import { fmt } from '../../common/time';
@@ -14,7 +14,9 @@ import { FollowLeg } from './FollowLeg';
 import { payLink } from '../detail/pay';
 import { isRide, ridesOf } from '../../trip/journey';
 import { switchJourney, dismissAlt, hideFollow, endTrip, backStep, skipStep } from '../../controllers/follow';
-import { rideBadge } from '../../text/live';
+import { liveBadge, type Badge } from '../../text/live';
+import * as live from '../../state/live';
+import { timeAt } from '../../trip/now';
 
 /** The card proposing the alternative. */
 function AltCard({ alt }: { alt: follow.Alt }) {
@@ -61,15 +63,23 @@ export function Follow() {
   void lang.value;
   void now.value;
   const a = follow.active.value,
-    ll = follow.legLive.value;
+    changes = follow.changes.value;
   if (!a) return null;
   const j = a.journey,
     nowS = clock.nowOn(a.day),
     dest = a.q.to.name;
   const v = followView(j, a.state, nowS);
-  const next = follow.nextLive.value,
-    badge = next ? rideBadge(next) : null,
-    liveLine = badge ? ` · ${badge.text}` : '';
+  // the vehicle that matters now, as a badge: on board, at the stop to get off at; else the ride to board, at its stop
+  let badge: Badge | null = null;
+  if (v.kind === 'ride') {
+    const l = v.leg,
+      listed = l.schedArrive ?? l.arrive,
+      x = timeAt(live.at, l.trip, l.alightPos, listed, nowS);
+    badge = liveBadge(x.live, x.time, listed);
+  } else {
+    const r = v.kind === 'wait' ? v.leg : (v.kind !== 'done' && v.toRide) || null;
+    if (r) badge = liveBadge(r.live, r.depart, r.schedDepart ?? r.depart);
+  }
   const pos = follow.pos.value,
     fresh = pos && Date.now() - pos.at < 90000;
   let title = dest,
@@ -85,13 +95,13 @@ export function Follow() {
     else if (l.mode === 'bike') big = t('bikeTo', { min: v.minutes, name: l.to!.name });
     else big = t('walkTo', { min: v.minutes, name: l.to!.name }) + (l.entry ? ` · ${exitText(l.entry, true)}` : '');
     small = v.toRide
-      ? `${lineText(v.toRide.line)} ${t('departsAt', { time: fmt(v.toRide.depart!) })}${inShort(v.departsIn ?? 0)}${liveLine}`
+      ? `${lineText(v.toRide.line)} ${t('departsAt', { time: fmt(v.toRide.depart!) })}${inShort(v.departsIn ?? 0)}`
       : t('arrivesAt', { time: fmt(l.arrive!) });
   } else if (v.kind === 'wait') {
     const l = v.leg;
     title = t('followTitle', { line: lineText(l.line), to: dest });
     big = t('waitFor', { line: lineText(l.line), stop: l.from!.name });
-    small = `${t('departsAt', { time: fmt(l.depart!) })}${inShort(v.departsIn)} · ${t('toward', { headsign: l.headsign || '' })}${liveLine}`;
+    small = `${t('departsAt', { time: fmt(l.depart!) })}${inShort(v.departsIn)} · ${t('toward', { headsign: l.headsign || '' })}`;
   } else if (v.kind === 'ride') {
     const l = v.leg;
     title = t('followTitle', { line: lineText(l.line), to: dest });
@@ -156,7 +166,6 @@ export function Follow() {
       {alt && <AltCard alt={alt} />}
       <div class="legs" id="followNext">
         {j.legs.map((l, i) => {
-          const x = ll[i];
           let stage: 'done' | 'current' | undefined;
           if (i < a.state.step) stage = 'done';
           else if (i === a.state.step) stage = 'current';
@@ -166,9 +175,7 @@ export function Follow() {
               key={`${i}:${isRide(l) ? l.trip : l.type}`}
               l={l}
               stage={stage}
-              badge={x && x.live ? rideBadge(x.live) : undefined}
-              change={x ? x.change : null}
-              stopLive={x ? x.stops : null}
+              change={changes[i] || null}
               stopsOpen={i === curRide}
               passedUpTo={i === a.state.step && a.state.onBoard ? a.state.rideIdx : null}
             />

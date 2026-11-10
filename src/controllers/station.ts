@@ -4,7 +4,6 @@
 import * as clock from '../engine/clock.ts';
 import { isNowDay } from '../common/time';
 import { call } from '../worker/client';
-import { livePoll } from './livepoll';
 import * as search from '../state/search';
 import * as nav from '../state/nav';
 import * as st from '../state/station';
@@ -12,7 +11,7 @@ import * as map from '../map/index';
 import { asStation, type Station, type TrainRow, type Dest } from '../state/station';
 import * as stopPage from '../state/stop';
 import { openStop } from './stop';
-import { liveRides } from './liverides';
+import * as liveTimes from './live';
 import { recentViews } from '../state/store.ts';
 import * as query from '../state/query';
 import { panelSession } from './session';
@@ -21,7 +20,7 @@ const session = panelSession(); // the two stations shown: older answers dropped
 const when = () => {
   const day = query.day.value,
     isNow = isNowDay(day);
-  return { day, isNow, from: isNow ? clock.nowOn(day) - 60 : query.atSeconds() };
+  return { day, isNow, from: isNow ? clock.nowOn(day) - liveTimes.LOOK_BACK_S : query.atSeconds() };
 };
 
 /** A station: the one stop view, for all its platforms (its departures, and where its trains go). */
@@ -45,8 +44,6 @@ export async function openTrains(
   });
   st.pair.value = { from, to };
   st.trains.value = null;
-  st.live.value = {};
-  st.liveNote.value = '';
   st.day.value = w.day;
   st.isNow.value = w.isNow;
   st.mode.value = mode;
@@ -63,18 +60,11 @@ export async function openTrains(
   if (!session.isCurrent(my)) return;
   st.trains.value = rows;
   map.redrawMap(true); // their courses and vehicles
-  if (w.isNow) session.poll(livePoll('trainTimes', st.liveNote, () => liveTrains(rows, w.day, my)));
+  liveTimes.watch('trains', w.isNow ? rows.map((r) => r.trip) : []);
 }
 export function closeTrains(): void {
   session.end();
-}
-
-/** Live times of the trains between the two stations (controllers/liverides); the newest report, for the note. */
-async function liveTrains(rows: TrainRow[], day: string, my: number): Promise<Date | null | undefined> {
-  const r = await liveRides(rows, day);
-  if (!session.isCurrent(my)) return undefined;
-  st.live.value = { ...st.live.value, ...r.live };
-  return r.newest;
+  liveTimes.unwatch('trains');
 }
 
 /** A station chosen in one of the two boxes at the top: the trains between the two once both are set, else where
