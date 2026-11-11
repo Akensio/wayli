@@ -198,8 +198,8 @@ export function ensureJourneyLayers(m: MLMap): void {
   m.on('click', 'journey-hit', () => {
     if (results.highlighted.value && state.drawnFor === 'screen-plan') results.pickAlt(results.highlighted.value.idx);
   });
-  // a journey's stops from zoom 12; a line's (they carry its colour) from zoom 9, solid in its colour while far out,
-  // white with a ring of it up close
+  // a journey's stops from zoom 12, white with a dark ring whenever they show; a line's (they carry its colour) from
+  // zoom 9, solid in its colour with a white rim while far out, white with a ring of it up close
   m.addLayer({
     id: 'journey-stops',
     type: 'circle',
@@ -209,7 +209,13 @@ export function ensureJourneyLayers(m: MLMap): void {
     paint: {
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 12, 4, 15, 6],
       'circle-color': ['step', ['zoom'], ['coalesce', ['get', 'color'], '#ffffff'], 13, '#ffffff'],
-      'circle-stroke-color': ['step', ['zoom'], '#ffffff', 13, ['coalesce', ['get', 'color'], '#444444']],
+      'circle-stroke-color': [
+        'step',
+        ['zoom'],
+        ['case', ['has', 'color'], '#ffffff', '#444444'],
+        13,
+        ['coalesce', ['get', 'color'], '#444444'],
+      ],
       'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 1, 13, 2],
     },
   });
