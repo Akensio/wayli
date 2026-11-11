@@ -687,7 +687,15 @@ with one slip (a letter wrong, missing, extra, or two swapped: ארומא for
 from five consonants one slip in the skeleton (מקדולנדס); from three letters
 typed, so short words reach nothing by chance. A Latin word gets the same
 skeleton slip. A name found only loosely lists after every name found as
-typed. בי"ח and בי"ס read as בית חולים and בית ספר either way. The
+typed. A Hebrew word also finds a word a name has in Latin letters (a
+quarter of the places are named so only: בלוק finds The Bloc TLV), when it
+is the same whole word of three consonants or more, by an exact form of the
+skeleton that keeps what a Hebrew speller writes: ב is b or v and never w, a
+consonant ו is v or w and never b, and a ו read as a vowel sits where the
+Latin word has its o or u (so not "Walk", "Black" or "Ballet" for בלוק and
+וולט). It scores as a sound-alike, below the word found as typed in Hebrew;
+the candidates come from an index of the Latin words by skeleton, so a
+search takes no longer. בי"ח and בי"ס read as בית חולים and בית ספר either way. The
 skeletons are built once, by the worker as soon as the address book is in
 (half a second on a laptop). Results
 are named in the app's language where the data has the name. Stops

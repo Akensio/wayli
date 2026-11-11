@@ -54,6 +54,7 @@ export type Places = Container<PlacesSections, PlacesHeader> & {
   streetSk?: string[][][]; // per street, per Hebrew word, the consonant skeletons it may be spelt as
   poiEn?: string[][];
   poiSk?: string[][][];
+  poiByLatin?: Map<string, number[]>; // a Latin word's plain skeleton (three consonants up) → the places named with it
   citySk?: string[][][];
   cityEnWords?: string[][];
 };
@@ -337,31 +338,38 @@ const squash = (s: string): string => s.replace(/(.)\1+/g, '$1');
 /** 'hVrdm' -> ['hvrdm', 'hrdm'] (V: ו, a consonant or a vowel); K: כ, written k or kh/ch (x); X: ח, written h or kh/ch. */
 // the letters a Latin spelling may stand for: V may be silent (a vav read as a vowel), K may be a kaf or a khaf, X a het or a khaf
 const LATIN_ALTS: Record<string, string[]> = { V: ['v', ''], K: ['k', 'x'], X: ['h', 'x'] };
-function expand(s: string): string[] {
+/** The skeletons come in two forms. The plain one is consonants only, with one letter (v) for ב, a consonant ו, b, v
+ *  and w: what a Latin speller of a Hebrew name needs ("bavli", "vavli"), and what every name's stored skeleton is.
+ *  The exact one keeps what a Hebrew speller writes: ב is b and a consonant ו is w, the Latin b, v and w stay
+ *  themselves (sameExact compares them), and the vowel a ו stands for is kept in its place (O: a Latin o, or a u that
+ *  is said so). It is worked out only for the few words whose plain skeletons already agree (sameWord). */
+const EXACT_ALTS: Record<string, string[]> = { ...LATIN_ALTS, V: ['w', 'O', 'wO'], U: ['O', ''] }; // וולט: w, then o
+function expand(s: string, exact = false): string[] {
   let out = [''];
   for (const c of s) {
-    const alts = LATIN_ALTS[c] || [c];
+    const alts = (exact ? EXACT_ALTS : LATIN_ALTS)[c] || [c];
     const next: string[] = [];
     for (const o of out) for (const a of alts) next.push(o + a);
     out = next.length > 16 ? next.slice(0, 16) : next;
   }
-  return [...new Set(out)].filter(Boolean);
+  return [...new Set(exact ? out.map((x) => x.replace(/O+/g, 'O')) : out)].filter(Boolean);
 }
-function skelHe(word: string): string[] {
+function skelHe(word: string, exact = false): string[] {
   const chars = [...word];
   let s = '';
   chars.forEach((c, i) => {
     if (c === 'ה' && i === chars.length - 1 && chars.length > 1)
       s += '|'; // a final ה is a vowel
+    else if (exact && c === 'ב') s += 'b';
     else if (/\d/.test(c)) s += c;
     else s += HEB_SK[c] ?? '|'; // א ע י: vowels here, dropped, but they keep their neighbours apart
   });
   // letters doubled as written collapse; two that a dropped letter stood between do not (כנען keeps both nuns, as
   // "knaan" does), nor two a silent ו brings together (מיזנון)
-  return expand(squash(s).replace(/\|/g, ''));
+  return expand(squash(s).replace(/\|/g, ''), exact);
 }
 /** A Latin word's consonant skeletons; `article` false keeps a leading "ha" (a city's name never takes the article). */
-function skelLatin(word: string, article = true): string[] {
+function skelLatin(word: string, article = true, exact = false): string[] {
   const w = word.toLowerCase();
   // sh first, kept apart from what follows, so the t of "rotshild" is not read as ts (צ)
   let s = w
@@ -374,16 +382,16 @@ function skelLatin(word: string, article = true): string[] {
     .replace(/ph/g, 'p')
     .replace(/ck/g, 'k')
     .replace(/[qc]/g, 'k')
-    .replace(/[bw]/g, 'v')
     .replace(/f/g, 'p')
     .replace(/j/g, 'J') // x: a guttural (ח or כ)
     .replace(/S/g, 's');
+  s = exact ? s.replace(/ow/g, 'o') : s.replace(/[bw]/g, 'v'); // "crowne", "tower": that w is part of the vowel
   const bases: string[] = [];
   const vowelH = /[aeiouy]h$/.test(w); // "Tikvah": a bare final h after a vowel is a vowel (ה) or a consonant (ח); "Petach" is ח
   for (const b of vowelH ? [s, s.slice(0, -1)] : [s]) {
     // doubled letters collapse as written (dizzengoff), before the vowels go: "miznon" keeps its two n's
     const c = squash(b)
-      .replace(/[aeiouy]/g, '')
+      .replace(exact ? /[aeiy]/g : /[aeiouy]/g, '')
       .replace(/[^a-z0-9J]/g, ''); // x stays: the guttural
     if (c.includes('J')) bases.push(c.replace(/J/g, 'z'), c.replace(/J/g, 'g'));
     else bases.push(c); // ז' and ג' are both j
@@ -393,14 +401,40 @@ function skelLatin(word: string, article = true): string[] {
     out.push(b);
     if (article && w.startsWith('ha') && b.length > 2) out.push(b.slice(1)); // "HaYarkon": the article, which Hebrew matching drops
   }
+  if (exact) return [...new Set(out.flatMap((x) => expand(x.replace(/o/g, 'O').replace(/u/g, 'U'), true)))];
   return [...new Set(out)].filter(Boolean);
 }
 /** A query word with what it can match: its text (a Hebrew name's words, or an English name's), and the consonant
  *  skeletons it may stand for (matched against the skeletons of the Hebrew names), so a word spelt another way or with
  *  one slip still finds the name (skelScore). */
 type QueryWord = { w: string; latin: boolean; sk: string[] };
-const queryWords = (words: string[]): QueryWord[] =>
-  words.map((w) => ({ w, latin: isLatin(w), sk: isLatin(w) ? skelLatin(w) : skelHe(w) }));
+/** A word's plain skeletons, in whichever alphabet it is written. */
+const skelOf = (w: string): string[] => (isLatin(w) ? skelLatin(w) : skelHe(w));
+const queryWords = (words: string[]): QueryWord[] => words.map((w) => ({ w, latin: isLatin(w), sk: skelOf(w) }));
+/** A Hebrew word's exact skeleton against a Latin word's: the same letters, where a Latin v is a ב or a ו. */
+const sameExact = (h: string, l: string): boolean =>
+  h.length === l.length && [...h].every((c, i) => c === l[i] || (l[i] === 'v' && (c === 'b' || c === 'w')));
+const WHOLE = 3; // consonants from which a word found by sound alone counts as that word
+/**
+ * Whether a Hebrew word typed is a word a name has in Latin letters (בלוק for "Bloc", in The Bloc TLV: a quarter of the
+ * places are named in Latin letters only). The same whole word, three consonants or more, nothing looser: what is half
+ * typed or misspelt has the Hebrew names. By the exact skeletons, so chance stays out: ב is never w (not "Walk"), ו is
+ * never b (וולט is not "Ballet"), and a ו read as a vowel sits where the Latin word has its o or u (not "Black"; ביסטרו
+ * is not "Visitor", nor סטאר "Story"). Asked only of the few names the index gives (latinCandidates).
+ */
+function sameWord(q: QueryWord, latin: string): boolean {
+  const plain = skelLatin(latin);
+  if (!q.sk.some((a) => a.length >= WHOLE && plain.includes(a))) return false;
+  const l = skelLatin(latin, true, true);
+  return skelHe(q.w, true).some((h) => l.some((x) => sameExact(h, x)));
+}
+/** The places with a Latin word that may be one of the Hebrew words typed (the same plain skeleton; sameWord decides). */
+function latinCandidates(pl: Places, qs: QueryWord[]): Set<number> {
+  const out = new Set<number>();
+  for (const q of qs)
+    if (!q.latin) for (const a of q.sk) if (a.length >= WHOLE) for (const p of pl.poiByLatin!.get(a) || []) out.add(p);
+  return out;
+}
 /** Every English word a name has: its English name's, and those written in Latin letters inside the main name (Overture
  *  often writes both languages there: "מלון כנען ספא - canaan spa hotel"), without the street-type words. */
 function englishWords(en: string | undefined, main: string): string[] {
@@ -413,10 +447,21 @@ function englishWords(en: string | undefined, main: string): string[] {
 export function ensureSkeletons(pl: Places): void {
   if (pl.streetSk) return;
   pl.streetEn = pl.streets.map((s) => englishWords(s[4], s[0]));
-  pl.streetSk = pl.streetWords.map((ws) => ws.map(skelHe));
+  pl.streetSk = pl.streetWords.map((ws) => ws.map((w) => skelHe(w)));
   pl.poiEn = pl.pois.map((p) => englishWords(p[5], p[0]));
-  pl.poiSk = pl.poiWords.map((ws) => ws.map(skelHe));
-  pl.citySk = pl.cities.map((c) => words(c[0]).map(skelHe));
+  pl.poiSk = pl.poiWords.map((ws) => ws.map((w) => skelHe(w)));
+  pl.citySk = pl.cities.map((c) => words(c[0]).map((w) => skelHe(w)));
+  pl.poiByLatin = new Map();
+  pl.poiWords.forEach((ws, p) => {
+    for (const w of ws)
+      if (isLatin(w))
+        for (const a of skelLatin(w)) {
+          if (a.length < WHOLE) continue;
+          const at = pl.poiByLatin!.get(a);
+          if (at) at.push(p);
+          else pl.poiByLatin!.set(a, [p]);
+        }
+  });
   pl.cityEnWords = pl.cities.map((c) => wordsEn(c[3] || ''));
 }
 
@@ -475,13 +520,14 @@ function vavAsWritten(latin: string, he: string | undefined, wv: string[]): stri
  * so the caller can tell it. Two consonants say little ("hs": Hish,
  * Yehoash), so they never count as a full match; only a street's first word counts as exact.
  */
+const SAME_SOUND = 2.9; // a word and a word of the other alphabet with the same consonants: below the word as written
 function skelScore(qv: string[], wv: string[], i: number, firstWordNames: boolean): number {
   let best = 0,
     slipped = false;
   for (const a of qv)
     for (const b of wv) {
       if (a === b) {
-        let exact = 2.9;
+        let exact = SAME_SOUND;
         if (a.length < 3) exact = 1.5;
         else if (firstWordNames && i === 0) exact = 4.5;
         best = Math.max(best, exact);
@@ -549,7 +595,8 @@ function fuzzyScore(q: string, w: string): number {
  * Does every query word match a word of the name? Returns a score, or 0. A street is named by its
  * first word, so an exact match there counts most; a place's words count alike (מרכז עזריאלי, קניון עזריאלי).
  * A name typed in full beats partial matches. A Latin word matches the English name, or the skeleton of the
- * Hebrew one (a little lower, so a spelled-out English name wins over a sound-alike).
+ * Hebrew one (a little lower, so a spelled-out English name wins over a sound-alike); a Hebrew word matches a word the
+ * name has in Latin letters when it is the same word by sound (sameWord).
  */
 function matchEntry(
   qs: QueryWord[],
@@ -558,6 +605,7 @@ function matchEntry(
   sk: string[][] | null,
   firstWordNames = true,
   loosen = true,
+  latinToo = false, // the name has a Latin word that may be a Hebrew word typed (latinCandidates)
 ): { score: number; loose: boolean } {
   let loose = false,
     missed = false; // a typed word the name lacks (places only: "חומוס אבו חסן" for אבו חסן)
@@ -569,6 +617,8 @@ function matchEntry(
     let best = 0;
     if (!q.latin) {
       for (let i = 0; i < he.length; i++) best = Math.max(best, wordScore(q.w, he[i], i, firstWordNames));
+      // a word the name has in Latin letters: the same word, by sound
+      if (!best && latinToo) for (const w of he) if (isLatin(w) && sameWord(q, w)) best = SAME_SOUND;
       // not found as written: spelt another way, or one slip (from three letters typed; short words match too much)
       if (!best && loosen && sk && q.w.length >= 3) {
         for (let i = 0; i < he.length; i++) best = Math.max(best, looseHe(q, he[i], sk[i] || [], i));
@@ -840,6 +890,7 @@ export function searchPlaces(
   const qs = queryWords(q.words);
   const latin = qs.some((w) => w.latin);
   ensureSkeletons(pl);
+  const viaLatin = latinCandidates(pl, qs);
 
   const cityRow = (i: number, score: number): PlaceHit => {
     const c = pl.cities[i];
@@ -857,7 +908,7 @@ export function searchPlaces(
   // a city by itself (not when the rider typed a street-type word: "שדרות ירושלים" is the street, not the city)
   if (q.words.length && q.number === null && !q.streetTyped) {
     const whole = q.words.join(' ');
-    const wsk = latin ? q.words.map((w) => (isLatin(w) ? skelLatin(w) : skelHe(w))) : null;
+    const wsk = latin ? q.words.map(skelOf) : null;
     pl.cities.forEach((c, i) => {
       const cw = latin ? pl.cityEnWords![i].join(' ') : words(c[0]).join(' ');
       const alias = CITY_ALIASES[whole] === norm(c[0]);
@@ -935,7 +986,15 @@ export function searchPlaces(
     }
     // notable places
     for (let p = 0; p < pl.pois.length; p++) {
-      const m = matchEntry(qs, pl.poiWords[p], latin ? pl.poiEn![p] : null, pl.poiSk![p], false, loosen);
+      const m = matchEntry(
+        qs,
+        pl.poiWords[p],
+        latin ? pl.poiEn![p] : null,
+        pl.poiSk![p],
+        false,
+        loosen,
+        viaLatin.has(p),
+      );
       if (!m.score || (loosen && !m.loose)) continue;
       let score = m.score - (m.loose ? LOOSE : 0);
       if (cityName) {

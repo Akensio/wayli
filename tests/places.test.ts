@@ -1,5 +1,6 @@
 // The address book's search (src/engine/places.ts) on a tiny book in the real file format: a name found as typed
-// first, then spelt another way or with one slip, and nothing loose that a short word could reach by chance.
+// first, then spelt another way or with one slip, and nothing loose that a short word could reach by chance. A name
+// written in the other alphabet is found by sound, both ways.
 import { test, expect } from 'vitest';
 import { parsePlaces, searchPlaces } from '../src/engine/places.ts';
 import { writeContainer } from './tinytt.ts';
@@ -32,6 +33,14 @@ const pois = [
   ['פארק המסילה', 'leisure=park', TLV, 32.06, 34.767, 'The Track Park'],
   ['פארק המסילה', 'leisure=park', TLV, 32.061, 34.77, 'HaMessila Park'],
   ['פארק המסילה', 'leisure=park', 'ירושלים', 31.762, 35.219, 'Park HaMesilah'],
+  // named in Latin letters only, as a quarter of the real book's places are, with the words that only look alike
+  ['The Bloc TLV', 'leisure=sports_centre', TLV, 32.0514, 34.7727, 'The Bloc TLV'],
+  ['Tel Aviv Bauhaus Walk', 'historic=monument', TLV, 32.075, 34.774, ''],
+  ['Black Hole', 'shop=books', TLV, 32.066, 34.771, ''],
+  ['Wolt Market', 'shop=supermarket', TLV, 32.07, 34.79, ''],
+  ['Israel Ballet', 'amenity=theatre', TLV, 32.09, 34.79, ''],
+  ['Visitor Center', 'tourism=museum', TLV, 32.03, 34.78, ''],
+  ['Bistro 12', 'amenity=restaurant', TLV, 32.07, 34.775, ''],
 ];
 const cities = [
   [TLV, 32.08, 34.78, 'Tel Aviv-Yafo'],
@@ -41,7 +50,7 @@ const cities = [
   ['ירושלים', 31.78, 35.22, 'Jerusalem'],
 ];
 const book = parsePlaces(
-  writeContainer({ format: 4, counts: { streets: 5, addresses: 1, pois: 16, cities: 5 }, streets, pois, cities }, [
+  writeContainer({ format: 4, counts: { streets: 5, addresses: 1, pois: 23, cities: 5 }, streets, pois, cities }, [
     { name: 'addrStreet', dtype: 'int32', data: [4] }, // שדרות ירושלים 15
     { name: 'addrNumber', dtype: 'uint16', data: [15] },
     { name: 'addrLat', dtype: 'float32', data: [32.0505] },
@@ -89,9 +98,23 @@ test('short words get no loose match', () => {
   expect(searchPlaces(book, 'קפ', 5, null, 'he').map((h) => h.name)).toEqual(['קפלן']); // only the start, as typed
 });
 
-test('a Latin word finds a Hebrew name by sound (miznon), but an English-only name only by its English', () => {
+test('a Latin word finds a Hebrew name by sound (miznon)', () => {
   expect(top('miznon')).toBe('מיזנון'); // two separate n's: not the museum, whose ו and י drop to leave one
-  expect(searchPlaces(book, 'בנדיקט', 5, null, 'he').map((h) => h.name)).not.toContain('Benedict'); // no transliteration
+});
+
+test('a Hebrew word finds a name written in Latin letters only, when it is the same whole word', () => {
+  const found = (q: string) => searchPlaces(book, q, 8, null, 'he').map((h) => h.name);
+  // the maintainer's search, 2026-11-11: the gym, not the walk (ב is never w) nor the bookshop (the ו needs an o or a u)
+  expect(found('בלוק תל אביב')).toEqual(['The Bloc TLV']);
+  expect(found('וולט')).toEqual(['Wolt Market']); // w then o; not the ballet (ו is never b)
+  expect(found('בלט')).toEqual(['Israel Ballet']);
+  expect(found('ביסטרו')).toEqual(['Bistro 12']); // the ו is the o at the end: not "Visitor", whose o is elsewhere
+  expect(found('בנדיקט')).toEqual(['Benedict']);
+  expect(found('בלאק')).toEqual(['Black Hole']); // and not the Bloc, whose o the word does not write
+  expect(found('בנדיק')).toEqual([]); // half typed, or two consonants: the Hebrew names are for that
+  expect(found('בל')).toEqual([]);
+  // a name in Hebrew found as typed lists before one found by sound
+  expect(found('ארומה')[0]).toBe('ארומה');
 });
 
 test('English to English: exact, also inside a two-language name, and with typos as search engines allow', () => {
