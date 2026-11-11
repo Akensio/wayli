@@ -54,7 +54,15 @@ export type TinySpec = {
   date?: string;
   stops: { name: string; lat: number; lon: number; code?: string; city?: string }[];
   routes: { short: string; long?: string; agency?: string; type?: number; id?: string }[];
-  patterns: { route: number; stops: number[]; trips: number[][]; intercity?: boolean }[];
+  /** `only`, per stop: 'board' where riders may only get on, 'alight' where they may only get off (the feed's
+   *  drop_off_type and pickup_type); a timetable with none is written without the section, as an older file is. */
+  patterns: {
+    route: number;
+    stops: number[];
+    trips: number[][];
+    intercity?: boolean;
+    only?: readonly ('board' | 'alight' | null)[];
+  }[];
   footpaths?: [number, number, number][];
   walk?: Partial<WalkParams>;
 };
@@ -74,7 +82,8 @@ export function tinyContainer({
     patTripsOff = [0],
     tripTimesOff = [0],
     patRoute: number[] = [],
-    patIntercity: number[] = [];
+    patIntercity: number[] = [],
+    patStopFlags: number[] = [];
   const tripStart: number[] = [],
     depDelta: number[] = [],
     dwell: number[] = [];
@@ -84,6 +93,7 @@ export function tinyContainer({
     patIntercity.push(p.intercity ? 1 : 0);
     p.stops.forEach((s, pos) => {
       patStops.push(s);
+      patStopFlags.push({ board: 2, alight: 1, none: 0 }[p.only?.[pos] ?? 'none']); // NO_ALIGHT, NO_BOARD
       stopPats[s].push([pi, pos]);
     });
     patStopsOff.push(patStops.length);
@@ -153,6 +163,7 @@ export function tinyContainer({
     [
       ['patStopsOff', 'int32', patStopsOff],
       ['patStops', 'int32', patStops],
+      ...(patterns.some((p) => p.only) ? [['patStopFlags', 'uint8', patStopFlags]] : []),
       ['patTripsOff', 'int32', patTripsOff],
       ['tripTimesOff', 'int32', tripTimesOff],
       ['patRoute', 'int32', patRoute],

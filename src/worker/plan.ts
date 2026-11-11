@@ -4,6 +4,8 @@
 import {
   journeySig,
   patternLength,
+  canBoard,
+  canAlight,
   patternStop,
   plan as planFrom,
   profile,
@@ -160,7 +162,7 @@ function revertLive(liveEdits: number[]): void {
 function nextDeparts(route: number, stop: number, after: number, n = 3): NextDep[] {
   const out: { d: number; p: number; t: number; pos: number }[] = [];
   for (const { p, pos } of patternsAt(tt!, stop)) {
-    if (tt!.patRoute[p] !== route) continue;
+    if (tt!.patRoute[p] !== route || !canBoard(tt!, p, pos)) continue;
     const { first, end } = tripRange(tt!, p);
     for (let t = first; t < end; t++) {
       const d = tt!.dep[timesRow(tt!, t) + pos];
@@ -302,9 +304,11 @@ function easierTransfers(j: RawJourney): void {
       walk: w ? w.seconds : 0,
     };
     for (let ia = a.bp + 1; ia < a.ns; ia++) {
+      if (!canAlight(tt!, a.p, ia)) continue;
       const sa = patternStop(tt!, a.p, ia),
         ta = tt!.arr[a.base + ia];
       for (let jb = 0; jb < apB; jb++) {
+        if (!canBoard(tt!, b.p, jb)) continue;
         const sb = patternStop(tt!, b.p, jb),
           tb = tt!.dep[b.base + jb];
         let walk = -1;
@@ -403,10 +407,11 @@ function slowerSiblings(journeys: JourneyOut[], fromTime: number, q: Resolved): 
     const lead = R.depart - j.depart; // from setting out to boarding
     const found: { p: number; t: number; pos: number; k: number; d: number; a: number }[] = [];
     for (const { p, pos } of patternsAt(tt!, B)) {
+      if (!canBoard(tt!, p, pos)) continue;
       const ns = patternLength(tt!, p);
       let k = -1;
       for (let x = pos + 1; x < ns; x++)
-        if (patternStop(tt!, p, x) === A) {
+        if (patternStop(tt!, p, x) === A && canAlight(tt!, p, x)) {
           k = x;
           break;
         }

@@ -1,6 +1,15 @@
 // Trips: a trip's stops and times (as scheduled, or as shifted by live data during a plan), the trip a reported
 // vehicle runs, and the direct trips between two places (the trains between two stations, a journey's ride options).
-import { patternLength, patternStop, routeLabel, timesRow, tripRange, patternsAt } from '../engine/raptor.ts';
+import {
+  patternLength,
+  patternStop,
+  routeLabel,
+  timesRow,
+  tripRange,
+  patternsAt,
+  canBoard,
+  canAlight,
+} from '../engine/raptor.ts';
 import { secondsOn } from '../engine/clock.ts';
 import { haversine } from '../engine/geo.ts';
 import { tt } from './data.ts';
@@ -92,10 +101,11 @@ export const tripsOps = {
       seen = new Set<number>();
     for (const s of from) {
       for (const { p, pos } of patternsAt(tt!, s)) {
+        if (!canBoard(tt!, p, pos)) continue;
         const ns = patternLength(tt!, p);
         let j = -1;
         for (let k = pos + 1; k < ns; k++)
-          if (B.has(patternStop(tt!, p, k))) {
+          if (B.has(patternStop(tt!, p, k)) && canAlight(tt!, p, k)) {
             j = k;
             break;
           }

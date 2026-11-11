@@ -85,6 +85,7 @@ export type TimetableHeader = ContainerHeader & {
 type TimetableSection =
   | 'patStopsOff'
   | 'patStops'
+  | 'patStopFlags'
   | 'patTripsOff'
   | 'tripTimesOff'
   | 'patRoute'
@@ -122,6 +123,9 @@ export type Timetable = {
   /** Pattern p's stops are patStops[patStopsOff[p] .. patStopsOff[p + 1]). */
   patStopsOff: Int32Array;
   patStops: Int32Array;
+  /** Per pattern stop, beside patStops: NO_BOARD and NO_ALIGHT (the feed's pickup_type and drop_off_type). All zero for
+   *  a file made before the compiler kept them. Read through canBoard and canAlight. */
+  patStopFlags: Uint8Array;
   /** Pattern p's trips are patTripsOff[p] .. patTripsOff[p + 1]), by departure. */
   patTripsOff: Int32Array;
   /** Where pattern p's times start in depDelta, dwell, dep and arr (see above). */
@@ -198,6 +202,16 @@ export const patternLength = (tt: Timetable, p: number): number => tt.patStopsOf
 export const patternIndex = (tt: Timetable, p: number, i: number): number => tt.patStopsOff[p] + i;
 /** The stop at position i of pattern p. */
 export const patternStop = (tt: Timetable, p: number, i: number): number => tt.patStops[patternIndex(tt, p, i)];
+const NO_BOARD = 1,
+  NO_ALIGHT = 2;
+/** Whether pattern p's trips may be boarded at its position i: not at its last stop, and not where the feed says so
+ *  (an intercity line takes riders on only as it leaves a city, and lets them off only as it enters one; a quarter of
+ *  all trips have such stops). Everything that offers a ride asks here and at canAlight. */
+export const canBoard = (tt: Timetable, p: number, i: number): boolean =>
+  i < patternLength(tt, p) - 1 && !(tt.patStopFlags[patternIndex(tt, p, i)] & NO_BOARD);
+/** Whether pattern p's trips may be left at its position i: not at its first stop, and not where the feed says so. */
+export const canAlight = (tt: Timetable, p: number, i: number): boolean =>
+  i > 0 && !(tt.patStopFlags[patternIndex(tt, p, i)] & NO_ALIGHT);
 /** Pattern p's last stop. */
 export const lastStop = (tt: Timetable, p: number): number => tt.patStops[tt.patStopsOff[p + 1] - 1];
 /** Pattern p's stops from position a to b, both included. */
@@ -238,6 +252,7 @@ export function parseTimetable(ab: ArrayBuffer): Timetable {
   tt.slack = w.transfer_slack_s ?? 90;
   tt.chainMax = w.chain_max_s ?? 900;
   if (!tt.stopParent) tt.stopParent = new Int32Array(tt.stops.length).fill(-1);
+  if (!tt.patStopFlags) tt.patStopFlags = new Uint8Array(tt.patStops.length);
   expandTimes(tt);
   buildSearchIndex(tt);
   return tt;
@@ -597,6 +612,7 @@ export function profile(
   const S = tt.stops.length,
     K = maxTransfers + 1;
   const { patStopsOff, patStops, patTripsOff, tripTimesOff, stopPatsOff, stopPats, trOff, trTo, trTime, dep, arr } = tt;
+  const flags = tt.patStopFlags; // where a trip may not be boarded or left (canBoard, canAlight, inlined in the scan)
 
   const tau: Int32Array[] = [],
     lblType: Int8Array[] = [],
@@ -695,7 +711,7 @@ export function profile(
         pos = stopPats[2 * i + 1];
       if (!patOk(p)) continue;
       const ns = patStopsOff[p + 1] - patStopsOff[p];
-      if (pos === ns - 1) continue;
+      if (pos === ns - 1 || flags[patStopsOff[p] + pos] & NO_BOARD) continue;
       const tFirst = patTripsOff[p],
         tEnd = patTripsOff[p + 1],
         base = tripTimesOff[p];
@@ -909,7 +925,7 @@ export function profile(
           boardPos = -1;
         for (let pos = startPos; pos < ns; pos++) {
           const stop = patStops[sBase + pos];
-          if (t >= 0) {
+          if (t >= 0 && !(flags[sBase + pos] & NO_ALIGHT)) {
             const a = arr[base + (t - tFirst) * ns + pos];
             if (better(k, stop, a) && a <= bestDest + EGRESS_GRAIN) {
               improve(k, stop, a);
@@ -923,7 +939,7 @@ export function profile(
             }
           }
           let ready = tau[k - 1][stop];
-          if (ready === INF) continue;
+          if (ready === INF || flags[sBase + pos] & NO_BOARD) continue;
           if (lblRide[k - 1][stop]) ready += slack;
           if (t < 0 || ready <= dep[base + (t - tFirst) * ns + pos]) {
             let lo = 0,

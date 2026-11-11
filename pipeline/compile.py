@@ -40,6 +40,7 @@ WALK_CHAIN_MAX = 600    # s, longest chain of footpaths the router may string to
 CITY_RE = re.compile(r"עיר:\s*(.*?)\s*רציף:")
 INTERCITY_KM = 15.0     # a bus line whose ends are in different cities this far apart counts as intercity (luggage compartment)
 NIGHT_END = 3 * 3600        # s: trips of the next calendar day starting before this hour belong to this night
+NO_BOARD, NO_ALIGHT = 1, 2  # patStopFlags: the trip may not be boarded here, may not be left here
 
 
 def route_dest(long_name):
@@ -244,6 +245,9 @@ def main():
         col = {name: i for i, name in enumerate(header)}
         ti, ai, di, si, qi = (col["trip_id"], col["arrival_time"], col["departure_time"],
                               col["stop_id"], col["stop_sequence"])
+        # where a trip may not be boarded or left (GTFS pickup_type / drop_off_type 1: an intercity line takes riders
+        # on only as it leaves a city and lets them off only as it enters one): NO_BOARD and NO_ALIGHT per stop time
+        pi, oi = col.get("pickup_type"), col.get("drop_off_type")
         if ti != 0:   # each line's trip is read before the line is split, which needs it first
             sys.exit("stop_times.txt: trip_id is not the first column")
         skip_next = set()   # next-day trips that start too late to belong to this night
@@ -257,7 +261,9 @@ def main():
                 parts = next(csv.reader([line]))
             else:
                 parts = line.rstrip("\r\n").split(",")
-            ev = (int(parts[qi]), parts[si], hms(parts[ai]), hms(parts[di]))
+            flag = (NO_BOARD if pi is not None and parts[pi] == "1" else 0) | \
+                   (NO_ALIGHT if oi is not None and parts[oi] == "1" else 0)
+            ev = (int(parts[qi]), parts[si], hms(parts[ai]), hms(parts[di]), flag)
             if not today and tid not in per_trip and ev[3] >= NIGHT_END:
                 skip_next.add(tid)   # rows of a trip come in sequence order: the first one is its start
                 continue
@@ -271,7 +277,7 @@ def main():
             continue
         evs = per_trip[tid]
         if min(e[3] for e in evs) < NIGHT_END:
-            per_trip[tid + "+"] = [(q, s_, a + 86400, d + 86400) for q, s_, a, d in evs]
+            per_trip[tid + "+"] = [(q, s_, a + 86400, d + 86400, fl) for q, s_, a, d, fl in evs]
             trips_raw[tid + "+"] = trips_next[tid]
             n_night += 1
         if tid not in trips_raw:
@@ -297,9 +303,9 @@ def main():
             stop_list.append((stop_id, s[0], s[1], s[2], s[3], s[4], s[5]))
         return i
 
-    # ---- patterns: group trips by (route, stop sequence), split overtaking trips ----
+    # ---- patterns: group trips by (route, stop sequence, where they may be boarded and left), split overtaking trips ----
     dropped = 0
-    groups = defaultdict(list)  # (route_id, stops tuple) -> [(start, tid, deps, dwells)]
+    groups = defaultdict(list)  # (route_id, stops tuple, flags tuple) -> [(start, tid, deps, dwells)]
     for tid, evs in per_trip.items():
         evs.sort()
         deps = [e[3] for e in evs]
@@ -311,12 +317,13 @@ def main():
             dropped += 1
             continue
         seq = tuple(sidx(e[1]) for e in evs)
-        groups[(trips_raw[tid][0], seq)].append((deps[0], tid, deps, [d - a for d, a in zip(deps, arrs)]))
+        flags = tuple(e[4] for e in evs)
+        groups[(trips_raw[tid][0], seq, flags)].append((deps[0], tid, deps, [d - a for d, a in zip(deps, arrs)]))
     del per_trip
     log(f"{len(groups)} route patterns, {dropped} malformed trips dropped, {len(stop_list)} stops used")
 
-    patterns = []  # (route_id, stops, [trip tuples])
-    for (route_id, seq), trips in groups.items():
+    patterns = []  # (route_id, stops, [trip tuples]); pat_flags beside it, one flag per stop of each
+    for (route_id, seq, flags), trips in groups.items():
         trips.sort(key=lambda t: (t[0], t[1]))
         subs = []  # each: [last_deps, [trips]]
         for tr in trips:
@@ -331,9 +338,13 @@ def main():
             if not placed:
                 subs.append([tr[2], [tr]])
         for sub in subs:
-            patterns.append((route_id, seq, sub[1]))
-    patterns.sort(key=lambda p: (p[0], p[1]))
-    log(f"{len(patterns)} patterns after splitting overtaking trips")
+            patterns.append((route_id, seq, sub[1], flags))
+    patterns.sort(key=lambda p: (p[0], p[1], p[3]))
+    pat_flags = [p[3] for p in patterns]
+    patterns = [p[:3] for p in patterns]
+    n_limited = sum(1 for f in pat_flags if any(x & NO_BOARD for x in f[:-1]) or any(x & NO_ALIGHT for x in f[1:]))
+    log(f"{len(patterns)} patterns after splitting overtaking trips; {n_limited} with a stop where boarding or "
+        f"alighting is not allowed")
 
     # ---- shapes: each pattern's course, and where every stop of it lies along that course ----
     total_stops = sum(len(seq) for _, seq, _ in patterns)
@@ -564,6 +575,7 @@ def main():
 
     add("patStopsOff", pat_stops_off, "int32")
     add("patStops", pat_stops, "int32")
+    add("patStopFlags", [x for f in pat_flags for x in f], "uint8")   # per pattern stop, beside patStops
     add("patTripsOff", pat_trips_off, "int32")
     add("tripTimesOff", trip_times_off, "int32")
     add("patRoute", pat_route, "int32")

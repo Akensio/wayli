@@ -952,6 +952,16 @@ the app views in place:
   pattern), `patTripsOff` (trip range per pattern), `tripTimesOff`.
   In the Israel feed every `route_id` is one direction of one line, so a
   pattern is a route; trips that would overtake are split into sub-patterns.
+  `patStopFlags` (u8 beside `patStops`) says where a pattern's trips may not
+  be boarded or not be left, from the feed's `pickup_type` and
+  `drop_off_type`: an intercity line takes riders on only as it leaves a
+  city and lets them off only as it enters one (the 480 in Tel Aviv), and
+  14% of all stop times are marked so, on 38% of the routes. Trips with
+  different marks are different patterns. The router boards and arrives
+  only where allowed, and so does everything that offers a ride (a card's
+  next departures, a leg's other rides, an easier change, a stop's
+  departures), through `canBoard` and `canAlight` (`engine/raptor.ts`). A
+  file without the section reads as all allowed.
 - times: per trip an absolute `tripStart`, then per stop the departure delta
   from the previous stop (u16) and the dwell (u16). The app expands these to
   absolute arrival/departure `Int32Array`s on load (about 80 ms). Dwell is

@@ -4,6 +4,8 @@
 import {
   centreOf,
   patternLength,
+  canBoard,
+  canAlight,
   patternStop,
   routeLabel,
   searchStops,
@@ -194,11 +196,11 @@ export const stopsOps = {
       type = mode === 'lrt' ? 0 : 2;
     for (const s of stops) {
       for (const { p, pos } of patternsAt(tt!, s)) {
-        if (tt!.routes[tt!.patRoute[p]][3] !== type) continue;
+        if (tt!.routes[tt!.patRoute[p]][3] !== type || !canBoard(tt!, p, pos)) continue;
         const ns = patternLength(tt!, p);
         for (let j = pos + 1; j < ns; j++) {
           const b = patternStop(tt!, p, j);
-          if (from.has(b)) continue;
+          if (from.has(b) || !canAlight(tt!, p, j)) continue;
           const st = stationOf(b),
             key = st.key;
           let d = dests.get(key);
@@ -374,8 +376,7 @@ export const stopsOps = {
     const out: Departure[] = [];
     for (const st of stops && stops.length ? stops : [stop])
       for (const { p, pos } of patternsAt(tt!, st)) {
-        const ns = patternLength(tt!, p);
-        if (pos === ns - 1) continue; // a vehicle ending here is not a departure
+        if (!canBoard(tt!, p, pos)) continue; // a vehicle ending here, or only letting riders off, is not a departure
         const r = tt!.routes[tt!.patRoute[p]];
         const { first, end } = tripRange(tt!, p);
         for (let t = first; t < end; t++) {

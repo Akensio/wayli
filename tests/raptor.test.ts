@@ -4,6 +4,8 @@ import { test, expect } from 'vitest';
 import {
   profile,
   plan,
+  canBoard,
+  canAlight,
   patternLength,
   patternStop,
   lastStop,
@@ -148,4 +150,52 @@ test("the layout's accessors: a pattern's stops, its trips, and where each trip'
     [T(9, 0), T(9, 6), T(9, 10)],
     [T(7, 0), T(7, 2), T(7, 5), T(7, 9)],
   ]);
+});
+
+test('a trip is boarded and left only where it allows: no riding an intercity line between two stops of one city', () => {
+  // the maintainer's plan to the beach, 2026-11-12: the 480 to Jerusalem from Azrieli two stops to HaMasger, across the
+  // road, and the 480 from Jerusalem on to Reading. The feed lets the first be boarded only, in Tel Aviv, and the
+  // second be left only; 28% of all trips have such stops and the timetable did not carry them.
+  const spec = (flags: boolean) => ({
+    stops: [
+      { name: 'Azrieli', lat: 32.074, lon: 34.792 },
+      { name: 'HaMasger south', lat: 32.064, lon: 34.784 },
+      { name: 'HaMasger north', lat: 32.0641, lon: 34.7842 },
+      { name: 'Reading', lat: 32.1, lon: 34.78 },
+      { name: 'Jerusalem', lat: 31.789, lon: 35.203 },
+    ],
+    routes: [{ short: '480' }, { short: '40' }],
+    patterns: [
+      // to Jerusalem: riders get on in Tel Aviv, off in Jerusalem
+      {
+        route: 0,
+        stops: [0, 1, 4],
+        trips: [[T(1, 44), T(1, 50), T(2, 40)]],
+        ...(flags && { only: ['board', 'board', 'alight'] as const }),
+      },
+      // from Jerusalem: on there, off in Tel Aviv
+      {
+        route: 0,
+        stops: [4, 2, 3],
+        trips: [[T(1, 0), T(1, 58), T(2, 15)]],
+        ...(flags && { only: ['board', 'alight', 'alight'] as const }),
+      },
+      // the local line, later
+      { route: 1, stops: [0, 3], trips: [[T(2, 0), T(2, 30)]] },
+    ],
+    footpaths: [[1, 2, 60]] as [number, number, number][],
+  });
+  const lines = (tt: ReturnType<typeof tinyTimetable>, from: number, to: number, at: number) =>
+    plan(tt, from, to, at).journeys.map((j) =>
+      j.legs.filter((l) => l.type === 'ride').map((l) => (l as RawRideLeg).route[0]),
+    );
+  const tt = tinyTimetable(spec(true));
+  expect(lines(tt, 0, 3, T(1, 40))).toEqual([['40']]); // not the two 480s, which arrive a quarter of an hour sooner
+  expect(lines(tt, 0, 4, T(1, 40))).toEqual([['480']]); // what the line is for still works: out of the city
+  expect(lines(tt, 4, 3, T(0, 50))).toEqual([['480']]); // and into it
+  expect([canBoard(tt, 0, 0), canAlight(tt, 0, 1), canAlight(tt, 0, 2)]).toEqual([true, false, true]);
+  expect([canBoard(tt, 1, 0), canBoard(tt, 1, 1), canAlight(tt, 1, 1)]).toEqual([true, false, true]);
+  expect([canBoard(tt, 2, 1), canAlight(tt, 2, 0)]).toEqual([false, false]); // never on at the last stop, off at the first
+  // a file from before the compiler kept the marks: every stop takes riders on and off, as it did
+  expect(lines(tinyTimetable(spec(false)), 0, 3, T(1, 40))[0]).toEqual(['480', '480']);
 });
