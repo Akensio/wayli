@@ -1,19 +1,19 @@
 // The results of a plan: what came back, how it is filtered and sorted into cards, which ways are drawn on
 // the map and which one is highlighted, and the recent trips shown while there is nothing else. The list is
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
-// A search is an answer as of when it was asked (maintainer, 2026-11-11): the list is worked out from the plan, the
-// live times it was routed on and that moment, and from nothing that moves, so no card changes its times, its place
-// or its strip under the rider's finger. The words count down with the clock (the views); the rider asks again with
-// Refresh (controllers/planner.ts refresh).
+// The trips of a search stay, their times follow (maintainer, 2026-11-11): which ways are listed, in what order, and
+// which departure each card shows are decided once, as the plan was answered (`frame`), and change only when the rider
+// asks again (Refresh, controllers/planner.ts refresh) or filters and sorts. The times on them are each trip's as it
+// stands now, from the live store and the clock (`list`).
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
-import { FRESH_S } from '../engine/delays.ts';
 import { settings } from './store.ts';
 import { lang } from '../common/i18n';
 import * as search from './search';
 import type { Journey, PlanResult, RideLeg } from '../trip/journey';
 import { firstRide, timeAt, tripNow, type At } from '../trip/now';
-import { atIn } from './live';
+import { now } from './clock';
+import * as live from './live';
 import type { Query } from '../trip/query';
 import { unset } from '../common/unset';
 export type { View } from './store.ts';
@@ -29,6 +29,7 @@ export type Card = {
   options: Journey[];
   lines: string[][] | null;
   deps: Dep[]; // when its first ride leaves its stop, and the rides after it
+  left: boolean; // its ride has gone since the search: the card keeps its place
 };
 
 export const SORTS: Sort[] = ['arrive', 'depart', 'fast', 'changes']; // by arrival first: every plan starts so (maintainer)
@@ -46,11 +47,8 @@ const readFilters = (sort: Sort = 'arrive'): Filters => {
 
 export const result = signal<PlanResult | null>(null);
 export const query = signal<Query | null>(null);
-/** When the plan on screen was answered (ms): the moment its list stands at. */
+/** When the plan on screen was answered (ms): the moment its trips were chosen at. */
 export const asked = signal(0);
-/** Whether the answer is old enough that its live times should be asked again: older than a vehicle's report may be
- *  and still count as certain. */
-export const aged = (nowMs: number): boolean => nowMs - asked.value > FRESH_S * 1000;
 export const status = signal<Status>('idle'); // the list gives way to "planning…" or "locating…"
 export const error = signal('');
 export const filters = signal<Filters>(readFilters());
@@ -125,20 +123,23 @@ export function standing(j: Journey, n: number): Standing {
   return r.depart - n >= HURRIED * toFirstRide(j) ? 'hurry' : 'gone';
 }
 
-/** The cards in list order (idx is the group's place, so a card keeps its number on the map whatever its options
- *  are), the ways still in reach if the rider hurries, and those just gone (a plan from now looks ten minutes back):
- *  all as they stood when the plan was answered (`askedMs`), by the live times it was routed on. */
-function build(
-  r: PlanResult | null,
-  q: Query | null,
-  f: Filters,
-  askedMs: number,
-): { cards: Card[]; hurry: Journey[]; gone: Journey[]; filteredOut: boolean } {
+/** What a search lists, decided once, as the plan was answered: which ways are cards and in what order, which
+ *  departures each card offers (the first is the one it shows), which ways are in reach with a hurry and which just
+ *  left. Journeys are named by their place in the plan. */
+type Frame = {
+  cards: { idx: number; options: number[]; lines: string[][] | null }[];
+  hurry: number[];
+  gone: number[];
+  filteredOut: boolean;
+};
+/** The frame of a plan (idx is the group's place, which is the card's number on the map), by the journeys as they
+ *  stood when the plan was answered (`askedMs`) on the live times it was routed on (a plan from now looks ten minutes
+ *  back, hence the ways just gone). */
+function frame(r: PlanResult | null, q: Query | null, f: Filters, askedMs: number): Frame {
   if (!r || !q || !r.journeys.length) return { cards: [], hurry: [], gone: [], filteredOut: false };
-  // every journey as it stood then: the one place the plan's listed times meet the live ones
-  const at = atIn(r.live?.trips ?? {}),
-    nowSec = clock.secondsOn(askedMs, q.day),
-    nowJ = r.journeys.map((j) => tripNow(j, at, nowSec));
+  const nowSec = clock.secondsOn(askedMs, q.day),
+    at = live.atIn(r.live?.trips ?? {}),
+    then = r.journeys.map((j) => tripNow(j, at, nowSec));
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
   // the option a card shows: the earliest departure from the time asked, or for arrive-by the latest that is in time
   const first = (g: { options: number[] }) => r.journeys[q.arriveBy ? g.options[g.options.length - 1] : g.options[0]];
@@ -152,40 +153,55 @@ function build(
     sk = sortKey[f.resultSort];
   const byKey = (a: Journey, b: Journey) => sk(a) - sk(b) || sortKey.depart(a) - sortKey.depart(b);
   if (sorted) groups = groups.slice().sort((a, b) => byKey(first(a), first(b)));
-  const where = (j: Journey): Standing => (q.isNow ? standing(j, nowSec) : 'ontime'); // a plan for a set time is read as asked
-  const onStrip = (j: Journey) => rideDep(j) >= nowSec - 600; // left lately
-  const add = (to: Journey[], j: Journey) => {
-    if (!to.some((o) => o.depart === j.depart && o.legs.length === j.legs.length)) to.push(j);
+  const where = (i: number): Standing => (q.isNow ? standing(then[i], nowSec) : 'ontime'); // a plan for a set time is read as asked
+  const onStrip = (i: number) => rideDep(then[i]) >= nowSec - 600; // left lately
+  const add = (to: number[], i: number) => {
+    const same = (k: number) => then[k].depart === then[i].depart && then[k].legs.length === then[i].legs.length;
+    if (!to.some(same)) to.push(i);
   };
-  const cards: Card[] = [],
-    hurry: Journey[] = [],
-    gone: Journey[] = [];
+  const cards: Frame['cards'] = [],
+    hurry: number[] = [],
+    gone: number[] = [];
   groups.forEach((g, idx) => {
-    let opts = g.options.map((i) => nowJ[i]);
-    if (q.arriveBy) opts = opts.slice().reverse();
-    for (const j of opts) {
-      const w = where(j);
-      if (w === 'hurry') add(hurry, j);
-      else if (w === 'gone' && onStrip(j)) add(gone, j);
+    const opts = q.arriveBy ? g.options.slice().reverse() : g.options;
+    for (const i of opts) {
+      const w = where(i);
+      if (w === 'hurry') add(hurry, i);
+      else if (w === 'gone' && onStrip(i)) add(gone, i);
     }
-    opts = opts.filter((j) => where(j) === 'ontime');
-    if (opts.length)
-      cards.push({
-        idx,
-        j: opts[0],
-        q,
-        options: opts,
-        lines: g.lines,
-        deps: departures(opts[0], opts, at, nowSec),
-      });
+    const options = opts.filter((i) => where(i) === 'ontime');
+    if (options.length) cards.push({ idx, options, lines: g.lines });
   });
-  if (sorted) cards.sort((a, b) => byKey(a.j, b.j)); // "by arrival" means the arrival the card shows
-  hurry.sort((a, b) => rideDep(a) - rideDep(b));
+  if (sorted) cards.sort((a, b) => byKey(then[a.options[0]], then[b.options[0]])); // "by arrival" means the arrival the card shows
+  hurry.sort((a, b) => rideDep(then[a]) - rideDep(then[b]));
   return { cards, hurry, gone, filteredOut: !groups.length };
 }
+const framed = computed(() => frame(result.value, query.value, filters.value, asked.value));
+/** The list on screen: the frame's trips, each as it stands now. The times follow the live store and the clock; which
+ *  trips, and where each is in the list, do not. `left`: a card whose ride has gone since (it keeps its place). */
 export const list = computed(() => {
   void lang.value;
-  return build(result.value, query.value, filters.value, asked.value);
+  void now.value;
+  const r = result.value,
+    q = query.value,
+    f = framed.value;
+  if (!r || !q) return { cards: [] as Card[], hurry: [] as Journey[], gone: [] as Journey[], filteredOut: false };
+  const nowSec = clock.nowOn(q.day);
+  const stands = (i: number): Journey => tripNow(r.journeys[i], live.at, nowSec);
+  const cards = f.cards.map((c): Card => {
+    const options = c.options.map(stands),
+      j = options[0];
+    return {
+      idx: c.idx,
+      j,
+      q,
+      options,
+      lines: c.lines,
+      deps: departures(j, options, live.at, nowSec),
+      left: !!q.isNow && standing(j, nowSec) === 'gone',
+    };
+  });
+  return { cards, hurry: f.hurry.map(stands), gone: f.gone.map(stands), filteredOut: f.filteredOut };
 });
 /** A way's card to bring into view with a flash (its index; `n` makes asking again for the same card a change). */
 export const reveal = signal<{ idx: number; n: number } | null>(null);

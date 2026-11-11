@@ -1,4 +1,5 @@
-// One way to get there: times and duration, the legs as chips, the lines and where they head, when the first ride
+// One way to get there (dimmed once its ride has gone: it keeps its place in the list until the rider asks again):
+// times and duration, the legs as chips, the lines and where they head, when the first ride
 // leaves its stop and the departures after it (the Moovit line: "leaves Rehovot: now, 20:56, 21:24", each coloured by
 // how sure its time is), and the map button that draws it on the map or takes it off.
 import { useRef } from 'preact/hooks';
@@ -19,11 +20,11 @@ import { openDetail } from '../../controllers/detail';
 import { Tappable } from '../../widgets/Tappable';
 
 /** A departure's chip: "now", "18 min" or the time, in the colour of how sure it is (text/live.ts sureness), struck
- *  through once it has gone (its vehicle was past the stop when the plan was answered, or its time has gone by since); an
+ *  through once it has gone (its vehicle is past the stop, or its time has gone by); an
  *  option opens on a tap, a later ride of the route is told only. An earlier departure that arrives later than the card's own
  *  (the train at the platform) is dashed, its arrival not written on it (maintainer, 2026-11-09). */
 function DepChip({ d, j, q, stop }: { d: results.Dep; j: Journey; q: Card['q']; stop: string }) {
-  void now.value; // its words count down with the clock, and it is struck through as it passes (the list itself stays)
+  void now.value; // its words count down with the clock
   const own = d.o === j,
     past = !!d.live?.passed || goneBy(d.depart, q.day);
   const cls = `opt${sureness(d, q.day)}${own ? ' own' : ''}${d.o?.slower ? ' slower' : ''}${past ? ' past' : ''}`;
@@ -70,12 +71,12 @@ export function JourneyCard({ card }: { card: Card }) {
     }, 60);
     return () => clearTimeout(t);
   });
-  const { j, q, deps, lines, idx } = card;
+  const { j, q, deps, lines, idx, left } = card;
   const rides = ridesOf(j.legs);
   const shown = results.altShown.value.has(idx),
     sel = shown && results.altSel.value === idx;
   return (
-    <Tappable class={`journey${sel ? ' sel' : ''}`} elRef={el} onClick={() => openDetail(j, q)}>
+    <Tappable class={`journey${sel ? ' sel' : ''}${left ? ' past' : ''}`} elRef={el} onClick={() => openDetail(j, q)}>
       <div class="top">
         {rides.some((l) => l.estimated) && <span class="est">~</span>}
         <TimeRange from={j.depart} to={j.arrive} />

@@ -16,7 +16,7 @@ first paint.
 | `suggest` | What a search box's list holds for its kind and text, each box's answers in the order it asked. |
 | `loading` | The manifest, the day's timetable, then the address book, the street graph and the courses. |
 | `planner` | From the bar to results: planning, "my location", a destination from anywhere, the last search, opening history items. |
-| `live` | The one look for live times: each screen that follows a trip, a stop or a line says which trips it shows (`watch`), one timer asks the worker for all of them every 30 s and fills `state/live`; a ride's line on the map. No other controller fetches live times. The search results are not watched: they change when the rider asks again (`planner` `refresh`). |
+| `live` | The one look for live times: each screen says which trips it shows (`watch`), one timer asks the worker for all of them every 30 s and fills `state/live`; a ride's line on the map. No other controller fetches live times. |
 | `detail` | A journey's detail: its rides watched live, the ride options of each ride. |
 | `stop`, `line`, `station` | A stop's page, a line's page, the trains between two stations: their worker calls, and which trips they watch. |
 | `follow`, `alerts` | Following a trip as it stands now (`trip/now`): position, timers, a faster way; get-off alerts and notifications. |

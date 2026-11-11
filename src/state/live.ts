@@ -1,7 +1,7 @@
 // The live times of the trips on screen: one store, filled on one timer (controllers/live.ts) from the worker's one
-// answer per trip (worker/vehicles.ts liveTrips), read through `at` by every screen that follows a trip, a stop or a
-// line. A screen holds no live times of its own. The search results are the one exception: an answer as of when it
-// was asked, they read the times their plan was routed on (state/results.ts) until the rider asks again.
+// answer per trip (worker/vehicles.ts liveTrips), read by every screen through `at`. A screen holds no live times of
+// its own. (`atIn` reads the same of the times a plan was routed on: the search results use it once, to decide which
+// trips they list and in what order, state/results.ts.)
 import { signal } from '@preact/signals';
 import type { TripLive } from '../worker/ops';
 import type { At } from '../trip/now';

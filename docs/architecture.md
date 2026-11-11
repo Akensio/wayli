@@ -1371,21 +1371,15 @@ three times on three screens.)
         ▼
  TripLive = { from, times[], passed, sure, seen }     ONE answer per trip
         │
-        ├──► worker/plan.ts   routes on these times, and hands the page the
-        │         │           ones of the trips its journeys ride
-        │         ▼
-        │    state/results.ts   the search results: the plan, those times and
-        │         │             the moment it was answered. An answer as of
-        │         │             then: nothing in it moves until the rider asks
-        │         │             again (Refresh plans anew)
-        ▼         │
- state/live.ts    │   the store of the screens that follow a trip, a stop or a
-        │         │   line, filled by controllers/live.ts: each says which
-        │         │   trips it shows (watch), one look every 30 s asks for all
-        │         │   of them; a failed look empties it
-        ▼         ▼
+        ├──► worker/plan.ts   routes on these times (and hands the page the
+        │                     ones of the trips its journeys ride)
+        ▼
+ state/live.ts        the page's one store, filled by controllers/live.ts:
+        │             each screen says which trips it shows (watch), one look
+        │             every 30 s asks for all of them; a failed look empties it
+        ▼
  trip/now.ts          timeAt(trip, stop): the live time, else the listed one
-        │             tripNow(plan): a plan as it stands at a moment
+        │             tripNow(plan): a plan as it stands now
         ▼
  every screen draws that. No screen fetches vehicles, matches one to a trip,
  compares a planned time with a live one, or sets a time against the clock.
@@ -1401,37 +1395,32 @@ screen with its state machine and notification, and the re-planning all read
 the same `tripNow`; the stop page, the trains between two stations, a ride's
 other rides and the line page read `timeAt` for their rows.
 
-Two kinds of screen, by when they are brought up to date (maintainer,
-2026-11-11: results that refresh on their own read as the app misbehaving):
-
-- The search results are an answer as of when it was asked. The list is a
-  function of the plan, the live times it was routed on and that moment
-  (`state/results.ts`), and of nothing that moves: no card changes its
-  times, its place or its strip on its own. The words count down with the
-  clock ("7 min", then "6 min"), a departure whose time has gone by is
-  struck through, and the head says "live times as of 10:40", in orange
-  once the answer is older than a report may be and still count (4 minutes),
-  beside Refresh, which asks the same question again, from now if it was
-  from now, in the order the rider had chosen.
-- The detail, the follow screen, a stop, the trains between two stations and
-  a line follow what they show, through the store. A journey opened from the
-  list is handed what the list knew of its trips (`watch`'s `known`), so it
-  opens on the times its card showed and moves from there.
+The trips of a search stay, their times follow (maintainer, 2026-11-11:
+"the live times can update on their own, the trips themselves not"). A
+search decides once, as its plan is answered, which ways it lists, in what
+order, which departure each card shows, and which ways are filed as in
+reach with a hurry or as just left (`state/results.ts frame`, by the times
+the plan was routed on at that moment). From then on only the times move:
+each listed trip is drawn as it stands now, like everywhere else. A card
+whose ride has gone since keeps its place, dimmed, its departure struck
+through; it does not jump to another strip or turn into the next departure.
+The trips change when the rider asks again: Refresh in the results' head
+plans the same question anew (from now if it was from now, in the order the
+rider had chosen), as does changing the question; the filters and the order
+re-read the same answer.
 
 ### The rules (each has its check)
 
 1. One answer per trip and stop, made in the worker, read through
-   `state/live.ts` (`at` for the store, `atIn` for the times a plan was
-   routed on). The planner routes on the same answer the screens draw.
-   (`tests/planlive.test.ts`: the plan's times equal the look's;
+   `state/live.ts at`. The planner routes on the same answer the screens
+   draw. (`tests/planlive.test.ts`: the plan's times equal the look's;
    `tests/now.test.ts`: the card, its chip, the stop page and the list of
    rides say the same; `tests/results.test.ts`: the clock and a newer look
-   move nothing in the list, asking again does.)
-2. A stop the vehicle has not passed is never before the moment the answer
-   is of (now, for the screens that follow; when the plan was answered, for
-   the results): its report is up to a minute old, and the store up to half
-   a minute. A bus a few hundred metres short of the stop leaves now, and
-   its card stays (Nordau, 2026-11-08).
+   move a card's times but not the card, asking again does.)
+2. A stop the vehicle has not passed is never before now: its report is up
+   to a minute old, and the store up to half a minute. A bus a few hundred
+   metres short of the stop leaves now, and its card stays (Nordau,
+   2026-11-08).
 3. Still to come, the one rule for every list of departures (`toCome`):
    with live times, the vehicle is not past the stop, so a late one listed
    earlier is in the list and one that left is not; without, the listed time
@@ -1475,9 +1464,9 @@ Two kinds of screen, by when they are brought up to date (maintainer,
 
 ### When to leave: the result list
 
-The list is built from each journey as it stood when the plan was answered
-(`tripNow` at that moment, by the times the plan was routed on), and stays
-so until the rider asks again. With L its start, B its first ride's
+Which ways are cards, and which are filed apart, is decided from each
+journey as it stood when the plan was answered (`frame`; the times on them
+follow from then on, see above). With L its start, B its first ride's
 departure and n that moment:
 
 ```
@@ -1498,9 +1487,9 @@ departure and n that moment:
   the journey is missed. The "just left" line, for ten minutes (a plan from
   now looks 10 minutes back, so the ride you are on can still be followed).
 - By rule 2 a live ride whose vehicle has not passed the stop has B ≥ n: the
-  rider standing at the stop gets its card, and keeps it until a Refresh
-  sees the bus past the stop. (`tests/now.test.ts`, `tests/planlive.test.ts`,
-  `tests/results.test.ts`.)
+  rider standing at the stop gets its card. Once the bus is seen past the
+  stop the card is dimmed where it is; the next Refresh files it as gone.
+  (`tests/now.test.ts`, `tests/planlive.test.ts`, `tests/results.test.ts`.)
 
 ## Crowd reports
 

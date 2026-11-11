@@ -12,6 +12,7 @@ import * as clock from '../../engine/clock.ts';
 import { fmt, secOf, timeOf } from '../../common/time';
 import * as results from '../../state/results';
 import { now } from '../../state/clock';
+import * as live from '../../state/live';
 import { describePlace } from '../../text/placeNames';
 import { LegChips } from './LegChips';
 import { JourneyCard } from './JourneyCard';
@@ -25,11 +26,9 @@ import { startTrip } from '../../controllers/follow';
 import * as query from '../../state/query';
 import { Tappable } from '../../widgets/Tappable';
 
-/** How many ways, with what, and how live: as of when the plan was answered, in orange once that is a while ago, with
- *  the button that asks again (the list never changes on its own, state/results.ts). */
-function Head({ q, n, asOf }: { q: Query; n: number; asOf: number | null }) {
-  let mark = '';
-  if (asOf) mark = results.aged(now.value) ? ' unsure' : ' ok';
+/** How many ways, with what, how live the times are, and the button that asks again: the times follow on their own,
+ *  the trips listed change only here (state/results.ts). */
+function Head({ q, n }: { q: Query; n: number }) {
   let note = '';
   if (q.bike === 'along') note = q.folding ? t('foldingNote') : t('withBikeOnBoard');
   else if (q.bike === 'park') note = t('parkNote');
@@ -42,7 +41,10 @@ function Head({ q, n, asOf }: { q: Query; n: number; asOf: number | null }) {
         {q.liveTried && (
           <>
             {' '}
-            · <span class={`live${mark}`}>{asOf ? t('livePlanned', { time: timeOf(asOf) }) : t('schedOnly')}</span>
+            ·{' '}
+            <span class={`live${live.asOf.value ? ' ok' : ''}`}>
+              {live.asOf.value ? t('livePlanned', { time: timeOf(live.asOf.value) }) : t('schedOnly')}
+            </span>
           </>
         )}
       </span>
@@ -250,7 +252,7 @@ export function Results() {
   const bikeOnly = r.bikeOnly;
   return (
     <div id="results">
-      <Head q={q} n={(r.groups || r.journeys).length} asOf={r.live?.asOf ?? null} />
+      <Head q={q} n={(r.groups || r.journeys).length} />
       {gone.length > 0 && <GoneStrip gone={gone} q={q} />}
       {hurry.length > 0 && <HurryStrip hurry={hurry} q={q} />}
       {bikeOnly && (

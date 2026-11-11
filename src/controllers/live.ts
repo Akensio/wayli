@@ -1,7 +1,6 @@
-// The one look for live times: each screen that follows a trip, a stop or a line says which trips it shows (`watch`),
-// and every LOOK_MS while the app is in view the worker is asked for all of them at once and the store (state/live.ts)
-// is replaced with its answer. The search results are not watched: they stay as answered until the rider asks again
-// (state/results.ts), and hand what they know to the screen a journey is opened on.
+// The one look for live times: each screen says which trips it shows (`watch`), and every LOOK_MS while the app is in
+// view the worker is asked for all of them at once and the store (state/live.ts) is replaced with its answer. A plan
+// hands in the times it was routed on (`seed`), so its results are drawn as planned without waiting for a look.
 import * as clock from '../engine/clock.ts';
 import * as feed from '../engine/feed.ts';
 import * as data from '../state/data';
@@ -42,16 +41,9 @@ async function look(): Promise<void> {
     live.state.value = 'failed';
   }
 }
-/** A screen shows these trips from now on (in place of what it showed before): looked up at once. `known`: what the
- *  search results showed of them, drawn until the look answers, so a journey opens as its card showed it. */
-export function watch(screen: string, tripIds: readonly number[], known?: LiveTrips | null): void {
+/** A screen shows these trips from now on (in place of what it showed before): looked up at once. */
+export function watch(screen: string, tripIds: readonly number[]): void {
   watched.set(screen, tripIds);
-  const mine = known && wanted() ? tripIds.filter((id) => known.trips[id]) : [];
-  if (mine.length) {
-    live.trips.value = { ...live.trips.value, ...Object.fromEntries(mine.map((id) => [id, known!.trips[id]])) };
-    live.asOf.value = known!.asOf;
-    live.state.value = 'ok';
-  }
   if (!timer) {
     timer = window.setInterval(() => {
       if (!document.hidden) void look();
@@ -65,6 +57,13 @@ export function watch(screen: string, tripIds: readonly number[], known?: LiveTr
 /** A screen closed: its trips are no longer asked for. */
 export function unwatch(screen: string): void {
   watched.delete(screen);
+}
+/** The live times a plan was routed on, taken in at once (the next look replaces them). */
+export function seed(r: LiveTrips | null | undefined): void {
+  if (!r || !wanted()) return;
+  live.trips.value = { ...live.trips.value, ...r.trips };
+  live.asOf.value = r.asOf;
+  live.state.value = 'ok';
 }
 /** A ride's line on the map: its vehicles as markers for `panel`, the ride's own marked. `still` says whether the
  *  panel still shows what asked. */

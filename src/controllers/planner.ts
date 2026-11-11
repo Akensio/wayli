@@ -25,6 +25,8 @@ import { openStop } from './stop';
 import { chooseStation, openStation, openTrains } from './station';
 import * as stopPage from '../state/stop';
 import { openDetail } from './detail';
+import * as liveTimes from './live';
+import { isRide } from '../trip/journey';
 import * as query from '../state/query';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
@@ -130,6 +132,7 @@ export async function plan(opts: { maxWalk?: number; sort?: results.Sort } = {})
       urls: liveTried ? feed.RELAY_URLS : null,
     });
     if (my !== planSeq) return;
+    liveTimes.seed(r.live); // the times it was routed on: the results are drawn as planned at once
     recentTrips.add(q);
     recentPlaces.add(from);
     recentPlaces.add(to);
@@ -145,7 +148,7 @@ export async function plan(opts: { maxWalk?: number; sort?: results.Sort } = {})
 }
 
 /** The results' Refresh: the same question asked again (from now, if it was from now), with the walk it was asked with
- *  and in the order the rider chose. The one way a list of results changes. */
+ *  and in the order the rider chose. The one way the trips in a list of results change (state/results.ts). */
 export const refresh = (): Promise<void> =>
   plan({ maxWalk: results.query.value?.maxWalk, sort: results.filters.value.resultSort });
 
@@ -334,6 +337,15 @@ export function toHere(): void {
 
 /** Start: a plan waiting for its day's timetable is made when it comes; the bar's and the results' hooks. */
 export function install(): void {
+  // the results' rides, and the departures after each first ride, are looked up live for as long as they are shown
+  effect(() => {
+    const r = results.result.value;
+    const rides = (r ? r.journeys : []).flatMap((j) => j.legs.filter(isRide));
+    liveTimes.watch('results', [
+      ...rides.map((l) => l.trip),
+      ...rides.flatMap((l) => (l.next || []).map((n) => n.trip)),
+    ]);
+  });
   effect(() => {
     if (data.ttReady.value && waiting) plan();
   });

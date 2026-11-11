@@ -1,7 +1,7 @@
 // The result list (src/state/results.ts): the cards are in the order of the option each one shows, while each card's
 // number (idx) follows its group's first option, which a plan from now (it looks ten minutes back) may already have
-// filed under "just left". And a search is an answer as of when it was asked: neither the clock nor a newer look moves
-// a card; asking again does.
+// filed under "just left". And the trips of a search stay while their times follow: neither the clock nor a newer look
+// moves a card or swaps its trip; asking again does.
 import { test, expect, vi } from 'vitest';
 import * as clock from '../src/engine/clock.ts';
 import * as results from '../src/state/results';
@@ -85,7 +85,7 @@ test("a card's departures: its options and the own ride's followers, one per tri
   expect(d[4].live).toBeNull();
 });
 
-test('a search is an answer as of when it was asked: the clock and newer looks move nothing, asking again does', () => {
+test('the trips of a search stay and their times follow: only asking again changes which are listed, and where', () => {
   vi.useFakeTimers({ now: Date.now(), toFake: ['Date'] });
   results.hooks.afterResults = () => {};
   const q = { ...results.query.value!, liveTried: true };
@@ -93,32 +93,34 @@ test('a search is an answer as of when it was asked: the clock and newer looks m
   // the 8 is listed four minutes ago and has not reached the stop (it is due a minute from now); the 5 leaves in ten
   const late8 = { ...way(at0 - 240, at0 + 600, '8'), legs: [{ ...ride(at0 - 240, at0 + 600, '8'), trip: 8 }] },
     the5 = { ...way(at0 + 600, at0 + 1500, '5'), legs: [{ ...ride(at0 + 600, at0 + 1500, '5'), trip: 5 }] };
-  const known = (dep8: number, passed: number) => ({
+  const known = (dep8: number, arr8: number, passed: number) => ({
     asOf: Date.now() - 20000,
-    trips: { 8: { seen: at0, sure: true, from: 0, times: [dep8, dep8 + 840], passed } },
+    trips: { 8: { seen: at0, sure: true, from: 0, times: [dep8, arr8], passed } },
   });
-  results.setResults({ journeys: [late8, the5], live: known(at0 + 60, 0) }, q);
-  const first = results.list.value;
-  expect(first.cards.map((c) => [(c.j.legs[0] as RideLeg).line, c.j.depart - at0])).toEqual([
-    ['8', 60], // the late bus is a card, at the time it is expected
-    ['5', 600],
+  const shown = () =>
+    results.list.value.cards.map((c) => [(c.j.legs[0] as RideLeg).line, c.j.depart - at0, c.j.arrive - at0, c.left]);
+  live.trips.value = known(at0 + 60, at0 + 900, 0).trips; // what the plan was routed on (the planner hands it in)
+  results.setResults({ journeys: [late8, the5], live: known(at0 + 60, at0 + 900, 0) }, q);
+  expect(shown()).toEqual([
+    ['8', 60, 900, false], // the late bus is a card, at the time it is expected, before the 5 (it arrives first)
+    ['5', 600, 1500, false],
   ]);
-  expect(first.gone).toHaveLength(0);
-  expect(results.aged(Date.now())).toBe(false);
+  expect(results.list.value.gone).toHaveLength(0);
 
-  // six minutes on: the clock has passed the 8's time, and the screens that follow trips have learned that it left
+  // six minutes on, a look says the 8 left at +90 and will now arrive after the 5: its times follow, and it is marked
+  // as gone, but it is the same card in the same place, and nothing is filed under "just left"
   vi.setSystemTime(Date.now() + 360000);
-  live.trips.value = known(at0 + 90, 1).trips;
-  expect(results.list.value).toBe(first); // the very same list: no card moved, none changed its time
-  expect(results.aged(Date.now())).toBe(true); // the head says so, beside the button
+  live.trips.value = known(at0 + 90, at0 + 1800, 1).trips;
+  expect(shown()).toEqual([
+    ['8', 90, 1800, true],
+    ['5', 600, 1500, false],
+  ]);
+  expect(results.list.value.gone).toHaveLength(0);
 
-  // the rider asks again, in the order they had chosen: now the 8 has gone and the list says so
-  results.filters.value = { ...results.filters.value, resultSort: 'fast' };
-  results.setResults({ journeys: [late8, the5], live: known(at0 + 90, 1) }, q, 'fast');
-  const again = results.list.value;
-  expect(again.cards.map((c) => (c.j.legs[0] as RideLeg).line)).toEqual(['5']);
-  expect(again.gone.map((j) => (j.legs[0] as RideLeg).line)).toEqual(['8']);
+  // the rider asks again, in the order they had chosen: now the list is the 5, and the 8 has just left
+  results.setResults({ journeys: [late8, the5], live: known(at0 + 90, at0 + 1800, 1) }, q, 'fast');
+  expect(shown().map((c) => c[0])).toEqual(['5']);
+  expect(results.list.value.gone.map((j) => (j.legs[0] as RideLeg).line)).toEqual(['8']);
   expect(results.filters.value.resultSort).toBe('fast');
-  expect(results.aged(Date.now())).toBe(false);
   vi.useRealTimers();
 });
