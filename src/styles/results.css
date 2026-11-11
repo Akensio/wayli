@@ -80,6 +80,9 @@
 .dep .time.gone { text-decoration: line-through; color: var(--ink-2); }
 /* ---- live map */
 .results-head .live { font-size: 12px; border-radius: 10px; padding: 0 7px; }
+/* asks the same question again: the list never changes on its own */
+.results-head .linkbtn { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; min-height: 30px; }
+.results-head .linkbtn .i { width: 15px; height: 15px; }
 /* collapsed, every touch on the sheet is the app's: a pull up opens it, a pull down is the app's own pull-to-refresh,
    a sideways move on the chip strip scrolls the strip (by script); the browser never claims a gesture here */
 .sheet[data-state="peek"], .sheet[data-state="peek"] .handle, .sheet[data-state="peek"] .sheet-body { touch-action: none; }

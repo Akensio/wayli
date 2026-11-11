@@ -18,12 +18,14 @@ import { ridesOf } from '../../trip/journey';
 import { openDetail } from '../../controllers/detail';
 import { Tappable } from '../../widgets/Tappable';
 
-/** A departure's chip: "now", "18 min" or the time, in the colour of how sure it is (text/live.ts sureness); an option
- *  opens on a tap, a later ride of the route is told only. An earlier departure that arrives later than the card's own
+/** A departure's chip: "now", "18 min" or the time, in the colour of how sure it is (text/live.ts sureness), struck
+ *  through once it has gone (its vehicle was past the stop when the plan was answered, or its time has gone by since); an
+ *  option opens on a tap, a later ride of the route is told only. An earlier departure that arrives later than the card's own
  *  (the train at the platform) is dashed, its arrival not written on it (maintainer, 2026-11-09). */
 function DepChip({ d, j, q, stop }: { d: results.Dep; j: Journey; q: Card['q']; stop: string }) {
+  void now.value; // its words count down with the clock, and it is struck through as it passes (the list itself stays)
   const own = d.o === j,
-    past = !own && (d.live ? d.live.passed : goneBy(d.depart, q.day));
+    past = !!d.live?.passed || goneBy(d.depart, q.day);
   const cls = `opt${sureness(d, q.day)}${own ? ' own' : ''}${d.o?.slower ? ' slower' : ''}${past ? ' past' : ''}`;
   const body = (
     <>
@@ -72,7 +74,6 @@ export function JourneyCard({ card }: { card: Card }) {
   const rides = ridesOf(j.legs);
   const shown = results.altShown.value.has(idx),
     sel = shown && results.altSel.value === idx;
-  void now.value; // the "also at" times grey out as they pass
   return (
     <Tappable class={`journey${sel ? ' sel' : ''}`} elRef={el} onClick={() => openDetail(j, q)}>
       <div class="top">

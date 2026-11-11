@@ -14,8 +14,8 @@ directly.
 |---|---|
 | `query` | The rider's question: from, to, the service day and time (or now), the bicycle, the days the data has; its rules, with no screen in them (tested in Node). |
 | `search` | The top bar: what its boxes show and which of its parts are open, which search (trip, line, stop), the two stations of the train search; its actions edit the question. |
-| `results` | A plan's results: cards, filters, sorting, which ways are drawn; the drawer's history tabs. |
-| `live` | The live times of the trips on screen: one store, filled by `controllers/live`, read by every screen through `at(trip, stop)`. No other module holds live times. |
+| `results` | A plan's results: cards, filters, sorting, which ways are drawn; the drawer's history tabs. An answer as of when it was asked: the list is worked out from the plan, the live times it was routed on and that moment, and changes only when the rider asks again. |
+| `live` | The live times of the trips on screen: one store, filled by `controllers/live`, read through `at(trip, stop)` by every screen that follows a trip, a stop or a line (`atIn` reads the same of the times a plan was routed on, for the results). No other module holds live times. |
 | `detail`, `follow` | The journey shown; the trip being followed, as it stands now. |
 | `stop`, `line`, `station` | A stop's page, a line's page, the trains between two stations. The worker's answers they hold are typed by the worker's contract (`worker/ops.ts`), re-exported here. |
 | `nav` | The stack of panels and screens, and how Back reaches it: browser history, or a CloseWatcher per entry on Android (one back-end chosen at start). |

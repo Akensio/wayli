@@ -34,6 +34,7 @@ import type { Query } from '../trip/query';
 import type { ActiveTrip, Alt, Position } from '../state/follow';
 import type { FollowView, ReplanOrigin } from '../following/follow.ts';
 import * as live from '../state/live';
+import * as results from '../state/results';
 import { tripNow } from '../trip/now';
 import * as liveTimes from './live';
 import { effect } from '@preact/signals';
@@ -140,7 +141,7 @@ function openFollow(trip: ActiveTrip): void {
     requestWake();
   }
   activeTrip.set(fol!.a);
-  liveTimes.watch('follow', rideTrips(fol!.a.journey));
+  liveTimes.watch('follow', rideTrips(fol!.a.journey), results.result.value?.live);
   follow.publish({ ...fol!.a, journey: nowTrip(fol!.a) }, follow.alt.value); // the map draws the trip from here (map/render.ts)
   // started from the detail, the panel is already 'follow' (swapped in before its trip was published), and a plain
   // redraw would see the same panel and skip it: draw it now

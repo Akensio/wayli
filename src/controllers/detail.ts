@@ -6,6 +6,7 @@ import { call } from '../worker/client';
 import * as data from '../state/data';
 import * as detail from '../state/detail';
 import * as nav from '../state/nav';
+import * as results from '../state/results';
 import * as map from '../map/index';
 import type { Journey, RideLeg } from '../trip/journey';
 import type { Query } from '../trip/query';
@@ -24,7 +25,7 @@ export function openDetail(j: Journey, q: Query, bikeOnly = false): void {
   if (!bikeOnly) recentViews.add({ type: 'trip', q, j, built: data.manifest.value?.built });
   debug('journey', j);
   detail.open(j, q, bikeOnly); // the map draws it (map/render.ts); its vehicles follow once drawn
-  liveTimes.watch('detail', bikeOnly ? [] : j.legs.filter(isRide).map((l) => l.trip));
+  liveTimes.watch('detail', bikeOnly ? [] : j.legs.filter(isRide).map((l) => l.trip), results.result.value?.live);
 }
 export function closeDetail(): void {
   session.end();

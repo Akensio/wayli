@@ -25,8 +25,6 @@ import { openStop } from './stop';
 import { chooseStation, openStation, openTrains } from './station';
 import * as stopPage from '../state/stop';
 import { openDetail } from './detail';
-import * as liveTimes from './live';
-import { isRide } from '../trip/journey';
 import * as query from '../state/query';
 
 type Shared = Parameters<typeof search.applyQuery>[0];
@@ -60,7 +58,7 @@ export function parseShared(params: URLSearchParams): Shared | null {
 
 let waiting = false;
 let planSeq = 0; // the newest plan asked for: an older one finishing later is dropped
-export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
+export async function plan(opts: { maxWalk?: number; sort?: results.Sort } = {}): Promise<void> {
   const my = ++planSeq;
   showPlanError('');
   if (!search.from.value || !search.to.value) {
@@ -132,12 +130,11 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
       urls: liveTried ? feed.RELAY_URLS : null,
     });
     if (my !== planSeq) return;
-    liveTimes.seed(r.live); // the times it was routed on: the results are drawn as planned at once
     recentTrips.add(q);
     recentPlaces.add(from);
     recentPlaces.add(to);
     lastSearch.set({ q, result: r, at: Date.now() });
-    results.setResults(r, q);
+    results.setResults(r, q, opts.sort);
   } catch (e) {
     if (my !== planSeq) return;
     showPlanError(e instanceof Error ? e.message : String(e));
@@ -146,6 +143,11 @@ export async function plan(opts: { maxWalk?: number } = {}): Promise<void> {
   }
   search.busy.value = false;
 }
+
+/** The results' Refresh: the same question asked again (from now, if it was from now), with the walk it was asked with
+ *  and in the order the rider chose. The one way a list of results changes. */
+export const refresh = (): Promise<void> =>
+  plan({ maxWalk: results.query.value?.maxWalk, sort: results.filters.value.resultSort });
 
 /** A destination chosen anywhere: planned from where you are, from now (or at the time the rider set). */
 export async function planTo(p: Place): Promise<void> {
@@ -332,15 +334,6 @@ export function toHere(): void {
 
 /** Start: a plan waiting for its day's timetable is made when it comes; the bar's and the results' hooks. */
 export function install(): void {
-  // the results' rides, and the departures after each first ride, are looked up live for as long as they are shown
-  effect(() => {
-    const r = results.result.value;
-    const rides = (r ? r.journeys : []).flatMap((j) => j.legs.filter(isRide));
-    liveTimes.watch('results', [
-      ...rides.map((l) => l.trip),
-      ...rides.flatMap((l) => (l.next || []).map((n) => n.trip)),
-    ]);
-  });
   effect(() => {
     if (data.ttReady.value && waiting) plan();
   });

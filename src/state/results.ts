@@ -1,15 +1,19 @@
 // The results of a plan: what came back, how it is filtered and sorted into cards, which ways are drawn on
 // the map and which one is highlighted, and the recent trips shown while there is nothing else. The list is
 // derived from the signals, so filters, the language and the alternatives never rebuild it by hand.
+// A search is an answer as of when it was asked (maintainer, 2026-11-11): the list is worked out from the plan, the
+// live times it was routed on and that moment, and from nothing that moves, so no card changes its times, its place
+// or its strip under the rider's finger. The words count down with the clock (the views); the rider asks again with
+// Refresh (controllers/planner.ts refresh).
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
+import { FRESH_S } from '../engine/delays.ts';
 import { settings } from './store.ts';
 import { lang } from '../common/i18n';
 import * as search from './search';
-import { now } from './clock';
 import type { Journey, PlanResult, RideLeg } from '../trip/journey';
 import { firstRide, timeAt, tripNow, type At } from '../trip/now';
-import * as live from './live';
+import { atIn } from './live';
 import type { Query } from '../trip/query';
 import { unset } from '../common/unset';
 export type { View } from './store.ts';
@@ -42,6 +46,11 @@ const readFilters = (sort: Sort = 'arrive'): Filters => {
 
 export const result = signal<PlanResult | null>(null);
 export const query = signal<Query | null>(null);
+/** When the plan on screen was answered (ms): the moment its list stands at. */
+export const asked = signal(0);
+/** Whether the answer is old enough that its live times should be asked again: older than a vehicle's report may be
+ *  and still count as certain. */
+export const aged = (nowMs: number): boolean => nowMs - asked.value > FRESH_S * 1000;
 export const status = signal<Status>('idle'); // the list gives way to "planning…" or "locating…"
 export const error = signal('');
 export const filters = signal<Filters>(readFilters());
@@ -66,7 +75,7 @@ export type Dep = {
 };
 /** The departures a card lists: its options' first rides and the own ride's followers, one per trip, in time order,
  *  the own one and up to three after it (an earlier option that arrives later, the train at the platform, stays). The
- *  journeys are as they stand now (tripNow); the followers' times are asked the same way. */
+ *  journeys are as they stood at `now` (tripNow); the followers' times are asked the same way. */
 export function departures(j: Journey, options: Journey[], at: At, now: number): Dep[] {
   const by = new Map<number, Dep>();
   for (const o of options) {
@@ -102,8 +111,8 @@ const toFirstRide = (j: Journey): number => {
   return s;
 };
 const HURRIED = 0.6; // hurrying (a fast walk or a jog, 2 m/s against the planned 1.2) takes 0.6 of the time; an estimate
-/** Where a journey stands (docs/architecture.md, "When to leave: the result list"), given as it stands now (tripNow)
- *  with L its start, B its first ride and n now: on time while n <= L; "hurry" while the time left before B still
+/** Where a journey stands (docs/architecture.md, "When to leave: the result list"), given as it stood at n (tripNow)
+ *  with L its start and B its first ride: on time while n <= L; "hurry" while the time left before B still
  *  covers the way to the ride at a hurried pace; gone after that, or once the ride's vehicle is past the stop, or a
  *  change in it is missed. A ride whose vehicle has not reached the stop never leaves before now (tripNow), so the
  *  rider standing there keeps its card. A way with no ride is never late. */
@@ -116,17 +125,19 @@ export function standing(j: Journey, n: number): Standing {
   return r.depart - n >= HURRIED * toFirstRide(j) ? 'hurry' : 'gone';
 }
 
-/** The cards in list order (idx is the group's place, so a card keeps its number on the map while its options move
- *  on), the ways still in reach if the rider hurries, and those just gone (a plan from now looks ten minutes back). */
+/** The cards in list order (idx is the group's place, so a card keeps its number on the map whatever its options
+ *  are), the ways still in reach if the rider hurries, and those just gone (a plan from now looks ten minutes back):
+ *  all as they stood when the plan was answered (`askedMs`), by the live times it was routed on. */
 function build(
   r: PlanResult | null,
   q: Query | null,
   f: Filters,
-  at: At,
+  askedMs: number,
 ): { cards: Card[]; hurry: Journey[]; gone: Journey[]; filteredOut: boolean } {
   if (!r || !q || !r.journeys.length) return { cards: [], hurry: [], gone: [], filteredOut: false };
-  // every journey as it stands now: the one place the plan's listed times meet the live ones
-  const nowSec = clock.nowOn(q.day),
+  // every journey as it stood then: the one place the plan's listed times meet the live ones
+  const at = atIn(r.live?.trips ?? {}),
+    nowSec = clock.secondsOn(askedMs, q.day),
     nowJ = r.journeys.map((j) => tripNow(j, at, nowSec));
   let groups = r.groups || r.journeys.map((_, i) => ({ options: [i], lines: null }));
   // the option a card shows: the earliest departure from the time asked, or for arrive-by the latest that is in time
@@ -174,9 +185,7 @@ function build(
 }
 export const list = computed(() => {
   void lang.value;
-  void now.value;
-  void live.trips.value;
-  return build(result.value, query.value, filters.value, live.at);
+  return build(result.value, query.value, filters.value, asked.value);
 });
 /** A way's card to bring into view with a flash (its index; `n` makes asking again for the same card a change). */
 export const reveal = signal<{ idx: number; n: number } | null>(null);
@@ -201,14 +210,17 @@ function resetAlts(): void {
   altShown.value = new Set(cards.slice(0, 3).map((c) => c.idx));
   altSel.value = cards.length ? cards[0].idx : -1;
 }
-export function setResults(r: PlanResult, q: Query): void {
+/** A plan answered, now. `sort`: the order kept when the same question is asked again; every other plan starts by
+ *  arrival. */
+export function setResults(r: PlanResult, q: Query, sort: Sort = 'arrive'): void {
   // the boxes stay open: picking a destination plans at once, and the time or the bike may still change (a change
   // plans again). They fold when the rider moves on: a tap on the map, a result opened, the sheet dragged, X or back.
   result.value = r;
   query.value = q;
+  asked.value = Date.now();
   status.value = 'idle';
   error.value = '';
-  if (filters.value.resultSort !== 'arrive') filters.value = { ...filters.value, resultSort: 'arrive' };
+  if (filters.value.resultSort !== sort) filters.value = { ...filters.value, resultSort: sort };
   resetAlts();
   hooks.afterResults();
 }

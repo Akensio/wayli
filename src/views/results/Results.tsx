@@ -11,7 +11,7 @@ import { t, lang } from '../../common/i18n';
 import * as clock from '../../engine/clock.ts';
 import { fmt, secOf, timeOf } from '../../common/time';
 import * as results from '../../state/results';
-import * as live from '../../state/live';
+import { now } from '../../state/clock';
 import { describePlace } from '../../text/placeNames';
 import { LegChips } from './LegChips';
 import { JourneyCard } from './JourneyCard';
@@ -19,13 +19,17 @@ import { SortChip } from './SortMenu';
 import type { Journey } from '../../trip/journey';
 import type { Query } from '../../trip/query';
 import { ridesOf } from '../../trip/journey';
-import { plan } from '../../controllers/planner';
+import { plan, refresh } from '../../controllers/planner';
 import { openDetail } from '../../controllers/detail';
 import { startTrip } from '../../controllers/follow';
 import * as query from '../../state/query';
 import { Tappable } from '../../widgets/Tappable';
 
-function Head({ q, n }: { q: Query; n: number }) {
+/** How many ways, with what, and how live: as of when the plan was answered, in orange once that is a while ago, with
+ *  the button that asks again (the list never changes on its own, state/results.ts). */
+function Head({ q, n, asOf }: { q: Query; n: number; asOf: number | null }) {
+  let mark = '';
+  if (asOf) mark = results.aged(now.value) ? ' unsure' : ' ok';
   let note = '';
   if (q.bike === 'along') note = q.folding ? t('foldingNote') : t('withBikeOnBoard');
   else if (q.bike === 'park') note = t('parkNote');
@@ -38,14 +42,16 @@ function Head({ q, n }: { q: Query; n: number }) {
         {q.liveTried && (
           <>
             {' '}
-            ·{' '}
-            <span class={`live${live.asOf.value ? ' ok' : ''}`}>
-              {live.asOf.value ? t('livePlanned', { time: timeOf(live.asOf.value) }) : t('schedOnly')}
-            </span>
+            · <span class={`live${mark}`}>{asOf ? t('livePlanned', { time: timeOf(asOf) }) : t('schedOnly')}</span>
           </>
         )}
       </span>
       <span class="spacer" />
+      {(q.isNow || q.liveTried) && (
+        <button type="button" class="linkbtn" id="refresh" onClick={refresh}>
+          <Icon name="refresh" /> {t('refresh')}
+        </button>
+      )}
     </div>
   );
 }
@@ -114,6 +120,7 @@ function StripRow({ j, q, note, act }: { j: Journey; q: Query; note: VNode; act:
 /** Ways whose leave time has passed but whose ride the rider can still reach with a brisk walk: the leave time in red
  *  and how late it is (docs/architecture.md, "When to leave: the result list"). */
 function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
+  void now.value; // the words count with the clock
   const nowSec = clock.nowOn(q.day);
   return (
     <Strip cls="hurry" hint={hurry.length === 1 ? t('hurryHint1') : t('hurryHint', { n: hurry.length })}>
@@ -135,6 +142,7 @@ function HurryStrip({ hurry, q }: { hurry: Journey[]; q: Query }) {
 }
 /** Rides that just left: one quiet line that opens on a tap (most riders want the next departures). */
 function GoneStrip({ gone, q }: { gone: Journey[]; q: Query }) {
+  void now.value;
   const nowSec = clock.nowOn(q.day);
   return (
     <Strip cls="gone" hint={gone.length === 1 ? t('goneHint1') : t('goneHint', { n: gone.length })}>
@@ -242,7 +250,7 @@ export function Results() {
   const bikeOnly = r.bikeOnly;
   return (
     <div id="results">
-      <Head q={q} n={(r.groups || r.journeys).length} />
+      <Head q={q} n={(r.groups || r.journeys).length} asOf={r.live?.asOf ?? null} />
       {gone.length > 0 && <GoneStrip gone={gone} q={q} />}
       {hurry.length > 0 && <HurryStrip hurry={hurry} q={q} />}
       {bikeOnly && (
