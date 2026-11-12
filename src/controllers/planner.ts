@@ -128,6 +128,7 @@ export async function plan(opts: { maxWalk?: number; sort?: results.Sort } = {})
       folding,
       weekday,
       maxWalk,
+      softWalk: !settings.get().hardWalk,
       arriveBy,
       urls: liveTried ? feed.RELAY_URLS : null,
     });

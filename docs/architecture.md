@@ -478,7 +478,19 @@ apart, so a slightly faster bus never hides a train;
 changing the day keeps the chosen time; bicycle choice; the longest walk to a stop
 (the whole walk at either end, a walk on to another stop included, shown as one
 walk; between the same two vehicles the change is made where there is time to
-spare and the least walking, `easierTransfers` in the worker) is a setting (a stepper, 3 to 45 minutes; the number can be typed). Results come back grouped: journeys that
+spare and the least walking, `easierTransfers` in the worker) is a setting (a stepper, 3 to 45 minutes; the number can be typed).
+The longest walk is a preference unless the rider switches "never go over
+it" on: the plan is made within it as ever, and that list stays as it is;
+the same search is then run with walks up to half as far again (30 minutes
+for 20), and a way from it that walks past the limit at either end is added
+when it is worth the walk: against every way within the limit that the
+rider could still catch (leaving no earlier), it arrives five minutes
+sooner, a change counted as five minutes (`worthTheWalk`, beside `rank` in
+the router); with none to catch it is the way. Its card says "25 min walk,
+over your 20". By day in a city nothing is added (twelve everyday trips:
+the list within the limit the same in all, one or two ways added at night);
+a plan takes about 1.8 times as long. Following a trip re-plans within the
+limit. Results come back grouped: journeys that
 board and alight at the same stops are one card with its departure times
 and the alternative lines of a leg shown together ("5 / 18"). Every card
 says when its first ride leaves its stop and the rides after it, the way

@@ -209,6 +209,18 @@ export function Settings() {
               </button>
             </div>
           </Item>
+          <Toggle
+            icon="walk"
+            id="setHardWalk"
+            label={
+              <>
+                <span>{t('setHardWalk')}</span>
+                <small>{t('setHardWalkHint')}</small>
+              </>
+            }
+            on={!!s.hardWalk}
+            onChange={(on) => settings.set({ hardWalk: on })}
+          />
           <Item
             icon="pin"
             wide

@@ -9,7 +9,7 @@ import { TimeRange } from '../../widgets/TimeRange';
 import { t } from '../../common/i18n';
 import { now } from '../../state/clock';
 import * as results from '../../state/results';
-import { dur, soonText, goneBy } from '../../text/durations';
+import { dur, soonText, goneBy, legMinutes } from '../../text/durations';
 import { transfersText, lineText } from '../../text/travel';
 import { sureness } from '../../text/live';
 import { LegChips } from './LegChips';
@@ -98,6 +98,12 @@ export function JourneyCard({ card }: { card: Card }) {
           {deps.map((d) => (
             <DepChip key={d.trip} d={d} j={j} q={q} stop={rides[0].from?.name || ''} />
           ))}
+        </div>
+      )}
+      {j.longWalk && (
+        // past the rider's longest walk, offered because it is worth it (worker/plan.ts worthTheWalk)
+        <div class="longwalk">
+          <Icon name="walk" /> {t('longWalk', { n: legMinutes(j.longWalk), max: q.maxWalk ?? '' })}
         </div>
       )}
       {rides.some((l) => l.estimated) && <div class="muted est">{t('estNote')}</div>}

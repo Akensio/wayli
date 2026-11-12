@@ -303,7 +303,8 @@ export type WalkLegOut = {
 );
 export type LegOut = RideLegOut | WalkLegOut;
 /** A journey as the worker hands it to the page (the page's Journey, trip/journey.ts): `slower` marks an earlier
- *  departure that arrives later than its card's first option (plan.ts slowerSiblings). */
+ *  departure that arrives later than its card's first option (plan.ts slowerSiblings), `longWalk` a way past the
+ *  rider's longest walk that is worth it (plan.ts worthTheWalk). */
 export type JourneyOut = {
   depart: number;
   arrive: number;
@@ -311,6 +312,8 @@ export type JourneyOut = {
   walkSeconds: number;
   legs: LegOut[];
   slower?: boolean;
+  /** The walk at one end (s), when it is longer than the rider's longest walk and the way is offered all the same. */
+  longWalk?: number;
 };
 /** Journeys that board and alight at the same stops (plan.ts groupJourneys): their indices and the lines per leg. */
 export type PlanGroup = { options: number[]; lines: string[][] };
@@ -376,6 +379,8 @@ export type Ops = {
       weekday?: boolean;
       maxTransfers?: number;
       maxWalk?: number;
+      /** The longest walk is a preference: ways that go past it are offered too, when they are worth it (plan.ts). */
+      softWalk?: boolean;
       arriveBy?: boolean;
       /** The relay's addresses, for a plan that takes the live times into account; none for the timetable alone. */
       urls?: string[] | null;

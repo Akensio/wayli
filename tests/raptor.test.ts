@@ -6,6 +6,9 @@ import {
   plan,
   canBoard,
   canAlight,
+  rank,
+  endWalks,
+  worthTheWalk,
   patternLength,
   patternStop,
   lastStop,
@@ -198,4 +201,51 @@ test('a trip is boarded and left only where it allows: no riding an intercity li
   expect([canBoard(tt, 2, 1), canAlight(tt, 2, 0)]).toEqual([false, false]); // never on at the last stop, off at the first
   // a file from before the compiler kept the marks: every stop takes riders on and off, as it did
   expect(lines(tinyTimetable(spec(false)), 0, 3, T(1, 40))[0]).toEqual(['480', '480']);
+});
+
+test('a way past the longest walk is offered when it is worth it: five minutes sooner than what can still be caught, a change counted as five', () => {
+  // the night of 2026-11-12 in small: within a 20-minute walk, the 40, then the 480, then the 445, an hour and a half;
+  // 25 minutes away, a 445 that goes straight there in twelve minutes
+  const tt = tinyTimetable({
+    stops: ['Azrieli', 'Namir', 'Reading', 'Gordon', 'Sharona', 'Bograshov'].map((name, i) => ({
+      name,
+      lat: 32.07 + i * 0.01,
+      lon: 34.78,
+    })),
+    routes: [{ short: '40' }, { short: '480' }, { short: '445' }],
+    patterns: [
+      { route: 0, stops: [0, 1], trips: [[T(1, 44), T(1, 49)]] },
+      { route: 1, stops: [1, 2], trips: [[T(2, 8), T(2, 15)]] },
+      { route: 2, stops: [2, 3], trips: [[T(2, 30), T(2, 37)]] },
+      { route: 2, stops: [4, 5], trips: [[T(1, 53), T(2, 5)]] }, // the direct one, from the stop 25 minutes away
+    ],
+  });
+  const LIMIT = 20 * 60,
+    near = [{ stop: 0, walk: 17 * 60 }],
+    all = [...near, { stop: 4, walk: 25 * 60 }],
+    dests = [
+      { stop: 3, walk: 12 * 60 },
+      { stop: 5, walk: 4 * 60 },
+    ];
+  const search = (origins: typeof all, walk: number) =>
+    rank(profile(tt, origins, dests, T(1, 14), T(2, 24), { maxAccess: walk, maxEgress: walk, raw: true }).journeys);
+  const within = search(near, LIMIT),
+    wider = search(all, LIMIT * 1.5).filter((j) => Math.max(...endWalks(j)) > LIMIT);
+  const lines = (j: RawJourney) => j.legs.filter((l) => l.type === 'ride').map((l) => (l as RawRideLeg).route[0]);
+  expect(within.map(lines)).toEqual([['40', '480', '445']]); // what the rider was shown
+  expect(within[0].arrive).toBe(T(2, 49));
+  // the wider search finds the direct one, and it is worth the walk: forty minutes sooner, and two changes fewer
+  const worth = wider.filter((w) => worthTheWalk(w, within));
+  expect(worth.map((j) => [lines(j), j.arrive, Math.max(...endWalks(j))])).toEqual([[['445'], T(2, 9), 25 * 60]]);
+  // the rule's edges, on the same two ways moved in time. With as many changes: five minutes sooner on the clock
+  const w = worth[0],
+    a = { ...within[0], transfers: 0 };
+  expect(worthTheWalk({ ...w, arrive: a.arrive - 300 }, [a])).toBe(true);
+  expect(worthTheWalk({ ...w, arrive: a.arrive - 299 }, [a])).toBe(false);
+  // with two changes fewer, as here: each is worth five minutes, so even five minutes later on the clock
+  expect(worthTheWalk({ ...w, arrive: within[0].arrive + 300 }, within)).toBe(true);
+  expect(worthTheWalk({ ...w, arrive: within[0].arrive + 301 }, within)).toBe(false);
+  // a way within the limit that has left by then is not one the rider can catch, and with none to catch it is the way
+  expect(worthTheWalk({ ...w, depart: a.depart + 61, arrive: a.arrive + 3600 }, [a])).toBe(true);
+  expect(worthTheWalk(w, [])).toBe(true);
 });

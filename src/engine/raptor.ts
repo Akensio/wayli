@@ -1029,6 +1029,27 @@ export function rank(journeys: RawJourney[]): RawJourney[] {
   return out;
 }
 
+/** What a longer walk has to buy (s): as much as a change does. */
+const WALK_GAIN = TRANSFER_PENALTY;
+/** The walking at each end of a journey (s): before its first ride and after its last. */
+export function endWalks(j: RawJourney): [number, number] {
+  const rides = j.legs.map((l, i) => (l.type === 'ride' ? i : -1)).filter((i) => i >= 0);
+  const sum = (ls: RawJourney['legs']): number => ls.reduce((a, l) => a + (l.type === 'ride' ? 0 : l.seconds), 0);
+  return rides.length ? [sum(j.legs.slice(0, rides[0])), sum(j.legs.slice(rides[rides.length - 1] + 1))] : [0, 0];
+}
+/**
+ * Whether a way with a longer walk than the rider's limit is worth offering beside the ways within it: against every
+ * one of those the rider could still catch (it leaves no earlier), this one gets there five minutes sooner, a change
+ * counted as five minutes. With none to catch it is the only way. (The night of 2026-11-12: a direct 445 after a
+ * 25-minute walk, 40 minutes door to door, against 85 minutes on three buses within a limit of 20.)
+ */
+export const worthTheWalk = (w: RawJourney, within: RawJourney[]): boolean =>
+  within.every(
+    (a) =>
+      a.depart < w.depart - 60 ||
+      w.arrive + TRANSFER_PENALTY * w.transfers + WALK_GAIN <= a.arrive + TRANSFER_PENALTY * a.transfers,
+  );
+
 export function routeLabel(route: Route): string {
   return route[0] || (route[3] === 2 ? 'train' : route[1]);
 }

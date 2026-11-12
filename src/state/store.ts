@@ -119,6 +119,7 @@ export type Settings = {
   notify: boolean;
   sound: boolean;
   maxWalk: number;
+  hardWalk: boolean;
   recentN: number;
   lang: 'he' | 'en' | null;
   fDirect: boolean;
@@ -136,6 +137,7 @@ const DEFAULTS: Settings = {
   notify: true,
   sound: true,
   maxWalk: 20, // minutes to the first stop and from the last (maintainer, 2026-11-07: 15 left good ways out)
+  hardWalk: false, // the longest walk is a preference: a way past it is offered when it is worth it (2026-11-12)
   recentN: 10,
   lang: null,
   fDirect: false,

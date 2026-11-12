@@ -89,7 +89,9 @@ export type Journey = {
   legs: Leg[];
   walkSeconds?: number;
   slower?: boolean; // an earlier departure that arrives later than the card's first option (the train at the platform)
-  missed?: boolean; // from tripNow: one of its rides now leaves before the rider can be there
+  missed?: boolean;
+  /** The walk at one end (s), when it is longer than the rider's longest walk and the way is offered all the same. */
+  longWalk?: number; // from tripNow: one of its rides now leaves before the rider can be there
   to?: { name: string; lat: number; lon: number } | null; // the destination as a point, kept when the trip is followed
 };
 type Group = { options: number[]; lines: string[][] | null };

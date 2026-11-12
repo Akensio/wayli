@@ -6,6 +6,8 @@ import {
   patternLength,
   canBoard,
   canAlight,
+  endWalks,
+  worthTheWalk,
   patternStop,
   plan as planFrom,
   profile,
@@ -500,10 +502,14 @@ function groupJourneys(journeys: JourneyOut[]): PlanGroup[] {
   return groups;
 }
 
+/** How far past the rider's longest walk a way may go when the limit is a preference (maintainer, 2026-11-12: soft by
+ *  default, hard as a setting): half as far again, 30 minutes for a limit of 20. */
+const SOFT_WALK = 1.5;
 export const planOps = {
   /**
    * Journeys between two places in a departure window; with arriveBy, the window ends at toTime and
-   * only journeys arriving by then are kept. maxWalk (s) bounds the walk to the first and from the last stop.
+   * only journeys arriving by then are kept. maxWalk (s) bounds the walk to the first and from the last stop; with
+   * softWalk, ways up to SOFT_WALK times that are offered too when they are worth the walk, each marked `longWalk`.
    */
   async plan({
     from,
@@ -515,6 +521,7 @@ export const planOps = {
     weekday = true,
     maxTransfers = 3,
     maxWalk = 900,
+    softWalk = false,
     arriveBy = false,
     urls = null,
   }) {
@@ -525,57 +532,77 @@ export const planOps = {
         v.operator === 2 || from.lat == null || haversine(v.lat, v.lon, from.lat, from.lon!) <= LIVE_NEAR_M;
     return withLiveTimes(all && all.filter(near), planNow);
     function planNow(lived: LiveTrips | null): PlanOut {
-      const q: Resolved = {
-        from: resolvePlace(
-          from,
-          bike === 'none' ? 'walk' : 'bike',
-          bike === 'none' ? maxWalk : Math.max(1200, maxWalk),
-        ),
-        to: resolvePlace(to, bike === 'along' ? 'bike' : 'walk', bike === 'along' ? Math.max(1200, maxWalk) : maxWalk),
-      };
-      if (!q.from.places.length || !q.to.places.length)
+      // each end on foot or by bike; on foot, the stops within the rider's longest walk (`q`, as ever), and when that is
+      // a preference (softWalk) the ones up to half as far again as well (`wide`), for the second search below
+      const footFrom = bike === 'none',
+        footTo = bike !== 'along',
+        cap = softWalk ? Math.round(maxWalk * SOFT_WALK) : maxWalk;
+      const ends = (walk: number): Resolved => ({
+        from: resolvePlace(from, footFrom ? 'walk' : 'bike', footFrom ? walk : Math.max(1200, maxWalk)),
+        to: resolvePlace(to, footTo ? 'walk' : 'bike', footTo ? walk : Math.max(1200, maxWalk)),
+      });
+      const q = ends(maxWalk),
+        wide = cap > maxWalk ? ends(cap) : q;
+      if (!wide.from.places.length || !wide.to.places.length)
         return {
           journeys: [],
           groups: [],
-          reason: !q.from.places.length ? 'noOriginStops' : 'noDestStops',
+          reason: !wide.from.places.length ? 'noOriginStops' : 'noDestStops',
           live: null,
           ms: 0,
         };
       // Two searches: everything, and trains only. The first keeps, per departure, only the earliest arrival, so a bus
       // a minute faster leaves no trace of the train beside it; the second brings the trains back, ranked apart (rank).
-      // on foot at either end, the whole walk (to the first stop and any walk on to another) is within the rider's longest
-      const opts: ProfileOptions = {
+      // on foot at either end, the whole walk (to the first stop and any walk on to another) is within `walk`
+      const optsFor = (walk: number): ProfileOptions => ({
         maxTransfers,
         bikeOnBoard: bike === 'along',
         folding,
         weekday,
         raw: true,
-        maxAccess: bike === 'none' ? maxWalk : undefined,
-        maxEgress: bike !== 'along' ? maxWalk : undefined,
-      };
-      const r = profile(tt!, q.from.places, q.to.places, fromTime, toTime, opts);
-      const byRail = profile(tt!, q.from.places, q.to.places, fromTime, toTime, { ...opts, routeTypes: [2] });
-      const seen = new Set<string>(),
-        all: RawJourney[] = [];
-      for (const j of r.journeys.concat(byRail.journeys)) {
-        easierTransfers(j);
-        const k = journeySig(j);
-        if (!seen.has(k)) {
-          seen.add(k);
-          all.push(j);
+        maxAccess: footFrom ? walk : undefined,
+        maxEgress: footTo ? walk : undefined,
+      });
+      const opts = optsFor(maxWalk);
+      let candidates = 0;
+      const search = (e: Resolved, o: ProfileOptions): RawJourney[] => {
+        const r = profile(tt!, e.from.places, e.to.places, fromTime, toTime, o);
+        const byRail = profile(tt!, e.from.places, e.to.places, fromTime, toTime, { ...o, routeTypes: [2] }).journeys;
+        candidates ||= r.candidates;
+        const seen = new Set<string>(),
+          all: RawJourney[] = [];
+        for (const j of r.journeys.concat(byRail)) {
+          easierTransfers(j);
+          const k = journeySig(j);
+          if (!seen.has(k)) {
+            seen.add(k);
+            all.push(j);
+          }
         }
-      }
-      // arrive-by: the journeys arriving in time are ranked among themselves only; ranked with the rest, a later one with
-      // fewer changes that arrives a few minutes past the deadline would knock out one that is in time, and then be dropped
-      const found = rank(arriveBy ? all.filter((j) => j.arrive <= toTime) : all);
-      const journeys: JourneyOut[] = found.map((j) => ({
+        // arrive-by: the journeys arriving in time are ranked among themselves only; ranked with the rest, a later one
+        // with fewer changes that arrives a few minutes past the deadline would knock out one that is in time, and then
+        // be dropped
+        return arriveBy ? all.filter((j) => j.arrive <= toTime) : all;
+      };
+      const found = rank(search(q, opts));
+      // the ways past the rider's longest walk that are worth it, beside the list within it (which stays as it is): the
+      // same search over the wider ends (accuracy over speed: a plan takes 1.8 times as long, measured on twelve trips)
+      const longWalk = new Map<RawJourney, number>();
+      if (wide !== q)
+        for (const w of rank(search(wide, optsFor(cap)))) {
+          const [a, e] = endWalks(w),
+            over = Math.max(footFrom ? a : 0, footTo ? e : 0);
+          if (over > maxWalk && worthTheWalk(w, found)) longWalk.set(w, over);
+        }
+      const journeys: JourneyOut[] = [...found, ...longWalk.keys()].map((j) => ({
         depart: j.depart,
         arrive: j.arrive,
         transfers: j.transfers,
         walkSeconds: j.walkSeconds,
-        legs: mergeWalks(j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, q))),
+        legs: mergeWalks(j.legs.filter((l) => l.type === 'ride' || l.seconds > 0).map((l) => legOut(l, wide))),
+        ...(longWalk.has(j) && { longWalk: longWalk.get(j) }),
       }));
-      if (!arriveBy) journeys.push(...slowerSiblings(journeys, fromTime, q));
+      if (!arriveBy) journeys.push(...slowerSiblings(journeys, fromTime, wide));
       for (const j of journeys) {
         const r = j.legs.find((l): l is RideLegOut => l.type === 'ride');
         if (r) r.next = nextDeparts(r.route, r.from.stop, r.depart);
@@ -584,7 +611,7 @@ export const planOps = {
       // it, however long the wait), or null when nothing more runs on this service day (a Friday evening)
       let nextAt: number | null = null;
       if (!journeys.length && !arriveBy) {
-        const n = planFrom(tt!, q.from.places, q.to.places, toTime, opts).journeys;
+        const n = planFrom(tt!, wide.from.places, wide.to.places, toTime, optsFor(cap)).journeys;
         if (n.length) nextAt = Math.min(...n.map((j) => j.depart));
       }
       let bikeOnly: PlanOut['bikeOnly'] = null;
@@ -602,7 +629,7 @@ export const planOps = {
         groups: groupJourneys(journeys),
         nextAt,
         bikeOnly,
-        candidates: r.candidates,
+        candidates,
         streets: !!st,
         live: lived && { asOf: lived.asOf, trips: pick(lived.trips, journeys) },
         ms: performance.now() - t0,
