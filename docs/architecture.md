@@ -930,8 +930,9 @@ its pill highlights that way and brings its card into view in the open sheet
 (with a flash); a tap on the highlighted one opens a collapsed sheet on its
 card, as does opening the sheet by any means. Each ride of the ways drawn
 carries its line's chip a third of the way along (in its colours on the
-highlighted way, grey on the others); results sort by arrival unless the
-rider picks another order for that plan. A stop's page draws the courses
+highlighted way, grey on the others); results start in the "Best" order
+(below) unless the rider picks another for that plan (by arrival, by
+departure, fastest, fewest changes). A stop's page draws the courses
 of the lines calling there, faint, and only their vehicles. The collapsed sheet's line
 about the highlighted way folds away once the sheet opens (the list says
 the same). The map is fitted when the ways shown change, not when another
@@ -1520,6 +1521,39 @@ departure and n that moment:
   rider standing at the stop gets its card. Once the bus is seen past the
   stop the card is dimmed where it is; the next Refresh files it as gone.
   (`tests/now.test.ts`, `tests/planlive.test.ts`, `tests/results.test.ts`.)
+
+### Best: the order the results start in
+
+One number per way, in minutes of plain riding, lower first (maintainer,
+2026-11-12: "a metric that takes into account multiple parameters"; by
+arrival before that). It is when the way gets the rider there, plus what
+it costs on the way beyond its minutes (`engine/best.ts`; the worker works
+out each way's parts, `worker/plan.ts partsOf`):
+
+| Part | Counts as | From |
+|---|---|---|
+| riding (a vehicle, the rider's own bicycle) | its minutes | the yardstick |
+| walking | 1.75 × | walking and waiting are felt as 1.5 to 1.75 times riding ([Wardman et al. 2026](https://doi.org/10.1016/j.tra.2026.104925), 2,872 multipliers from 606 studies; 2 was long the convention) |
+| waiting between rides | 1.5 × | the same |
+| each change | 8 minutes | published values of the "pure" penalty run from 5 ([Delft 2024](https://research.tudelft.nl/files/187269156/1-s2.0-S1077291X24000092-main.pdf)) to 13-18 ([Jara-Diaz et al. 2022](https://econpapers.repec.org/RePEc:eee:trapol:v:125:y:2022:i:c:p:48-55)); the low middle, as the risk below is part of what they measure |
+| the risk of missing a change | chance × the wait for the next ride of that line from that stop (an hour at most) | the chance is an estimate: half with no time to spare, 26% with 2 minutes, 9% with 5, 2% with 10 |
+| walking past the rider's longest walk | 1 more per minute | a choice: the setting still means something |
+| before leaving, from the time asked (arrive-by: after arriving, to the time asked) | its minutes | so that among ways alike on the way, the one that gets there first is first |
+
+Nothing in it knows a short trip from a long one or a bus from a train;
+the cases come out of the parts. On a short trip a change (8 minutes and
+its wait) is a large share, so the direct bus leads unless the change
+saves real time. On a long one the risk decides: two minutes to change onto
+an hourly train cost about 16 minutes, onto a bus every six minutes under
+2. A long walk to a slightly faster bus loses to the bus by the door. The
+number of stops is not a part: more stops are more minutes already.
+`tests/best.test.ts` holds each case; on eleven real trips the first way
+was the same as by arrival in eight, and in the other three it was a direct
+bus ahead of a change arriving 8 minutes sooner (twice) and a 7-minute walk
+ahead of a 21-minute one arriving 9 minutes sooner. Tried and dropped:
+counting the time before leaving at half (a train that left 32 minutes
+later and arrived 13 minutes later came first). To do when there is data:
+the chance of missing a change measured from the buses' real lateness.
 
 ## Crowd reports
 

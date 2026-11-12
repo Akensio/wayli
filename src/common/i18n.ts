@@ -95,6 +95,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   clearText: ['ניקוי', 'Clear'],
   lineNumber: ['מספר קו…', 'Line number…'],
   sortBy: ['מיון', 'Sort'],
+  sortBest: ['מומלץ', 'Best'],
   sortDepart: ['לפי יציאה', 'By departure'],
   sortArrive: ['לפי הגעה', 'By arrival'],
   sortFast: ['הכי מהיר', 'Fastest'],

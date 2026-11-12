@@ -314,6 +314,8 @@ export type JourneyOut = {
   slower?: boolean;
   /** The walk at one end (s), when it is longer than the rider's longest walk and the way is offered all the same. */
   longWalk?: number;
+  /** The way's effort from leaving to arriving, in seconds of riding (engine/best.ts): what "Best" sorts by. */
+  effort?: number;
 };
 /** Journeys that board and alight at the same stops (plan.ts groupJourneys): their indices and the lines per leg. */
 export type PlanGroup = { options: number[]; lines: string[][] };

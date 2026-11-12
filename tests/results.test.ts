@@ -7,6 +7,7 @@ import * as clock from '../src/engine/clock.ts';
 import * as results from '../src/state/results';
 import * as live from '../src/state/live';
 import type { Journey, RideLeg } from '../src/trip/journey';
+import { hm } from '../src/common/time';
 
 const day = clock.serviceDay().day,
   n = clock.nowOn(day);
@@ -123,4 +124,26 @@ test('the trips of a search stay and their times follow: only asking again chang
   expect(results.list.value.gone.map((j) => (j.legs[0] as RideLeg).line)).toEqual(['8']);
   expect(results.filters.value.resultSort).toBe('fast');
   vi.useRealTimers();
+});
+
+test('"Best" is the order a plan starts in: the effort the worker gives each way, and the time around it', () => {
+  results.hooks.afterResults = () => {};
+  const at0 = clock.nowOn(day),
+    q = { ...results.query.value!, isNow: true, arriveBy: false };
+  // three ways by arrival: two buses leaving now (there in 24 minutes), the direct bus in 6 (there in 31), and an
+  // express in 25 (there in 45); their efforts as the worker works them out (engine/best.ts), in seconds of riding
+  const twoBuses = { ...way(at0, at0 + 24 * 60, '5'), transfers: 1, effort: 41 * 60 },
+    direct = { ...way(at0 + 6 * 60, at0 + 31 * 60, '18'), effort: 30 * 60 },
+    express = { ...way(at0 + 25 * 60, at0 + 45 * 60, '900'), effort: 24 * 60 };
+  results.setResults({ journeys: [twoBuses, direct, express] }, q);
+  expect(results.filters.value.resultSort).toBe('best');
+  expect(sortedLines()).toEqual(['18', '5', '900']); // 36, 41 and 49: the direct bus before the change that arrives sooner
+  results.setFilter({ resultSort: 'arrive' });
+  expect(sortedLines()).toEqual(['5', '18', '900']);
+  // asked to arrive by a time, the time around the trip is after it: the same three, to be there by 46 minutes from now
+  results.setResults(
+    { journeys: [twoBuses, direct, express] },
+    { ...q, isNow: false, arriveBy: true, at: hm(at0 + 46 * 60) },
+  );
+  expect(sortedLines()).toEqual(['900', '18', '5']); // the one that leaves last and idles least
 });

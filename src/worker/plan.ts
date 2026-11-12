@@ -26,6 +26,7 @@ import {
   patternsAt,
 } from '../engine/raptor.ts';
 import { accessStops, route, type StreetMode, airAccess } from '../engine/streets.ts';
+import { effort, GAP_MAX, type Parts } from '../engine/best.ts';
 import { liveTrips, vehiclesNow, type SnapVehicle } from './vehicles.ts';
 import { haversine, type LatLon as Point } from '../engine/geo.ts';
 import type { PathPoint } from '../engine/geo.ts';
@@ -162,6 +163,15 @@ function revertLive(liveEdits: number[]): void {
  *  timetable as it stands (live-shifted during a plan): the card's "leaves X: in 18, 21:22, 21:43" (maintainer,
  *  2026-11-08: every card says when its first ride leaves its stop and the ones after it, as Moovit does). */
 function nextDeparts(route: number, stop: number, after: number, n = 3): NextDep[] {
+  return departsAfter(route, stop, after, n).map(({ p, t, pos }) => ({ trip: t, pos, sched: rawTimes(p, t).dep[pos] }));
+}
+/** The same departures with their times (d), soonest first. */
+function departsAfter(
+  route: number,
+  stop: number,
+  after: number,
+  n: number,
+): { d: number; p: number; t: number; pos: number }[] {
   const out: { d: number; p: number; t: number; pos: number }[] = [];
   for (const { p, pos } of patternsAt(tt!, stop)) {
     if (tt!.patRoute[p] !== route || !canBoard(tt!, p, pos)) continue;
@@ -171,10 +181,33 @@ function nextDeparts(route: number, stop: number, after: number, n = 3): NextDep
       if (d > after && d <= after + 7200) out.push({ d, p, t, pos });
     }
   }
-  return out
-    .sort((a, b) => a.d - b.d)
-    .slice(0, n)
-    .map(({ p, t, pos }) => ({ trip: t, pos, sched: rawTimes(p, t).dep[pos] }));
+  return out.sort((a, b) => a.d - b.d).slice(0, n);
+}
+/**
+ * What a way is made of, for its effort (engine/best.ts): riding (and cycling), walking, the walking past the rider's
+ * longest walk, and at each change the time to spare and how long after the ride the next one of its line leaves from
+ * that stop.
+ */
+function partsOf(j: JourneyOut, maxWalk: number): Parts {
+  const p: Parts = { ride: 0, walk: 0, over: j.longWalk ? Math.max(0, j.longWalk - maxWalk) : 0, changes: [] };
+  let last: RideLegOut | null = null,
+    between = 0; // the walking since the last ride
+  for (const l of j.legs) {
+    if (l.type !== 'ride') {
+      if ('mode' in l && l.mode === 'bike') p.ride += l.seconds;
+      else p.walk += l.seconds;
+      between += l.seconds;
+      continue;
+    }
+    p.ride += l.arrive - l.depart;
+    if (last) {
+      const next = departsAfter(l.route, l.from.stop, l.depart, 1)[0];
+      p.changes.push({ spare: l.depart - last.arrive - between, gap: next ? next.d - l.depart : GAP_MAX });
+    }
+    last = l;
+    between = 0;
+  }
+  return p;
 }
 function legOut(l: PlanLeg, q: Resolved): LegOut {
   // the router sets no `seconds` on a ride (easierTransfers and slowerSiblings do on the rides they build): its length
@@ -606,6 +639,7 @@ export const planOps = {
       for (const j of journeys) {
         const r = j.legs.find((l): l is RideLegOut => l.type === 'ride');
         if (r) r.next = nextDeparts(r.route, r.from.stop, r.depart);
+        j.effort = Math.round(effort(partsOf(j, maxWalk))); // what "Best" sorts by (engine/best.ts)
       }
       // nothing in the window: when the next way leaves (one search from the window's end finds the first ride after
       // it, however long the wait), or null when nothing more runs on this service day (a Friday evening)

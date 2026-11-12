@@ -8,6 +8,7 @@ backtest).
 |---|---|
 | `raptor.ts` | Reads the compact timetable (format in `docs/architecture.md`) and offers its layout's accessors (a pattern's stops, a trip's times, a stop's patterns); stop search; RAPTOR: one round per vehicle boarded, an earliest-arrival plan or a whole window of departures (profile), then ranking. |
 | `streets.ts` | Reads the street graph: the walk or ride from a point to the stops around it and between two points, with climbs counted (`secondsOn`). |
+| `best.ts` | How good a way is, as one number (when it gets there, plus walking, waiting, changes and the risk of missing one, in minutes of riding): what the results' "Best" order sorts by. |
 | `places.ts` | The offline address book: free-text search over streets, house numbers, cities and places. |
 | `clock.ts` | Israel time and service days, whatever the phone's zone: seconds on a service day, `nowOn(day)`, day strings, `hhmm` and `legMinutes` (how a time and a leg read, the same in the worker and on screen). |
 | `feed.ts` | The live vehicles: the relay's snapshot (read in the data worker) or Hasadna's API, freshness, matching a vehicle to its trip. |

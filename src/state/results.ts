@@ -7,6 +7,8 @@
 // stands now, from the live store and the clock (`list`).
 import { signal, computed } from '@preact/signals';
 import * as clock from '../engine/clock.ts';
+import { best, plainEffort } from '../engine/best.ts';
+import { secOf } from '../common/time';
 import { settings } from './store.ts';
 import { lang } from '../common/i18n';
 import * as search from './search';
@@ -19,7 +21,7 @@ import { unset } from '../common/unset';
 export type { View } from './store.ts';
 
 type Status = 'idle' | 'planning' | 'locating';
-export type Sort = 'depart' | 'arrive' | 'fast' | 'changes';
+export type Sort = 'best' | 'depart' | 'arrive' | 'fast' | 'changes';
 export type Filters = { fDirect: boolean; fTrain: boolean; resultSort: Sort };
 /** One card: the first option of a group, the other departures of the same lines. */
 export type Card = {
@@ -32,15 +34,17 @@ export type Card = {
   left: boolean; // its ride has gone since the search: the card keeps its place
 };
 
-export const SORTS: Sort[] = ['arrive', 'depart', 'fast', 'changes']; // by arrival first: every plan starts so (maintainer)
-const sortKey: Record<Sort, (j: Journey) => number> = {
+// "Best" first: every plan starts so (maintainer, 2026-11-12; by arrival before that): when a way gets there, plus what
+// it costs in walking, waiting, changes and the risk of missing one (engine/best.ts)
+export const SORTS: Sort[] = ['best', 'arrive', 'depart', 'fast', 'changes'];
+const sortKey: Record<Exclude<Sort, 'best'>, (j: Journey) => number> = {
   depart: (j) => j.depart,
   arrive: (j) => j.arrive,
   fast: (j) => j.arrive - j.depart,
   changes: (j) => j.transfers * 1e6 + j.depart,
 };
 // the filters are kept on the phone; the order is the plan's own (each plan starts by arrival)
-const readFilters = (sort: Sort = 'arrive'): Filters => {
+const readFilters = (sort: Sort = 'best'): Filters => {
   const s = settings.get();
   return { fDirect: !!s.fDirect, fTrain: !!s.fTrain, resultSort: sort };
 };
@@ -149,8 +153,15 @@ function frame(r: PlanResult | null, q: Query | null, f: Filters, askedMs: numbe
   // arrive-by keeps its own order by arrival (the latest that is in time first); every other order sorts (stable).
   // The groups are sorted by their first option, which fixes each card's number (idx) for the map; the cards are
   // sorted again below by the option each one shows, since the first may have gone by
+  // "Best": the way's effort and the time around it that is not travel, before leaving from the time asked (the moment
+  // of the answer for a plan from now), or after arriving up to the time to arrive by
+  const asked = q.isNow ? nowSec : secOf(q.at);
+  const lead = (j: Journey): number => (q.arriveBy ? asked - j.arrive : j.depart - asked);
   const sorted = !(q.arriveBy && f.resultSort === 'arrive'),
-    sk = sortKey[f.resultSort];
+    sk =
+      f.resultSort === 'best'
+        ? (j: Journey) => best(j.effort ?? plainEffort(j.arrive - j.depart, j.transfers), lead(j))
+        : sortKey[f.resultSort];
   const byKey = (a: Journey, b: Journey) => sk(a) - sk(b) || sortKey.depart(a) - sortKey.depart(b);
   if (sorted) groups = groups.slice().sort((a, b) => byKey(first(a), first(b)));
   const where = (i: number): Standing => (q.isNow ? standing(then[i], nowSec) : 'ontime'); // a plan for a set time is read as asked
@@ -227,8 +238,8 @@ function resetAlts(): void {
   altSel.value = cards.length ? cards[0].idx : -1;
 }
 /** A plan answered, now. `sort`: the order kept when the same question is asked again; every other plan starts by
- *  arrival. */
-export function setResults(r: PlanResult, q: Query, sort: Sort = 'arrive'): void {
+ *  "Best". */
+export function setResults(r: PlanResult, q: Query, sort: Sort = 'best'): void {
   // the boxes stay open: picking a destination plans at once, and the time or the bike may still change (a change
   // plans again). They fold when the rider moves on: a tap on the map, a result opened, the sheet dragged, X or back.
   result.value = r;
