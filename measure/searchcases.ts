@@ -54,6 +54,7 @@ export const CASES: Case[] = [
   c('a city', 'tel aviv', 'en', null, { name: TA_EN, kind: 'city' }),
   c('a city', 'תל אביב', 'he', 'tlv', { name: TA, kind: 'city' }),
   c('a city', 'ירושלים', 'he', 'tlv', { name: /^ירושלים$/, kind: 'city' }),
+  c('a city', 'tel aviv', 'en', 'tlv', { name: TA_EN, kind: 'city' }),
   c('a city', 'חיפה', 'he', 'tlv', { name: /^חיפה$/, kind: 'city' }),
   c('a city', 'jerusalem', 'en', 'tlv', { name: /^Jerusalem$/, kind: 'city' }),
   c('a city', 'באר שבע', 'he', null, { name: /^באר שבע$/, kind: 'city' }),

@@ -11,7 +11,7 @@ import { KINDS, type Catalogue, type EntryKind } from './catalogue.ts';
 
 /** What a kind of entry is worth before anything is typed: a city above a station, a park above a kiosk (a city:
  *  a big one; a smaller one in proportion). */
-const WORTH: Record<EntryKind, number> = { city: 25, station: 15, landmark: 10, street: 6, stop: 4, place: 0 };
+const WORTH: Record<EntryKind, number> = { city: 30, station: 15, landmark: 10, street: 6, stop: 4, place: 0 };
 
 /** One entry found: which (its `ref`, read by its kind: engine/catalogue.ts), how good (higher first), and for a
  *  street with a house number typed, the number and whether that very number is known there. */

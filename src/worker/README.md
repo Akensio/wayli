@@ -8,9 +8,9 @@ the page asks by name (`client.ts`: `call(op, args)` returns a promise).
 | File | What | Ops |
 |---|---|---|
 | `worker.ts` | The message loop: every part's ops in one table. | |
-| `data.ts` | What is loaded (`tt`, `st`, `pl`, `sh`, `lang`) and loading it, with progress. Only it assigns them; `onNewDay` / `onNewLang` reset what other parts derived from them. | `loadTimetable`, `loadStreets`, `loadShapes`, `loadPlaces`, `loadBusTimes`, `setRailTimes`, `setLang` |
+| `data.ts` | What is loaded (`tt`, `st`, `pl`, `sx` the search catalogue, `sh`, `lang`) and loading it, with progress. Only it assigns them; `onNewDay` / `onNewLang` reset what other parts derived from them. | `loadTimetable`, `loadStreets`, `loadShapes`, `loadPlaces`, `loadSearch`, `loadBusTimes`, `setRailTimes`, `setLang` |
 | `names.ts` | Names in the rider's language: stops, stations, cities, headsigns, line labels; a stop as handed out. | |
-| `search.ts` | The search over stops and the address book; what is at a point; stored places named again. | `search`, `reverse`, `localize` |
+| `search.ts` | The place search: `engine/find.ts` over the catalogue, each hit as the row the list shows (named in the rider's language, what reads the same as one row); what is at a point; stored places named again. | `search`, `reverse`, `localize` |
 | `plan.ts` | Journeys: places to stops, live delays into the timetable, the searches, legs, transfers, grouping. | `plan` |
 | `stops.ts` | Stops and stations: rail and light rail stops, light rail stations, a stop's station, sign numbers, lines at a stop. | `stopGroups`, `stopInfo`, `stationReach`, `departures`, `stopRoutes`, `stopsGeo`, `nearbyRoutes`, `findRecent` |
 | `lines.ts` | Lines as riders know them, indexed from the routes. | `lineGroups`, `lineInfo`, `lineTimes`, `routeLabels` |

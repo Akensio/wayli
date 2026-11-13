@@ -3,7 +3,8 @@
 
     npm run build && python3 pipeline/build_site.py --out site
 
-Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz, shapes.bin.gz and
+Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz, search.bin.gz (the
+search catalogue, when it is of this address book), shapes.bin.gz and
 railtimes.json (learned train section times), bustimes.bin.gz (learned bus section times), entrances.json (station entrances),
 and writes site/data/manifest.json with the available days.
 """

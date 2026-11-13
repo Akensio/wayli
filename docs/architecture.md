@@ -159,7 +159,8 @@ the app).
   `places.ts` (the address book), `clock.ts` (Israel time), `feed.ts` (the
   live vehicles), `delays.ts` (delay estimates), `geo.ts` (distances, and where a point is
   along a trip), `modes.ts` (what runs a line), `container.ts` (reading the
-  data files) and `text.ts` (how the searches compare names).
+  data files), and the search: `words.ts`, `wordindex.ts`, `catalogue.ts`
+  and `find.ts` (below, "The search").
 - `worker/`: the data worker (it holds the data and answers every query, so
   the UI never blocks), a module per kind of question (`data`, `search`,
   `plan`, `stops`, `lines`, `trips`, `courses`, `vehicles`, `traffic`, with
@@ -650,25 +651,9 @@ gzipped. Overture's confidence is mostly Meta's own signal for a page; at
 0.5-0.7 the names are still real shops and restaurants (a 2026-11-01
 sample), below it closed and one-off pages take over, so 0.5 is the floor.
 Overture's hospitals and malls come in as clinics and shopping centres, so
-only OpenStreetMap's rank as landmarks. Landmarks rank above streets
-at an equal match, everyday places level with them, so an exact name wins
-without burying street searches in shops. `src/engine/places.ts` parses free text ("דיזנגוף 50,
-גבעתיים", "קניון עזריאלי", "תל אביב"), understands common city aliases, and
-ranks stops, addresses, streets, places and cities together, nearer ones
-first when the user's location is known (distance breaks ties even among
-places close by). Trailing words that name a city are the city ("דיזנגוף 50
-תל אביב"), unless the words as typed are a street's name: many streets are
-named after cities (שדרות ירושלים 15, דרך חיפה 3), and a street-type word
-(שדרות, רחוב, דרך) says the rider means a street, so no city row is offered
-for it. A place is also found with one typed word left over ("חומוס אבו חסן"
-for אבו חסן, "ארומה דיזנגוף" for a branch named only ארומה), but only when
-every word of its name was typed exactly, and it lists after everything
-found as typed, like a slip. A quote mark inside a word belongs to the word, so הל"ה,
-צה"ל, ג'וליס and כפר חב"ד match whether typed with the mark, without it,
-or with the keyboard's ״ or ''; the same rule normalises stop names. A stop
-matches whether its Hebrew or its English name is typed (both are indexed),
-and every name the worker hands out (results, stop lists, headsigns, the
-map's station labels) is in the app's language, with Hebrew where the feed
+only OpenStreetMap's rank as landmarks. Every name the worker hands out
+(results, stop lists, headsigns, the map's station labels) is in the app's
+language, with Hebrew where the feed
 has no translation. The address book carries an English name beside every
 Hebrew one: the source's where it has one (OpenStreetMap's name:en, 81% of
 streets and a third of places; Overture's and the feed's), else one made at
@@ -684,38 +669,97 @@ vowels, a light vowel between consonant clusters), a readable guess rather
 than a right one without vowel points. A name with Latin letters inside it
 keeps that part; Arabic-script names are left alone. The made names are
 shown in English and searched like any other English name (about 700 KB
-gzipped) and the feed's for cities; a word typed in Latin letters matches the English
-words a name has (its English name, and Latin words inside the main name,
-as Overture writes "מלון כנען ספא - canaan spa hotel") as text, else with
-typos as search engines allow (edit distance: none up to two letters, one
-up to five, two beyond; one typo just above a sound-alike, below an exact
-word), or, failing that, the consonant skeleton of the Hebrew one (vowels
-dropped, letters that sound alike merged, doubled letters collapsed, so
-"Hayarkon", "HaYarkon" and "Ha-Yarkon" all find הירקון, and "Petach Tikvah"
-finds פתח תקווה), scored a little below a spelled-out English name. A
-Hebrew word not found as written is matched loosely, in order: the word
-with one slip (a letter wrong, missing, extra, or two swapped: ארומא for
-ארומה), the same skeleton (עזראלי, אזריאלי for עזריאלי), the start of it, and
-from five consonants one slip in the skeleton (מקדולנדס); from three letters
-typed, so short words reach nothing by chance. A Latin word gets the same
-skeleton slip. A name found only loosely lists after every name found as
-typed. A Hebrew word also finds a word a name has in Latin letters (a
-quarter of the places are named so only: בלוק finds The Bloc TLV), when it
-is the same whole word of three consonants or more, by an exact form of the
-skeleton that keeps what a Hebrew speller writes: ב is b or v and never w, a
-consonant ו is v or w and never b, and a ו read as a vowel sits where the
-Latin word has its o or u (so not "Walk", "Black" or "Ballet" for בלוק and
-וולט). It scores as a sound-alike, below the word found as typed in Hebrew;
-the candidates come from an index of the Latin words by skeleton, so a
-search takes no longer. בי"ח and בי"ס read as בית חולים and בית ספר either way. The
-skeletons are built once, by the worker as soon as the address book is in
-(half a second on a laptop). Results
-are named in the app's language where the data has the name. Stops
-and places are ranked on one scale in the worker: match strength (a whole
-word over a prefix, a name typed in full over a partial one; a street is
-named by its first word, a place's words count alike), nearness, a point
-ahead of a street at equal strength, an address ahead of everything when a
-number was typed. A missing house number resolves to
+gzipped).
+
+The search (`src/engine/words.ts`, `wordindex.ts`, `catalogue.ts`,
+`find.ts`; written anew on 2026-11-13, the earlier one deleted). One box
+finds cities, stations, stops, streets, addresses and places. They are all
+entries of one catalogue, found by one rule and ordered on one scale:
+
+```
+ names (address book, stops)            what is typed
+          │ words()                          │ words()     the same function both sides
+          ▼                                  ▼
+     word index   ◄──── each typed word: the same word, one a slip away,
+  (115,000 words)       one it begins (the last word, while typing),
+          │             or the same word in the other alphabet, by sound
+          ▼
+  the entries with that word in a name, and every entry of a city it names
+          │
+          ▼    kept: every typed word is in the name, or names the city in full
+  score = how well the words match × how much of the name they are
+          + the kind of thing + how near + its city was typed + the house number
+```
+
+- Words (`words.ts`). A name and what is typed are cut into words by one
+  function: lower case, marks and vowel points off, a quote mark inside a
+  word part of it (הל"ה, ג'וליס, typed with the mark, without it or as ''),
+  final letters as plain ones, a doubled ו or י and any doubled Latin letter
+  once, no h after a Latin word's last vowel (Mesilah). Words that only say
+  what kind of way a street is are dropped on both sides (רחוב, שדרות, St,
+  Blvd), and the short forms the feed and the maps write are written out:
+  "ת." is תחנה (744 stops are named so), בי"ח, בי"ס and קופ"ח their two words.
+- A typed word is compared with the index's words, never with the entries
+  (`wordindex.ts`): 115,000 distinct words stand for 233,000 entries. The
+  distance is counted in half slips: a letter wrong, missing, extra, or two
+  swapped is a slip; a vowel letter more or less (ויצמן, וייצמן) or a letter
+  for its sound-alike (כ/ק, ט/ת, ס/ש, c/k, v/w) is half of one; one vowel for
+  another is a whole slip (בלוק is not בלאק). A word may carry none up to two
+  letters, half a slip at three, one at four or five, one and a half up to
+  eight, two beyond. The words are sorted, so the comparison of a shared
+  beginning is done once and a beginning already too far skips every word
+  that has it. The last word, while the rider is still typing, also finds
+  the words it begins. A word of the other alphabet is found by its sounds:
+  the consonants, with o for an o or u sound, two readings where a letter has
+  two (ב is b or v, ו is w or o, כ is k or kh, פ is p or f), and three sounds
+  at least; so בלוק finds Bloc and Block, and not Black, Walk or Ballet.
+- The rule (`find.ts`). Every word typed is in the entry's name, or names
+  its city; and the words that name the city are one of the city's names in
+  full (תל אביב יפו, תל אביב, Tel Aviv, ת"א, TLV), or as far as it is typed
+  yet, so "תל אביב" is the city and not a beach called תל ברוך in a city with
+  an אביב in its name. A number is a house number or a word of the name
+  ("Bloc 39"), never a word the entry must have. When nothing has every
+  word, what lacks one is offered, lower ("חומוס אבו חסן" for אבו חסן).
+- The score, where the words are worth up to 100: the worst-matched word
+  (1 for the word itself, 0.15 less per half slip, a word only begun at 0.9
+  of that, a word found by sound 0.8), times 0.75 to 1 by how much of the
+  name was typed, not counting the words that only say its kind (פארק, שוק,
+  Market, Station: המסילה is the whole of פארק המסילה). Then the kind of
+  thing (a city 30, a station 15, a landmark 10, a street 6, a stop 4, an
+  everyday place 0), nearness (30 beside the rider, fading to nothing by
+  40 km), 15 when the city typed is the entry's (also when it is said
+  inside the name and more was typed: נמל תל אביב), 15 when the house number
+  typed is on the street (half for the nearest number it has). A city is a
+  city as much as it is big, by how many entries it has: a big one gets its
+  full worth and half the nearness wherever the rider is (riders name far
+  cities), a village is a place like any other.
+- The catalogue (`catalogue.ts`). Reading 400,000 names into words takes
+  3.5 s on a laptop, too long for every start of the app, so the nightly
+  build does it (`pipeline/searchindex.ts`, the app's own code under Node,
+  7 s for seven days) and the app reads `search.bin.gz` (2.8 MB gzipped,
+  read in a third of a second): the words (each as the letters it does not
+  share with the word before), who has each (as steps between numbers, a
+  byte or two each), how long each name is, and the stops of every compiled
+  day by their id in the feed. What an address-book entry is and where is
+  read from the book itself, so the file belongs to one book (its hash is in
+  the header; another book's is refused, and `build_site.py` leaves such a
+  file out). Like every data file it is kept on the phone under its content
+  hash and fetched again only when that changes. Until it is in, the search
+  finds stops alone, from a catalogue of the day's stops made on the phone.
+- The rows (`worker/search.ts`): each hit named in the app's language, a
+  street with a house number as that address (the nearest number the street
+  has, said as such, when it lacks that one), a place with its kind and the
+  address it is at (the nearest within 120 m, found among the addresses of
+  the cells around it), and what reads the same as one row: a station's
+  platforms, and bus stops of one name within 400 m (the two sides of a
+  street), which are one place to plan from or to. The Stop tab is the same
+  search among stops and stations, one row a sign.
+- Measured (`measure/searchbench.ts`, 2026-11-13, the live data): of 89
+  everyday searches asked through the worker with a language and a
+  position, the row wanted is first in 84 and among the first three in all
+  89; a search takes 7 ms in Node (the slowest 55 ms).
+
+A missing house number resolves to
 the nearest known one on that street and says so. A point can also be picked
 on the map (a tap drops a pin with a bubble naming the spot and a Choose
 button; another tap moves it; a tap on a stop picks the stop), and gets its name from the same book in reverse:
@@ -1006,8 +1050,8 @@ the app views in place:
   day.
 
 Not yet in the format: headsigns per trip, fares.
-Search is done in the app over names and cities (`searchStops`), grouping a
-station's platforms into one result.
+Stops are found by the app's one search (above, "The search"), a station's
+platforms as one result.
 
 ## Pipeline
 
@@ -1605,8 +1649,6 @@ Things the test surfaced, for later:
 - RAPTOR's Pareto set happily adds a transfer to save one minute (a two-stop
   bus hop at the end of a trip). Ranking or a transfer penalty is needed
   before showing results to people.
-- Stop search is a substring match; "אילת" finds streets named Eilat before
-  the city. A proper index with city names is needed.
 - Rail routes have no line number; the page shows "Train".
 - The artifact host serves text but not binaries, so the published test page
   ships the timetable as base64 (3.7 MB instead of 2.8 MB).
