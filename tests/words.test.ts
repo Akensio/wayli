@@ -15,6 +15,15 @@ test('a name and what is typed come to the same words', () => {
   expect(words('Park HaMesilah')).toEqual(words('park hamesila'));
   expect(words('שׁוּק הַכַּרְמֶל')).toEqual(words('שוק הכרמל')); // vowel points off
 });
+test('a word for a kind of street is left out only where it stands as one', () => {
+  expect(words('שדרות')).toEqual(['שדרות']); // alone it is the town
+  expect(words('הרצל 5 שדרות')).toEqual(['הרצל', '5', 'שדרות']);
+  expect(words('רחוב הרצל')).toEqual(['הרצל']);
+  expect(words('Herzl Street')).toEqual(['herzl']);
+  expect(words('Street Food')).toEqual(['stret', 'fod']); // before a name it is a word of it (a doubled letter once)
+  expect(words('the block')).toEqual(['block']);
+  expect(words('The')).toEqual(['the']);
+});
 test('short forms are written out', () => {
   expect(words('ת. מרכזית ירושלים')).toEqual(words('תחנה מרכזית ירושלים'));
   expect(words('ת. רכבת השלום')).toEqual(words('תחנת רכבת השלום'));

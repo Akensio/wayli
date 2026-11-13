@@ -696,8 +696,9 @@ entries of one catalogue, found by one rule and ordered on one scale:
   word part of it (הל"ה, ג'וליס, typed with the mark, without it or as ''),
   final letters as plain ones, a doubled ו or י and any doubled Latin letter
   once, no h after a Latin word's last vowel (Mesilah). Words that only say
-  what kind of way a street is are dropped on both sides (רחוב, שדרות, St,
-  Blvd), and the short forms the feed and the maps write are written out:
+  what kind of way a street is are dropped on both sides where they stand
+  as such, the Hebrew ones before a name and the Latin ones after one
+  (רחוב הרצל, Herzl St; שדרות alone or after a name is the town), and the short forms the feed and the maps write are written out:
   "ת." is תחנה (744 stops are named so), בי"ח, בי"ס and קופ"ח their two words.
 - A typed word is compared with the index's words, never with the entries
   (`wordindex.ts`): 115,000 distinct words stand for 233,000 entries. The
@@ -717,7 +718,10 @@ entries of one catalogue, found by one rule and ordered on one scale:
   its city; and the words that name the city are one of the city's names in
   full (תל אביב יפו, תל אביב, Tel Aviv, ת"א, TLV), or as far as it is typed
   yet, so "תל אביב" is the city and not a beach called תל ברוך in a city with
-  an אביב in its name. A number is a house number or a word of the name
+  an אביב in its name. A typed word serves the name or the city, never
+  both: a word of the city that the name has too is the city's when it was
+  typed for each ("קניון תרשיחא מעלות תרשיחא") or is only nearly the name's
+  (משגב for צומת מישגב in משגב). A number is a house number or a word of the name
   ("Bloc 39"), never a word the entry must have. When nothing has every
   word, what lacks one is offered, lower ("חומוס אבו חסן" for אבו חסן).
 - The score, where the words are worth up to 100: the worst-matched word
@@ -761,10 +765,23 @@ entries of one catalogue, found by one rule and ordered on one scale:
   platforms, and bus stops of one name within 400 m (the two sides of a
   street), which are one place to plan from or to. The Stop tab is the same
   search among stops and stations, one row a sign.
-- Measured (`measure/searchbench.ts`, 2026-11-13, the live data): of 89
-  everyday searches asked through the worker with a language and a
-  position, the row wanted is first in 84 and among the first three in all
-  89; a search takes 7 ms in Node (the slowest 55 ms).
+- Measured on the live data of 2026-11-13, through the worker with a
+  language and a position. The well-known (`measure/searchbench.ts`): of 89
+  everyday searches the row wanted is first in 84 and among the first three
+  in all 89; a search takes 8 ms in Node (the slowest 41 ms). The long tail
+  (`measure/searchsample.ts`): 2,227 random entries (restaurants, places
+  named in Latin letters only, other places, addresses, bus stops,
+  stations), each searched five ways, found on the list of eight: by its
+  name from 2 km away 100% of every kind (first: 96 to 99%, stops 83 to
+  87%, where several stops share a name); by its name and city with no
+  position 99 to 100%; with one letter dropped 92 to 97%; by the data's
+  English name 100%; in Latin letters by the app's own transliteration (a
+  spelling the data does not have) 85 to 91%.
+- Known limits: a word of fewer than three consonant sounds is not found
+  across alphabets by sound (סולו for a place named only "Solo"; the data's
+  own English and Hebrew names are found as written); a slip in a word of
+  three letters or fewer is not forgiven; of a chain's twenty branches in
+  one city the list of eight holds the eight nearest.
 
 A missing house number resolves to
 the nearest known one on that street and says so. A point can also be picked

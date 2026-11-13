@@ -153,15 +153,21 @@ export const searchOps = {
           ? `stop|${row.name}|${row.city}`
           : `${row.kind}|${row.name}|${row.city}|${row.label || ''}|${row.address || ''}`;
       const first = shown.get(reads);
-      if (first) {
-        if (first.kind === 'stop' && row.kind === 'stop' && haversine(first.lat, first.lon, row.lat, row.lon) < 600) {
+      // two stops of one name far apart in one city are two places, and each can be chosen: both are listed
+      const apart =
+        first &&
+        first.kind === 'stop' &&
+        row.kind === 'stop' &&
+        haversine(first.lat, first.lon, row.lat, row.lon) >= 600;
+      if (first && !apart) {
+        if (first.kind === 'stop' && row.kind === 'stop') {
           first.stops = [...new Set([...first.stops, ...row.stops])];
           Object.assign(first, centreOf(tt!, first.stops), { code: '' });
         }
         continue;
       }
       if (results.length >= limit) continue; // the list is full; the rest may still add stops to a row on it
-      shown.set(reads, row);
+      if (!first) shown.set(reads, row);
       results.push(row);
     }
     return { results, placesLoaded: !!sx };

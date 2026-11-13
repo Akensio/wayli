@@ -184,11 +184,11 @@ export function buildCatalogue(pl: Places | null, days: Timetable[]): Catalogue 
     for (const name of names[e]) {
       const ws = words(name),
         of = (a: string): string[] => ws.filter((w) => alphabetOf(w) === a),
-        [he, la, other] = [of('he'), of('la'), of('other')];
+        [he, la, other] = [of('he'), of('la'), [...new Set(of('other'))]]; // a number said in both languages is one
       // a name in both alphabets (מלון כנען - Canaan Hotel) is a name in each, of that alphabet's words; one with a
       // stray word of the other (רציפים B, קניון TLV) is a name in its own alphabet only, of all its words
-      if (he.length >= 2 * la.length) least[0] = Math.min(least[0], nameLength(ws));
-      else if (la.length >= 2 * he.length) least[1] = Math.min(least[1], nameLength(ws));
+      if (he.length >= 2 * la.length) least[0] = Math.min(least[0], nameLength([...he, ...la, ...other]));
+      else if (la.length >= 2 * he.length) least[1] = Math.min(least[1], nameLength([...he, ...la, ...other]));
       else {
         least[0] = Math.min(least[0], nameLength([...he, ...other]));
         least[1] = Math.min(least[1], nameLength([...la, ...other]));

@@ -4,14 +4,13 @@
 // Nothing here knows about streets, cities or stops.
 
 const HE_FINAL: Record<string, string> = { ך: 'כ', ם: 'מ', ן: 'נ', ף: 'פ', ץ: 'צ' };
-/** Words that say what kind of way a street is, or nothing at all: left out on both sides, so "שדרות רוטשילד",
- *  "רוטשילד" and "Rothschild Blvd" are one name. */
-const NOISE = new Set(
-  'רחוב רח שדרות שדרת שד סמטת סמ street st road rd boulevard blvd avenue ave lane alley rehov rechov sderot sd simtat the of'.split(
-    ' ',
-  ),
-);
-
+/** Words that say what kind of way a street is, left out on both sides, so "שדרות רוטשילד", "רוטשילד" and
+ *  "Rothschild Blvd" are one name. Only where they stand as such: the Hebrew ones before a name, the Latin ones after
+ *  one. A word alone or elsewhere is a name itself: שדרות is also a town, and "הרצל 5 שדרות" an address in it. */
+const WAY_BEFORE = new Set(words0('רחוב רח שדרות שדרת שד סמטת סמ rehov rechov sderot sd simtat'));
+const WAY_AFTER = new Set(words0('street st road rd boulevard blvd avenue ave lane alley'));
+/** Words that say nothing, left out wherever another word stands. */
+const EMPTY = new Set(['the', 'of']);
 /** Short forms the feed and the maps write, as the words riders type: ת. מרכזית is תחנה מרכזית (744 stops are named
  *  so), בי"ח a בית חולים. A form of a word that says the same is that word (תחנת רכבת, תחנה). */
 const WRITTEN_OUT = new Map(
@@ -33,20 +32,26 @@ const KIND_WORDS = new Set(
       'park garden mall market hospital university college theatre theater museum cinema stadium beach station railway train',
   ),
 );
+/** Whether a word (as `words` gives it) only says what kind of place a name is of. */
+export const saysKind = (w: string): boolean => KIND_WORDS.has(w);
 /** How many words a name is, for weighing how much of it was typed: its words but those that only say its kind. */
 export const nameLength = (ws: string[]): number => ws.filter((w) => !KIND_WORDS.has(w)).length || ws.length;
 
 /** The words of a name, or of what was typed, each in the form they are compared in: lower case, marks and vowel points
  *  off (a quote inside a word is part of it: ז'בוטינסקי, קק"ל), final letters as plain ones, a doubled ו or י (and any
- *  doubled Latin letter) once, no h after a Latin word's last vowel; a short form written out. */
+ *  doubled Latin letter) once, no h after a Latin word's last vowel; a short form written out, a word that only says
+ *  a street is a street left out. */
 export function words(text: string): string[] {
-  const out: string[] = [];
-  for (const w of words0(text)) {
+  const out: string[] = [],
+    all = words0(text);
+  all.forEach((w, i) => {
     const full = WRITTEN_OUT.get(w);
     if (full) out.push(...full);
-    else if (!NOISE.has(w)) out.push(w);
-  }
-  return out;
+    else if (WAY_BEFORE.has(w) ? i + 1 === all.length : !(WAY_AFTER.has(w) && i > 0)) out.push(w);
+  });
+  // "the" and "of" say nothing beside another word
+  const said = out.filter((w) => !EMPTY.has(w));
+  return said.length ? said : out;
 }
 /** The words in their compared form, before short forms are written out and the noise is dropped. */
 function words0(text: string): string[] {

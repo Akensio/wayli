@@ -23,6 +23,7 @@ const streets: [string, string, number, number, string, number[]][] = [
   ['יפו', 'ירושלים', 31.783, 35.218, 'Jaffa', [23]],
   ['ויצמן', 'רחובות', 31.894, 34.811, 'Weizmann', []], // the same street twice in the data, one with its numbers
   ['חיים ויצמן', 'רחובות', 31.895, 34.812, 'Haim Weizmann', [2]],
+  ['הרצל', 'שדרות', 31.525, 34.596, 'Herzl', [5]], // in the town whose name is also the word for a boulevard
 ];
 // [name, kind, city, lat, lon, English name]
 const pois: [string, string, string, number, number, string][] = [
@@ -41,6 +42,11 @@ const pois: [string, string, string, number, number, string][] = [
   ['חוף תל ברוך', 'natural=beach', TLV, 32.118, 34.781, 'Tel Baruch Beach'], // a תל that is not the city's
   ['אבו חסן', 'amenity=restaurant', TLV, 32.049, 34.757, 'Abu Hassan'],
   ['שרונה מרקט', 'amenity=marketplace', TLV, 32.071, 34.787, 'Sarona Market'],
+  ['בורגרים שדרות', 'amenity=fast_food', 'שדרות', 31.524, 34.595, 'Burgerim Sderot'], // its city's name is in its own
+  ['גן ילדים', 'amenity=kindergarten', 'בת ים', 32.018, 34.751, 'Kindergarten'],
+  ['גן ילדים גלים', 'amenity=kindergarten', 'בת ים', 32.0181, 34.7511, 'Galim Kindergarten'],
+  ['Studio', 'shop=clothes', TLV, 32.0776, 34.7744, 'Studio'],
+  ['Studio 110 - סטודיו 110', 'leisure=fitness_centre', TLV, 32.06, 34.78, 'Studio 110'], // a number is part of the name
 ];
 const cities: [string, number, number, string][] = [
   [TLV, 32.08, 34.78, 'Tel Aviv-Yafo'],
@@ -51,6 +57,7 @@ const cities: [string, number, number, string][] = [
   ['רחובות', 31.89, 34.81, 'Rehovot'],
   ['הרצליה', 32.16, 34.84, 'Herzliya'],
   ['שרונה', 32.72, 35.47, 'Sharona'], // a village with the name of a place in Tel Aviv
+  ['שדרות', 31.525, 34.596, 'Sderot'],
 ];
 // a city is as much a city as it is big (find.ts): the two big ones get the thousands of entries real ones have
 for (const [city, lat, lon] of [
@@ -86,6 +93,9 @@ const day: TinySpec = {
     { name: 'אלנבי', lat: 32.0655, lon: 34.771, city: TLV }, // 4: the light rail, one stop each way
     { name: 'אלנבי', lat: 32.0656, lon: 34.7712, city: TLV }, // 5
     { name: 'ת. רכבת חיפה מרכז', lat: 32.822, lon: 34.997, city: 'חיפה' }, // 6
+    { name: 'צומת מישגב', lat: 32.85, lon: 35.26, city: 'משגב', code: '41001' }, // 7: its city is nearly a word of its name
+    { name: 'הדקל', lat: 32.8, lon: 35.0, city: 'חיפה', code: '41002' }, // 8, 9: one name, two places in one city
+    { name: 'הדקל', lat: 32.82, lon: 35.02, city: 'חיפה', code: '41003' },
   ],
   routes: [
     { short: '5', type: 3 },
@@ -102,7 +112,7 @@ const day: TinySpec = {
 const tomorrow: TinySpec = {
   ...day,
   stops: [...day.stops, { name: 'כיכר המדינה', lat: 32.0868, lon: 34.79, city: TLV, code: '21009' }],
-  patterns: [...day.patterns, { route: 0, stops: [1, 7], trips: [[T(12, 0), T(12, 10)]] }],
+  patterns: [...day.patterns, { route: 0, stops: [1, day.stops.length], trips: [[T(12, 0), T(12, 10)]] }],
 };
 const book = parsePlaces(bookFile('book-1'));
 // the two catalogues as the nightly build writes them: the address book's, and the stops' of both days
@@ -221,6 +231,26 @@ describe('the search box', () => {
     expect(first('רוטשילד 22')).toBe(`שדרות רוטשילד 22, ${TLV}`); // שדרות says what kind of street it is
     expect(first('בית חולים איכילוב')).toBe(`בי"ח איכילוב, ${TLV}`); // בי"ח written out
   });
+  test('a town whose name is also a word for a kind of street', () => {
+    // שדרות before a name says the street is a boulevard; alone, or after a name, it is the town
+    expect(rows('שדרות')[0]).toMatchObject({ kind: 'city', name: 'שדרות' });
+    expect(first('הרצל 5 שדרות')).toBe('הרצל 5, שדרות');
+    expect(first('שדרות רוטשילד 22')).toBe(`שדרות רוטשילד 22, ${TLV}`);
+  });
+  test('a word of the city that is in the name too, typed for each', () => {
+    expect(first('בורגרים שדרות שדרות', { near: null })).toBe('בורגרים שדרות, שדרות');
+    // and a word that is the city's exactly and the name's only nearly is the city's
+    expect(rows('צומת מישגב משגב', { near: null })[0]).toMatchObject({ kind: 'stop', stops: [7] });
+  });
+  test('the name typed whole comes before a longer name that has it', () => {
+    // גן says what kind of place both are; it does not make "גן ילדים" the whole of גן ילדים גלים
+    expect(first('גן ילדים', { near: { lat: 32.02, lon: 34.75 } })).toBe('גן ילדים, בת ים');
+    expect(first('studio 110')).toBe(`Studio 110 - סטודיו 110, ${TLV}`); // a number the name has is a word of it
+  });
+  test('two stops of one name far apart in one city are both offered', () => {
+    const r = rows('הדקל', { near: HAIFA }).filter((x) => x.kind === 'stop');
+    expect(r.map((x) => (x as { stops: number[] }).stops)).toEqual(expect.arrayContaining([[8], [9]]));
+  });
   test('one word more than the name has still finds it', () => {
     expect(first('חומוס אבו חסן')).toBe(`אבו חסן, ${TLV}`);
   });
@@ -273,6 +303,6 @@ describe('a catalogue file', () => {
     expect(() => readCatalogue(files.search.slice(0), parsePlaces(bookFile('book-2')))).toThrow(/another address book/);
   });
   test('of the stops is the same whichever day is loaded: a stop is an entry by its id in the feed', () => {
-    expect(Array.from(built.stops.ref)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(Array.from(built.stops.ref)).toEqual(tomorrow.stops.map((_, i) => i));
   });
 });

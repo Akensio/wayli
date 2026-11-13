@@ -4,7 +4,7 @@
 // how well the words matched and how much of the name they are, what kind of thing the entry is, how near it is, and
 // whether its city was typed. Streets, places, cities and stops are all entries of one catalogue (engine/catalogue.ts),
 // on that one scale.
-import { words, alphabetOf } from './words.ts';
+import { words, alphabetOf, saysKind } from './words.ts';
 import { wordsFor, wordAt } from './wordindex.ts';
 import { haversine, type LatLon } from './geo.ts';
 import { KINDS, type Catalogue, type EntryKind } from './catalogue.ts';
@@ -39,8 +39,9 @@ type Scratch = {
   stamp: Int32Array; // the search that last touched the entry
   inName: Int32Array; // the typed words found in its name, one bit each
   byCity: Int32Array; // the typed words that are words of its city's names, one bit each
-  worst: Float32Array; // how well the worst-matched typed word of those is matched
-  lastQuality: Float32Array; // how well the last of them is (a typed word may be two words of a name: the better counts)
+  loose: Int32Array; // those of them that are not the name's word itself (a slip, a beginning, by sound), one bit each
+  worst: Float32Array; // how well the worst-matched of the loose ones is matched
+  lastQuality: Float32Array; // how well the last typed word is (it may be two words of a name: the better counts)
   latin: Uint8Array; // the alphabet of the name's words found: 0 Hebrew, 1 Latin
 };
 const scratch = new WeakMap<Catalogue, Scratch>();
@@ -116,6 +117,7 @@ function matched(
       stamp: new Int32Array(c.n),
       inName: new Int32Array(c.n),
       byCity: new Int32Array(c.n),
+      loose: new Int32Array(c.n),
       worst: new Float32Array(c.n),
       lastQuality: new Float32Array(c.n),
       latin: new Uint8Array(c.n),
@@ -128,7 +130,7 @@ function matched(
   const touch = (e: number): void => {
     if (sc.stamp[e] === search) return;
     sc.stamp[e] = search;
-    sc.inName[e] = sc.byCity[e] = 0;
+    sc.inName[e] = sc.byCity[e] = sc.loose[e] = 0;
     sc.worst[e] = 1;
     touched.push(e);
   };
@@ -156,7 +158,11 @@ function matched(
         } else if (f.quality > sc.lastQuality[e]) sc.lastQuality[e] = f.quality;
       }
     }
-    for (const e of fresh) if (sc.lastQuality[e] < sc.worst[e]) sc.worst[e] = sc.lastQuality[e];
+    for (const e of fresh)
+      if (sc.lastQuality[e] < 1) {
+        sc.loose[e] |= bit;
+        if (sc.lastQuality[e] < sc.worst[e]) sc.worst[e] = sc.lastQuality[e];
+      }
     for (const city of cities)
       for (let k = c.cityOff[city]; k < c.cityOff[city + 1]; k++) {
         const e = c.inCity[k];
@@ -184,31 +190,59 @@ function matched(
     }
     return is;
   };
-  const numbered = new Set<number>(); // the entries with the number typed in their name
+  // the entries with a number typed in their name ("Bloc 39"), and how many of the numbers typed each has
+  const numbered = new Map<number, number>();
   if (number && !numbersAreNames)
-    for (const w of numberWords) {
+    for (const w of new Set(numberWords)) {
       const i = wordAt(c.ix, w);
-      if (i >= 0) for (let k = c.ix.off[i]; k < c.ix.off[i + 1]; k++) numbered.add(c.ix.entries[k]);
+      if (i >= 0)
+        for (let k = c.ix.off[i]; k < c.ix.off[i + 1]; k++)
+          numbered.set(c.ix.entries[k], (numbered.get(c.ix.entries[k]) || 0) + 1);
     }
   const wanted = only && new Set(only.map((k) => KINDS.indexOf(k)));
+  let kindWords = 0; // the typed words that only say a kind of place, one bit each
+  names.forEach((w, j) => {
+    if (saysKind(w)) kindWords |= 1 << j;
+  });
   return (allowed: number): Hit[] => {
     const out: Hit[] = [];
     for (const e of touched) {
-      const got = bits(sc.inName[e]);
-      if (!got || (wanted && !wanted.has(c.kind[e]))) continue; // only its city was typed, or not a kind asked for
-      // the words that are not in the name have to say the city. Where every word is in the name, the city may be
-      // said inside it (נמל תל אביב, The Bloc TLV): the entry is then as much in the city typed as one beside it,
-      // if more than the city was typed (תל אביב alone is the city, not a wish for names that have it)
-      const beside = sc.byCity[e] & ~sc.inName[e],
-        more = sc.inName[e] & ~sc.byCity[e];
-      const inCity = sc.byCity[e] !== 0 && (beside || more) !== 0 && namesIt(c.city[e], beside || sc.byCity[e]);
-      const missing = names.length - got - (inCity ? bits(beside) : 0);
+      const inName = sc.inName[e],
+        byCity = sc.byCity[e],
+        city = c.city[e];
+      if (!inName || (wanted && !wanted.has(c.kind[e]))) continue; // only its city was typed, or not a kind asked for
+      // Which typed words are the city: those that are not in the name must be, and those that are the city's word
+      // but only loosely the name's (משגב for צומת מישגב in משגב) are taken to be; they must say one of the city's
+      // names in full. A word of the city that is in the name too may have been typed for each ("קניון תרשיחא
+      // מעלות תרשיחא"): the city then takes one of them, the later typed first. A word serves the name or the city,
+      // never both (so "תל אביב" is not חוף תל ברוך with its city typed: nothing would be left for the name).
+      let asCity = byCity & (~inName | sc.loose[e]),
+        inCity = false;
+      if (asCity) {
+        inCity = namesIt(city, asCity);
+        for (let j = names.length - 1; j >= 0 && !inCity; j--)
+          if (byCity & inName & ~asCity & (1 << j) && namesIt(city, asCity | (1 << j))) {
+            asCity |= 1 << j;
+            inCity = true;
+          }
+        if (!inCity) asCity = 0;
+      }
+      // where every word is in the name, the city may be said inside it (נמל תל אביב, The Bloc TLV): the entry is as
+      // much in the city typed as one beside it, if more than the city was typed (תל אביב alone is the city)
+      else if (byCity && inName & ~byCity) inCity = namesIt(city, byCity);
+      const asName = inName & ~asCity,
+        got = bits(asName);
+      if (!got) continue;
+      const missing = names.length - got - bits(asCity);
       if (missing > allowed) continue;
       const kind = KINDS[c.kind[e]];
       const has = c.count[sc.latin[e]][e] || c.count[1 - sc.latin[e]][e] || 1;
-      const whole = Math.min(1, got / has); // how much of the name was typed
+      // how much of the name was typed, by the words that are the name and not its kind (גן ילדים is the whole of
+      // a kindergarten called so, and a part of גן ילדים גלים)
+      // a number typed that the name has is a word of it typed
+      const whole = Math.min(1, ((bits(asName & ~kindWords) || got) + (numbered.get(e) || 0)) / has);
       // a match is as good as its worst word: two words typed right do not make a third, loosely matched, any surer
-      let score = TEXT * sc.worst[e] * (PART + (1 - PART) * whole) - MISSING * missing;
+      let score = TEXT * (asName & sc.loose[e] ? sc.worst[e] : 1) * (PART + (1 - PART) * whole) - MISSING * missing;
       if (inCity) score += IN_CITY;
       const nearness = near
         ? Math.max(0, 1 - haversine(near.lat, near.lon, c.lat[e], c.lon[e]) / 1000 / FAR_KM) ** 2
