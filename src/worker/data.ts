@@ -5,7 +5,7 @@
 // and three were missing: the light rail stations and the traffic's courses and tracks kept the old day's numbers).
 import { parseTimetable, type Timetable } from '../engine/raptor.ts';
 import { parseStreets, type Streets } from '../engine/streets.ts';
-import { parsePlaces, ensureSkeletons, type Places, type Lang } from '../engine/places.ts';
+import { parsePlaces, type Places, type Lang } from '../engine/places.ts';
 import { readContainer, type ContainerHeader } from '../engine/container.ts';
 import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/delays.ts';
 import type { OpsPart, WorkerMessage } from './ops.ts';
@@ -238,8 +238,6 @@ export const dataOps = {
   async loadPlaces({ url, bytes }) {
     const buf = await fetchContainer(url, 'places', bytes);
     pl = parsePlaces(buf);
-    const book = pl;
-    setTimeout(() => ensureSkeletons(book), 0); // the search's skeletons now, not on the rider's first keystroke
     return pl.header.counts;
   },
   /** The language every name is handed out in from now on (what the timetable carries; Hebrew otherwise). */

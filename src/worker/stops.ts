@@ -8,7 +8,6 @@ import {
   canAlight,
   patternStop,
   routeLabel,
-  searchStops,
   stationStopsOf,
   timesRow,
   tripCount,
@@ -177,7 +176,6 @@ export const stopsOps = {
         const s = codeIndex().get(n);
         if (s !== undefined) add(s, 100);
       }
-      for (const g of searchStops(tt!, n, 60, lang)) add(g.stops[0], g.score);
     }
     const rows = Array.from(out.values());
     // the stations reachable from the From one are listed by name; anything else nearest first among equal matches

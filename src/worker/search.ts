@@ -1,11 +1,11 @@
 // Finding places: the search over stops and the address book on one scale, what is at a point on the map, and stored
 // places named again in another language.
-import { searchStops, stopName, stopOrStationName } from '../engine/raptor.ts';
-import { searchPlaces, kindLabel, reverseGeocode, placeAt, type Lang } from '../engine/places.ts';
+import { stopName, stopOrStationName } from '../engine/raptor.ts';
+import { reverseGeocode, placeAt, type Lang } from '../engine/places.ts';
 import { haversine } from '../engine/geo.ts';
 import { lang, pl, tt } from './data.ts';
 import { codeIndex } from './stops.ts';
-import type { OpsPart, ReverseHit, SearchPlaceHit, SearchStopHit } from './ops.ts';
+import type { OpsPart, ReverseHit } from './ops.ts';
 import type { PlanPlace } from './ops.ts';
 
 /** What is at (lat, lon), named in `L`: the nearest address, place or street, else the nearest stop, else the point. */
@@ -62,56 +62,9 @@ export const searchOps = {
       return placeAt(pl, p.lat, p.lon, L, p.name) || picked(p);
     });
   },
-  /** Stops and stations first, then addresses, streets, places and cities from the address book. */
-  search({ q, limit = 10, lang: L = lang, near = null }) {
-    // stops and places on one scale: match strength (whole words over prefixes), nearness, and a point
-    // ahead of a street at equal strength (a stop is what the planner boards; an address when a number was typed)
-    const bandBonus = (g: { lat: number; lon: number }): number => {
-      if (!near) return 0;
-      const km = haversine(near.lat, near.lon, g.lat, g.lon) / 1000;
-      if (km < 3) return 3;
-      return km < 15 ? 1.5 : 0;
-    };
-    const stops = searchStops(tt!, q, limit, L).map((g): SearchStopHit => ({
-      kind: 'stop',
-      key: g.key,
-      name: g.name,
-      city: g.city,
-      stops: g.stops,
-      lat: g.lat,
-      lon: g.lon,
-      code: g.code,
-      platforms: g.stops.length,
-      rank: g.score + 1 + bandBonus(g),
-    }));
-    const hasDigit = /\d/.test(q);
-    let places: SearchPlaceHit[] = [];
-    if (pl) {
-      // a place's row says where it is: the nearest address within 120 m (the row had only the name and the kind;
-      // customers, 2026-11-08). The book's address itself is the row's name already.
-      const addressOf = (r: { kind: string; lat: number; lon: number }): string | null => {
-        if (r.kind !== 'poi') return null;
-        const near = reverseGeocode(pl!, r.lat, r.lon, L);
-        return near && near.kind === 'address' ? near.name : null;
-      };
-      places = searchPlaces(pl, q, limit, near, L).map((r): SearchPlaceHit => ({
-        kind: r.kind,
-        name: r.name,
-        city: r.city,
-        lat: r.lat,
-        lon: r.lon,
-        approx: r.approx ?? null,
-        label: r.kind === 'poi' ? kindLabel(r.poiKind!, L) : null,
-        address: addressOf(r),
-        score: r.score,
-        rank: r.score + (hasDigit && r.kind === 'address' ? 3 : 0),
-      }));
-    }
-    const merged = [...stops, ...places]
-      .map((r, i) => ({ r, i }))
-      .sort((a, b) => b.r.rank - a.r.rank || a.i - b.i)
-      .map((x) => x.r);
-    return { results: merged.slice(0, limit + 4), placesLoaded: !!pl };
+  /** The place search: being written anew (the old one is deleted). */
+  search() {
+    return { results: [], placesLoaded: !!pl };
   },
   /** A name for a point on the map: address, place or street from the address book, else the nearest stop. */
   reverse({ lat, lon }) {

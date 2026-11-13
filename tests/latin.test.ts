@@ -4,7 +4,7 @@ import { test, expect } from 'vitest';
 import { inLatin, latinWord, hasHebrew } from '../src/engine/latin';
 import { STR } from '../src/common/i18n';
 import { stopName, stationName, cityName, routeHeadsign } from '../src/engine/raptor.ts';
-import { parsePlaces, searchPlaces, reverseGeocode } from '../src/engine/places.ts';
+import { parsePlaces, reverseGeocode } from '../src/engine/places.ts';
 import { tinyTimetable, writeContainer } from './tinytt.ts';
 
 test('a Hebrew word by rule, a mixed string word by word, and nothing else touched', () => {
@@ -72,11 +72,6 @@ test('the address book names in English never carry Hebrew, even for entries the
       ],
     ),
   );
-  for (const q of ['חומוס פיטר', 'יהודה הלוי', 'פארק המסילה', 'תל אביב'])
-    for (const h of searchPlaces(book, q, 5, null, 'en')) {
-      expect(hasHebrew(h.name)).toBe(false);
-      expect(hasHebrew(h.city)).toBe(false);
-    }
   const r = reverseGeocode(book, 32.0505, 34.7575, 'en');
   expect(r && hasHebrew(r.name + r.city)).toBe(false);
 });
