@@ -10,43 +10,9 @@ import {
   type Route,
   type Stop,
 } from '../src/engine/raptor.ts';
-import type { SectionType } from '../src/engine/container.ts';
+import { writeContainer, type SectionIn, type SectionType } from '../src/engine/container.ts';
+export { writeContainer, type SectionIn };
 
-const DTYPES = { int32: Int32Array, uint16: Uint16Array, uint8: Uint8Array, float32: Float32Array } as const;
-/** A section to write: its name, element type and values. */
-export type SectionIn = { name: string; dtype: SectionType; data: ArrayLike<number> };
-/** The container as container.py writes it: a uint32 header length, the header JSON padded to 4 bytes, the sections
- *  each at a 4-byte offset. The header is given without `sections`; the writer adds them. */
-export function writeContainer(header: Record<string, unknown>, sections: SectionIn[]): ArrayBuffer {
-  const list: { name: string; dtype: SectionType; offset: number; length: number }[] = [],
-    parts: Uint8Array[] = [];
-  let off = 0;
-  for (const s of sections) {
-    while (off % 4) {
-      parts.push(new Uint8Array(1));
-      off += 1;
-    }
-    const arr = new DTYPES[s.dtype](s.data),
-      bytes = new Uint8Array(arr.buffer);
-    list.push({ name: s.name, dtype: s.dtype, offset: off, length: arr.length });
-    parts.push(bytes);
-    off += bytes.length;
-  }
-  let hjson: Uint8Array = new TextEncoder().encode(JSON.stringify({ ...header, sections: list }));
-  const pad = (4 - ((4 + hjson.length) % 4)) % 4;
-  if (pad) hjson = new Uint8Array([...hjson, ...new Array<number>(pad).fill(32)]);
-  const out = new Uint8Array(4 + hjson.length + off);
-  new DataView(out.buffer).setUint32(0, hjson.length, true);
-  out.set(hjson, 4);
-  let o = 4 + hjson.length;
-  for (const p of parts) {
-    out.set(p, o);
-    o += p.length;
-  }
-  return out.buffer;
-}
-
-/** Seconds on the service day from hours, minutes and seconds. */
 export const T = (h: number, m: number, s = 0): number => h * 3600 + m * 60 + s;
 
 /** What a tiny timetable is made of. */

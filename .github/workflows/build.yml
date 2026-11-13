@@ -142,6 +142,9 @@ jobs:
           path: data/bustimes.bin.gz
           key: bustimes-none
           restore-keys: bustimes-
+      # the search catalogue: the address book and every day's stops, indexed by the app's own code (a few seconds)
+      - name: Search catalogue
+        run: node pipeline/searchindex.ts data/places.bin.gz data/timetable-*.bin.gz --out data/search.bin.gz
       - run: python3 pipeline/build_site.py --out site
       - uses: actions/upload-pages-artifact@v3
         with:

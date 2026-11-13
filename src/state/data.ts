@@ -9,6 +9,7 @@ export type Manifest = {
   feed?: { start?: string; end?: string };
   days: (DataFile & { date: string })[];
   places?: DataFile;
+  search?: DataFile;
   shapes?: DataFile;
   streets?: DataFile;
   railtimes?: DataFile;
@@ -19,5 +20,5 @@ export const manifest = signal<Manifest | null>(null);
 export const dayInfo = signal<{ date: string; counts: { trips: number } } | null>(null);
 export const ttReady = signal(false); // the timetable
 export const stReady = signal(false); // the street graph
-export const plReady = signal(false); // the address book
+export const plReady = signal(false); // the address book and its search catalogue
 export const shReady = signal(false); // the courses (shapes)

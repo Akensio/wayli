@@ -117,6 +117,9 @@ export async function loadPlaces(): Promise<void> {
   await retrying(
     async () => {
       await call('loadPlaces', { url: fileUrl(f), bytes: f.bytes });
+      // the search catalogue is read against the book, so after it; until it is in, the search finds stops only
+      const x = manifest().search;
+      if (x) await call('loadSearch', { url: fileUrl(x), bytes: x.bytes });
       data.plReady.value = true; // a box with text typed in it searches again (views/topbar/SearchField.tsx)
     },
     () => {

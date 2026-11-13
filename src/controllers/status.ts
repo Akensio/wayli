@@ -20,7 +20,12 @@ export const loadFailed = (e: unknown): void =>
 function showProgress(m: Progress): void {
   // the files the rider waits for say so; the rest (the courses, the bus times) arrive quietly in the background
   const label = (
-    { timetable: t('loadingTT'), places: t('loadingPL'), streets: t('loadingST') } as Record<string, string>
+    {
+      timetable: t('loadingTT'),
+      places: t('loadingPL'),
+      search: t('loadingPL'),
+      streets: t('loadingST'),
+    } as Record<string, string>
   )[m.label];
   if (!label) return;
   const mb = (m.got / 1e6).toFixed(1) + (m.total ? ' / ' + (m.total / 1e6).toFixed(1) : '') + ' MB';

@@ -74,6 +74,17 @@ def main():
         h = container.read_header(pp)
         shutil.copy(pp, out / "data" / pp.name)
         places = {"file": pp.name, "bytes": pp.stat().st_size, "counts": h["counts"], "built": h.get("built"), "hash": h.get("hash")}
+    # the search catalogue (pipeline/searchindex.ts) belongs to this address book: one built from another is left out
+    # (the app then finds stops only, which beats refusing to start)
+    search = None
+    xp = data / "search.bin.gz"
+    if xp.exists() and places:
+        h = container.read_header(xp)
+        if h.get("book") == (places.get("hash") or ""):
+            shutil.copy(xp, out / "data" / xp.name)
+            search = {"file": xp.name, "bytes": xp.stat().st_size, "counts": h["counts"], "built": h.get("built"), "hash": h.get("hash")}
+        else:
+            print("site: search.bin.gz is of another address book, left out")
     railtimes = None
     rp = data / "railtimes.json"
     if rp.exists():
@@ -100,6 +111,7 @@ def main():
         "days": days,
         "streets": streets,
         "places": places,
+        "search": search,
         "shapes": shapes,
         "railtimes": railtimes,
         "bustimes": bustimes,

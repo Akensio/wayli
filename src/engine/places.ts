@@ -165,6 +165,8 @@ const OVERTURE_HE = { 'shopping=shopping_center': 'מרכז קניות', 'educat
 const KIND_HE: Record<string, string> = { ...LANDMARK_HE, ...EVERYDAY_HE, ...OVERTURE_HE };
 /** A place's kind, an OpenStreetMap tag "key=value": one the search has a label for, or any other of the pipeline's
  *  (a shop or an office not named here gets a general label). */
+/** Whether a place's kind is a landmark (a park, a mall, a hospital, a museum...), not an everyday shop or office. */
+export const isLandmark = (kind: string): boolean => kind in LANDMARK_HE;
 export type PoiKind = keyof typeof LANDMARK_HE | keyof typeof EVERYDAY_HE | (string & {});
 /** Overture's places whose category the app has no word for carry their group ("food_and_drink=winery",
  *  pipeline/overture.py): the group's word. */
@@ -203,32 +205,93 @@ export const poiName = (pl: Places, p: number, lang: Lang): string =>
 export const cityOf = (pl: Places, he: string, lang: Lang): string =>
   (lang === 'en' && he && pl.cityEnByHe.get(he)) || own(he || '', lang);
 
+/** The address on a street for a house number typed: that very number (and letter), else the nearest number the street
+ *  has; null for a street with no numbers. */
+export function houseOn(
+  pl: Places,
+  street: number,
+  number: number,
+  suffix: string,
+): { index: number; exact: boolean } | null {
+  let nearest = -1,
+    gap = Infinity;
+  for (let i = pl.addrOff[street]; i < pl.addrOff[street + 1]; i++) {
+    const n = pl.addrNumber[i];
+    if (n === number && (!suffix || (pl.addrSuffix[i] || '') === suffix)) return { index: i, exact: true };
+    if (Math.abs(n - number) < gap) {
+      gap = Math.abs(n - number);
+      nearest = i;
+    }
+  }
+  return nearest < 0 ? null : { index: nearest, exact: false };
+}
 /** What an entry of the book is: a house number on a street, a street, a city, a notable or everyday place. */
 export type PlaceKind = 'address' | 'street' | 'city' | 'poi';
 /** What is at a point (reverseGeocode): the nearest address, place or street, named in the rider's language, its city
  *  ('' when none), and how far it is from the point (metres). */
 export type NearestPlace = { kind: 'address' | 'poi' | 'street'; name: string; city: string; distance: number };
-/** What is at (lat, lon): the nearest house number within 120 m, else a notable place within 150 m, else the nearest street within 400 m. */
-export function reverseGeocode(pl: Places, lat: number, lon: number, lang: Lang = 'he'): NearestPlace | null {
+/** The addresses by where they are: cells of CELL degrees (some 200 m a side), each with its addresses, so the nearest
+ *  address to a point is looked for among the few around it and not among all 300,000 (9 ms a look, and a search
+ *  asks for every place it lists). Made once per book, when first asked for. */
+const CELL = 0.002;
+type AddressCells = { at: Map<number, number>; off: Int32Array; list: Int32Array };
+const addressCells = new WeakMap<Places, AddressCells>();
+const cellOf = (lat: number, lon: number): number => Math.floor(lat / CELL) * 100000 + Math.floor(lon / CELL);
+function cellsOf(pl: Places): AddressCells {
+  let c = addressCells.get(pl);
+  if (c) return c;
+  const n = pl.addrLat.length,
+    at = new Map<number, number>(),
+    cell = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    const k = cellOf(pl.addrLat[i], pl.addrLon[i]);
+    let j = at.get(k);
+    if (j === undefined) at.set(k, (j = at.size));
+    cell[i] = j;
+  }
+  const off = new Int32Array(at.size + 1);
+  for (let i = 0; i < n; i++) off[cell[i] + 1]++;
+  for (let j = 0; j < at.size; j++) off[j + 1] += off[j];
+  const next = off.slice(0, at.size),
+    list = new Int32Array(n);
+  for (let i = 0; i < n; i++) list[next[cell[i]]++] = i;
+  addressCells.set(pl, (c = { at, off, list }));
+  return c;
+}
+/** The nearest house number to (lat, lon) within 120 m, named in `lang`; null when there is none. */
+export function addressAt(pl: Places, lat: number, lon: number, lang: Lang = 'he'): NearestPlace | null {
   let best: number | null = null,
     bd = 120;
-  const { kx, ky } = scaleAt(lat);
-  for (let i = 0; i < pl.addrLat.length; i++) {
-    const d = Math.hypot((pl.addrLon[i] - lon) * kx, (pl.addrLat[i] - lat) * ky);
-    if (d < bd) {
-      bd = d;
-      best = i;
+  const { kx, ky } = scaleAt(lat),
+    cells = cellsOf(pl);
+  // the cell of the point and the eight around it: every address within a cell's side, which is more than 120 m
+  for (let dy = -CELL; dy <= CELL; dy += CELL)
+    for (let dx = -CELL; dx <= CELL; dx += CELL) {
+      const j = cells.at.get(cellOf(lat + dy, lon + dx));
+      if (j === undefined) continue;
+      for (let k = cells.off[j]; k < cells.off[j + 1]; k++) {
+        const i = cells.list[k],
+          d = Math.hypot((pl.addrLon[i] - lon) * kx, (pl.addrLat[i] - lat) * ky);
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
+      }
     }
-  }
-  if (best !== null) {
-    const s = pl.addrStreet[best];
-    return {
-      kind: 'address',
-      name: `${streetName(pl, s, lang)} ${pl.addrNumber[best]}${pl.addrSuffix[best] || ''}`,
-      city: cityOf(pl, pl.streets[s][1], lang),
-      distance: Math.round(bd),
-    };
-  }
+  if (best === null) return null;
+  const s = pl.addrStreet[best];
+  return {
+    kind: 'address',
+    name: `${streetName(pl, s, lang)} ${pl.addrNumber[best]}${pl.addrSuffix[best] || ''}`,
+    city: cityOf(pl, pl.streets[s][1], lang),
+    distance: Math.round(bd),
+  };
+}
+/** What is at (lat, lon): the nearest house number within 120 m, else a notable place within 150 m, else the nearest street within 400 m. */
+export function reverseGeocode(pl: Places, lat: number, lon: number, lang: Lang = 'he'): NearestPlace | null {
+  const address = addressAt(pl, lat, lon, lang);
+  if (address) return address;
+  let bd: number;
   let bp: number | null = null;
   bd = 150;
   for (let p = 0; p < pl.pois.length; p++) {

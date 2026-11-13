@@ -3,7 +3,17 @@
 // A place can also be "lat,lon" or "lat,lon:bike" (needs STREETS=data/streets.bin.gz in the environment).
 import { readFileSync, existsSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
-import { parseTimetable, plan, profile, describe, type StopSet } from '../src/engine/raptor.ts';
+import {
+  parseTimetable,
+  plan,
+  profile,
+  describe,
+  stopOrStationName,
+  stationStopsOf,
+  type StopSet,
+} from '../src/engine/raptor.ts';
+import { buildCatalogue, type Catalogue } from '../src/engine/catalogue.ts';
+import { find } from '../src/engine/find.ts';
 import { parseStreets, accessStops, route, type Streets, type StreetMode } from '../src/engine/streets.ts';
 
 const [file, fromQ, toQ, timeStr = '08:00', windowStr = '60', runsStr = '10'] = process.argv.slice(2);
@@ -34,6 +44,7 @@ if (existsSync(stFile)) {
 }
 /** One end of the trip: a named stop set for the router, and the point when it was given as one. */
 type End = { name: string; set: StopSet; point?: [number, number] };
+let stops: Catalogue | null = null;
 const pick = (q: string): End => {
   const m = q.match(/^(-?\d+\.\d+),(-?\d+\.\d+)(?::(walk|bike))?$/);
   if (m) {
@@ -49,7 +60,15 @@ const pick = (q: string): End => {
     return { name: `${lat},${lon} (${mode})`, set: places, point: [lat, lon] };
   }
   if (/^\d+$/.test(q)) return { name: tt.stops[Number(q)][1], set: { stops: [Number(q)] } };
-  throw new Error(`"${q}": a place is given as a stop's index or as lat,lon`);
+  // by name: the app's own search, among the day's stops and stations (a station: all its platforms)
+  stops ||= buildCatalogue(null, [tt]);
+  const hits = find(stops, q, { only: ['stop', 'station'], limit: 5 }).map((h) => {
+    const s = tt.stops.findIndex((x) => Number(x[0]) === h.ref);
+    return { name: stopOrStationName(tt, s), city: tt.stops[s][3], stops: stationStopsOf(tt, s) };
+  });
+  if (!hits.length) throw new Error(`no stop matches "${q}"`);
+  console.log(`"${q}" ->`, hits.map((g) => `${g.name} [${g.city}] x${g.stops.length}`).join(' | '));
+  return { name: hits[0].name, set: { stops: hits[0].stops } };
 };
 const from = pick(fromQ),
   to = pick(toQ);

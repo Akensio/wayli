@@ -1,11 +1,12 @@
 // What the data worker has loaded, and loading it: the day's timetable (tt), the street graph (st), the address
-// book (pl), the courses (sh), and the language names are handed out in. Only this module assigns them; the others
+// book (pl), the search catalogue (sx), the courses (sh), and the language names are handed out in. Only this module assigns them; the others
 // read them (ES module bindings follow the assignments). A new day or a new language drops what was derived from the
 // old one: each index registers its reset with onNewDay / onNewLang (before, each reset was listed by hand in the load,
 // and three were missing: the light rail stations and the traffic's courses and tracks kept the old day's numbers).
 import { parseTimetable, type Timetable } from '../engine/raptor.ts';
 import { parseStreets, type Streets } from '../engine/streets.ts';
-import { parsePlaces, type Places, type Lang } from '../engine/places.ts';
+import { parsePlaces, houseOn, type Places, type Lang } from '../engine/places.ts';
+import { readCatalogue, type Catalogue } from '../engine/catalogue.ts';
 import { readContainer, type ContainerHeader } from '../engine/container.ts';
 import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/delays.ts';
 import type { OpsPart, WorkerMessage } from './ops.ts';
@@ -26,6 +27,7 @@ export type Shapes = {
 export let tt: Timetable | null = null,
   st: Streets | null = null,
   pl: Places | null = null,
+  sx: Catalogue | null = null, // the night's search catalogue, of the address book and every day's stops
   sh: Shapes | null = null;
 export let lang: Lang = 'he'; // the language names are handed out in (setLang); the timetable carries what the feed translates
 
@@ -238,7 +240,21 @@ export const dataOps = {
   async loadPlaces({ url, bytes }) {
     const buf = await fetchContainer(url, 'places', bytes);
     pl = parsePlaces(buf);
+    sx = null; // a catalogue belongs to one address book
     return pl.header.counts;
+  },
+  /** The search catalogue (pipeline/searchindex.ts), read against the address book it was built from: asked for once
+   *  the book is in. */
+  async loadSearch({ url, bytes }) {
+    const buf = await fetchContainer(url, 'search', bytes);
+    const book = pl!;
+    sx = readCatalogue(buf, book);
+    sx.numberOn = (street, number, suffix) => {
+      const h = houseOn(book, street, number, suffix);
+      if (!h) return null;
+      return h.exact ? 'exact' : 'near';
+    };
+    return { entries: sx.n, words: sx.ix.keys.length };
   },
   /** The language every name is handed out in from now on (what the timetable carries; Hebrew otherwise). */
   setLang({ lang: l }) {
@@ -247,5 +263,12 @@ export const dataOps = {
     return lang;
   },
 } satisfies OpsPart<
-  'loadTimetable' | 'loadStreets' | 'setRailTimes' | 'loadBusTimes' | 'loadShapes' | 'loadPlaces' | 'setLang'
+  | 'loadTimetable'
+  | 'loadStreets'
+  | 'setRailTimes'
+  | 'loadBusTimes'
+  | 'loadShapes'
+  | 'loadPlaces'
+  | 'loadSearch'
+  | 'setLang'
 >;

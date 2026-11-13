@@ -14,6 +14,7 @@ export default tseslint.config(
       'src/**/*.{js,ts,tsx}',
       'tests/**/*.{mjs,ts}',
       'measure/**/*.{mjs,ts}',
+      'pipeline/**/*.ts',
       'vite.config.ts',
       'vitest.config.ts',
     ],
@@ -42,7 +43,14 @@ export default tseslint.config(
   },
   // TypeScript itself rejects undeclared names, and knows type-only names (GeoJSON, DOM types) that this rule does not
   {
-    files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts', 'measure/**/*.ts', 'vite.config.ts', 'vitest.config.ts'],
+    files: [
+      'src/**/*.{ts,tsx}',
+      'tests/**/*.ts',
+      'measure/**/*.ts',
+      'pipeline/**/*.ts',
+      'vite.config.ts',
+      'vitest.config.ts',
+    ],
     rules: { 'no-undef': 'off' },
   },
 );

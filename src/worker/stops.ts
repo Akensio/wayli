@@ -16,7 +16,9 @@ import {
 } from '../engine/raptor.ts';
 import { haversine } from '../engine/geo.ts';
 import type { StopGroup, Dest } from './ops.ts';
-import { lang, tt, onNewDay, onNewLang } from './data.ts';
+import { find } from '../engine/find.ts';
+import { buildCatalogue, type Catalogue, type EntryKind } from '../engine/catalogue.ts';
+import { tt, sx, onNewDay, onNewLang } from './data.ts';
 import { cName, headsign, lineLabel, liveId, sName, stName, stopOut } from './names.ts';
 import type { Departure, OpsPart, RecentStation } from './ops.ts';
 
@@ -63,7 +65,7 @@ function lrtStops(): Uint8Array {
  *  of one name in one city (within 400 m of each other) are one station here, as a parent station would make them. */
 let lrtGroup: Map<number, StopStation> | null = null;
 onNewDay(() => {
-  stopRail = stopLrt = lrtGroup = stopByCode = null;
+  stopRail = stopLrt = lrtGroup = stopByCode = namesake = stopById = ownCatalogue = null;
 });
 onNewLang(() => {
   lrtGroup = null;
@@ -93,6 +95,49 @@ export function stationOf(s: number): StopStation {
   if (p >= 0) return { key: 'p' + p, stops: stationStopsOf(tt!, s), name: stName(p) || sName(s) };
   const g = lrtGroups().get(s);
   return g ? { key: g.key, stops: g.stops.slice(), name: g.name } : { key: 's' + s, stops: [s], name: sName(s) };
+}
+/** A stop as the place search offers it: its station, or, for a bus stop, the stops a rider cannot tell from it, those
+ *  of its name in its city within 400 m (the two sides of a street): one place to plan from or to. */
+let namesake: Map<string, number[]> | null = null;
+export function sameNamed(s: number): StopStation {
+  const g = stationOf(s);
+  if (g.stops.length > 1 || railStops()[s] || lrtStops()[s]) return g;
+  if (!namesake) {
+    namesake = new Map();
+    for (let i = 0; i < tt!.stops.length; i++) {
+      const k = tt!.stops[i][1] + '|' + tt!.stops[i][3],
+        list = namesake.get(k);
+      if (list) list.push(i);
+      else namesake.set(k, [i]);
+    }
+  }
+  const stops = namesake
+    .get(tt!.stops[s][1] + '|' + tt!.stops[s][3])!
+    .filter(
+      (x) =>
+        tt!.stopParent[x] < 0 &&
+        !railStops()[x] &&
+        !lrtStops()[x] &&
+        haversine(tt!.stopLat[x], tt!.stopLon[x], tt!.stopLat[s], tt!.stopLon[s]) < 400,
+    );
+  return { key: 'n' + stops[0], stops, name: g.name };
+}
+let stopById: Map<number, number> | null = null;
+/** A stop by its id in the feed (what the search catalogue calls it by, the same every day); undefined when the day's
+ *  timetable has no such stop. */
+export function stopOfId(id: number): number | undefined {
+  if (!stopById) {
+    stopById = new Map();
+    for (let i = 0; i < tt!.stops.length; i++) stopById.set(Number(tt!.stops[i][0]), i);
+  }
+  return stopById.get(id);
+}
+let ownCatalogue: Catalogue | null = null;
+/** The catalogue to search now: the night's, or until it is in, one of the day's stops alone, made here. */
+export function catalogueNow(): Catalogue | null {
+  if (sx) return sx;
+  if (!tt) return null;
+  return (ownCatalogue ||= buildCatalogue(null, [tt]));
 }
 let stopByCode: Map<string, number> | null = null;
 export function codeIndex(): Map<string, number> {
@@ -172,10 +217,23 @@ export const stopsOps = {
         add(s, 0);
       }
     } else {
+      // the number on a sign first, then by name (the same search as the place box, among stops and stations)
       if (/^\d{2,6}$/.test(n)) {
         const s = codeIndex().get(n);
-        if (s !== undefined) add(s, 100);
+        if (s !== undefined) add(s, 1000);
       }
+      const c = catalogueNow();
+      if (c)
+        for (const h of find(c, n, {
+          near,
+          // trains and the light rail call at stations only, and those are few: all that match, for the filters above
+          ...(mode === 'rail' || mode === 'lrt'
+            ? { limit: 300, only: ['station'] as EntryKind[] }
+            : { limit: limit * 4, only: ['stop', 'station'] as EntryKind[] }),
+        })) {
+          const s = stopOfId(h.ref);
+          if (s !== undefined) add(s, h.score);
+        }
     }
     const rows = Array.from(out.values());
     // the stations reachable from the From one are listed by name; anything else nearest first among equal matches
