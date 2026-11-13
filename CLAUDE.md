@@ -165,4 +165,8 @@ after it pulled in (the fixes are in `docs/decisions.md`); and a night of
 cleanup: views by feature, the data worker split by kind of question,
 `engine/live.js` split into `clock`, `feed` and `delays`, the strings with
 Hebrew and English side by side, the CSS one file per part of the screen
-(`src/styles/`), shared pieces in place of copies.
+(`src/styles/`), shared pieces in place of copies. 2026-11-13: the search was deleted and written anew: one
+catalogue of everything findable with an index of its words, built by the
+nightly job (`search.bin.gz`) and searched on the phone
+(`docs/architecture.md`, "The search"); its tests and its bench ask through
+the worker, with a language and a position.
