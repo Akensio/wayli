@@ -733,19 +733,26 @@ entries of one catalogue, found by one rule and ordered on one scale:
   city as much as it is big, by how many entries it has: a big one gets its
   full worth and half the nearness wherever the rider is (riders name far
   cities), a village is a place like any other.
-- The catalogue (`catalogue.ts`). Reading 400,000 names into words takes
+- The catalogues (`catalogue.ts`). Reading 400,000 names into words takes
   3.5 s on a laptop, too long for every start of the app, so the nightly
   build does it (`pipeline/searchindex.ts`, the app's own code under Node,
-  7 s for seven days) and the app reads `search.bin.gz` (2.8 MB gzipped,
-  read in a third of a second): the words (each as the letters it does not
-  share with the word before), who has each (as steps between numbers, a
-  byte or two each), how long each name is, and the stops of every compiled
-  day by their id in the feed. What an address-book entry is and where is
-  read from the book itself, so the file belongs to one book (its hash is in
-  the header; another book's is refused, and `build_site.py` leaves such a
-  file out). Like every data file it is kept on the phone under its content
-  hash and fetched again only when that changes. Until it is in, the search
-  finds stops alone, from a catalogue of the day's stops made on the phone.
+  8 s for seven days) and the app reads the result. Two files, by how often
+  what is in them changes, and `find` searches both on the one scale:
+  `search.bin.gz`, the address book's cities, streets and places (2.2 MB
+  gzipped; the book is rebuilt weekly, and this file's contents change only
+  with it), and `searchstops.bin.gz`, the stops and stations of every
+  compiled day by their id in the feed (0.7 MB; a few stops come and go
+  most days: of the week's 30,781, twelve ran only on its first day). In a
+  file: the words (each as the letters it does not share with the word
+  before), who has each (as steps between numbers, a byte or two each), how
+  long each name is, the cities, and for the stops what and where each is.
+  What an address-book entry is and where is read from the book itself, so
+  that file belongs to one book (its hash is in the header; another book's
+  is refused, and `build_site.py` leaves such a file out). Like every data
+  file each is kept on the phone under its content hash and fetched again
+  only when that changes. Until the stops' file is in, the worker makes a
+  catalogue of the day's stops itself; until the book's is in, the search
+  finds stops alone.
 - The rows (`worker/search.ts`): each hit named in the app's language, a
   street with a house number as that address (the nearest number the street
   has, said as such, when it lacks that one), a place with its kind and the

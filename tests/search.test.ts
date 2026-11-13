@@ -1,6 +1,6 @@
 // The search box, asked the way the app asks it: the data worker's `search` (and the Stop tab's `stopGroups`) over a
-// small world in the real file formats, loaded as the app loads it (the timetable, the address book, then the
-// catalogue as the nightly build writes it), with the language the app is in and where the rider is. Each test is a
+// small world in the real file formats, loaded as the app loads it (the timetable, the address book, then the two
+// catalogues as the nightly build writes them), with the language the app is in and where the rider is. Each test is a
 // thing a rider typed and what they must see for it.
 import { describe, test, expect, beforeAll, vi } from 'vitest';
 import { parsePlaces } from '../src/engine/places.ts';
@@ -105,11 +105,16 @@ const tomorrow: TinySpec = {
   patterns: [...day.patterns, { route: 0, stops: [1, 7], trips: [[T(12, 0), T(12, 10)]] }],
 };
 const book = parsePlaces(bookFile('book-1'));
-const built = buildCatalogue(book, [tinyTimetable(day), tinyTimetable(tomorrow)]);
+// the two catalogues as the nightly build writes them: the address book's, and the stops' of both days
+const built = {
+  book: buildCatalogue(book, []),
+  stops: buildCatalogue(null, [tinyTimetable(day), tinyTimetable(tomorrow)]),
+};
 const files: Record<string, ArrayBuffer> = {
   tt: tinyContainer(day),
   places: bookFile('book-1'),
-  search: catalogueFile(built, book).file,
+  search: catalogueFile(built.book, book).file,
+  stopsearch: catalogueFile(built.stops, null).file,
 };
 
 let data: typeof import('../src/worker/data.ts'),
@@ -130,8 +135,8 @@ const rows = (q: string, { lang = 'he', near = DIZENGOFF_CENTER }: Ask = {}): Se
 const read = (r: SearchHit | undefined): string | null => (r ? r.name + (r.city ? ', ' + r.city : '') : null);
 const first = (q: string, ask: Ask = {}): string | null => read(rows(q, ask)[0]);
 
-describe('before the catalogue has arrived', () => {
-  test('stops are found, and the answer says the rest is still to come', () => {
+describe('before the catalogues have arrived', () => {
+  test('stops are found (from a catalogue of the day’s stops made here), and the answer says the rest is to come', () => {
     const r = searchOps.search({ q: 'אלנבי', lang: 'he', near: null });
     expect(r.placesLoaded).toBe(false);
     expect(r.results.map(read)).toEqual([`אלנבי, ${TLV}`]);
@@ -144,6 +149,7 @@ describe('before the catalogue has arrived', () => {
 
 describe('the search box', () => {
   beforeAll(async () => {
+    await data.dataOps.loadStopSearch({ url: 'http://test/stopsearch' });
     await data.dataOps.loadPlaces({ url: 'http://test/places' });
     await data.dataOps.loadSearch({ url: 'http://test/search' });
   });
@@ -247,18 +253,26 @@ describe('the search box', () => {
   });
 });
 
-describe('the catalogue file', () => {
+describe('a catalogue file', () => {
   test('reads back as it was built', () => {
-    const back = readCatalogue(files.search.slice(0), book);
-    for (const k of ['kind', 'ref', 'lat', 'lon', 'city', 'cityOff', 'inCity'] as const)
-      expect(Array.from(back[k]), k).toEqual(Array.from(built[k]));
-    expect(back.ix.keys).toEqual(built.ix.keys);
-    expect(back.ix.sKeys).toEqual(built.ix.sKeys);
-    for (const k of ['off', 'entries', 'sOff', 'said', 'shared'] as const)
-      expect(Array.from(back.ix[k]), k).toEqual(Array.from(built.ix[k]));
-    expect(back.cityNames).toEqual(built.cityNames);
+    for (const [file, c, pl] of [
+      [files.search, built.book, book],
+      [files.stopsearch, built.stops, null],
+    ] as const) {
+      const back = readCatalogue(file.slice(0), pl);
+      for (const k of ['kind', 'ref', 'lat', 'lon', 'city', 'cityOff', 'inCity'] as const)
+        expect(Array.from(back[k]), k).toEqual(Array.from(c[k]));
+      expect(back.ix.keys).toEqual(c.ix.keys);
+      expect(back.ix.sKeys).toEqual(c.ix.sKeys);
+      for (const k of ['off', 'entries', 'sOff', 'said', 'shared'] as const)
+        expect(Array.from(back.ix[k]), k).toEqual(Array.from(c.ix[k]));
+      expect(back.cityNames).toEqual(c.cityNames);
+    }
   });
-  test('is refused with another address book than the one it was built from', () => {
+  test('of an address book is refused with another book than the one it was built from', () => {
     expect(() => readCatalogue(files.search.slice(0), parsePlaces(bookFile('book-2')))).toThrow(/another address book/);
+  });
+  test('of the stops is the same whichever day is loaded: a stop is an entry by its id in the feed', () => {
+    expect(Array.from(built.stops.ref)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   });
 });

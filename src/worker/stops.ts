@@ -18,7 +18,7 @@ import { haversine } from '../engine/geo.ts';
 import type { StopGroup, Dest } from './ops.ts';
 import { find } from '../engine/find.ts';
 import { buildCatalogue, type Catalogue, type EntryKind } from '../engine/catalogue.ts';
-import { tt, sx, onNewDay, onNewLang } from './data.ts';
+import { tt, sx, sxStops, onNewDay, onNewLang } from './data.ts';
 import { cName, headsign, lineLabel, liveId, sName, stName, stopOut } from './names.ts';
 import type { Departure, OpsPart, RecentStation } from './ops.ts';
 
@@ -133,11 +133,16 @@ export function stopOfId(id: number): number | undefined {
   return stopById.get(id);
 }
 let ownCatalogue: Catalogue | null = null;
-/** The catalogue to search now: the night's, or until it is in, one of the day's stops alone, made here. */
-export function catalogueNow(): Catalogue | null {
-  if (sx) return sx;
+/** The catalogue of stops to search: the night's, or until it is in, one of the day's stops made here. */
+export function stopsCatalogue(): Catalogue | null {
+  if (sxStops) return sxStops;
   if (!tt) return null;
   return (ownCatalogue ||= buildCatalogue(null, [tt]));
+}
+/** Every catalogue to search now: the stops', and the address book's once it is in. */
+export function catalogues(): Catalogue[] {
+  const stops = stopsCatalogue();
+  return [...(stops ? [stops] : []), ...(sx ? [sx] : [])];
 }
 let stopByCode: Map<string, number> | null = null;
 export function codeIndex(): Map<string, number> {
@@ -222,9 +227,9 @@ export const stopsOps = {
         const s = codeIndex().get(n);
         if (s !== undefined) add(s, 1000);
       }
-      const c = catalogueNow();
+      const c = stopsCatalogue();
       if (c)
-        for (const h of find(c, n, {
+        for (const h of find([c], n, {
           near,
           // trains and the light rail call at stations only, and those are few: all that match, for the filters above
           ...(mode === 'rail' || mode === 'lrt'

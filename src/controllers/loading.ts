@@ -111,13 +111,24 @@ async function retrying(load: () => Promise<void>, again: () => void): Promise<v
     }
   }
 }
+/** The stops' search catalogue: small, and the same for every day, so it is fetched once, beside the timetable. Until
+ *  it is in (or when a build has none) the worker searches a catalogue of the day's stops it makes itself. */
+export async function loadStopSearch(): Promise<void> {
+  const f = manifest().stopSearch;
+  if (!f) return;
+  try {
+    await call('loadStopSearch', { url: fileUrl(f), bytes: f.bytes });
+  } catch {
+    /* the worker's own catalogue of the day's stops serves */
+  }
+}
 export async function loadPlaces(): Promise<void> {
   const f = manifest().places;
   if (data.plReady.value || !f) return;
   await retrying(
     async () => {
       await call('loadPlaces', { url: fileUrl(f), bytes: f.bytes });
-      // the search catalogue is read against the book, so after it; until it is in, the search finds stops only
+      // the book's search catalogue is read against the book, so after it; until it is in, the search finds stops only
       const x = manifest().search;
       if (x) await call('loadSearch', { url: fileUrl(x), bytes: x.bytes });
       data.plReady.value = true; // a box with text typed in it searches again (views/topbar/SearchField.tsx)

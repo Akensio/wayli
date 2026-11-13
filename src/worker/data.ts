@@ -1,5 +1,5 @@
 // What the data worker has loaded, and loading it: the day's timetable (tt), the street graph (st), the address
-// book (pl), the search catalogue (sx), the courses (sh), and the language names are handed out in. Only this module assigns them; the others
+// book (pl), the search catalogues (sx, sxStops), the courses (sh), and the language names are handed out in. Only this module assigns them; the others
 // read them (ES module bindings follow the assignments). A new day or a new language drops what was derived from the
 // old one: each index registers its reset with onNewDay / onNewLang (before, each reset was listed by hand in the load,
 // and three were missing: the light rail stations and the traffic's courses and tracks kept the old day's numbers).
@@ -27,7 +27,8 @@ export type Shapes = {
 export let tt: Timetable | null = null,
   st: Streets | null = null,
   pl: Places | null = null,
-  sx: Catalogue | null = null, // the night's search catalogue, of the address book and every day's stops
+  sx: Catalogue | null = null, // the search catalogue of the address book (rebuilt when the book is, weekly)
+  sxStops: Catalogue | null = null, // the search catalogue of every day's stops (rebuilt nightly)
   sh: Shapes | null = null;
 export let lang: Lang = 'he'; // the language names are handed out in (setLang); the timetable carries what the feed translates
 
@@ -243,8 +244,13 @@ export const dataOps = {
     sx = null; // a catalogue belongs to one address book
     return pl.header.counts;
   },
-  /** The search catalogue (pipeline/searchindex.ts), read against the address book it was built from: asked for once
-   *  the book is in. */
+  /** The stops' search catalogue (pipeline/searchindex.ts): every compiled day's stops, by their ids in the feed. */
+  async loadStopSearch({ url, bytes }) {
+    sxStops = readCatalogue(await fetchContainer(url, 'stopsearch', bytes), null);
+    return { entries: sxStops.n, words: sxStops.ix.keys.length };
+  },
+  /** The address book's search catalogue (pipeline/searchindex.ts), read against the book it was built from: asked
+   *  for once the book is in. */
   async loadSearch({ url, bytes }) {
     const buf = await fetchContainer(url, 'search', bytes);
     const book = pl!;
@@ -270,5 +276,6 @@ export const dataOps = {
   | 'loadShapes'
   | 'loadPlaces'
   | 'loadSearch'
+  | 'loadStopSearch'
   | 'setLang'
 >;

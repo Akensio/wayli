@@ -111,7 +111,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `tests/` | The tests, `npm test` (Vitest): one `*.test.ts` or `*.test.mjs` per part of the app, `tinytt.ts` (a tiny timetable in the real container, for the router's tests); `tests/e2e/` drives the built app in a browser (`npm run smoke`). Every rule that broke gets a test. |
 | `measure/` | Measuring, not testing: `bench.ts` runs the router in Node (plan, profile, bike reach); `trainbacktest.mjs` scores the app's train predictions on a morning's raw minute files (kept in `data/siri/`); `trafficreplay.ts` replays the relay's last minutes through the road model, steady state against cold start; `busbacktest.ts` replays a morning's minute files through the app's bus times and scores how steady and how right they were; `searchbench.ts` scores the place search on the everyday searches of `searchcases.ts` (89, each with its language and position), through the worker's own `search`, over a real timetable and address book. |
 | `pipeline/places.py` | OpenStreetMap to the offline address book (streets, house numbers, cities, notable places), read on the device by `src/engine/places.ts` and searched through the catalogue (`pipeline/searchindex.ts`). |
-| `pipeline/searchindex.ts` | The search catalogue (`search.bin.gz`), built nightly under Node by the app's own code (`src/engine/catalogue.ts`) from the address book and every compiled day's stops; the app reads it and searches it (`src/engine/find.ts`). |
+| `pipeline/searchindex.ts` | The search catalogues, built nightly under Node by the app's own code (`src/engine/catalogue.ts`): `search.bin.gz` of the address book (its contents change weekly, with the book) and `searchstops.bin.gz` of every compiled day's stops; the app reads them and searches both (`src/engine/find.ts`). |
 | `pipeline/overture.py` | Overture Maps' everyday places (restaurants, shops, clinics...) for the address book, where OpenStreetMap lacks them; read weekly from Overture's public bucket with DuckDB. |
 | `pipeline/public.py` | Israel's public bodies' places for the address book, where both lack them: businesses with their trade names from Tel Aviv's licensing layer and Be'er Sheva's survey, the Survey of Israel's schools, kindergartens, colleges and institutes (data.gov.il). |
 | `pipeline/english.py` | English names for the book's Hebrew-only entries: spellings learned from the names that have both languages, generic words translated in English order, the rest transliterated by rule. |
@@ -122,7 +122,7 @@ the repo tidy. Read `README.md`, `docs/architecture.md` and
 | `pipeline/test_projection.py` | The compiler's own check (the stop-on-course rule), run by the workflow after numpy is installed: `python3 -I pipeline/test_projection.py`. |
 | `pipeline/test_places.py` | The address book's own check (which street an address joins), run by the workflow: `python3 -I pipeline/test_places.py`. |
 | `pipeline/container.py`, `pipeline/common.py` | What the scripts share: the data files' container (read in the app by `src/engine/container.ts`); the log line, GTFS reading, Israel's UTC offset, distances. |
-| `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, address book, search catalogue, `data/manifest.json`. |
+| `pipeline/build_site.py` | Assembles `site/`: the Vite build, per-day timetables, street graph, address book, search catalogues, `data/manifest.json`. |
 | `.github/workflows/build.yml` | Nightly data build and GitHub Pages deploy. |
 | `relay/`, `.github/workflows/relay.yml` | The real-time relay (Hasadna's newest raw SIRI snapshot with CORS) and its deploy. |
 | `data/`, `site/`, `dist/`, `node_modules/` | Gitignored: downloads, compiled files, the built site, the build, the toolchain. |
@@ -167,6 +167,6 @@ cleanup: views by feature, the data worker split by kind of question,
 Hebrew and English side by side, the CSS one file per part of the screen
 (`src/styles/`), shared pieces in place of copies. 2026-11-13: the search was deleted and written anew: one
 catalogue of everything findable with an index of its words, built by the
-nightly job (`search.bin.gz`) and searched on the phone
+nightly job (`search.bin.gz`, `searchstops.bin.gz`) and searched on the phone
 (`docs/architecture.md`, "The search"); its tests and its bench ask through
 the worker, with a language and a position.

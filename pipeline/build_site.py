@@ -3,8 +3,8 @@
 
     npm run build && python3 pipeline/build_site.py --out site
 
-Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz, search.bin.gz (the
-search catalogue, when it is of this address book), shapes.bin.gz and
+Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz, search.bin.gz (the address
+book's search catalogue, when it is of this book), searchstops.bin.gz (the stops'), shapes.bin.gz and
 railtimes.json (learned train section times), bustimes.bin.gz (learned bus section times), entrances.json (station entrances),
 and writes site/data/manifest.json with the available days.
 """
@@ -86,6 +86,12 @@ def main():
             search = {"file": xp.name, "bytes": xp.stat().st_size, "counts": h["counts"], "built": h.get("built"), "hash": h.get("hash")}
         else:
             print("site: search.bin.gz is of another address book, left out")
+    stop_search = None
+    tp = data / "searchstops.bin.gz"
+    if tp.exists():
+        h = container.read_header(tp)
+        shutil.copy(tp, out / "data" / tp.name)
+        stop_search = {"file": tp.name, "bytes": tp.stat().st_size, "counts": h["counts"], "built": h.get("built"), "hash": h.get("hash")}
     railtimes = None
     rp = data / "railtimes.json"
     if rp.exists():
@@ -113,6 +119,7 @@ def main():
         "streets": streets,
         "places": places,
         "search": search,
+        "stopSearch": stop_search,
         "shapes": shapes,
         "railtimes": railtimes,
         "bustimes": bustimes,

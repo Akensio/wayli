@@ -62,7 +62,7 @@ const pick = (q: string): End => {
   if (/^\d+$/.test(q)) return { name: tt.stops[Number(q)][1], set: { stops: [Number(q)] } };
   // by name: the app's own search, among the day's stops and stations (a station: all its platforms)
   stops ||= buildCatalogue(null, [tt]);
-  const hits = find(stops, q, { only: ['stop', 'station'], limit: 5 }).map((h) => {
+  const hits = find([stops], q, { only: ['stop', 'station'], limit: 5 }).map((h) => {
     const s = tt.stops.findIndex((x) => Number(x[0]) === h.ref);
     return { name: stopOrStationName(tt, s), city: tt.stops[s][3], stops: stationStopsOf(tt, s) };
   });

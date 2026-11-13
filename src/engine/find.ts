@@ -52,22 +52,17 @@ function bits(v: number): number {
   return n;
 }
 
-/**
- * Find what was typed in the catalogue: up to `limit` hits, best first. `near`: where the rider is, if known. `only`:
- * the kinds of entry wanted (all, when not given).
- *
- * Every word typed has to be in the entry's name or to name its city, and the words that name the city have to be one
- * of the city's names in full, or as far as it is typed yet ("תל אביב", not "אביב" beside a place called תל). A number
- * typed is a house number, or part of a name; it is never a word the entry must have. When nothing has every word,
- * what lacks one is offered.
- */
-export function find(
-  c: Catalogue,
-  text: string,
-  { near = null, limit = 10, only = null }: { near?: LatLon | null; limit?: number; only?: EntryKind[] | null } = {},
-): Hit[] {
+/** What was typed, read once for every catalogue searched. */
+type Typed = {
+  names: string[]; // the words an entry must have: the words typed, or the numbers when nothing else was
+  typing: boolean; // the last word may still be growing
+  number: { number: number; suffix: string } | null; // the first number typed: a house number, unless it is a name
+  numberWords: string[];
+  numbersAreNames: boolean;
+};
+function read(text: string): Typed {
   const typing = !/\s$/.test(text);
-  let number: { number: number; suffix: string } | null = null;
+  let number: Typed['number'] = null;
   const typed: string[] = [],
     numberWords: string[] = [];
   for (const w of words(text)) {
@@ -81,7 +76,40 @@ export function find(
   const names = (typed.length ? typed : numberWords).slice(0, MOST_WORDS);
   // a single letter after other words is a word just begun, which says nothing yet: the words before it stand
   if (typing && names.length > 1 && names[names.length - 1].length === 1) names.pop();
-  if (!names.length) return [];
+  return { names, typing, number, numberWords, numbersAreNames: !typed.length };
+}
+
+/**
+ * Find what was typed in the catalogues (the address book's and the stops', or either): up to `limit` hits, best
+ * first, on one scale. `near`: where the rider is, if known. `only`: the kinds of entry wanted (all, when not given).
+ *
+ * Every word typed has to be in the entry's name or to name its city, and the words that name the city have to be one
+ * of the city's names in full, or as far as it is typed yet ("תל אביב", not "אביב" beside a place called תל). A number
+ * typed is a house number, or part of a name; it is never a word the entry must have. When nothing in any catalogue
+ * has every word, what lacks one is offered.
+ */
+export function find(
+  catalogues: Catalogue[],
+  text: string,
+  { near = null, limit = 10, only = null }: { near?: LatLon | null; limit?: number; only?: EntryKind[] | null } = {},
+): Hit[] {
+  const q = read(text);
+  if (!q.names.length) return [];
+  const rate = catalogues.map((c) => matched(c, q, near, only));
+  let out = rate.flatMap((r) => r(0));
+  // nothing has every word: what has all but one ("חומוס אבו חסן" for אבו חסן)
+  if (!out.length && q.names.length > 1) out = rate.flatMap((r) => r(1));
+  return out.sort((x, y) => y.score - x.score).slice(0, limit);
+}
+
+/** One catalogue's entries that the typed words touch, as a function that rates them: the hits that lack at most
+ *  `allowed` of the words. */
+function matched(
+  c: Catalogue,
+  { names, typing, number, numberWords, numbersAreNames }: Typed,
+  near: LatLon | null,
+  only: EntryKind[] | null,
+): (allowed: number) => Hit[] {
   let s = scratch.get(c);
   if (!s) {
     s = {
@@ -157,14 +185,13 @@ export function find(
     return is;
   };
   const numbered = new Set<number>(); // the entries with the number typed in their name
-  if (number && typed.length)
+  if (number && !numbersAreNames)
     for (const w of numberWords) {
       const i = wordAt(c.ix, w);
       if (i >= 0) for (let k = c.ix.off[i]; k < c.ix.off[i + 1]; k++) numbered.add(c.ix.entries[k]);
     }
   const wanted = only && new Set(only.map((k) => KINDS.indexOf(k)));
-  /** Rate what was touched, letting `allowed` typed words be missing. */
-  const rate = (allowed: number): Hit[] => {
+  return (allowed: number): Hit[] => {
     const out: Hit[] = [];
     for (const e of touched) {
       const got = bits(sc.inName[e]);
@@ -194,7 +221,7 @@ export function find(
         score += WORTH.city * big + NEAR * (big / 2 + (1 - big) * nearness);
       } else score += WORTH[kind] + NEAR * nearness;
       const hit: Hit = { ref: c.ref[e], kind, score };
-      if (number && typed.length) {
+      if (number && !numbersAreNames) {
         if (numbered.has(e)) hit.score += IN_NAME;
         else if (kind === 'street' && c.numberOn) {
           const known = c.numberOn(c.ref[e], number.number, number.suffix);
@@ -208,8 +235,4 @@ export function find(
     }
     return out;
   };
-  let out = rate(0);
-  // nothing has every word: what has all but one ("חומוס אבו חסן" for אבו חסן)
-  if (!out.length && names.length > 1) out = rate(1);
-  return out.sort((a, b) => b.score - a.score).slice(0, limit);
 }

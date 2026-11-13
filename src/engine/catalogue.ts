@@ -3,10 +3,11 @@
 // engine/find.ts searches them on one scale.
 //
 // Reading every name into words takes seconds, which a phone should not spend at each start, so the nightly build does
-// it (pipeline/searchindex.ts: `buildCatalogue`, `catalogueFile`) and the app reads the result (`readCatalogue`). The
-// file holds what took the time (the words, who has them, how long each name is) and the stops; what an entry of the
-// address book is and where is read from the book itself, which the app has anyway. So a catalogue file belongs to
-// one address book (its hash is in the header), and to no day: a stop is an entry by its id in the feed.
+// it (pipeline/searchindex.ts: `buildCatalogue`, `catalogueFile`) and the app reads the result (`readCatalogue`): one
+// catalogue of the address book and one of the stops, since the book changes weekly and the stops most days. A file
+// holds what took the time (the words, who has them, how long each name is) and the stops; what an entry of the
+// address book is and where is read from the book itself, which the app has anyway. So the book's catalogue belongs
+// to one address book (its hash is in the header), and the stops' to no day: a stop is an entry by its id in the feed.
 import { words, alphabetOf, nameLength } from './words.ts';
 import { buildIndex, wordAt, packIndex, unpackIndex, type WordIndex } from './wordindex.ts';
 import { readContainer, writeContainer, type ContainerHeader } from './container.ts';
@@ -108,10 +109,10 @@ const ALSO: Record<string, string[]> = {
 };
 
 /**
- * The catalogue of an address book and the stops of some days' timetables (every stop of any of them, once): the
- * book's cities, streets and places; a station with its platforms as one entry, any other stop its own. Where trains
- * or the light rail call is a station to a rider, whether or not the feed groups its platforms. With no book, the
- * stops alone (what the app searches until the night's catalogue has arrived).
+ * The catalogue of an address book (its cities, streets and places), of the stops of some days' timetables (every
+ * stop of any of them, once: a station with its platforms as one entry, any other stop its own), or of both. Where
+ * trains or the light rail call is a station to a rider, whether or not the feed groups its platforms. The nightly
+ * build makes one of the book and one of the week's stops; the worker makes one of the day's stops until that is in.
  */
 export function buildCatalogue(pl: Places | null, days: Timetable[]): Catalogue {
   const cityKeys: string[] = [],
@@ -232,13 +233,13 @@ const FORMAT = 1;
  *  time or a hash: whoever writes it to disk adds them). */
 export function catalogueFile(
   c: Catalogue,
-  pl: Places,
+  pl: Places | null,
 ): { header: Omit<CatalogueHeader, 'sections'>; file: ArrayBuffer } {
-  const first = pl.cities.length + pl.streets.length + pl.pois.length, // the stops are the entries from here
+  const first = pl ? pl.cities.length + pl.streets.length + pl.pois.length : 0, // the stops are the entries from here
     ix = packIndex(c.ix);
   const header = {
     format: FORMAT,
-    book: pl.header.hash || '',
+    book: pl ? pl.header.hash || '' : '',
     counts: { entries: c.n, stops: c.n - first, words: c.ix.keys.length, cities: c.cityKeys.length },
     keys: ix.keys,
     sKeys: ix.sKeys,
@@ -261,11 +262,11 @@ export function catalogueFile(
 }
 /** The catalogue from its file and the address book it was built from. Throws when the book is another one (the two
  *  are downloaded apart, and a phone may hold last night's of one). */
-export function readCatalogue(ab: ArrayBuffer, pl: Places): Catalogue {
+export function readCatalogue(ab: ArrayBuffer, pl: Places | null): Catalogue {
   const f = readContainer<CatalogueSections, CatalogueHeader>(ab),
     h = f.header;
   if (h.format !== FORMAT) throw new Error(`search catalogue of format ${h.format}, not ${FORMAT}`);
-  if (h.book !== (pl.header.hash || '')) throw new Error('search catalogue of another address book');
+  if (h.book !== (pl ? pl.header.hash || '' : '')) throw new Error('search catalogue of another address book');
   const cityAt = new Map(h.cityKeys.map((he, i) => [he, i]));
   const r = rows(pl, (he) => cityAt.get(he) ?? -1, {
     kind: f.stopKind as Uint8Array,

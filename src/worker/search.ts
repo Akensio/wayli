@@ -15,7 +15,7 @@ import {
 import { find, type Hit } from '../engine/find.ts';
 import { haversine } from '../engine/geo.ts';
 import { lang, pl, sx, tt } from './data.ts';
-import { codeIndex, catalogueNow, sameNamed, stopOfId } from './stops.ts';
+import { codeIndex, catalogues, sameNamed, stopOfId } from './stops.ts';
 import type { OpsPart, ReverseHit, SearchHit, SearchPlaceHit, SearchStopHit } from './ops.ts';
 import type { PlanPlace } from './ops.ts';
 
@@ -137,11 +137,10 @@ export const searchOps = {
   /**
    * The place search: what was typed, to stops, stations, addresses, streets, places and cities, best first
    * (engine/find.ts, over the catalogue). Each row is named in `lang`; entries that would read the same on screen are
-   * one row. `placesLoaded` false while only stops can be found (the night's catalogue is not in yet).
+   * one row. `placesLoaded` false while only stops can be found (the address book's catalogue is not in yet).
    */
   search({ q, limit = 10, lang: L = lang, near = null }) {
-    const c = catalogueNow();
-    if (!c) return { results: [], placesLoaded: false };
+    const c = catalogues();
     const results: SearchHit[] = [],
       shown = new Map<string, SearchHit>();
     // more than are shown: several entries may be one row (a station's platforms, the pieces of a long park)

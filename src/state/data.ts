@@ -10,6 +10,7 @@ export type Manifest = {
   days: (DataFile & { date: string })[];
   places?: DataFile;
   search?: DataFile;
+  stopSearch?: DataFile;
   shapes?: DataFile;
   streets?: DataFile;
   railtimes?: DataFile;

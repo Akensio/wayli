@@ -1,8 +1,8 @@
 // Scores the place search on the everyday searches of measure/searchcases.ts, over real data files and through the
 // app's own path: the data worker's `search` operation, with the language and the position each case gives.
 //   node measure/searchbench.ts data/timetable-YYYYMMDD.bin.gz data/places.bin.gz [-v]
-// The catalogue is built here from the two files, by the code as it stands (what the nightly build will publish), and
-// loaded the way the app loads it. Per case: where on the list the wanted row is (first, in the first three, on the
+// The catalogues are built here from the two files, by the code as it stands (what the nightly build will publish),
+// and loaded the way the app loads them. Per case: where on the list the wanted row is (first, in the first three, on the
 // list at all). Also what every search owes the rider: no row in two languages, no row twice, and an answer in time.
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
@@ -27,17 +27,19 @@ const raw = { tt: gunzip(ttFile), places: gunzip(bookFile) };
 const tt = parseTimetable(raw.tt.slice(0)),
   pl = parsePlaces(raw.places.slice(0));
 let t0 = performance.now();
-const search = catalogueFile(buildCatalogue(pl, [tt]), pl).file;
-console.log(`catalogue built in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+const search = catalogueFile(buildCatalogue(pl, []), pl).file,
+  stopsearch = catalogueFile(buildCatalogue(null, [tt]), null).file;
+console.log(`catalogues built in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
 
 // the data worker, loaded as the app loads it (its files come through fetch)
-const files: Record<string, ArrayBuffer> = { ...raw, search };
+const files: Record<string, ArrayBuffer> = { ...raw, search, stopsearch };
 Object.assign(globalThis, {
   self: { postMessage() {}, location: { href: 'http://bench/' } },
   fetch: async (url: string) => new Response(files[String(url).split('/').pop()!]),
 });
 const data = await import('../src/worker/data.ts');
 await data.dataOps.loadTimetable({ url: 'http://bench/tt' });
+await data.dataOps.loadStopSearch({ url: 'http://bench/stopsearch' });
 await data.dataOps.loadPlaces({ url: 'http://bench/places' });
 await data.dataOps.loadSearch({ url: 'http://bench/search' });
 const { searchOps } = await import('../src/worker/search.ts');

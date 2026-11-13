@@ -15,6 +15,7 @@ import {
   hasDay,
   loadDay,
   loadPlaces,
+  loadStopSearch,
   loadStreets,
   loadShapes,
   loadRailTimes,
@@ -79,7 +80,7 @@ async function boot(): Promise<void> {
   loadBusTimes();
   loadRailTimes();
   loadEntrances(); // a few KB: which entrance of a station a walk goes to
-  await Promise.all([loadShapes(), loadPlaces()]);
+  await Promise.all([loadStopSearch(), loadShapes(), loadPlaces()]);
   await loadStreets();
 }
 boot().catch(loadFailed);

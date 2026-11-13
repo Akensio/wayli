@@ -352,6 +352,7 @@ export type Ops = {
   loadShapes: { args: DataFileArgs; result: { shapes: number; points: number } };
   loadPlaces: { args: DataFileArgs; result: PlacesHeader['counts'] };
   loadSearch: { args: DataFileArgs; result: { entries: number; words: number } };
+  loadStopSearch: { args: DataFileArgs; result: { entries: number; words: number } };
   loadBusTimes: { args: DataFileArgs; result: { sections: number; built?: string } };
   setRailTimes: { args: { m: RailTimes | null | undefined }; result: true };
   setEntrances: { args: { m: EntrancesFile | null | undefined }; result: true };
