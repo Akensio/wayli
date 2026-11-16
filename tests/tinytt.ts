@@ -14,6 +14,8 @@ import { writeContainer, type SectionIn, type SectionType } from '../src/engine/
 export { writeContainer, type SectionIn };
 
 export const T = (h: number, m: number, s = 0): number => h * 3600 + m * 60 + s;
+/** The id in the feed of the tiny timetable's stop i: not its place in the list, as no real stop's is. */
+export const stopId = (i: number): number => 5000 + 7 * i;
 
 /** What a tiny timetable is made of. */
 export type TinySpec = {
@@ -31,6 +33,8 @@ export type TinySpec = {
   }[];
   footpaths?: [number, number, number][];
   walk?: Partial<WalkParams>;
+  /** 3 for a file as the compiler wrote it before format 4 (the app still reads one). */
+  format?: 3 | 4;
 };
 export const tinyTimetable = (spec: TinySpec): Timetable => parseTimetable(tinyContainer(spec));
 /** The same timetable as the file's bytes, for a test that loads it the way the data worker loads a real one. */
@@ -41,6 +45,7 @@ export function tinyContainer({
   patterns,
   footpaths = [],
   walk = {},
+  format = 4,
 }: TinySpec): ArrayBuffer {
   const S = stops.length;
   const patStopsOff = [0],
@@ -100,7 +105,7 @@ export function tinyContainer({
   const header: Omit<TimetableHeader, 'sections' | 'walk'> & {
     walk: Pick<WalkParams, 'transfer_slack_s' | 'chain_max_s'> & Partial<WalkParams>;
   } = {
-    format: 3,
+    format,
     date,
     counts: {
       stops: S,
@@ -121,26 +126,40 @@ export function tinyContainer({
       null,
       false,
     ]),
-    stops: stops.map((s, i): Stop => [String(i), s.name, s.code || String(10000 + i), s.city || 'Test']),
+    stops: stops.map((s, i): Stop => [String(stopId(i)), s.name, s.code || String(10000 + i), s.city || 'Test']),
     stations: [],
     names: {},
   };
+  const lengths = (off: number[]): number[] => off.slice(1).map((v, i) => v - off[i]);
+  // format 4 (pipeline/compile.py): lists by their lengths, stops by their ids, nothing the app derives
+  const layout: [string, SectionType, number[]][] =
+    format === 3
+      ? [
+          ['patStopsOff', 'int32', patStopsOff],
+          ['patStops', 'int32', patStops],
+          ['patTripsOff', 'int32', patTripsOff],
+          ['tripTimesOff', 'int32', tripTimesOff],
+          ['stopPatsOff', 'int32', stopPatsOff],
+          ['stopPats', 'int32', stopPatsFlat],
+          ['trOff', 'int32', trOff],
+          ['trTo', 'int32', trTo],
+        ]
+      : [
+          ['patStopsLen', 'int32', lengths(patStopsOff)],
+          ['patStopIds', 'int32', patStops.map(stopId)],
+          ['patTripsLen', 'int32', lengths(patTripsOff)],
+          ['trLen', 'int32', lengths(trOff)],
+          ['trToId', 'int32', trTo.map(stopId)],
+        ];
   const sections: SectionIn[] = (
     [
-      ['patStopsOff', 'int32', patStopsOff],
-      ['patStops', 'int32', patStops],
+      ...layout,
       ...(patterns.some((p) => p.only) ? [['patStopFlags', 'uint8', patStopFlags]] : []),
-      ['patTripsOff', 'int32', patTripsOff],
-      ['tripTimesOff', 'int32', tripTimesOff],
       ['patRoute', 'int32', patRoute],
       ['patIntercity', 'uint8', patIntercity],
       ['tripStart', 'int32', tripStart],
       ['depDelta', 'uint16', depDelta],
       ['dwell', 'uint16', dwell],
-      ['stopPatsOff', 'int32', stopPatsOff],
-      ['stopPats', 'int32', stopPatsFlat],
-      ['trOff', 'int32', trOff],
-      ['trTo', 'int32', trTo],
       ['trTime', 'int32', trTime],
       ['stopLat', 'float32', stops.map((s) => s.lat)],
       ['stopLon', 'float32', stops.map((s) => s.lon)],

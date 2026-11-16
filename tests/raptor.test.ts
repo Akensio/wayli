@@ -249,3 +249,49 @@ test('a way past the longest walk is offered when it is worth it: five minutes s
   expect(worthTheWalk({ ...w, depart: a.depart + 61, arrive: a.arrive + 3600 }, [a])).toBe(true);
   expect(worthTheWalk(w, [])).toBe(true);
 });
+
+test('the file as the compiler writes it now (stops by id, lists by length) reads as the same timetable as before', () => {
+  // two patterns sharing stops, a stop no pattern calls at, footpaths: what the reader has to put back together
+  const spec = {
+    stops: [...stops, { name: 'D', lat: 32.07, lon: 34.816 }, { name: 'nowhere', lat: 32.08, lon: 34.8 }],
+    routes: [...routes, { short: '61' }],
+    patterns: [
+      {
+        route: 0,
+        stops: [0, 1, 2, 3],
+        trips: [
+          [T(10, 0), T(10, 5), T(10, 10), T(10, 11)],
+          [T(9, 0), T(9, 5), T(9, 10), T(9, 11)],
+        ],
+        only: ['board', null, null, 'alight'] as const,
+      },
+      { route: 1, stops: [4, 2, 0], trips: [[T(8, 0), T(8, 4), T(8, 9)]] },
+    ],
+    footpaths: [
+      [2, 3, 300],
+      [0, 5, 120],
+    ] as [number, number, number][],
+  };
+  const now = tinyTimetable(spec),
+    before = tinyTimetable({ ...spec, format: 3 });
+  expect(now.header.format).toBe(4);
+  for (const k of [
+    'patStopsOff',
+    'patStops',
+    'patStopFlags',
+    'patTripsOff',
+    'tripTimesOff',
+    'stopPatsOff',
+    'stopPats',
+    'trOff',
+    'trTo',
+    'trTime',
+    'dep',
+    'arr',
+  ] as const)
+    expect(Array.from(now[k]), k).toEqual(Array.from(before[k]));
+  expect(patternsAt(now, 2)).toEqual([
+    { p: 0, pos: 2 },
+    { p: 1, pos: 1 },
+  ]);
+});

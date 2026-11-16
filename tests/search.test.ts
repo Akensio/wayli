@@ -6,7 +6,7 @@ import { describe, test, expect, beforeAll, vi } from 'vitest';
 import { parsePlaces } from '../src/engine/places.ts';
 import { buildCatalogue, catalogueFile, readCatalogue } from '../src/engine/catalogue.ts';
 import type { SearchHit } from '../src/worker/ops.ts';
-import { tinyContainer, tinyTimetable, writeContainer, T, type TinySpec } from './tinytt.ts';
+import { tinyContainer, tinyTimetable, writeContainer, stopId, T, type TinySpec } from './tinytt.ts';
 
 const TLV = 'תל אביב יפו';
 const DIZENGOFF_CENTER = { lat: 32.0775, lon: 34.7745 },
@@ -303,6 +303,6 @@ describe('a catalogue file', () => {
     expect(() => readCatalogue(files.search.slice(0), parsePlaces(bookFile('book-2')))).toThrow(/another address book/);
   });
   test('of the stops is the same whichever day is loaded: a stop is an entry by its id in the feed', () => {
-    expect(Array.from(built.stops.ref)).toEqual(tomorrow.stops.map((_, i) => i));
+    expect(Array.from(built.stops.ref)).toEqual(tomorrow.stops.map((_, i) => stopId(i)));
   });
 });

@@ -53,7 +53,7 @@ export type WalkParams = {
 };
 /** The timetable container's header, as pipeline/compile.py writes it (docs/architecture.md, "Compact timetable"). */
 export type TimetableHeader = ContainerHeader & {
-  format: number; // 3
+  format: number; // 4 (3 is still read)
   date: string; // the service day, YYYYMMDD
   feed?: Record<string, string>; // feed_info.txt: publisher, dates, version
   built?: string; // when it was built, ISO
@@ -80,7 +80,9 @@ export type TimetableHeader = ContainerHeader & {
   shapes?: { file: string; patterns: number } | null;
   rail?: { pairs: number; patterns: number; straight: number } | null;
 };
-/** The sections the timetable file has; the last nine only when the compiler was run with --shapes or --rail. */
+/** The timetable's arrays as the app holds them; the last six only when the compiler was run with --shapes or
+ *  --rail. A file of format 3 has them all as sections; one of format 4 has the `FileSection`s below in place of the
+ *  six that `fromFile` makes of them. */
 type TimetableSection =
   | 'patStopsOff'
   | 'patStops'
@@ -107,6 +109,9 @@ type TimetableSection =
   | 'railPairOff'
   | 'railLat'
   | 'railLon';
+/** What a file of format 4 has instead (pipeline/compile.py says why): each pattern's number of stops and of trips,
+ *  each stop's number of footpaths, and stops referred to by their id in the feed (a pattern's, a footpath's end). */
+type FileSection = 'patStopsLen' | 'patStopIds' | 'patTripsLen' | 'trLen' | 'trToId';
 /**
  * The day's timetable: the container's sections viewed in place, the header's lists, and what the parser derives.
  * Times are seconds on the service day (past 86400 after midnight); stops, patterns, trips, routes and stations are
@@ -229,10 +234,63 @@ export function timesRow(tt: Timetable, t: number): number {
   return tt.tripTimesOff[p] + (t - tt.patTripsOff[p]) * patternLength(tt, p);
 }
 
+/** Lists' lengths as running offsets: list k is [off[k], off[k + 1]). */
+function offsets(lengths: Int32Array): Int32Array {
+  const off = new Int32Array(lengths.length + 1);
+  for (let k = 0; k < lengths.length; k++) off[k + 1] = off[k] + lengths[k];
+  return off;
+}
+/**
+ * The arrays the router reads, from a file of format 4. The file is laid out so that a small change in the feed is a
+ * small change in the file (the app fetches the difference between two versions, engine/delta.ts): it refers to
+ * stops by their id in the feed, gives lists by their lengths, and leaves out what follows from the rest. Here the
+ * ids become the stops' places in this day's list, the lengths running offsets, and each stop gets its (pattern,
+ * position) pairs, in the order of the patterns. In memory nothing differs from a file of format 3.
+ */
+function fromFile(tt: Timetable): void {
+  const f = tt as unknown as Record<FileSection, Int32Array>,
+    S = tt.header.stops.length;
+  // a stop's place in the day's list by its id (the feed's ids are small numbers: a table, not a map, for 600,000 lookups)
+  const ids = tt.header.stops.map((s) => Number(s[0])),
+    place = new Int32Array(ids.reduce((m, id) => Math.max(m, id), 0) + 1).fill(-1);
+  ids.forEach((id, i) => (place[id] = i));
+  const placed = (of: Int32Array): Int32Array => {
+    const out = new Int32Array(of.length);
+    for (let k = 0; k < of.length; k++) {
+      const i = place[of[k]];
+      if (i === undefined || i < 0) throw new Error(`the timetable refers to a stop it does not list (${of[k]})`);
+      out[k] = i;
+    }
+    return out;
+  };
+  tt.patStopsOff = offsets(f.patStopsLen);
+  tt.patStops = placed(f.patStopIds);
+  tt.patTripsOff = offsets(f.patTripsLen);
+  tt.trOff = offsets(f.trLen);
+  tt.trTo = placed(f.trToId);
+  const P = f.patStopsLen.length;
+  // a pattern's times: a row of its stops for each of its trips, the patterns one after another
+  tt.tripTimesOff = new Int32Array(P + 1);
+  for (let p = 0; p < P; p++) tt.tripTimesOff[p + 1] = tt.tripTimesOff[p] + f.patTripsLen[p] * f.patStopsLen[p];
+  // each stop's patterns: counted, then filled pattern by pattern, so a stop's pairs are in the patterns' order
+  const count = new Int32Array(S);
+  for (const s of tt.patStops) count[s]++;
+  tt.stopPatsOff = offsets(count);
+  tt.stopPats = new Int32Array(tt.patStops.length * 2);
+  const next = tt.stopPatsOff.slice(0, S);
+  for (let p = 0; p < P; p++)
+    for (let i = tt.patStopsOff[p]; i < tt.patStopsOff[p + 1]; i++) {
+      const at = 2 * next[tt.patStops[i]]++;
+      tt.stopPats[at] = p;
+      tt.stopPats[at + 1] = i - tt.patStopsOff[p];
+    }
+}
+
 /** Parse the decompressed timetable container into typed arrays. */
 export function parseTimetable(ab: ArrayBuffer): Timetable {
   const tt = readContainer<TimetableSection, TimetableHeader>(ab) as Timetable, // the rest is added below
     header = tt.header;
+  if (header.format >= 4) fromFile(tt);
   Object.assign(tt, {
     counts: header.counts,
     routes: header.routes,

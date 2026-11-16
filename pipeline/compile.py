@@ -28,7 +28,12 @@ import container
 import english
 from common import log, member, rows, hms, haversine
 
-FORMAT_VERSION = 3   # 3: header `names`, stop/station/city names and headsigns in other languages
+# 3: header `names`, stop/station/city names and headsigns in other languages
+# 4: laid out so that a small change in the feed is a small change in the file (the app fetches the difference between
+#    two versions, src/engine/delta.ts): stops referred to by their id in the feed and not by their place in the day's
+#    list, lists by their lengths and not by running offsets, and without what the app derives on load (each stop's
+#    patterns, where each pattern's times start). One stop more renumbered everything after it before.
+FORMAT_VERSION = 4
 WALK_SPEED = 1.2        # m/s
 WALK_RADIUS = 400.0     # m, generated footpaths between stops closer than this (250 was too small for big stations)
 MIN_WALK = 60           # s, floor for any footpath
@@ -442,7 +447,6 @@ def main():
     S = len(stop_list)
     pat_stops_off = np.zeros(P + 1, np.int32)
     pat_trips_off = np.zeros(P + 1, np.int32)
-    trip_times_off = np.zeros(P + 1, np.int32)
     pat_route = np.zeros(P, np.int32)
     pat_intercity = np.zeros(P, np.uint8)
     pat_stops = []
@@ -450,12 +454,10 @@ def main():
     trip_ids = []
     dep_delta = []
     dwell = []
-    stop_pats = [[] for _ in range(S)]
     n_events = 0
     for p, (route_id, seq, trips) in enumerate(patterns):
         pat_stops_off[p] = len(pat_stops)
         pat_trips_off[p] = len(trip_start)
-        trip_times_off[p] = n_events
         pat_route[p] = route_index[route_id]
         short, long_, ag, rtype = routes_raw[route_id]
         if rtype == 3:
@@ -464,8 +466,6 @@ def main():
             far = haversine(stop_list[a][2], stop_list[a][3], stop_list[b][2], stop_list[b][3]) >= INTERCITY_KM * 1000
             pat_intercity[p] = 1 if (cities and cities[0] != cities[1] and far) else 0
         pat_stops.extend(seq)
-        for pos, s in enumerate(seq):
-            stop_pats[s].append((p, pos))
         for start, tid, deps, dw in trips:
             trip_start.append(start)
             trip_ids.append(tid)
@@ -477,16 +477,8 @@ def main():
             n_events += len(deps)
     pat_stops_off[P] = len(pat_stops)
     pat_trips_off[P] = len(trip_start)
-    trip_times_off[P] = n_events
     T = len(trip_start)
 
-    stop_pats_off = np.zeros(S + 1, np.int32)
-    stop_pats_flat = []
-    for s in range(S):
-        stop_pats_off[s] = len(stop_pats_flat) // 2
-        for p, pos in stop_pats[s]:
-            stop_pats_flat.extend((p, pos))
-    stop_pats_off[S] = len(stop_pats_flat) // 2
 
     # ---- footpaths: nearby stops by straight line, plus platform-to-platform inside stations ----
     lat = np.array([s[2] for s in stop_list], np.float64)
@@ -573,20 +565,18 @@ def main():
     sec = container.Sections()
     add = sec.add
 
-    add("patStopsOff", pat_stops_off, "int32")
-    add("patStops", pat_stops, "int32")
-    add("patStopFlags", [x for f in pat_flags for x in f], "uint8")   # per pattern stop, beside patStops
-    add("patTripsOff", pat_trips_off, "int32")
-    add("tripTimesOff", trip_times_off, "int32")
+    stop_id = np.array([int(s[0]) for s in stop_list], np.int32)   # the feed's stop ids are numbers
+    add("patStopsLen", np.diff(pat_stops_off), "int32")             # stops per pattern
+    add("patStopIds", stop_id[np.array(pat_stops, np.int64)], "int32")   # each pattern's stops, by id
+    add("patStopFlags", [x for f in pat_flags for x in f], "uint8")   # per pattern stop, beside patStopIds
+    add("patTripsLen", np.diff(pat_trips_off), "int32")             # trips per pattern
     add("patRoute", pat_route, "int32")
     add("patIntercity", pat_intercity, "uint8")
     add("tripStart", trip_start, "int32")
     add("depDelta", dep_delta, "uint16")
     add("dwell", dwell, "uint16")
-    add("stopPatsOff", stop_pats_off, "int32")
-    add("stopPats", stop_pats_flat, "int32")
-    add("trOff", tr_off, "int32")
-    add("trTo", tr_to, "int32")
+    add("trLen", np.diff(tr_off), "int32")                          # footpaths per stop
+    add("trToId", stop_id[tr_to], "int32")                          # where each leads, by stop id
     add("trTime", tr_time, "int32")
     add("stopLat", lat, "float32")
     add("stopLon", lon, "float32")
