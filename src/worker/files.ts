@@ -192,18 +192,23 @@ async function keptIn(cache: Cache): Promise<Kept[]> {
   return out;
 }
 /** Keep a file's version (its gzipped bytes), then let go of what it replaces: the file's other versions, and once
- *  the first day's file is in, every file the manifest no longer lists (the days gone by). Never fails the load: a
- *  phone out of room fetches again next time. */
+ *  the first day's file is in, every file the manifest no longer lists (the days gone by), with any pieces of such
+ *  files. Never fails the load: a phone out of room fetches again next time. */
 async function keep(cache: Cache, file: string, hash: string, gz: Uint8Array<ArrayBuffer>): Promise<void> {
   try {
     await cache.put(
       keyOf(file, hash),
       new Response(gz, { headers: { 'content-type': 'application/gzip', 'content-length': String(gz.byteLength) } }),
     );
-    for (const k of await keptIn(cache)) {
-      const older = k.file === file && k.hash !== hash,
-        gone = file === plan.firstDay && plan.files.length > 0 && !plan.files.includes(k.file);
-      if (older || gone) await cache.delete(k.key);
+    const sweep = file === plan.firstDay && plan.files.length > 0; // today's file is in: the days gone by can go
+    for (const k of await keptIn(cache))
+      if ((k.file === file && k.hash !== hash) || (sweep && !plan.files.includes(k.file))) await cache.delete(k.key);
+    // and the pieces of files no longer listed: until 2026-11-16 a day's pieces stayed for good once its day had
+    // passed (pieces went only when a newer version of the same file was asked for), 4 MB more on the phone each day
+    if (sweep) {
+      const parts = await caches.open(PARTS);
+      for (const k of await parts.keys())
+        if (!plan.files.includes(new URL(k.url).pathname.split('/').pop() || '')) await parts.delete(k);
     }
   } catch {
     /* not kept this time */

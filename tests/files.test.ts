@@ -185,6 +185,15 @@ test("today's timetable is made from yesterday's, which then goes", async () => 
   expect(fetched.map((f) => f.path)).toEqual(['deltas/m1-t1.gz']);
   await settled(['timetable-20261117.bin.gz@t1']);
 });
+test('the pieces of days gone by, which older versions of the app left on the phone for good, go with them', async () => {
+  const parts = (stores['wayli-parts-v1'] = new FakeCache());
+  for (let i = 0; i < 4; i++) parts.kept.set(`${BASE}timetable-20261101.bin.gz?v=old&part=${i}`, noise(1000, i));
+  parts.kept.set(`${BASE}bustimes.bin.gz?v=x&part=0`, noise(1000, 9)); // of a file still listed: stays
+  const today = publish('timetable-20261116.bin.gz', 'm1', A);
+  files.setDeltas({ base: BASE, deltas: [], files: [today.file, 'bustimes.bin.gz'], firstDay: today.file });
+  await got(today);
+  expect([...parts.kept.keys()]).toEqual([`${BASE}bustimes.bin.gz?v=x&part=0`]);
+});
 test('a look at tomorrow does not cost today its file', async () => {
   const today = publish('timetable-20261116.bin.gz', 'm1', A),
     tomorrow = publish('timetable-20261117.bin.gz', 't1', B);
