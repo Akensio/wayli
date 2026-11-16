@@ -39,8 +39,9 @@ const ops: OpsPart<OpName> = {
 };
 
 // live vehicles and place names do not wait for the timetable (the map asks for vehicles before it is in, and a
-// refusal sent it to Hasadna's database, 15 minutes behind at rush hour)
-const NO_TIMETABLE = new Set<OpName>(['loadTimetable', 'setLang', 'liveQuery', 'localize']);
+// refusal sent it to Hasadna's database, 15 minutes behind at rush hour); nor does how the files are to be had, which
+// has to be known before the timetable itself is asked for
+const NO_TIMETABLE = new Set<OpName>(['loadTimetable', 'setDeltas', 'setLang', 'liveQuery', 'localize']);
 self.onmessage = async (ev: MessageEvent<unknown>) => {
   // what came over postMessage is the page's request (client.ts call, typed against ops.ts there): the operation is
   // looked up by its name below, and its arguments are handed on as they came

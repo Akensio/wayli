@@ -136,12 +136,12 @@ export function buildCatalogue(pl: Places | null, days: Timetable[]): Catalogue 
     for (const s of pl.streets) names.push([s[0], s[4] || '']);
     for (const p of pl.pois) names.push([p[0], p[5] || '']);
   }
-  const sk: number[] = [],
-    sr: number[] = [],
-    sla: number[] = [],
-    slo: number[] = [],
-    sc: number[] = [];
-  const seen = new Set<string>(); // a stop by its id, a station by its own
+  // The stops, each once: a station by its parent, any other stop by itself. In the order of their ids in the feed
+  // (a station's: the least of its platforms'), and their cities in the order of their names, so that the stops'
+  // catalogue of one night is the next night's but for the few stops that came or went (the app fetches the
+  // difference, engine/delta.ts): a new stop mostly has a new, higher id, and goes at the end.
+  type Found = { kind: number; ref: number; lat: number; lon: number; city: string; cityEn: string; names: string[] };
+  const found = new Map<string, Found>();
   for (const tt of days) {
     const en = tt.names.en,
       rail = new Uint8Array(tt.stops.length);
@@ -152,27 +152,38 @@ export function buildCatalogue(pl: Places | null, days: Timetable[]): Catalogue 
     }
     for (let s = 0; s < tt.stops.length; s++) {
       const p = tt.stopParent[s],
-        key = p >= 0 ? 'p' + tt.stations[p][0] : tt.stops[s][0];
-      if (seen.has(key)) continue;
-      seen.add(key);
+        key = p >= 0 ? 'p' + tt.stations[p][0] : tt.stops[s][0],
+        id = Number(tt.stops[s][0]),
+        had = found.get(key);
+      if (had) {
+        if (id < had.ref) had.ref = id;
+        continue;
+      }
       const city = tt.stops[s][3] || '';
-      sk.push(p >= 0 || rail[s] ? STATION : STOP);
-      sr.push(Number(tt.stops[s][0]));
-      sla.push(tt.stopLat[s]);
-      slo.push(tt.stopLon[s]);
-      sc.push(cityIx(city, (en && en.cities && en.cities[city]) || ''));
-      names.push([
-        p >= 0 ? tt.stations[p][1] : tt.stops[s][1],
-        (en && (p >= 0 ? en.stations && en.stations[p] : en.stops && en.stops[s])) || '',
-      ]);
+      found.set(key, {
+        kind: p >= 0 || rail[s] ? STATION : STOP,
+        ref: id,
+        lat: tt.stopLat[s],
+        lon: tt.stopLon[s],
+        city,
+        cityEn: (en && en.cities && en.cities[city]) || '',
+        names: [
+          p >= 0 ? tt.stations[p][1] : tt.stops[s][1],
+          (en && (p >= 0 ? en.stations && en.stations[p] : en.stops && en.stops[s])) || '',
+        ],
+      });
     }
   }
+  const stops = [...found.values()].sort((x, y) => x.ref - y.ref);
+  const cityEn = new Map(stops.map((x) => [x.city, x.cityEn]));
+  for (const city of [...cityEn.keys()].sort()) cityIx(city, cityEn.get(city));
+  for (const x of stops) names.push(x.names);
   const r = rows(pl, cityIx, {
-    kind: Uint8Array.from(sk),
-    ref: Int32Array.from(sr),
-    lat: Float32Array.from(sla),
-    lon: Float32Array.from(slo),
-    city: Int32Array.from(sc),
+    kind: Uint8Array.from(stops, (x) => x.kind),
+    ref: Int32Array.from(stops, (x) => x.ref),
+    lat: Float32Array.from(stops, (x) => x.lat),
+    lon: Float32Array.from(stops, (x) => x.lon),
+    city: Int32Array.from(stops, (x) => cityIx(x.city)),
   });
   // the words of every name, and how long each entry's shortest name is in each alphabet
   const n = r.n,
@@ -221,13 +232,17 @@ export type CatalogueHeader = ContainerHeader & {
   format: number;
   built?: string;
   book: string;
+  /** Whether the lists of who has each word name an entry by its stop's id (the stops' own catalogue). */
+  byId?: boolean;
   counts: { entries: number; stops: number; words: number; cities: number };
   keys: string;
   sKeys: string;
   cityKeys: string[];
   cityNames: number[][][];
 };
-const FORMAT = 1;
+const FORMAT = 2; // 2: the stops in the order of their ids, and so named in the lists of the stops' own catalogue
+/** In a catalogue that names entries by stop id, city c is named CITY_LABELS + c: past every stop's id. */
+const CITY_LABELS = 1 << 30;
 
 /** The file of a catalogue built from the address book `pl` (the container of engine/container.ts, without a build
  *  time or a hash: whoever writes it to disk adds them). */
@@ -235,11 +250,19 @@ export function catalogueFile(
   c: Catalogue,
   pl: Places | null,
 ): { header: Omit<CatalogueHeader, 'sections'>; file: ArrayBuffer } {
-  const first = pl ? pl.cities.length + pl.streets.length + pl.pois.length : 0, // the stops are the entries from here
-    ix = packIndex(c.ix);
+  const first = pl ? pl.cities.length + pl.streets.length + pl.pois.length : 0; // the stops are the entries from here
+  // In the stops' own catalogue an entry is named, in the lists of who has each word, by its stop's id and not by
+  // its place among the entries (a city: by its place, past every id): one stop more then changes the lists of its
+  // own words only, where by place it would renumber every entry after it in every list.
+  const ids = c.ref.subarray(first),
+    byId = !pl && ids.every((id, e) => id < CITY_LABELS && (e === 0 || id > ids[e - 1]));
+  const ix = packIndex(
+    byId ? { ...c.ix, entries: c.ix.entries.map((e) => (e < c.n ? c.ref[e] : CITY_LABELS + e - c.n)) } : c.ix,
+  );
   const header = {
     format: FORMAT,
     book: pl ? pl.header.hash || '' : '',
+    byId,
     counts: { entries: c.n, stops: c.n - first, words: c.ix.keys.length, cities: c.cityKeys.length },
     keys: ix.keys,
     sKeys: ix.sKeys,
@@ -276,18 +299,28 @@ export function readCatalogue(ab: ArrayBuffer, pl: Places | null): Catalogue {
     city: f.stopCity as Int32Array,
   });
   if (r.n !== h.counts.entries) throw new Error('search catalogue of another address book');
+  const ix = unpackIndex({
+    keys: h.keys,
+    sKeys: h.sKeys,
+    shared: f.shared as Uint8Array,
+    posts: f.posts as Uint8Array,
+    sounds: f.sounds as Uint8Array,
+  });
+  if (h.byId) {
+    // the lists name entries by stop id: back to their places
+    const at = new Map<number, number>();
+    r.ref.forEach((id, e) => at.set(id, e));
+    for (let k = 0; k < ix.entries.length; k++) {
+      const v = ix.entries[k];
+      ix.entries[k] = v >= CITY_LABELS ? r.n + v - CITY_LABELS : at.get(v)!;
+    }
+  }
   return {
     ...r,
     count: [f.countHe as Uint8Array, f.countLa as Uint8Array],
     ...byCity(r, h.cityKeys.length),
     cityKeys: h.cityKeys,
     cityNames: h.cityNames,
-    ix: unpackIndex({
-      keys: h.keys,
-      sKeys: h.sKeys,
-      shared: f.shared as Uint8Array,
-      posts: f.posts as Uint8Array,
-      sounds: f.sounds as Uint8Array,
-    }),
+    ix,
   };
 }
