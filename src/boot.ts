@@ -24,7 +24,7 @@ import {
 } from './controllers/loading';
 import { plan, planFromBar, parseShared } from './controllers/planner';
 import { resumeAtStart } from './controllers/follow';
-import { updateOnline, registerServiceWorker } from './controllers/shell';
+import { updateOnline, registerServiceWorker, noteStorage } from './controllers/shell';
 import * as query from './state/query';
 
 // the last search opens again at start for six hours: its places and options, planned afresh (never its old results:
@@ -82,5 +82,6 @@ async function boot(): Promise<void> {
   loadEntrances(); // a few KB: which entrance of a station a walk goes to
   await Promise.all([loadStopSearch(), loadShapes(), loadPlaces()]);
   await loadStreets();
+  noteStorage(); // once everything is in: how much is kept on the phone (the settings' last line)
 }
 boot().catch(loadFailed);

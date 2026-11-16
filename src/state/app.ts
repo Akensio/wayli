@@ -4,6 +4,8 @@ import { signal } from '@preact/signals';
 
 export const feedInfo = signal<{ start?: string; end?: string; built?: string } | null>(null);
 export const version = signal('');
+/** How much the app keeps on this phone, and of how much it may (megabytes; null where the browser does not say). */
+export const kept = signal<{ used: number; of: number } | null>(null);
 export const installable = signal(false); // the install row shows (Chrome's prompt, or Safari's steps)
 export const installHint = signal(''); // Safari's steps, shown under the row on a tap
 export const online = signal(navigator.onLine !== false);

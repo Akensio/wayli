@@ -23,6 +23,7 @@ const sha = (raw: Uint8Array): string => createHash('sha256').update(raw).digest
 // the browser's cache, as a map per name
 class FakeCache {
   kept = new Map<string, Uint8Array>();
+  full = false; // a phone with no room left refuses to keep anything
   private url = (k: string | { url: string }): string =>
     new URL(typeof k === 'string' ? k : k.url, 'http://test/').href;
   async match(k: string): Promise<Response | undefined> {
@@ -30,6 +31,7 @@ class FakeCache {
     return b && new Response(new Uint8Array(b));
   }
   async put(k: string, r: Response): Promise<void> {
+    if (this.full) throw new DOMException('no room', 'QuotaExceededError');
     this.kept.set(this.url(k), new Uint8Array(await r.arrayBuffer()));
   }
   async delete(k: string | { url: string }): Promise<boolean> {
@@ -193,6 +195,19 @@ test('the pieces of days gone by, which older versions of the app left on the ph
   files.setDeltas({ base: BASE, deltas: [], files: [today.file, 'bustimes.bin.gz'], firstDay: today.file });
   await got(today);
   expect([...parts.kept.keys()]).toEqual([`${BASE}bustimes.bin.gz?v=x&part=0`]);
+});
+test('a phone with no room left still gets its files, and frees what it can before fetching', async () => {
+  const parts = (stores['wayli-parts-v1'] = new FakeCache()),
+    kept = (stores['wayli-files-v1'] = new FakeCache());
+  parts.kept.set(`${BASE}timetable-20261101.bin.gz?v=old&part=0`, noise(1000, 1));
+  parts.full = kept.full = true;
+  const big = noise(2_500_000, 4), // three pieces, none of which can be kept
+    today = publish('timetable-20261116.bin.gz', 'm1', big);
+  files.setDeltas({ base: BASE, deltas: [], files: [today.file], firstDay: today.file });
+  expect(Buffer.compare(await got(today), big)).toBe(0);
+  expect(fetchedBytes()).toBe(today.bytes); // fetched once, not piece after piece again
+  expect(parts.kept.size).toBe(0); // the stale pieces went, though nothing could be kept
+  expect(keptFiles()).toEqual([]);
 });
 test('a look at tomorrow does not cost today its file', async () => {
   const today = publish('timetable-20261116.bin.gz', 'm1', A),

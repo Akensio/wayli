@@ -57,6 +57,22 @@ export const updateOnline = (): void => {
 };
 
 /**
+ * The data kept on the phone is the app's to keep: ask the browser not to clear it when the phone runs short (it may
+ * say no; nothing depends on the answer), and note how much is kept and of how much, for the settings' last line: a
+ * phone whose room for the app is full can keep nothing new, and fetches the same files at every open.
+ */
+export async function noteStorage(): Promise<void> {
+  try {
+    if (!navigator.storage) return;
+    if (navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    const e = await navigator.storage.estimate();
+    if (e.usage != null && e.quota != null) app.kept.value = { used: e.usage / 1e6, of: e.quota / 1e6 };
+  } catch {
+    /* the browser does not say */
+  }
+}
+
+/**
  * A new build reloads the page once (the service worker took over), never in the middle of a followed trip: one that
  * arrived during a trip waits, and goes in when the trip is over (checked every 30 s) or the app comes back to the
  * front. Coming back to the front also asks for a new build: a phone keeps the app open in the background for days.

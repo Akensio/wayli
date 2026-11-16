@@ -30,6 +30,7 @@ export const STR: Record<string, [he: Text, en: Text]> = {
   pickHint: ['הקישו על המפה על המקום הרצוי', 'Tap the place on the map'],
   cancel: ['ביטול', 'Cancel'],
   build: ['גרסה {v}', 'build {v}'],
+  keptOnPhone: ['שמור בטלפון: {used} מתוך {of} מ"ב', 'kept on this phone: {used} of {of} MB'],
   readyStreets: ['רשת הרחובות נטענה.', 'Street network loaded.'],
   loadFail: ['הטעינה נכשלה: {msg}', 'Loading failed: {msg}'],
   noLocation: [

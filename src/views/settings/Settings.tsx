@@ -356,6 +356,12 @@ export function Settings() {
       </div>
       <div class="muted center" id="ver">
         {app.version.value}
+        {app.kept.value && (
+          <>
+            <br />
+            {t('keptOnPhone', { used: Math.round(app.kept.value.used), of: Math.round(app.kept.value.of) })}
+          </>
+        )}
       </div>
     </>
   );

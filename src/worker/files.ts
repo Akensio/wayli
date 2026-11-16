@@ -109,13 +109,23 @@ async function fetchInPieces(url: string, label: string, total: number): Promise
   }
   const n = Math.ceil(total / PIECE),
     u8 = new Uint8Array(total);
-  const keepPiece = (i: number, bytes: Uint8Array<ArrayBuffer>): Promise<void> =>
-    cache.put(
-      pieceKey(url, i),
-      new Response(bytes, {
-        headers: { 'content-type': 'application/octet-stream', 'content-length': String(bytes.byteLength) },
-      }),
-    );
+  // A piece is kept so that a download cut short goes on from it. A phone with no room left refuses (the site's
+  // storage is full): the download goes on all the same, kept only in memory; failing it there made a full phone
+  // fetch the same megabytes at every open and never finish (2026-11-16).
+  let room = true;
+  const keepPiece = async (i: number, bytes: Uint8Array<ArrayBuffer>): Promise<void> => {
+    if (!room) return;
+    try {
+      await cache.put(
+        pieceKey(url, i),
+        new Response(bytes, {
+          headers: { 'content-type': 'application/octet-stream', 'content-length': String(bytes.byteLength) },
+        }),
+      );
+    } catch {
+      room = false;
+    }
+  };
   const whole = await caches.match(url); // a whole copy the service worker cached, from before pieces: it serves
   if (whole) {
     const w = new Uint8Array(await whole.arrayBuffer());
@@ -192,8 +202,8 @@ async function keptIn(cache: Cache): Promise<Kept[]> {
   return out;
 }
 /** Keep a file's version (its gzipped bytes), then let go of what it replaces: the file's other versions, and once
- *  the first day's file is in, every file the manifest no longer lists (the days gone by), with any pieces of such
- *  files. Never fails the load: a phone out of room fetches again next time. */
+ *  the first day's file is in, every file the manifest no longer lists (the days gone by). Never fails the load: a
+ *  phone out of room fetches again next time. */
 async function keep(cache: Cache, file: string, hash: string, gz: Uint8Array<ArrayBuffer>): Promise<void> {
   try {
     await cache.put(
@@ -203,13 +213,6 @@ async function keep(cache: Cache, file: string, hash: string, gz: Uint8Array<Arr
     const sweep = file === plan.firstDay && plan.files.length > 0; // today's file is in: the days gone by can go
     for (const k of await keptIn(cache))
       if ((k.file === file && k.hash !== hash) || (sweep && !plan.files.includes(k.file))) await cache.delete(k.key);
-    // and the pieces of files no longer listed: until 2026-11-16 a day's pieces stayed for good once its day had
-    // passed (pieces went only when a newer version of the same file was asked for), 4 MB more on the phone each day
-    if (sweep) {
-      const parts = await caches.open(PARTS);
-      for (const k of await parts.keys())
-        if (!plan.files.includes(new URL(k.url).pathname.split('/').pop() || '')) await parts.delete(k);
-    }
   } catch {
     /* not kept this time */
   }
@@ -227,6 +230,21 @@ let plan: { base: string; deltas: DeltaStep[]; files: string[]; firstDay: string
 };
 export function setDeltas(p: typeof plan): void {
   plan = p;
+  swept = sweepPieces();
+}
+/** The pieces of files the manifest does not list go, before anything is fetched: they are what fills a phone (until
+ *  2026-11-16 a day's pieces stayed for good once its day had passed, 4 MB more each day the app was opened), and a
+ *  full phone can keep nothing new. Pieces are never what a newer file is made from, so nothing is lost with them. */
+let swept: Promise<void> = Promise.resolve();
+async function sweepPieces(): Promise<void> {
+  if (!plan.files.length || typeof caches === 'undefined') return;
+  try {
+    const parts = await caches.open(PARTS);
+    for (const k of await parts.keys())
+      if (!plan.files.includes(new URL(k.url).pathname.split('/').pop() || '')) await parts.delete(k);
+  } catch {
+    /* nothing to sweep */
+  }
 }
 const MOST_STEPS = 8, // deltas applied one after another, at most
   WORTH = 0.6; // deltas of more than this much of the file's own size: the file itself is fetched instead
@@ -284,6 +302,7 @@ async function byDeltas(
  * browser without a cache, is fetched each time.
  */
 export async function fileBytes({ url, bytes, file, hash }: DataFileArgs, label: string): Promise<ArrayBuffer> {
+  await swept;
   const cache = file && hash && typeof caches !== 'undefined' ? await caches.open(FILES) : null;
   if (cache && file && hash) {
     const hit = await cache.match(keyOf(file, hash));
