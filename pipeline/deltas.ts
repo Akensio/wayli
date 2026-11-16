@@ -68,10 +68,15 @@ const unpacked = (b: Buffer): Buffer => (b[0] === 0x1f && b[1] === 0x8b ? gunzip
 const sha = (raw: Buffer): string => createHash('sha256').update(raw).digest('hex').slice(0, 16);
 const mb = (n: number): string => (n / 1e6).toFixed(2) + ' MB';
 
-const fresh = JSON.parse(readFileSync(join(dataDir, 'manifest.json'), 'utf8')) as Manifest;
+const MANIFEST = 'manifest-2.json';
+const fresh = JSON.parse(readFileSync(join(dataDir, MANIFEST), 'utf8')) as Manifest;
 let before: Manifest;
 try {
-  before = JSON.parse((await download(live + 'manifest.json?t=' + Date.now())).toString('utf8')) as Manifest;
+  const read = async (name: string): Promise<Manifest> =>
+    JSON.parse((await download(`${live}${name}?t=${Date.now()}`)).toString('utf8')) as Manifest;
+  // until 2026-11-16 the manifest was manifest.json (build_site.py says why its name changed): a live site from before
+  before = await read(MANIFEST).catch(() => read('manifest.json'));
+  if (!before.days?.length) throw new Error('the live manifest lists no days');
 } catch (e) {
   console.log(`deltas: the live site did not answer (${e instanceof Error ? e.message : e}); none made this time`);
   process.exit(0);
@@ -170,7 +175,7 @@ try {
   mkdirSync(join(dataDir, 'deltas'), { recursive: true });
   for (const d of made) writeFileSync(join(dataDir, d.file), d.body);
   fresh.deltas = made.map(({ body: _, ...d }) => d);
-  writeFileSync(join(dataDir, 'manifest.json'), JSON.stringify(fresh, null, 1));
+  writeFileSync(join(dataDir, MANIFEST), JSON.stringify(fresh, null, 1));
   console.log(
     `deltas: ${made.length - carried} made and ${carried} kept from the live site, ${mb(made.reduce((n, d) => n + d.bytes, 0))} in all; ` +
       `${pinned.length} unchanged files keep the live site's bytes`,

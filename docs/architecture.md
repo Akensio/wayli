@@ -919,7 +919,7 @@ Time is Israel time whatever the phone's zone (`Intl` with
 service day, so countdowns, live matching and following all agree past
 midnight.
 
-Data: `data/manifest.json` lists one timetable file per service day
+Data: `data/manifest-2.json` lists one timetable file per service day
 (`timetable-YYYYMMDD.bin.gz`, about 3 MB; the app downloads only the day
 being planned), the
 learned section times (`bustimes.bin.gz`, 1.3 MB, and `railtimes.json`),
@@ -984,6 +984,16 @@ deltas from an older copy, else by download.
   deltas. The download goes in 1 MB pieces (HTTP ranges, which GitHub Pages
   serves), each kept the moment it arrives, so a rider who opens the app for
   half a minute advances it instead of starting over.
+- The manifest is `data/manifest-2.json`. Under its first name,
+  `manifest.json`, the build writes one that lists nothing, for the app as
+  it was before files were kept whole: at its first open after an update
+  the old code runs for a moment before the new build takes over, and
+  finding new versions under the old name it threw away the pieces it held
+  and began downloading the files whole. Finding nothing, it stops (its
+  status line says so for a few seconds) and the new build reloads the
+  page. The pieces it left serve the new code as the older version to make
+  the new one from, like a file kept whole (in a browser, from the old
+  app's storage to the new build: 8.2 MB instead of 20.9).
 - Files are laid out so that a small change in the world is a small change
   in the file. The timetable refers to stops by their id in the feed and
   gives lists by their lengths (format 4, below); the stops' search

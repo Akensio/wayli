@@ -190,7 +190,58 @@ const FILES = 'wayli-files-v1';
 /** The cache's key for a file's version (a cache keeps things under addresses: this one is nowhere but there). */
 const keyOf = (file: string, hash: string): string =>
   new URL(`kept/${encodeURIComponent(file)}?h=${encodeURIComponent(hash)}`, self.location.href).href;
-type Kept = { file: string; hash: string; key: string };
+/** A version of a file the phone holds: kept whole under `key`, or (`pieces`) as the pieces it was downloaded in by
+ *  the app as it was before files were kept whole, under `key` and the piece's number. */
+type Kept = { file: string; hash: string; key: string; pieces?: number };
+/**
+ * The files an earlier version of the app left as pieces (until 2026-11-16 a downloaded file stayed in the pieces it
+ * came in). They are as good to make a newer version from as a file kept whole, so the first open after the change
+ * fetches deltas too, and not every file anew. A set of pieces is taken for a whole file when they run from the first
+ * on, each a full piece but the last; pieces of a download cut short pass for one too, and the fingerprint of what the
+ * deltas make of them tells (the file is then downloaded).
+ */
+async function keptAsPieces(): Promise<Kept[]> {
+  const sizes = new Map<string, number[]>(),
+    parts = await caches.open(PARTS);
+  for (const k of await parts.keys()) {
+    const m = /^(.*)[?&]part=(\d+)$/.exec(k.url),
+      r = m && (await parts.match(k));
+    if (!m || !r) continue;
+    const list = sizes.get(m[1]) || [];
+    list[Number(m[2])] = Number(r.headers.get('content-length')) || (await r.clone().arrayBuffer()).byteLength;
+    sizes.set(m[1], list);
+  }
+  const out: Kept[] = [];
+  for (const [url, list] of sizes) {
+    const u = new URL(url),
+      file = u.pathname.split('/').pop() || '',
+      hash = u.searchParams.get('v'),
+      whole = Array.from(list).every((size, i) => size !== undefined && (size === PIECE || i === list.length - 1));
+    if (file && hash && whole) out.push({ file, hash, key: url, pieces: list.length });
+  }
+  return out;
+}
+/** The gzipped bytes of a version the phone holds; null when they are no longer there. */
+async function bytesOf(cache: Cache, k: Kept): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (!k.pieces) {
+    const r = await cache.match(k.key);
+    return r ? new Uint8Array(await r.arrayBuffer()) : null;
+  }
+  const parts = await caches.open(PARTS),
+    got: Uint8Array[] = [];
+  for (let i = 0; i < k.pieces; i++) {
+    const r = await parts.match(pieceKey(k.key, i));
+    if (!r) return null;
+    got.push(new Uint8Array(await r.arrayBuffer()));
+  }
+  const out = new Uint8Array(got.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of got) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
 async function keptIn(cache: Cache): Promise<Kept[]> {
   const out: Kept[] = [];
   for (const k of await cache.keys()) {
@@ -213,6 +264,9 @@ async function keep(cache: Cache, file: string, hash: string, gz: Uint8Array<Arr
     const sweep = file === plan.firstDay && plan.files.length > 0; // today's file is in: the days gone by can go
     for (const k of await keptIn(cache))
       if ((k.file === file && k.hash !== hash) || (sweep && !plan.files.includes(k.file))) await cache.delete(k.key);
+    // and any pieces of this file, of whatever version: it is kept whole now
+    const parts = await caches.open(PARTS);
+    for (const k of await parts.keys()) if (new URL(k.url).pathname.split('/').pop() === file) await parts.delete(k);
   } catch {
     /* not kept this time */
   }
@@ -276,12 +330,12 @@ async function byDeltas(
   label: string,
 ): Promise<ArrayBuffer | null> {
   if (!plan.deltas.length || typeof crypto === 'undefined' || !crypto.subtle) return null;
-  const way = cheapest(file, hash, await keptIn(cache));
+  const way = cheapest(file, hash, [...(await keptIn(cache)), ...(await keptAsPieces())]);
   if (!way || !way.steps.length || (bytes && way.bytes > bytes * WORTH)) return null;
-  const held = await cache.match(way.from.key);
+  const held = await bytesOf(cache, way.from);
   if (!held) return null;
   post({ type: 'progress', label, got: 0, total: way.bytes, how: 'update' });
-  let raw = new Uint8Array(await unpack(new Uint8Array(await held.arrayBuffer())));
+  let raw = new Uint8Array(await unpack(held));
   let got = 0;
   for (const step of way.steps) {
     const gz = await fetchWhole(plan.base + step.file, label, 'update', got, way.bytes);
@@ -336,8 +390,7 @@ export async function fileBytes({ url, bytes, file, hash }: DataFileArgs, label:
   try {
     const raw = await unpack(u8);
     if (cache && file && hash) {
-      await keep(cache, file, hash, u8);
-      if (pieces) await dropPieces(url); // the whole file is kept now
+      await keep(cache, file, hash, u8); // whole, and its pieces let go
     }
     return raw;
   } catch (e) {

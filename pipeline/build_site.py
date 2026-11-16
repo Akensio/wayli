@@ -6,7 +6,8 @@
 Copies dist/* (the Vite build), data/timetable-YYYYMMDD.bin.gz and data/streets.bin.gz, places.bin.gz, search.bin.gz (the address
 book's search catalogue, when it is of this book), searchstops.bin.gz (the stops'), shapes.bin.gz and
 railtimes.json (learned train section times), bustimes.bin.gz (learned bus section times), entrances.json (station entrances),
-and writes site/data/manifest.json with the available days.
+and writes site/data/manifest-2.json with the available days (and, under the old name manifest.json, one that lists
+nothing: see below).
 """
 import argparse
 import datetime
@@ -125,7 +126,12 @@ def main():
         "bustimes": bustimes,
         "entrances": entrances,
     }
-    (out / "data" / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
+    (out / "data" / "manifest-2.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
+    # Under the manifest's first name, one that lists nothing. The app as it was before 2026-11-16 reads that name
+    # for a moment at its first open after an update, before the new build takes over: finding new versions there
+    # it threw away the files it held and began downloading them whole, the very files the new build makes the new
+    # versions from, by deltas (pipeline/deltas.ts). Finding nothing, it stops, and the new build reloads the page.
+    (out / "data" / "manifest.json").write_text(json.dumps({"built": built, "days": [], "moved": "manifest-2.json"}))
     total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
     print(f"site: {len(days)} days, streets {'yes' if streets else 'no'}, places {'yes' if places else 'no'}, shapes {'yes' if shapes else 'no'}, {total/1e6:.1f} MB in {out}")
 

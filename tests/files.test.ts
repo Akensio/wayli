@@ -209,6 +209,28 @@ test('a phone with no room left still gets its files, and frees what it can befo
   expect(parts.kept.size).toBe(0); // the stale pieces went, though nothing could be kept
   expect(keptFiles()).toEqual([]);
 });
+test('a file the app left as pieces before files were kept whole serves to make the newer version from', async () => {
+  // as an older version of the app left it: the old version's gzipped bytes in 1 MB pieces
+  const old = noise(2_300_000, 6),
+    neu = join(old.subarray(0, 900_000), noise(700, 7), old.subarray(900_000)),
+    was = publish('timetable-20261116.bin.gz', 'old', old),
+    gz = served['timetable-20261116.bin.gz?v=old'],
+    parts = (stores['wayli-parts-v1'] = new FakeCache());
+  for (let i = 0; i * (1 << 20) < gz.length; i++)
+    parts.kept.set(`${was.url}&part=${i}`, gz.subarray(i * (1 << 20), (i + 1) * (1 << 20)));
+  const now = publish(was.file, 'new', neu);
+  files.setDeltas({
+    base: BASE,
+    deltas: [delta([was.file, 'old', old], [was.file, 'new', neu])],
+    files: [was.file],
+    firstDay: was.file,
+  });
+  fetched = [];
+  expect(Buffer.compare(await got(now), neu)).toBe(0);
+  expect(fetched.map((f) => f.path)).toEqual(['deltas/old-new.gz']);
+  await settled(['timetable-20261116.bin.gz@new']);
+  await vi.waitFor(() => expect(parts.kept.size).toBe(0)); // the pieces are let go once the file is kept whole
+});
 test('a look at tomorrow does not cost today its file', async () => {
   const today = publish('timetable-20261116.bin.gz', 'm1', A),
     tomorrow = publish('timetable-20261117.bin.gz', 't1', B);

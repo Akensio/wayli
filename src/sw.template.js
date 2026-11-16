@@ -32,7 +32,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || e.request.headers.has('range')) return;
   if (url.pathname.includes('/data/deltas/')) return; // used once, to make a file the worker then keeps
   const isData = url.pathname.includes('/data/');
-  const isManifest = url.pathname.endsWith('/data/manifest.json');
+  const isManifest = url.pathname.endsWith('/data/manifest-2.json');
   if (isManifest) {
     // network first, so a new feed is noticed; cached copy when offline
     e.respondWith(

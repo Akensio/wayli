@@ -36,7 +36,7 @@ function playwright() {
 
 /** The static site with Range requests (the app fetches big files in pieces). */
 function serve() {
-  if (!existsSync(path.join(ROOT, 'data/manifest.json'))) {
+  if (!existsSync(path.join(ROOT, 'data/manifest-2.json'))) {
     console.error('No built site with data in site/: run the build (pipeline/build_site.py) first.');
     process.exit(2);
   }
@@ -81,7 +81,7 @@ export function check(name, result, ok) {
 export async function start({ android = true, settings = { lang: 'en' } } = {}) {
   const pw = playwright();
   const server = await serve();
-  const manifest = JSON.parse(readFileSync(path.join(ROOT, 'data/manifest.json'), 'utf8'));
+  const manifest = JSON.parse(readFileSync(path.join(ROOT, 'data/manifest-2.json'), 'utf8'));
   const day = manifest.days[0].date;
   const browser = await pw.chromium.launch({
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],

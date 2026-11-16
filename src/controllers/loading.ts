@@ -46,7 +46,7 @@ async function fetchJson<T>(url: string, init: RequestInit = {}, ms = 20000): Pr
 }
 
 export async function loadManifest(): Promise<void> {
-  const m = await fetchJson<Manifest>('data/manifest.json', { cache: 'no-cache' });
+  const m = await fetchJson<Manifest>('data/manifest-2.json', { cache: 'no-cache' });
   data.manifest.value = m;
   // how the files are to be had, before any is asked for: the deltas, every file listed, the first day's
   const listed = [m.streets, m.places, m.search, m.stopSearch, m.shapes, m.bustimes].filter((f): f is DataFile => !!f);

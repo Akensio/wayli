@@ -119,7 +119,7 @@ python3 -I pipeline/shapes.py data/gtfs.zip --out data/shapes.bin.gz     # ~1 mi
 python3 -I pipeline/rail.py data/osm/israel-and-palestine-latest.osm.pbf --out data/rail.bin.gz   # ~2 min: the tracks, for trains
 python3 -I pipeline/compile.py data/gtfs.zip --date 20261019 --streets data/streets.bin.gz --shapes data/shapes.bin.gz --rail data/rail.bin.gz --out data/timetable-20261019.bin.gz
 node pipeline/searchindex.ts data/places.bin.gz data/timetable-*.bin.gz --out data/search.bin.gz --stops data/searchstops.bin.gz   # ~8 s: the search catalogues (needs the address book, pipeline/places.py)
-python3 pipeline/build_site.py --out site        # app + data + data/manifest.json
+python3 pipeline/build_site.py --out site        # app + data + data/manifest-2.json
 python3 -m http.server --directory site 8080     # then open http://localhost:8080/
 ```
 

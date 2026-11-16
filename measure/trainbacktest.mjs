@@ -6,7 +6,7 @@
 //
 // The minute files come from Hasadna (https://open-bus-siri-requester.hasadna.org.il/, YYYY/MM/DD/HH/MM.br, UTC), the
 // same files the relay passes to the app, and are kept in data/siri/; the day's timetable is read from the site (a past
-// day's is no longer there: serve a local data/ with its own manifest.json and pass it as --site). Errors are in
+// day's is no longer there: serve a local data/ with its own manifest-2.json and pass it as --site). Errors are in
 // minutes, + when the prediction was later than the train. The last line is what the rider is shown (delays.ts
 // sureLate), against the timetable alone.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -31,7 +31,7 @@ const { tripFor, tripStopList } = await import('../src/worker/trips.ts');
 const delays = await import('../src/engine/delays.ts');
 const clock = await import('../src/engine/clock.ts');
 const { metres } = await import('../src/engine/geo.ts');
-const manifest = await (await fetch(SITE + 'data/manifest.json', { cache: 'no-store' })).json();
+const manifest = await (await fetch(SITE + 'data/manifest-2.json', { cache: 'no-store' })).json();
 const entry = manifest.days.find((d) => d.date === day);
 if (!entry) {
   console.error(`the site has no timetable for ${day} (it serves ${manifest.days.map((d) => d.date).join(' ')})`);

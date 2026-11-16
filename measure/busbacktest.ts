@@ -9,7 +9,7 @@
 //   node --max-old-space-size=6144 --experimental-strip-types measure/busbacktest.ts 20261106 08:00 08:40 [--no-roads] [--no-bustimes] [--examples] [--site URL]
 //
 // An hour's window fits in 6 GB (every bus, stop and minute is kept); a past day's timetable is no longer on the site,
-// so serve a local data/ with its own manifest.json and pass it as --site. 2026-11-07, Friday 2026-11-06 08:00-08:40,
+// so serve a local data/ with its own manifest-2.json and pass it as --site. 2026-11-07, Friday 2026-11-06 08:00-08:40,
 // all of Israel: the time shown moved under 30 s in 62% of minutes, 2 min or more in 6%; a stop watched for 20 minutes
 // saw it wander 2.5 min (median), going back and forth in 22% of cases; jumps of 3 min or more came 46% from the bus's
 // place on its trip jumping, 39% from the switch from waiting to start (the timetable's times) to under way (the
@@ -48,7 +48,7 @@ const clock = await import('../src/engine/clock.ts');
 const { projectOnStops, metres } = await import('../src/engine/geo.ts');
 
 // the data, as the app has it
-const manifest = await (await fetch(SITE + 'data/manifest.json', { cache: 'no-store' })).json();
+const manifest = await (await fetch(SITE + 'data/manifest-2.json', { cache: 'no-store' })).json();
 const entry = manifest.days.find((d: any) => d.date === day);
 if (!entry) {
   console.error(`the site has no timetable for ${day} (it serves ${manifest.days.map((d: any) => d.date).join(' ')})`);

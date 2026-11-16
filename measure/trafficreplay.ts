@@ -18,7 +18,7 @@ const { noteRoads, trafficOps } = await import('../src/worker/traffic.ts');
 const RELAY = 'https://wayli-relay.wayli.workers.dev/siri/latest';
 const BOX = { south: 31.95, north: 32.2, west: 34.7, east: 34.95 }; // greater Tel Aviv
 
-const manifest = await (await fetch(SITE + 'data/manifest.json', { cache: 'no-store' })).json();
+const manifest = await (await fetch(SITE + 'data/manifest-2.json', { cache: 'no-store' })).json();
 const file = (f: { file: string; hash?: string; built?: string }) =>
   `${SITE}data/${f.file}?v=${f.hash || f.built || ''}`;
 async function load(): Promise<void> {
