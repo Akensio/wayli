@@ -745,8 +745,10 @@ entries of one catalogue, found by one rule and ordered on one scale:
   `search.bin.gz`, the address book's cities, streets and places (2.2 MB
   gzipped; the book is rebuilt weekly, and this file's contents change only
   with it), and `searchstops.bin.gz`, the stops and stations of every
-  compiled day by their id in the feed (0.7 MB; a few stops come and go
-  most days: of the week's 30,781, twelve ran only on its first day). In a
+  compiled day by their id in the feed, in the order of the ids and so named
+  in its lists (0.7 MB; a few stops come and go most days: of the week's
+  30,781, twelve ran only on its first day; the delta between two nights is
+  0.07 MB). In a
   file: the words (each as the letters it does not share with the word
   before), who has each (as steps between numbers, a byte or two each), how
   long each name is, the cities, and for the stops what and where each is.
@@ -936,24 +938,70 @@ the street graph (10.7 MB; until it
 is in, points use straight-line access with a detour factor, and walks drawn
 straight then follow the streets once it arrives; a download that drops is
 fetched again after 5, 20 and 60 s and when the phone comes back online,
-the same for the address book and the courses). Every data file is cached
-on the phone by the service worker under its version, which the manifest
-(fetched network first, 2 KB) gives per file: the content hash written
-into the file's header by `pipeline/container.py` (the header without its
-build time, plus the arrays), so a file rebuilt from the same input gives the
-same hash and is not downloaded again, and only files whose content changed
-are; the learned times, which change nightly by nature, are keyed by their
-build time. In practice the street graph and the address book change once
-a week (a new OpenStreetMap extract), the day's timetable and the learned
-times nightly, and the courses only when the feed's shapes change. A file
-whose size the manifest gives is fetched by the data worker in 1 MB pieces
-(HTTP ranges, which GitHub Pages serves), each kept in a cache of its own
-the moment it arrives, so a rider who opens the app for half a minute
-advances the download instead of starting it over; the next open fetches
-only the pieces still missing, and a whole copy the service worker cached
-earlier is cut into pieces rather than downloaded again. Pieces that do not
-make a readable file (a version change mid-download) are dropped and
-fetched anew.
+the same for the address book and the courses).
+
+Getting a data file (`worker/files.ts`): from the phone's own copy, else by
+deltas from an older copy, else by download.
+
+```
+ the manifest (2 KB, fetched network first): each file's name and version,
+ and the deltas the build published between versions
+        │
+        ▼
+ does the phone keep this version?  ── yes ──▶ open it ("Opening…", nothing fetched)
+        │ no
+        ▼
+ does it keep a version the deltas lead from,
+ for well under the file's own size?  ── yes ──▶ fetch the deltas, make the file,
+        │ no, or the result's fingerprint            check its SHA-256, keep it ("Updating…")
+        ▼ is not the one named
+ download the file, in 1 MB pieces, keep it ("Downloading… x / y MB")
+```
+
+- A file's version is its content hash, written into its header by
+  `pipeline/container.py` (the header without its build time, plus the
+  arrays), so a file rebuilt from the same input is the same version. The
+  phone keeps each file once, gzipped, in a cache of its own under name and
+  version; a file's older versions go when the current one is in, and the
+  timetables of days gone by when today's is (until then one of them is
+  what today's is made from).
+- A delta (`engine/delta.ts`, the same code in the build and on the phone)
+  is the new file as runs copied from the old one and bytes of its own;
+  making one takes a second, applying one 10 to 30 ms. The nightly build
+  (`pipeline/deltas.ts`) makes them from what the live site serves, which is
+  what phones hold: for every file whose contents changed, from the live
+  version to the new one; for each day's timetable, from the day before it
+  (and from two or three days before where that is much smaller: Sunday's
+  from Thursday's); and it keeps the live site's deltas for eight nights, so
+  a phone some nights behind goes from version to version (eight steps at
+  most). A delta is listed only when it is under half the file's size, and
+  the phone takes a way only when it costs under 0.6 of the download. A file
+  whose contents did not change keeps the live site's very bytes, so one
+  version is one sequence of bytes and a delta always fits.
+- Each delta names what its result must be (the SHA-256 of the new file,
+  unpacked). A result that is not it, a delta that is missing, a browser
+  without the means: the file is downloaded whole, as before there were
+  deltas. The download goes in 1 MB pieces (HTTP ranges, which GitHub Pages
+  serves), each kept the moment it arrives, so a rider who opens the app for
+  half a minute advances it instead of starting over.
+- Files are laid out so that a small change in the world is a small change
+  in the file. The timetable refers to stops by their id in the feed and
+  gives lists by their lengths (format 4, below); the stops' search
+  catalogue lists its stops in the order of their ids and names them by id.
+  Numbering by place in a list renumbers everything after one insertion.
+- Measured (real files; gzipped sizes): a weekday's timetable from the day
+  before 0.04 to 0.16 MB, and the same day between feeds five days apart
+  0.12 MB, against 3.4 MB whole (Thursday to Friday and Friday to Saturday,
+  different services, 1.2 MB); the courses 0.03 against 3.6 MB; the address
+  book 0.13 against 6.2 MB a week later; the stops' catalogue 0.07 against
+  0.7 MB; the street graph 2.9 against 11.2 MB a week later (its nodes are
+  numbered by place, like the timetable's stops were). In a browser, against
+  a server counting bytes: a first visit 28.6 MB; a refresh 0; the next
+  build with a feed five days newer 6.8 MB instead of 28.6; the next day
+  0.16 MB. Still fetched whole: the address book's search catalogue (2.2 MB,
+  weekly; its entries are numbered by place) and the learned bus times
+  (1.3 MB nightly: every number in it is new each night).
+
 Each day's file says which shape every pattern runs on and where each of
 its stops falls along it (segment and fraction, computed by projecting the
 stop on the simplified course, never backwards, taking the first segment
@@ -1016,7 +1064,7 @@ field, the summary box, the chips and the Go button.
 Not yet: crowd reports, Arabic (the data format carries it, the interface
 does not), the bike-on-board rules for light rail, fares.
 
-## Compact timetable (format 3, built by `pipeline/compile.py`)
+## Compact timetable (format 4, built by `pipeline/compile.py`)
 
 One file per service day, in the container every data file comes in
 (`pipeline/container.py` writes it, `src/engine/container.ts` reads it),
@@ -1029,8 +1077,18 @@ the app views in place:
   id (number, operator, type, destination), so a vehicle reporting live on a
   line with no trips that day is still named (shared taxis run on Saturday
   that the feed schedules on weekdays only).
-- route patterns RAPTOR-style: `patStopsOff`/`patStops` (stop sequence per
-  pattern), `patTripsOff` (trip range per pattern), `tripTimesOff`.
+- route patterns RAPTOR-style. In memory: `patStopsOff`/`patStops` (stop
+  sequence per pattern), `patTripsOff` (trip range per pattern),
+  `tripTimesOff`. In the file (format 4): `patStopsLen` and `patTripsLen`
+  (how many stops and trips each pattern has) and `patStopIds` (the stops
+  by their id in the feed); the reader (`fromFile` in `engine/raptor.ts`)
+  makes the running offsets, turns ids into the stops' places in the day's
+  list, and works out where each pattern's times start. The file is laid
+  out this way for the deltas (above, "Getting a data file"): one stop more
+  in the day's list renumbered every stop after it, and every offset after
+  one longer list moved, so nothing of the old file could be copied.
+  Compared on a real day, the arrays in memory are the same as from a
+  format-3 file (which is still read), and the file is 17% smaller.
   In the Israel feed every `route_id` is one direction of one line, so a
   pattern is a route; trips that would overtake are split into sub-patterns.
   `patStopFlags` (u8 beside `patStops`) says where a pattern's trips may not
@@ -1049,6 +1107,8 @@ the app views in place:
   all zeros in this feed and deltas repeat across trips, which is why gzip
   gets 26 MB down to 2.8 MB.
 - `stopPats`: for each stop, the (pattern, position) pairs it appears in.
+  Not in the file since format 4: the reader makes it from the patterns'
+  stops, in the patterns' order.
 - Reading the layout: the router's own loops read these arrays directly
   (the hot path). Everything else asks the accessors beside the format in
   `engine/raptor.ts`: `patternLength`, `patternStop`, `lastStop`,
@@ -1056,7 +1116,8 @@ the app views in place:
   (where a trip's times start in `dep` and `arr`) and `patternsAt` (a
   stop's patterns), so where a pattern's stops or a trip's times sit is
   written once.
-- footpaths: `trOff`/`trTo`/`trTime`: street-graph walking times within 10
+- footpaths: `trOff`/`trTo`/`trTime` (in the file `trLen`, `trToId` by stop
+  id, `trTime`): street-graph walking times within 10
   minutes (straight-line within 400 m when built without `--streets`), plus
   platform-to-platform inside stations. The feed has no `transfers.txt`.
 - `stopLat`/`stopLon` as f32, `stopParent` (station index), `stopNode` (the

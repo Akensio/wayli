@@ -146,6 +146,10 @@ jobs:
       - name: Search catalogues
         run: node pipeline/searchindex.ts data/places.bin.gz data/timetable-*.bin.gz --out data/search.bin.gz --stops data/searchstops.bin.gz
       - run: python3 pipeline/build_site.py --out site
+      # the deltas from what phones hold (the live site's files) to this build's, and between its days; a failure
+      # leaves the site as built, and phones download whole files
+      - name: Deltas between versions of the data files
+        run: node pipeline/deltas.ts --site site --live https://akensio.github.io/wayli/data/ || echo "::warning::no deltas this time"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

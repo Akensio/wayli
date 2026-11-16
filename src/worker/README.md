@@ -8,7 +8,8 @@ the page asks by name (`client.ts`: `call(op, args)` returns a promise).
 | File | What | Ops |
 |---|---|---|
 | `worker.ts` | The message loop: every part's ops in one table. | |
-| `data.ts` | What is loaded (`tt`, `st`, `pl`, `sx` and `sxStops` the search catalogues, `sh`, `lang`) and loading it, with progress. Only it assigns them; `onNewDay` / `onNewLang` reset what other parts derived from them. | `loadTimetable`, `loadStreets`, `loadShapes`, `loadPlaces`, `loadSearch`, `loadStopSearch`, `loadBusTimes`, `setRailTimes`, `setLang` |
+| `data.ts` | What is loaded (`tt`, `st`, `pl`, `sx` and `sxStops` the search catalogues, `sh`, `lang`) and loading it (the bytes come from `files.ts`). Only it assigns them; `onNewDay` / `onNewLang` reset what other parts derived from them. | `setDeltas`, `loadTimetable`, `loadStreets`, `loadShapes`, `loadPlaces`, `loadSearch`, `loadStopSearch`, `loadBusTimes`, `setRailTimes`, `setLang` |
+| `files.ts` | A data file's bytes at the least cost: the phone's own copy, else an older copy and the build's deltas to it (checked against the new file's fingerprint), else a download in pieces; what the phone keeps and when it lets go of it; progress to the page. | |
 | `names.ts` | Names in the rider's language: stops, stations, cities, headsigns, line labels; a stop as handed out. | |
 | `search.ts` | The place search: `engine/find.ts` over the catalogue, each hit as the row the list shows (named in the rider's language, what reads the same as one row); what is at a point; stored places named again. | `search`, `reverse`, `localize` |
 | `plan.ts` | Journeys: places to stops, live delays into the timetable, the searches, legs, transfers, grouping. | `plan` |
