@@ -29,6 +29,14 @@ const WORDS = {
  *  time of files without one (the learned times, which change nightly anyway). */
 const fileUrl = (f: DataFile): string =>
   `${DATA_URL}${f.file}?v=${encodeURIComponent(f.hash || f.built || manifest().built || '')}`;
+/** A data file as the worker takes it: its address, its size, and its name and version, under which the phone keeps
+ *  it (and from which a newer version is made by the build's deltas, worker/files.ts). */
+const fileArgs = (f: DataFile): { url: string; bytes?: number; file: string; hash?: string } => ({
+  url: fileUrl(f),
+  bytes: f.bytes,
+  file: f.file,
+  hash: f.hash,
+});
 
 /** A small JSON file: its status checked, given up after `ms` (a hung request fails and says so instead of waiting). */
 async function fetchJson<T>(url: string, init: RequestInit = {}, ms = 20000): Promise<T> {
@@ -40,6 +48,14 @@ async function fetchJson<T>(url: string, init: RequestInit = {}, ms = 20000): Pr
 export async function loadManifest(): Promise<void> {
   const m = await fetchJson<Manifest>('data/manifest.json', { cache: 'no-cache' });
   data.manifest.value = m;
+  // how the files are to be had, before any is asked for: the deltas, every file listed, the first day's
+  const listed = [m.streets, m.places, m.search, m.stopSearch, m.shapes, m.bustimes].filter((f): f is DataFile => !!f);
+  call('setDeltas', {
+    base: DATA_URL,
+    deltas: m.deltas || [],
+    files: [...m.days, ...listed].map((f) => f.file),
+    firstDay: m.days[0]?.file || '',
+  });
   app.feedInfo.value = m.feed ? { start: m.feed.start, end: m.feed.end, built: m.built } : null;
   if (m.built) {
     const b = clock.ilParts(new Date(m.built));
@@ -66,10 +82,7 @@ export async function loadDay(date: string): Promise<void> {
   data.ttReady.value = false;
   search.busy.value = true;
   call('setLang', { lang: lang.value }); // names come back in the rider's language where the timetable carries them
-  const info: { date: string; counts: { trips: number } } = await call('loadTimetable', {
-    url: fileUrl(d),
-    bytes: d.bytes,
-  });
+  const info: { date: string; counts: { trips: number } } = await call('loadTimetable', fileArgs(d));
   data.dayInfo.value = info;
   data.ttReady.value = true;
   resetCaches();
@@ -117,7 +130,7 @@ export async function loadStopSearch(): Promise<void> {
   const f = manifest().stopSearch;
   if (!f) return;
   try {
-    await call('loadStopSearch', { url: fileUrl(f), bytes: f.bytes });
+    await call('loadStopSearch', fileArgs(f));
   } catch {
     /* the worker's own catalogue of the day's stops serves */
   }
@@ -127,10 +140,10 @@ export async function loadPlaces(): Promise<void> {
   if (data.plReady.value || !f) return;
   await retrying(
     async () => {
-      await call('loadPlaces', { url: fileUrl(f), bytes: f.bytes });
+      await call('loadPlaces', fileArgs(f));
       // the book's search catalogue is read against the book, so after it; until it is in, the search finds stops only
       const x = manifest().search;
-      if (x) await call('loadSearch', { url: fileUrl(x), bytes: x.bytes });
+      if (x) await call('loadSearch', fileArgs(x));
       data.plReady.value = true; // a box with text typed in it searches again (views/topbar/SearchField.tsx)
     },
     () => {
@@ -144,7 +157,7 @@ export async function loadShapes(): Promise<void> {
   // until then rides are drawn dashed from stop to stop and a stop's page shows no lines; the redraw puts both right
   await retrying(
     async () => {
-      await call('loadShapes', { url: fileUrl(f), bytes: f.bytes });
+      await call('loadShapes', fileArgs(f));
       data.shReady.value = true;
       map.redrawMap(true);
     },
@@ -181,7 +194,7 @@ export async function loadBusTimes(): Promise<void> {
   const f = manifest().bustimes;
   if (!f) return;
   try {
-    await call('loadBusTimes', { url: fileUrl(f), bytes: f.bytes });
+    await call('loadBusTimes', fileArgs(f));
     map.refreshLiveMap(); // the roads are coloured from now on: drawn now, not at the next poll
   } catch {
     /* the timetable's own section times then */
@@ -192,7 +205,7 @@ export async function loadStreets(): Promise<void> {
   if (data.stReady.value || !f) return;
   await retrying(
     async () => {
-      await call('loadStreets', { url: fileUrl(f), bytes: f.bytes });
+      await call('loadStreets', fileArgs(f));
       data.stReady.value = true;
       setStatus(t('readyStreets'));
       map.redrawMap(true); // walks drawn straight until now follow the streets

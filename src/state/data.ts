@@ -1,5 +1,6 @@
 // What data is loaded: the manifest, the day's timetable, and whether each file is at hand.
 import { signal } from '@preact/signals';
+import type { DeltaStep } from '../worker/ops';
 
 /** One data file as the manifest lists it: `hash` is what is in it (the cache key, pipeline/container.py), `built` when it
  *  was written, `bytes` its size (known, the worker fetches it in pieces that survive a short session). */
@@ -16,6 +17,8 @@ export type Manifest = {
   railtimes?: DataFile;
   entrances?: DataFile;
   bustimes?: DataFile;
+  /** The deltas between versions of the files, as the nightly build published them (pipeline/deltas.ts). */
+  deltas?: DeltaStep[];
 };
 export const manifest = signal<Manifest | null>(null);
 export const dayInfo = signal<{ date: string; counts: { trips: number } } | null>(null);

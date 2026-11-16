@@ -108,7 +108,7 @@ export function makeDelta(old: Uint8Array, neu: Uint8Array): Uint8Array {
 /** The new file, from the old one and the delta between them. Throws on a delta that is not one, or that does not
  *  fit this old file (whoever applies it also checks the result against the new file's fingerprint: a delta applied
  *  to another old file than the one it was made from gives a file of the right length and the wrong bytes). */
-export function applyDelta(old: Uint8Array, delta: Uint8Array): Uint8Array {
+export function applyDelta(old: Uint8Array, delta: Uint8Array): Uint8Array<ArrayBuffer> {
   let at = 0;
   const varint = (): number => {
     let v = 0,

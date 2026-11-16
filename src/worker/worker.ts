@@ -12,7 +12,8 @@
 //   traffic.ts   how the roads run now, from the buses
 // (names.ts holds the names in the rider's language that they all hand out; ops.ts is the table of operations both
 // sides are typed against.)
-import { tt, post, dataOps } from './data.ts';
+import { tt, dataOps } from './data.ts';
+import { post } from './files.ts';
 import { searchOps } from './search.ts';
 import { planOps } from './plan.ts';
 import { stopsOps } from './stops.ts';

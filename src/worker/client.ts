@@ -1,7 +1,8 @@
 // The data worker (worker.ts) holds the timetable, the street graph and the address book and answers every
 // query, so the UI never blocks. This is the UI's end: one promise per request.
-import type { OpName, Ops, OpArgs, TripStops } from './ops';
-export type Progress = { label: string; got: number; total?: number; unpacking?: boolean };
+import type { OpName, Ops, OpArgs, TripStops, ProgressMessage } from './ops';
+/** A file's progress as the worker reports it (ops.ts ProgressMessage: the one definition). */
+export type Progress = Omit<ProgressMessage, 'type'>;
 const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
 /** Data files are addressed from the page, not from the worker's own folder under assets/. */
 export const DATA_URL = new URL('data/', location.href).href;

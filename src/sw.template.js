@@ -1,8 +1,10 @@
 // Wayli service worker: the app shell works offline; data files are cached once downloaded. The big data files the
-// worker fetches in pieces (range requests, src/worker/data.ts) pass straight through: it keeps the pieces itself.
+// worker fetches in pieces (range requests, src/worker/files.ts) pass straight through, and so do the deltas between
+// their versions: the worker keeps what it makes of them itself.
 const SHELL = 'wayli-shell-__BUILD__'; // build_site.py puts the build time here: every deploy is a new shell cache
 const DATA = 'wayli-data-v1';
-const PARTS = 'wayli-parts-v1'; // the worker's pieces of the big files: kept across deploys like DATA
+const PARTS = 'wayli-parts-v1'; // the worker's pieces of a big file on its way: kept across deploys like DATA
+const FILES = 'wayli-files-v1'; // the worker's copy of every data file it has: kept across deploys too
 const SHELL_FILES = __SHELL_FILES__; // the built files, written by vite.config.ts at build time
 
 self.addEventListener('install', (e) => {
@@ -18,7 +20,9 @@ self.addEventListener('activate', (e) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== SHELL && k !== DATA && k !== PARTS).map((k) => caches.delete(k))),
+        Promise.all(
+          keys.filter((k) => k !== SHELL && k !== DATA && k !== PARTS && k !== FILES).map((k) => caches.delete(k)),
+        ),
       )
       .then(() => self.clients.claim()),
   );
@@ -26,6 +30,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || e.request.headers.has('range')) return;
+  if (url.pathname.includes('/data/deltas/')) return; // used once, to make a file the worker then keeps
   const isData = url.pathname.includes('/data/');
   const isManifest = url.pathname.endsWith('/data/manifest.json');
   if (isManifest) {

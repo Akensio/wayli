@@ -9,7 +9,8 @@ import { parsePlaces, houseOn, type Places, type Lang } from '../engine/places.t
 import { readCatalogue, type Catalogue } from '../engine/catalogue.ts';
 import { readContainer, type ContainerHeader } from '../engine/container.ts';
 import { setRailTimes, parseBusTimes, setBusTimes } from '../engine/delays.ts';
-import type { OpsPart, WorkerMessage } from './ops.ts';
+import { fileBytes, setDeltas } from './files.ts';
+import type { OpsPart } from './ops.ts';
 
 /** The courses file's header (pipeline/shapes.py): how many shapes and points it holds. */
 export type ShapesHeader = ContainerHeader & { counts: { shapes: number; points: number } };
@@ -56,168 +57,20 @@ function parseShapes(ab: ArrayBuffer): Shapes {
   for (let i = 0; i < out.shapeId.length; i++) out.index.set(out.shapeId[i], i);
   return out;
 }
-/** A message to the page (an answer, or a download's progress). */
-export const post = (m: WorkerMessage): void => self.postMessage(m);
-/** The body of a response, streamed so the page sees the download move; `base` bytes were had before it. */
-/** How long a download may go without a byte before it is given up: a stalled connection then fails and says so (the
- *  pieces already kept stay for the next try) instead of leaving the progress frozen for good. */
-const STALL_MS = 30000;
-/** `fetch`, given up when no answer starts within STALL_MS; the body's reads are watched by `readBody`. */
-async function fetchWatched(url: string, init: RequestInit = {}): Promise<Response> {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(new Error(`no answer in ${STALL_MS / 1000} s for ${url}`)), STALL_MS);
-  try {
-    return await fetch(url, { ...init, signal: ctl.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-/** One read of a body, given up (and the body cancelled) when nothing came for STALL_MS. */
-function readOrStall(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<ReadableStreamReadResult<Uint8Array>> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const stall = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      reader.cancel().catch(() => {});
-      reject(new Error(`download stalled for ${STALL_MS / 1000} s`));
-    }, STALL_MS);
-  });
-  return Promise.race([reader.read(), stall]).finally(() => clearTimeout(timer));
-}
-async function readBody(res: Response, label: string, base: number, total: number): Promise<Uint8Array<ArrayBuffer>> {
-  if (!res.body || !res.body.getReader) {
-    const u8 = new Uint8Array(await res.arrayBuffer());
-    post({ type: 'progress', label, got: base + u8.length, total });
-    return u8;
-  }
-  const reader = res.body.getReader(),
-    chunks: Uint8Array[] = [];
-  let got = 0;
-  for (;;) {
-    const { done, value } = await readOrStall(reader);
-    if (done) break;
-    chunks.push(value);
-    got += value.length;
-    post({ type: 'progress', label, got: base + got, total });
-  }
-  const u8 = new Uint8Array(got);
-  let o = 0;
-  for (const c of chunks) {
-    u8.set(c, o);
-    o += c.length;
-  }
-  return u8;
-}
-/** A whole file in one request (small files, and browsers without a cache for pieces). */
-async function fetchWhole(url: string, label: string): Promise<Uint8Array<ArrayBuffer>> {
-  const res = await fetchWatched(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return readBody(res, label, 0, Number(res.headers.get('content-length')) || 0);
-}
-
-/**
- * A big file in pieces that survive a short session. The street graph is 11 MB, and a rider who opens the app for
- * half a minute never gets to the end of it: the next open started it over, and the service worker's cache only ever
- * holds a download that finished. So a file whose size the manifest gives is fetched in PIECE-sized ranges, each
- * kept in the browser's cache (a cache of its own, 'wayli-parts-v1', keyed by the file's address with its version and
- * the piece's number) the moment it arrives; the next open fetches only the pieces still missing. Pieces of an
- * older version of the same file go when a newer one's first piece is asked for. A whole copy the service worker
- * cached before this (the same address) is cut into pieces instead of downloaded again.
- * Returns the file's bytes, or null when the server did not answer the range (the whole file is then fetched as
- * one), or the size it answered with is not the manifest's (the file changed under the manifest: the fresh whole
- * file is right, the pieces would not fit together).
- */
-const PIECE = 1 << 20,
-  PARTS = 'wayli-parts-v1';
-const pieceKey = (url: string, i: number): string => `${url}${url.includes('?') ? '&' : '?'}part=${i}`;
-async function fetchInPieces(url: string, label: string, total: number): Promise<Uint8Array<ArrayBuffer> | null> {
-  const cache = await caches.open(PARTS);
-  const path = new URL(url, self.location.href).pathname;
-  for (const k of await cache.keys()) {
-    const u = new URL(k.url);
-    if (u.pathname === path && !k.url.startsWith(url)) await cache.delete(k);
-  }
-  const n = Math.ceil(total / PIECE),
-    u8 = new Uint8Array(total);
-  const keep = (i: number, bytes: Uint8Array<ArrayBuffer>): Promise<void> =>
-    cache.put(
-      pieceKey(url, i),
-      new Response(bytes, {
-        headers: { 'content-type': 'application/octet-stream', 'content-length': String(bytes.byteLength) },
-      }),
-    );
-  const whole = await caches.match(url); // the service worker's copy from before pieces, any cache
-  if (whole) {
-    const w = new Uint8Array(await whole.arrayBuffer());
-    if (w.length === total) {
-      for (let i = 0; i < n; i++) await keep(i, w.subarray(i * PIECE, Math.min(total, (i + 1) * PIECE)));
-    }
-    for (const k of await caches.keys()) await (await caches.open(k)).delete(url);
-    if (w.length === total) {
-      post({ type: 'progress', label, got: total, total });
-      return w;
-    }
-  }
-  let got = 0;
-  for (let i = 0; i < n; i++) {
-    const start = i * PIECE,
-      end = Math.min(total, start + PIECE) - 1;
-    const hit = await cache.match(pieceKey(url, i));
-    let piece = hit ? new Uint8Array(await hit.arrayBuffer()) : null;
-    if (!piece || piece.length !== end - start + 1) {
-      const res = await fetchWatched(url, { headers: { Range: `bytes=${start}-${end}` } });
-      if (res.status !== 206) {
-        if (res.ok) return null;
-        throw new Error(`HTTP ${res.status} for ${url}`);
-      }
-      const size = Number((res.headers.get('content-range') || '').split('/')[1]);
-      if (size !== total) return null;
-      piece = await readBody(res, label, got, total);
-      if (piece.length !== end - start + 1) throw new Error(`piece ${i} of ${url}: ${piece.length} bytes`);
-      await keep(i, piece);
-    }
-    u8.set(piece, start);
-    got += piece.length;
-    post({ type: 'progress', label, got, total });
-  }
-  return u8;
-}
-/** The pieces of a file whose bytes did not make a readable file (a version change in mid-download): fetched anew next time. */
-async function dropPieces(url: string): Promise<void> {
-  try {
-    const cache = await caches.open(PARTS);
-    for (const k of await cache.keys()) if (k.url.startsWith(url)) await cache.delete(k);
-  } catch {
-    /* nothing to drop */
-  }
-}
-/** A data file's contents, unpacked: in pieces when its size is known and the browser has a cache (see fetchInPieces), whole otherwise. */
-async function fetchContainer(url: string, label: string, bytes?: number): Promise<ArrayBuffer> {
-  const pieces = !!bytes && typeof caches !== 'undefined';
-  let u8 = pieces ? await fetchInPieces(url, label, bytes) : null;
-  if (!u8) u8 = await fetchWhole(url, label);
-  post({ type: 'progress', label, got: u8.length, total: u8.length, unpacking: true });
-  try {
-    if (u8[0] === 0x1f && u8[1] === 0x8b) {
-      if (typeof DecompressionStream !== 'function') throw new Error('this browser cannot decompress gzip');
-      const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'));
-      return await new Response(stream).arrayBuffer();
-    }
-    return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
-  } catch (e) {
-    if (pieces) await dropPieces(url);
-    throw e;
-  }
-}
-
 export const dataOps = {
-  async loadTimetable({ url, bytes }) {
-    const buf = await fetchContainer(url, 'timetable', bytes);
+  /** What the manifest says about getting the files: the deltas between versions, and which files it lists. */
+  setDeltas(args) {
+    setDeltas(args);
+    return true;
+  },
+  async loadTimetable(args) {
+    const buf = await fileBytes(args, 'timetable');
     tt = parseTimetable(buf);
     for (const f of dayResets) f();
     return { date: tt.header.date, counts: tt.counts, feed: tt.header.feed, streets: !!tt.header.streets };
   },
-  async loadStreets({ url, bytes }) {
-    const buf = await fetchContainer(url, 'streets', bytes);
+  async loadStreets(args) {
+    const buf = await fileBytes(args, 'streets');
     st = parseStreets(buf);
     return { nodes: st.M };
   },
@@ -227,32 +80,32 @@ export const dataOps = {
     return true;
   },
   /** The learned running times of bus sections (pipeline/bustimes.py). */
-  async loadBusTimes({ url, bytes }) {
-    const m = parseBusTimes(await fetchContainer(url, 'bustimes', bytes));
+  async loadBusTimes(args) {
+    const m = parseBusTimes(await fileBytes(args, 'bustimes'));
     setBusTimes(m);
     for (const f of busTimesHooks) await f();
     return { sections: m.idx.size, built: m.built };
   },
-  async loadShapes({ url, bytes }) {
-    const buf = await fetchContainer(url, 'shapes', bytes);
+  async loadShapes(args) {
+    const buf = await fileBytes(args, 'shapes');
     sh = parseShapes(buf);
     return sh.header.counts;
   },
-  async loadPlaces({ url, bytes }) {
-    const buf = await fetchContainer(url, 'places', bytes);
+  async loadPlaces(args) {
+    const buf = await fileBytes(args, 'places');
     pl = parsePlaces(buf);
     sx = null; // a catalogue belongs to one address book
     return pl.header.counts;
   },
   /** The stops' search catalogue (pipeline/searchindex.ts): every compiled day's stops, by their ids in the feed. */
-  async loadStopSearch({ url, bytes }) {
-    sxStops = readCatalogue(await fetchContainer(url, 'stopsearch', bytes), null);
+  async loadStopSearch(args) {
+    sxStops = readCatalogue(await fileBytes(args, 'stopsearch'), null);
     return { entries: sxStops.n, words: sxStops.ix.keys.length };
   },
   /** The address book's search catalogue (pipeline/searchindex.ts), read against the book it was built from: asked
    *  for once the book is in. */
-  async loadSearch({ url, bytes }) {
-    const buf = await fetchContainer(url, 'search', bytes);
+  async loadSearch(args) {
+    const buf = await fileBytes(args, 'search');
     const book = pl!;
     sx = readCatalogue(buf, book);
     sx.numberOn = (street, number, suffix) => {
@@ -269,6 +122,7 @@ export const dataOps = {
     return lang;
   },
 } satisfies OpsPart<
+  | 'setDeltas'
   | 'loadTimetable'
   | 'loadStreets'
   | 'setRailTimes'

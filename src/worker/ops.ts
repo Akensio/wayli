@@ -334,11 +334,17 @@ export type PlanOut = {
   live: LiveTrips | null;
   ms: number;
 };
-/** A data file to load: its address and, when known, its size (fetched in pieces then). */
-export type DataFileArgs = { url: string; bytes?: number };
+/** A data file to load: its address and, when known, its size (fetched in pieces then), its name and its version
+ *  (the manifest's content hash: the phone keeps the file under them, worker/files.ts). */
+export type DataFileArgs = { url: string; bytes?: number; file?: string; hash?: string };
+/** A delta the nightly build published (pipeline/deltas.ts): the file `file` (of `bytes`, gzipped) makes the version
+ *  `to` ([name, hash]) from the version `from`, and `sha` is what the result must be (the first 16 hex digits of its
+ *  SHA-256, unpacked). */
+export type DeltaStep = { file: string; bytes: number; from: [string, string]; to: [string, string]; sha: string };
 
 export type Ops = {
   // data.ts: what the worker holds
+  setDeltas: { args: { base: string; deltas: DeltaStep[]; files: string[]; firstDay: string }; result: true };
   loadTimetable: {
     args: DataFileArgs;
     result: {
@@ -461,7 +467,16 @@ export type OpsPart<K extends OpName> = {
  *  Over postMessage nothing checks it: the worker's loop looks the operation up by name and hands the arguments on. */
 export type Request = { id: number; op: OpName; args?: Ops[OpName]['args'] };
 /** What the worker sends the page: a request's answer or its error, or a download's progress (client.ts Progress:
- *  `got` of `total` bytes of the file `label`, then `unpacking` while it is decompressed). */
+ *  `got` of `total` bytes of the file `label`, then `unpacking` while it is decompressed; `how` when the file is
+ *  not downloaded). */
 export type Reply = { id: number; result: unknown } | { id: number; error: string };
-export type ProgressMessage = { type: 'progress'; label: string; got: number; total?: number; unpacking?: boolean };
+export type ProgressMessage = {
+  type: 'progress';
+  label: string;
+  got: number;
+  total?: number;
+  unpacking?: boolean;
+  /** Where the bytes come from, when not a download: the phone's own copy, or deltas to an older copy. */
+  how?: 'open' | 'update';
+};
 export type WorkerMessage = Reply | ProgressMessage;
